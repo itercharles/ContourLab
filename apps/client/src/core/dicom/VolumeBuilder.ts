@@ -17,7 +17,7 @@ export async function buildVolume(parsedSeries: ParsedSeries): Promise<LoadedSer
   const { imageLoader, volumeLoader } = await import('@cornerstonejs/core');
 
   const { seriesUID, instances, metadata } = parsedSeries;
-  const volumeId = `local:${seriesUID}`;
+  const volumeId = `local:${seriesUID}:${crypto.randomUUID()}`;
   const imageIds = instances.map((i) => i.imageId);
 
   // Prime Cornerstone's dataset cache so metadata providers can answer

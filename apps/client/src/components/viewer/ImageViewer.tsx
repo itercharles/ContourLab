@@ -3,6 +3,7 @@ import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { MPRController, VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
+import { logClientDebug } from '../../core/debug/clientDebugLog';
 
 interface ViewportPanelProps {
   id: string;
@@ -50,34 +51,52 @@ export default function ImageViewer() {
 
   // Track whether we've set up the tool group yet
   const setupDone = useRef(false);
+  const readyViewportIds = useRef(new Set<string>());
 
-  const handleViewportReady = async (id: string, el: HTMLDivElement) => {
+  const pushDebugEvent = (message: string) => {
+    logClientDebug('ImageViewer', message);
+  };
+
+  const handleViewportReady = async (id: string, el: HTMLDivElement): Promise<boolean> => {
     try {
       await ViewportManager.init();
+      const existingViewport = ViewportManager.getRenderingEngine()?.getViewport(id);
+      if (existingViewport) {
+        return true;
+      }
+
       const orientation = id === VIEWPORT_IDS.AXIAL
         ? 'AXIAL'
         : id === VIEWPORT_IDS.SAGITTAL
           ? 'SAGITTAL'
           : 'CORONAL';
       await ViewportManager.enableElement(id, el, orientation as 'AXIAL' | 'SAGITTAL' | 'CORONAL');
+      return true;
     } catch (err) {
+      const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      pushDebugEvent(`ready:error ${id} ${message}`);
       console.error(`Failed to enable viewport ${id}:`, err);
+      return false;
     }
   };
 
   // After all three viewports are ready, set up tool group once
-  const readyCount = useRef(0);
   const onReady = async (id: string, el: HTMLDivElement) => {
-    await handleViewportReady(id, el);
-    readyCount.current += 1;
-    if (readyCount.current === 3 && !setupDone.current) {
+    const ok = await handleViewportReady(id, el);
+    if (!ok) return;
+
+    readyViewportIds.current.add(id);
+    if (readyViewportIds.current.size === 3 && !setupDone.current) {
       setupDone.current = true;
       try {
         // MPRController.setup requires a volumeId; pass empty string for initial setup
         // It will be re-called when a volume is loaded
         await MPRController.setup('');
+        pushDebugEvent('toolgroup:setup');
         setViewportsReady(true);
       } catch (err) {
+        const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+        pushDebugEvent(`toolgroup:error ${message}`);
         console.error('MPRController setup failed:', err);
       }
     }
@@ -95,15 +114,20 @@ export default function ImageViewer() {
 
     const applyVolume = async () => {
       try {
+        pushDebugEvent(`volume:start ${volumeId}`);
         // Re-setup tool group with the actual volume id
         await MPRController.setup(volumeId);
+        pushDebugEvent(`volume:toolgroup ${volumeId}`);
 
         await Promise.all([
           ViewportManager.setVolume(VIEWPORT_IDS.AXIAL, volumeId),
           ViewportManager.setVolume(VIEWPORT_IDS.SAGITTAL, volumeId),
           ViewportManager.setVolume(VIEWPORT_IDS.CORONAL, volumeId),
         ]);
+        pushDebugEvent(`volume:done ${volumeId}`);
       } catch (err) {
+        const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+        pushDebugEvent(`volume:error ${volumeId} ${message}`);
         console.error('Failed to set volume on viewports:', err);
       }
     };
@@ -122,6 +146,15 @@ export default function ImageViewer() {
     observer.observe(el);
 
     return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      readyViewportIds.current.clear();
+      setupDone.current = false;
+      MPRController.destroy();
+      ViewportManager.destroy();
+    };
   }, []);
 
   return (

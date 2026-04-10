@@ -77,7 +77,7 @@ export default function FileDropZone() {
 
       // Use DataTransferItemList to support dropped folders (recursive)
       const items = Array.from(e.dataTransfer.items);
-      if (items.length > 0 && items[0].webkitGetAsEntry) {
+      if (items.length > 0 && typeof items[0].webkitGetAsEntry === 'function') {
         const files = await collectFilesFromEntries(
           items.map((i) => i.webkitGetAsEntry()).filter(Boolean) as FileSystemEntry[]
         );

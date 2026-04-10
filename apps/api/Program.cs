@@ -23,5 +23,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthorization();
 app.MapControllers();
+app.MapPost("/debug/client-log", (ClientDebugLogEntry entry, ILogger<Program> logger) =>
+{
+    logger.LogInformation("CLIENT {Scope}: {Message}", entry.Scope, entry.Message);
+    return Results.Ok();
+});
 
 app.Run();
+
+internal sealed record ClientDebugLogEntry(string Scope, string Message);

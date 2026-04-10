@@ -31,8 +31,17 @@ export const useVolumeStore = create<VolumeState>()(
     loadError: null,
     addSeries: (s) =>
       set((state) => {
-        state.loadedSeries.push(s);
-        if (state.activeSeriesUID === null) state.activeSeriesUID = s.seriesUID;
+        const existingIndex = state.loadedSeries.findIndex(
+          (series) => series.seriesUID === s.seriesUID
+        );
+
+        if (existingIndex === -1) {
+          state.loadedSeries.push(s);
+        } else {
+          state.loadedSeries[existingIndex] = s;
+        }
+
+        state.activeSeriesUID = s.seriesUID;
       }),
     setActiveSeries: (uid) =>
       set((state) => {

@@ -1,4 +1,5 @@
 import type { WLPreset } from '../store/uiStore';
+import { cornerstoneInit } from './cornerstoneInit';
 import { WINDOW_LEVEL_PRESETS } from './WindowLevelPresets';
 
 export type OrthographicOrientation = 'AXIAL' | 'SAGITTAL' | 'CORONAL';
@@ -8,14 +9,14 @@ const ENGINE_ID = 'webtps-rendering-engine';
 let renderingEngine: {
   enableElement: (cfg: object) => void;
   getViewport: (id: string) => ViewportLike | undefined;
+  renderViewport: (id: string) => void;
   resize: () => void;
   destroy: () => void;
 } | null = null;
 
 interface ViewportLike {
   setVolumes: (
-    vols: Array<{ volumeId: string; callback?: (p: unknown) => void }>
-    ,
+    vols: Array<{ volumeId: string; callback?: (p: unknown) => void }>,
     immediate?: boolean
   ) => Promise<void>;
   setProperties: (props: { voiRange?: { lower: number; upper: number } }) => void;
@@ -27,8 +28,9 @@ interface ViewportLike {
 export const ViewportManager = {
   async init(): Promise<void> {
     if (renderingEngine) return;
+    await cornerstoneInit();
     const { RenderingEngine } = await import('@cornerstonejs/core');
-    renderingEngine = new RenderingEngine(ENGINE_ID) as typeof renderingEngine;
+    renderingEngine = new RenderingEngine(ENGINE_ID) as unknown as NonNullable<typeof renderingEngine>;
   },
 
   getRenderingEngine() {
@@ -70,8 +72,8 @@ export const ViewportManager = {
     await viewport.setVolumes([
       {
         volumeId,
-        callback: ({ volumeActor }: { volumeActor: unknown }) => {
-          void volumeActor;
+        callback: (actorInfo) => {
+          void actorInfo;
         },
       },
     ], true);

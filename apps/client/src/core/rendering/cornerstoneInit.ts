@@ -4,6 +4,8 @@
  * regardless of when they call cornerstoneInit().
  */
 
+import type { IRetrieveConfiguration, VolumeLoaderFn } from '@cornerstonejs/core/types';
+
 let initPromise: Promise<void> | null = null;
 
 export function cornerstoneInit(): Promise<void> {
@@ -29,9 +31,26 @@ export function cornerstoneInit(): Promise<void> {
     csTools.init();
 
     // Register the streaming volume loader
+    const streamingVolumeLoader: VolumeLoaderFn = (volumeId, options = {}) => {
+      const { imageIds = [], progressiveRendering } = options as {
+        imageIds?: string[];
+        progressiveRendering?: boolean | IRetrieveConfiguration;
+      };
+      const loadObject = cornerstoneStreamingImageVolumeLoader(volumeId, {
+        imageIds,
+        progressiveRendering,
+      });
+
+      return {
+        promise: loadObject.promise,
+        cancelFn: loadObject.cancel,
+        decache: loadObject.decache,
+      };
+    };
+
     volumeLoader.registerVolumeLoader(
       'cornerstoneStreamingImageVolume',
-      cornerstoneStreamingImageVolumeLoader
+      streamingVolumeLoader
     );
 
     // Initialize DICOM image loader (v4 — bundles its own dicom-parser)
