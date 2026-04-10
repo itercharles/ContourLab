@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { MPRController, VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { useVolumeStore } from '../../core/store/volumeStore';
@@ -46,7 +46,7 @@ export default function ImageViewer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
-  const windowLevelPreset = useUIStore((s) => s.windowLevelPreset);
+  const [viewportsReady, setViewportsReady] = useState(false);
 
   // Track whether we've set up the tool group yet
   const setupDone = useRef(false);
@@ -76,6 +76,7 @@ export default function ImageViewer() {
         // MPRController.setup requires a volumeId; pass empty string for initial setup
         // It will be re-called when a volume is loaded
         await MPRController.setup('');
+        setViewportsReady(true);
       } catch (err) {
         console.error('MPRController setup failed:', err);
       }
@@ -84,6 +85,7 @@ export default function ImageViewer() {
 
   // When active series changes, load volume into viewports
   useEffect(() => {
+    if (!viewportsReady) return;
     if (!activeSeriesUID) return;
 
     const series = loadedSeries.find((s) => s.seriesUID === activeSeriesUID);
@@ -97,9 +99,9 @@ export default function ImageViewer() {
         await MPRController.setup(volumeId);
 
         await Promise.all([
-          ViewportManager.setVolume(VIEWPORT_IDS.AXIAL, volumeId, windowLevelPreset),
-          ViewportManager.setVolume(VIEWPORT_IDS.SAGITTAL, volumeId, windowLevelPreset),
-          ViewportManager.setVolume(VIEWPORT_IDS.CORONAL, volumeId, windowLevelPreset),
+          ViewportManager.setVolume(VIEWPORT_IDS.AXIAL, volumeId),
+          ViewportManager.setVolume(VIEWPORT_IDS.SAGITTAL, volumeId),
+          ViewportManager.setVolume(VIEWPORT_IDS.CORONAL, volumeId),
         ]);
       } catch (err) {
         console.error('Failed to set volume on viewports:', err);
@@ -107,9 +109,7 @@ export default function ImageViewer() {
     };
 
     void applyVolume();
-  // windowLevelPreset intentionally omitted — preset changes handled separately below
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSeriesUID, loadedSeries]);
+  }, [activeSeriesUID, loadedSeries, viewportsReady]);
 
   // ResizeObserver on the container
   useEffect(() => {

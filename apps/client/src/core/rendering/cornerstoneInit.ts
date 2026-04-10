@@ -18,7 +18,7 @@ export function cornerstoneInit(): Promise<void> {
 
     const csTools = await import('@cornerstonejs/tools');
 
-    const { default: dicomImageLoaderInit } = await import(
+    const { init: dicomImageLoaderInit } = await import(
       '@cornerstonejs/dicom-image-loader'
     );
 

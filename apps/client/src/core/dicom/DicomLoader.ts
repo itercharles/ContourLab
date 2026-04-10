@@ -3,8 +3,7 @@ import type { SeriesMetadata } from './DicomMetadataStore';
 
 export interface ParsedInstance {
   file: File;
-  blobUrl: string;
-  wadouriId: string;
+  imageId: string;
   seriesUID: string;
   sopInstanceUID: string;
   instanceNumber: number;
@@ -28,6 +27,8 @@ export async function loadFiles(
   files: File[],
   onProgress?: (loaded: number, total: number) => void
 ): Promise<ParsedSeries[]> {
+  const { wadouri } = await import('@cornerstonejs/dicom-image-loader');
+
   // Filter out directory entries (size=0 or 4096) from webkitdirectory picks
   const dicomFiles = files.filter((f) => f.size > 128);
 
@@ -46,13 +47,11 @@ export async function loadFiles(
           const tags = await parseDicomTags(file);
           const { patient, study, series, instance } = buildMetadata(tags);
 
-          const blobUrl = URL.createObjectURL(file);
-          const wadouriId = `wadouri:${blobUrl}`;
+          const imageId = wadouri.fileManager.add(file);
 
           const parsed: ParsedInstance = {
             file,
-            blobUrl,
-            wadouriId,
+            imageId,
             seriesUID: tags.seriesInstanceUID,
             sopInstanceUID: tags.sopInstanceUID,
             instanceNumber: tags.instanceNumber,
@@ -99,7 +98,9 @@ export async function loadFiles(
  * Release blob URLs created for a series to free memory.
  */
 export function releaseSeries(series: ParsedSeries): void {
+  // Uploaded browser files are registered in Cornerstone's fileManager rather
+  // than as blob URLs, so there is nothing to revoke here.
   for (const instance of series.instances) {
-    URL.revokeObjectURL(instance.blobUrl);
+    void instance;
   }
 }

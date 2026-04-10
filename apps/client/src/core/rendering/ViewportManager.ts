@@ -15,6 +15,8 @@ let renderingEngine: {
 interface ViewportLike {
   setVolumes: (
     vols: Array<{ volumeId: string; callback?: (p: unknown) => void }>
+    ,
+    immediate?: boolean
   ) => Promise<void>;
   setProperties: (props: { voiRange?: { lower: number; upper: number } }) => void;
   render: () => void;
@@ -59,14 +61,12 @@ export const ViewportManager = {
 
   async setVolume(
     viewportId: string,
-    volumeId: string,
-    preset: WLPreset = 'softTissue'
+    volumeId: string
   ): Promise<void> {
     if (!renderingEngine) return;
     const viewport = renderingEngine.getViewport(viewportId);
     if (!viewport) return;
 
-    const { lower, upper } = getVoiRange(preset);
     await viewport.setVolumes([
       {
         volumeId,
@@ -74,9 +74,10 @@ export const ViewportManager = {
           void volumeActor;
         },
       },
-    ]);
-    viewport.setProperties({ voiRange: { lower, upper } });
+    ], true);
+    viewport.resetCamera();
     viewport.render();
+    renderingEngine?.renderViewport(viewportId);
   },
 
   setWindowLevel(viewportId: string, preset: WLPreset): void {

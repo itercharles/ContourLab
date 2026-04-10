@@ -6,25 +6,32 @@ import { cornerstoneInit } from '../rendering/cornerstoneInit';
 /**
  * Build a Cornerstone3D streaming volume from a parsed DICOM series.
  *
- * NOTE: createAndCacheVolume registers the volume; load() kicks off
- * background streaming of image frames. We do NOT await load() — the
- * streaming volume loader is fire-and-forget. Viewports render
- * progressively as frames arrive via events.
+ * For browser-local uploads we first cache each image, then derive an
+ * in-memory volume from that cached stack. This avoids depending on the
+ * streaming loader to bootstrap metadata and first-frame rendering.
  */
 export async function buildVolume(parsedSeries: ParsedSeries): Promise<LoadedSeries> {
   // Ensure Cornerstone3D is fully initialized before attempting to create volumes
   await cornerstoneInit();
 
-  const { volumeLoader } = await import('@cornerstonejs/core');
+  const { imageLoader, volumeLoader } = await import('@cornerstonejs/core');
 
   const { seriesUID, instances, metadata } = parsedSeries;
-  const volumeId = `cornerstoneStreamingImageVolume:${seriesUID}`;
-  const imageIds = instances.map((i) => i.wadouriId);
+  const volumeId = `local:${seriesUID}`;
+  const imageIds = instances.map((i) => i.imageId);
 
-  const volume = await volumeLoader.createAndCacheVolume(volumeId, { imageIds });
+  // Prime Cornerstone's dataset cache so metadata providers can answer
+  // imagePixelModule/imagePlaneModule queries during volume construction.
+  await Promise.all(
+    imageIds.map((imageId) =>
+      imageLoader.loadAndCacheImage(imageId, {
+        priority: 0,
+        requestType: 'prefetch',
+      })
+    )
+  );
 
-  // Fire-and-forget: streaming loads frames in the background
-  (volume as { load: () => void }).load();
+  const volume = await volumeLoader.createAndCacheVolumeFromImages(volumeId, imageIds);
 
   const csVolume = volume as {
     dimensions: [number, number, number];
