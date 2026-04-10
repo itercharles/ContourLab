@@ -8,9 +8,12 @@ export default function WorkspaceLayout() {
   const rightSidebarOpen = useUIStore((s) => s.rightSidebarOpen);
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white overflow-hidden">
+    <div className="flex h-screen bg-[#0d0d0d] text-white overflow-hidden">
       {/* Left sidebar */}
-      <div className="flex-none w-70 bg-gray-800 overflow-y-auto border-r border-gray-700" style={{ width: '280px' }}>
+      <div
+        className="flex-none bg-[#1a1a1a] border-r border-[#2a2a2a] overflow-y-auto"
+        style={{ width: '260px' }}
+      >
         <LeftSidebar />
       </div>
 
@@ -22,8 +25,11 @@ export default function WorkspaceLayout() {
 
       {/* Right sidebar — collapsible */}
       <div
-        className="flex-none bg-gray-800 border-l border-gray-700 overflow-y-auto transition-all duration-200"
-        style={{ width: rightSidebarOpen ? '280px' : '0px', overflow: rightSidebarOpen ? 'auto' : 'hidden' }}
+        className="flex-none bg-[#1a1a1a] border-l border-[#2a2a2a] transition-all duration-150"
+        style={{
+          width: rightSidebarOpen ? '260px' : '0px',
+          overflow: rightSidebarOpen ? 'auto' : 'hidden',
+        }}
       >
         <RightSidebar />
       </div>

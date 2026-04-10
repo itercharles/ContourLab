@@ -29,10 +29,10 @@ function ToolButton({ label, tool, activeTool, onClick, title }: ToolButtonProps
       onClick={() => onClick(tool)}
       title={title ?? label}
       className={`
-        px-3 py-1 rounded text-xs font-medium transition-colors
+        w-7 h-7 rounded text-[11px] font-medium transition-colors
         ${isActive
-          ? 'bg-blue-600 text-white ring-1 ring-blue-400'
-          : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+          ? 'bg-blue-600 text-white'
+          : 'bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5]'
         }
       `}
     >
@@ -97,22 +97,23 @@ export default function Toolbar() {
   };
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-gray-800 border-b border-gray-700 flex-none flex-wrap">
+    <div className="h-9 flex items-center gap-1 px-2 bg-[#1a1a1a] border-b border-[#2a2a2a] flex-none">
       {/* Tool buttons */}
       <div className="flex items-center gap-1">
-        <ToolButton label="WL" tool="windowLevel" activeTool={activeTool} onClick={handleToolClick} title="Window/Level" />
-        <ToolButton label="Zoom" tool="zoom" activeTool={activeTool} onClick={handleToolClick} title="Zoom" />
-        <ToolButton label="Pan" tool="pan" activeTool={activeTool} onClick={handleToolClick} title="Pan" />
-        <ToolButton label="Scroll" tool="scroll" activeTool={activeTool} onClick={handleToolClick} title="Stack Scroll" />
+        <ToolButton label="WL" tool="windowLevel" activeTool={activeTool} onClick={handleToolClick} title="Window/Level [W]" />
+        <ToolButton label="Z" tool="zoom" activeTool={activeTool} onClick={handleToolClick} title="Zoom [Z]" />
+        <ToolButton label="P" tool="pan" activeTool={activeTool} onClick={handleToolClick} title="Pan [P]" />
+        <ToolButton label="S" tool="scroll" activeTool={activeTool} onClick={handleToolClick} title="Scroll [S]" />
       </div>
 
-      <div className="h-4 w-px bg-gray-600 mx-1" />
+      {/* Separator */}
+      <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
 
       {/* Window level preset */}
       <select
         value={windowLevelPreset}
         onChange={(e) => handlePresetChange(e.target.value as WLPreset)}
-        className="bg-gray-700 text-gray-200 text-xs rounded px-2 py-1 border border-gray-600 hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+        className="bg-[#2e2e2e] border border-[#3a3a3a] text-[11px] text-[#e5e5e5] rounded h-6 px-1 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
         title="Window/Level Preset"
       >
         {PRESET_OPTIONS.map((preset) => (
@@ -122,17 +123,18 @@ export default function Toolbar() {
         ))}
       </select>
 
-      <div className="h-4 w-px bg-gray-600 mx-1" />
+      {/* Separator */}
+      <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
 
       {/* Crosshairs toggle */}
       <button
         onClick={handleCrosshairsToggle}
-        title={crosshairsEnabled ? 'Disable crosshairs' : 'Enable crosshairs'}
+        title="Crosshairs"
         className={`
-          flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors
+          w-7 h-7 flex items-center justify-center rounded transition-colors
           ${crosshairsEnabled
-            ? 'bg-teal-700 text-teal-100 ring-1 ring-teal-500'
-            : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+            ? 'bg-blue-600 text-white'
+            : 'bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5]'
           }
         `}
       >
@@ -144,32 +146,30 @@ export default function Toolbar() {
           <line x1="9" y1="6.5" x2="13" y2="6.5" />
           <circle cx="6.5" cy="6.5" r="2" />
         </svg>
-        Crosshairs
       </button>
 
-      <div className="h-4 w-px bg-gray-600 mx-1" />
+      {/* Separator */}
+      <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
 
       {/* Undo / Redo */}
       <div className="flex items-center gap-1">
         <button
           onClick={handleUndo}
           disabled={!UndoRedoManager.canUndo()}
-          title="Undo (Ctrl+Z / Cmd+Z)"
-          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          title="Undo [Ctrl+Z]"
+          className="w-7 h-7 flex items-center justify-center rounded text-[11px] font-medium bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M1 4h6a4 4 0 0 1 0 8H3" />
             <polyline points="4 1 1 4 4 7" />
           </svg>
-          Undo
         </button>
         <button
           onClick={handleRedo}
           disabled={!UndoRedoManager.canRedo()}
-          title="Redo (Ctrl+Shift+Z / Cmd+Shift+Z)"
-          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          title="Redo [Ctrl+Shift+Z]"
+          className="w-7 h-7 flex items-center justify-center rounded text-[11px] font-medium bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
-          Redo
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M11 4H5a4 4 0 0 0 0 8h4" />
             <polyline points="8 1 11 4 8 7" />
@@ -177,20 +177,19 @@ export default function Toolbar() {
         </button>
       </div>
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      {/* Spacer — pushes panel toggle to the right */}
+      <div className="ml-auto" />
 
       {/* Sidebar toggle */}
       <button
         onClick={toggleRightSidebar}
         title="Toggle structure panel"
-        className="flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white transition-colors"
+        className="w-7 h-7 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] transition-colors"
       >
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <rect x="1" y="1" width="11" height="11" rx="1" />
           <line x1="8.5" y1="1" x2="8.5" y2="12" />
         </svg>
-        Panel
       </button>
     </div>
   );

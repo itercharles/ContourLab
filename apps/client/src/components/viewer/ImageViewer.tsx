@@ -13,7 +13,10 @@ interface ViewportPanelProps {
 
 function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) {
   const elRef = useRef<HTMLDivElement>(null);
+  const activeViewport = useUIStore((s) => s.activeViewport);
   const setActiveViewport = useUIStore((s) => s.setActiveViewport);
+
+  const isActive = activeViewport === orientation;
 
   useEffect(() => {
     if (elRef.current) {
@@ -24,13 +27,15 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
   }, []);
 
   return (
-    <div className="relative bg-black">
+    <div
+      className={`relative bg-black overflow-hidden ${isActive ? 'ring-1 ring-blue-500' : ''}`}
+      onClick={() => setActiveViewport(orientation)}
+    >
       <div
         ref={elRef}
         className="w-full h-full"
-        onClick={() => setActiveViewport(orientation)}
       />
-      <span className="absolute top-1 left-2 text-xs font-mono text-gray-400 pointer-events-none select-none z-10">
+      <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
         {label}
       </span>
     </div>
@@ -122,7 +127,7 @@ export default function ImageViewer() {
   return (
     <div
       ref={containerRef}
-      className="grid grid-cols-2 grid-rows-2 h-full bg-black gap-px flex-1"
+      className="grid grid-cols-2 grid-rows-2 h-full gap-[1px] bg-[#2a2a2a] flex-1"
     >
       <ViewportPanel
         id={VIEWPORT_IDS.AXIAL}
@@ -144,27 +149,27 @@ export default function ImageViewer() {
       />
 
       {/* 4th quadrant: 3D placeholder */}
-      <div className="relative bg-gray-950 flex items-center justify-center">
+      <div className="relative bg-black flex items-center justify-center overflow-hidden">
         <div className="text-center">
           <svg
-            width="40"
-            height="40"
+            width="32"
+            height="32"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             strokeWidth="1"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="text-gray-700 mx-auto mb-2"
+            className="text-[#404040] mx-auto mb-2"
           >
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
             <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
             <line x1="12" y1="22.08" x2="12" y2="12" />
           </svg>
-          <p className="text-xs text-gray-600 font-mono">3D View</p>
-          <p className="text-xs text-gray-700 mt-1">Not yet implemented</p>
+          <p className="text-xs text-[#404040] font-mono">3D View</p>
+          <p className="text-xs text-[#404040] mt-1">Not yet implemented</p>
         </div>
-        <span className="absolute top-1 left-2 text-xs font-mono text-gray-700 pointer-events-none select-none">
+        <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
           3D
         </span>
       </div>

@@ -78,34 +78,35 @@ export default function FileDropZone() {
   }, [isLoading]);
 
   return (
-    <div className="space-y-2">
+    <div>
       <div
         onClick={onClick}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         className={`
-          relative flex flex-col items-center justify-center gap-2
-          rounded-lg border-2 border-dashed px-3 py-4 cursor-pointer
-          text-center transition-colors select-none
+          relative flex flex-col items-center justify-center gap-1
+          border border-dashed rounded cursor-pointer
+          text-center select-none
           ${isLoading ? 'opacity-60 cursor-not-allowed' : ''}
           ${isDragOver
-            ? 'border-blue-400 bg-blue-900/20 text-blue-300'
-            : 'border-gray-600 hover:border-gray-400 text-gray-400 hover:text-gray-300'
+            ? 'border-blue-500 bg-blue-950/20'
+            : 'border-[#3a3a3a] hover:border-[#4a4a4a]'
           }
         `}
+        style={{ minHeight: '72px', padding: '10px 8px' }}
       >
         {/* Upload icon */}
         <svg
-          width="24"
-          height="24"
+          width="16"
+          height="16"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="flex-none"
+          className={`flex-none ${isDragOver ? 'text-blue-400' : 'text-[#6b6b6b]'}`}
         >
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
           <polyline points="17 8 12 3 7 8" />
@@ -113,11 +114,13 @@ export default function FileDropZone() {
         </svg>
 
         {isLoading && progress ? (
-          <div className="space-y-1 w-full">
-            <p className="text-xs font-medium text-blue-300">Loading…</p>
-            <div className="w-full bg-gray-700 rounded-full h-1.5">
+          <div className="w-full space-y-1">
+            <p className="text-[11px] text-[#a0a0a0]">
+              Loading… {progress.loaded}/{progress.total}
+            </p>
+            <div className="w-full bg-[#2a2a2a] rounded-full h-0.5">
               <div
-                className="bg-blue-500 h-1.5 rounded-full transition-all duration-100"
+                className="bg-blue-500 h-0.5 rounded-full transition-all duration-100"
                 style={{
                   width: progress.total > 0
                     ? `${Math.round((progress.loaded / progress.total) * 100)}%`
@@ -125,13 +128,10 @@ export default function FileDropZone() {
                 }}
               />
             </div>
-            <p className="text-xs text-gray-500">
-              {progress.loaded} / {progress.total} files
-            </p>
           </div>
         ) : (
-          <p className="text-xs leading-snug">
-            Drop DICOM files here<br />or click to browse
+          <p className={`text-[11px] leading-snug ${isDragOver ? 'text-blue-300' : 'text-[#6b6b6b]'}`}>
+            Drop DICOM files or click
           </p>
         )}
 
@@ -147,9 +147,7 @@ export default function FileDropZone() {
       </div>
 
       {loadError && (
-        <div className="rounded px-2 py-1.5 bg-red-900/40 border border-red-700">
-          <p className="text-xs text-red-300 break-words">{loadError}</p>
-        </div>
+        <p className="text-[11px] text-red-400 px-2 pt-1 break-words">{loadError}</p>
       )}
     </div>
   );

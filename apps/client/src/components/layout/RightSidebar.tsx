@@ -6,17 +6,17 @@ export default function RightSidebar() {
   const toggleRightSidebar = useUIStore((s) => s.toggleRightSidebar);
 
   return (
-    <div className="flex flex-col h-full min-w-0">
+    <div className="flex flex-col h-full min-w-0 bg-[#1a1a1a]">
       {/* Header with toggle */}
-      <div className="flex items-center justify-between px-3 py-3 border-b border-gray-700 flex-none">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-[#2a2a2a] flex-none">
         {rightSidebarOpen && (
-          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <span className="text-[10px] font-semibold tracking-widest uppercase text-[#6b6b6b]">
             Structures
           </span>
         )}
         <button
           onClick={toggleRightSidebar}
-          className="ml-auto flex items-center justify-center w-6 h-6 rounded text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+          className="ml-auto flex items-center justify-center text-[#6b6b6b] hover:text-[#e5e5e5] transition-colors"
           title={rightSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
         >
           {rightSidebarOpen ? (
