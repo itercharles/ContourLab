@@ -27,6 +27,7 @@ interface UIState {
   setWindowLevelPreset: (preset: WLPreset) => void;
   setBrushRadius: (r: number) => void;
   toggleRightSidebar: () => void;
+  setRightSidebarOpen: (open: boolean) => void;
   toggleLeftSidebar: () => void;
   setCrosshairsEnabled: (v: boolean) => void;
   setActiveViewport: (v: ViewportOrientation | null) => void;
@@ -57,6 +58,10 @@ export const useUIStore = create<UIState>()(
     toggleRightSidebar: () =>
       set((state) => {
         state.rightSidebarOpen = !state.rightSidebarOpen;
+      }),
+    setRightSidebarOpen: (open) =>
+      set((state) => {
+        state.rightSidebarOpen = open;
       }),
     toggleLeftSidebar: () =>
       set((state) => {

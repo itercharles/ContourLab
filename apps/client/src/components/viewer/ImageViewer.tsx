@@ -4,6 +4,7 @@ import { MPRController, VIEWPORT_IDS } from '../../core/rendering/MPRController'
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
+import ContourOverlay from './ContourOverlay';
 
 interface ViewportPanelProps {
   id: string;
@@ -12,8 +13,16 @@ interface ViewportPanelProps {
   onReady: (id: string, el: HTMLDivElement) => void;
 }
 
+interface InteractiveViewportLike {
+  getZoom?: () => number;
+  setZoom?: (value: number) => void;
+  scroll?: (delta: number) => void;
+  render?: () => void;
+}
+
 function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) {
   const elRef = useRef<HTMLDivElement>(null);
+  const [viewportElement, setViewportElement] = useState<HTMLDivElement | null>(null);
   const activeViewport = useUIStore((s) => s.activeViewport);
   const setActiveViewport = useUIStore((s) => s.setActiveViewport);
 
@@ -21,11 +30,42 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
 
   useEffect(() => {
     if (elRef.current) {
+      setViewportElement(elRef.current);
       onReady(id, elRef.current);
     }
     // onReady is stable (created with useCallback in parent)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const element = elRef.current;
+    if (!element) return;
+
+    const handleWheel = (event: WheelEvent) => {
+      const viewport = ViewportManager.getRenderingEngine()?.getViewport(id) as
+        | InteractiveViewportLike
+        | undefined;
+      if (!viewport) return;
+
+      event.preventDefault();
+
+      if (event.ctrlKey || event.metaKey) {
+        const currentZoom = viewport.getZoom?.();
+        if (!currentZoom || !viewport.setZoom) return;
+
+        const factor = event.deltaY < 0 ? 1.12 : 0.9;
+        viewport.setZoom(currentZoom * factor);
+        viewport.render?.();
+        return;
+      }
+
+      viewport.scroll?.(event.deltaY > 0 ? 1 : -1);
+      viewport.render?.();
+    };
+
+    element.addEventListener('wheel', handleWheel, { passive: false });
+    return () => element.removeEventListener('wheel', handleWheel);
+  }, [id]);
 
   return (
     <div
@@ -36,6 +76,12 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
         ref={elRef}
         className="w-full h-full"
       />
+      {orientation === 'AXIAL' && (
+        <ContourOverlay
+          viewportId={id}
+          viewportElement={viewportElement}
+        />
+      )}
       <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
         {label}
       </span>

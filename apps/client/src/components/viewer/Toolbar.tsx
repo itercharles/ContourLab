@@ -3,6 +3,8 @@ import { MPRController, VIEWPORT_IDS } from '../../core/rendering/MPRController'
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import { WINDOW_LEVEL_PRESETS } from '../../core/rendering/WindowLevelPresets';
+import { useStructureStore } from '../../core/store/structureStore';
+import { useVolumeStore } from '../../core/store/volumeStore';
 
 // Map our ViewerTool names to Cornerstone tool names
 const TOOL_NAME_MAP: Partial<Record<ViewerTool, string>> = {
@@ -14,30 +16,102 @@ const TOOL_NAME_MAP: Partial<Record<ViewerTool, string>> = {
 
 const PRESET_OPTIONS: WLPreset[] = ['lung', 'bone', 'softTissue', 'brain', 'abdomen'];
 
+const TOOL_META: Record<ViewerTool, {
+  shortLabel: string;
+  name: string;
+  shortcut?: string;
+  description: string;
+}> = {
+  windowLevel: {
+    shortLabel: 'WL',
+    name: 'Window / Level',
+    shortcut: 'W',
+    description: 'Adjust image brightness and contrast. Wheel changes slices.',
+  },
+  zoom: {
+    shortLabel: 'Z',
+    name: 'Zoom',
+    shortcut: 'Z',
+    description: 'Magnify or reduce the viewport. Ctrl + wheel also zooms.',
+  },
+  pan: {
+    shortLabel: 'P',
+    name: 'Pan',
+    shortcut: 'P',
+    description: 'Move the image within the viewport.',
+  },
+  scroll: {
+    shortLabel: 'S',
+    name: 'Scroll',
+    shortcut: 'S',
+    description: 'Move through image slices. Mouse wheel also scrolls slices.',
+  },
+  crosshairs: {
+    shortLabel: 'CH',
+    name: 'Crosshairs',
+    description: 'Synchronize slice position across viewports.',
+  },
+  freehand: {
+    shortLabel: 'F',
+    name: 'Freehand Contour',
+    shortcut: 'F',
+    description: 'Draw a contour on the axial slice.',
+  },
+  polygon: {
+    shortLabel: 'PG',
+    name: 'Polygon',
+    description: 'Place point-by-point contour vertices.',
+  },
+  brush: {
+    shortLabel: 'B',
+    name: 'Brush',
+    description: 'Paint a contour region voxel by voxel.',
+  },
+  eraser: {
+    shortLabel: 'E',
+    name: 'Eraser',
+    description: 'Erase contour content on the current slice.',
+  },
+};
+
 interface ToolButtonProps {
   label: string;
+  description: string;
   tool: ViewerTool;
   activeTool: ViewerTool;
   onClick: (tool: ViewerTool) => void;
-  title?: string;
+  shortcut?: string;
 }
 
-function ToolButton({ label, tool, activeTool, onClick, title }: ToolButtonProps) {
+function ToolButton({ label, description, tool, activeTool, onClick, shortcut }: ToolButtonProps) {
   const isActive = activeTool === tool;
   return (
-    <button
-      onClick={() => onClick(tool)}
-      title={title ?? label}
-      className={`
-        w-7 h-7 rounded text-[11px] font-medium transition-colors
-        ${isActive
-          ? 'bg-blue-600 text-white'
-          : 'bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5]'
-        }
-      `}
-    >
-      {label}
-    </button>
+    <div className="relative group">
+      <button
+        onClick={() => onClick(tool)}
+        aria-label={`${label}${shortcut ? ` (${shortcut})` : ''}: ${description}`}
+        className={`
+          w-7 h-7 rounded text-[11px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none
+          ${isActive
+            ? 'bg-blue-600 text-white'
+            : 'bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5]'
+          }
+        `}
+      >
+        {label}
+      </button>
+      <div className="pointer-events-none absolute left-0 top-[calc(100%+6px)] z-20 hidden min-w-40 rounded border border-[#3a3a3a] bg-[#111] px-2 py-1.5 text-left shadow-none group-hover:block">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-medium text-[#e5e5e5]">{label}</span>
+          {shortcut && (
+            <span className="rounded border border-[#3a3a3a] px-1 text-[10px] font-mono text-[#a0a0a0]">
+              {shortcut}
+            </span>
+          )}
+        </div>
+        <p className="mt-1 max-w-48 text-[10px] leading-snug text-[#a0a0a0]">{description}</p>
+      </div>
+    </div>
   );
 }
 
@@ -49,9 +123,47 @@ export default function Toolbar() {
   const crosshairsEnabled = useUIStore((s) => s.crosshairsEnabled);
   const setCrosshairsEnabled = useUIStore((s) => s.setCrosshairsEnabled);
   const toggleRightSidebar = useUIStore((s) => s.toggleRightSidebar);
+  const setRightSidebarOpen = useUIStore((s) => s.setRightSidebarOpen);
+  const setActiveViewport = useUIStore((s) => s.setActiveViewport);
+  const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
+  const structureSets = useStructureStore((s) => s.structureSets);
+  const activeStructureSetId = useStructureStore((s) => s.activeStructureSetId);
+  const activeStructureId = useStructureStore((s) => s.activeStructureId);
+  const activeToolMeta = TOOL_META[activeTool];
+  const activeStructureSet =
+    structureSets.find((structureSet) => structureSet.id === activeStructureSetId) ??
+    structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID);
+  const activeStructure = activeStructureSet?.structures.find(
+    (structure) => structure.id === activeStructureId
+  );
+  const canUseFreehand =
+    !!activeSeriesUID &&
+    !!activeStructureSet &&
+    !!activeStructure &&
+    !(activeStructure.isLocked ?? false);
+  const freehandBlockedReason = !activeSeriesUID
+    ? 'Load a series before drawing.'
+    : !activeStructureSet || !activeStructure
+      ? 'Create or select a structure in the right panel before drawing.'
+      : activeStructure.isLocked
+        ? 'Unlock the selected structure before drawing.'
+        : null;
+  const activeToolDescription =
+    activeTool === 'freehand' && freehandBlockedReason
+      ? freehandBlockedReason
+      : activeToolMeta.description;
 
   const handleToolClick = async (tool: ViewerTool) => {
+    if (tool === 'freehand' && !canUseFreehand) {
+      setRightSidebarOpen(true);
+      setActiveViewport('AXIAL');
+      return;
+    }
+
     setActiveTool(tool);
+    if (tool === 'freehand') {
+      setActiveViewport('AXIAL');
+    }
     const csToolName = TOOL_NAME_MAP[tool];
     if (csToolName) {
       try {
@@ -100,10 +212,36 @@ export default function Toolbar() {
     <div className="h-9 flex items-center gap-1 px-2 bg-[#1a1a1a] border-b border-[#2a2a2a] flex-none">
       {/* Tool buttons */}
       <div className="flex items-center gap-1">
-        <ToolButton label="WL" tool="windowLevel" activeTool={activeTool} onClick={handleToolClick} title="Window/Level [W]" />
-        <ToolButton label="Z" tool="zoom" activeTool={activeTool} onClick={handleToolClick} title="Zoom [Z]" />
-        <ToolButton label="P" tool="pan" activeTool={activeTool} onClick={handleToolClick} title="Pan [P]" />
-        <ToolButton label="S" tool="scroll" activeTool={activeTool} onClick={handleToolClick} title="Scroll [S]" />
+        {(['windowLevel', 'zoom', 'pan', 'scroll', 'freehand'] as ViewerTool[]).map((tool) => (
+          <ToolButton
+            key={tool}
+            label={TOOL_META[tool].shortLabel}
+            description={
+              tool === 'freehand' && freehandBlockedReason
+                ? `${TOOL_META[tool].description} ${freehandBlockedReason}`
+                : TOOL_META[tool].description
+            }
+            tool={tool}
+            activeTool={activeTool}
+            onClick={handleToolClick}
+            shortcut={TOOL_META[tool].shortcut}
+          />
+        ))}
+      </div>
+
+      {/* Separator */}
+      <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
+
+      <div className="min-w-0 max-w-56 text-[10px] leading-none">
+        <p className="truncate text-[#e5e5e5]">
+          {activeToolMeta.name}
+          {activeToolMeta.shortcut ? (
+            <span className="ml-1 font-mono text-[#6b6b6b]">[{activeToolMeta.shortcut}]</span>
+          ) : null}
+        </p>
+        <p className={`mt-0.5 truncate ${activeTool === 'freehand' && freehandBlockedReason ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'}`}>
+          {activeToolDescription}
+        </p>
       </div>
 
       {/* Separator */}

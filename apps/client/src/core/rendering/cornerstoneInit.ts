@@ -5,6 +5,7 @@
  */
 
 import type { IRetrieveConfiguration, VolumeLoaderFn } from '@cornerstonejs/core/types';
+import { cornerstoneMetadataProvider } from '../dicom/DicomMetadataStore';
 
 let initPromise: Promise<void> | null = null;
 
@@ -14,6 +15,7 @@ export function cornerstoneInit(): Promise<void> {
   initPromise = (async () => {
     const {
       init,
+      metaData,
       volumeLoader,
       cornerstoneStreamingImageVolumeLoader,
     } = await import('@cornerstonejs/core');
@@ -26,6 +28,10 @@ export function cornerstoneInit(): Promise<void> {
 
     // Initialize core rendering engine
     init();
+
+    // Register our pre-parsed DICOM metadata provider (high priority so it
+    // runs before the wadouri fallback which requires datasets to be loaded)
+    metaData.addProvider(cornerstoneMetadataProvider, 10000);
 
     // Initialize tools library
     csTools.init();

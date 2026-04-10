@@ -13,8 +13,15 @@ let toolGroupId: string | null = null;
 
 export const MPRController = {
   async setup(volumeId: string): Promise<void> {
-    const { ToolGroupManager, Enums: csToolsEnums, CrosshairsTool, ZoomTool, PanTool, WindowLevelTool, StackScrollTool } =
+    const { addTool, ToolGroupManager, Enums: csToolsEnums, CrosshairsTool, ZoomTool, PanTool, WindowLevelTool, StackScrollTool } =
       await import('@cornerstonejs/tools');
+
+    // Register tools globally (idempotent — safe to call multiple times)
+    addTool(WindowLevelTool);
+    addTool(ZoomTool);
+    addTool(PanTool);
+    addTool(StackScrollTool);
+    addTool(CrosshairsTool);
 
     const allViewportIds = Object.values(VIEWPORT_IDS);
     toolGroupId = 'webtps-tool-group';

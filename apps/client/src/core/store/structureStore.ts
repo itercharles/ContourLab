@@ -7,7 +7,7 @@ interface StructureState {
   activeStructureSetId: string | null;
   activeStructureId: string | null;
   addStructureSet: (ss: StructureSet) => void;
-  setActiveStructureSet: (id: string) => void;
+  setActiveStructureSet: (id: string | null) => void;
   setActiveStructure: (id: string | null) => void;
   addStructure: (setId: string, s: Structure) => void;
   updateStructure: (setId: string, structureId: string, patch: Partial<Structure>) => void;

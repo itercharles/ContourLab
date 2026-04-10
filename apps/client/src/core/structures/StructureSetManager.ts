@@ -21,6 +21,37 @@ export const StructureSetManager = {
     return ss;
   },
 
+  syncSelectionToSeries(referencedSeriesUID: string | null): void {
+    const store = useStructureStore.getState();
+
+    if (!referencedSeriesUID) {
+      store.setActiveStructureSet(null);
+      store.setActiveStructure(null);
+      return;
+    }
+
+    const targetSet = store.structureSets.find(
+      (structureSet) => structureSet.referencedSeriesUID === referencedSeriesUID
+    );
+
+    if (!targetSet) {
+      store.setActiveStructureSet(null);
+      store.setActiveStructure(null);
+      return;
+    }
+
+    const activeStructureStillValid =
+      store.activeStructureSetId === targetSet.id &&
+      !!targetSet.structures.find((structure) => structure.id === store.activeStructureId);
+
+    store.setActiveStructureSet(targetSet.id);
+    if (activeStructureStillValid) {
+      return;
+    }
+
+    store.setActiveStructure(targetSet.structures[0]?.id ?? null);
+  },
+
   createStructure(
     setId: string,
     name: string,

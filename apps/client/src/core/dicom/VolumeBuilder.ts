@@ -6,32 +6,25 @@ import { cornerstoneInit } from '../rendering/cornerstoneInit';
 /**
  * Build a Cornerstone3D streaming volume from a parsed DICOM series.
  *
- * For browser-local uploads we first cache each image, then derive an
- * in-memory volume from that cached stack. This avoids depending on the
- * streaming loader to bootstrap metadata and first-frame rendering.
+ * NOTE: createAndCacheVolume registers the volume; load() kicks off
+ * background streaming of image frames. We do NOT await load() — the
+ * streaming volume loader is fire-and-forget. Viewports render
+ * progressively as frames arrive via events.
  */
 export async function buildVolume(parsedSeries: ParsedSeries): Promise<LoadedSeries> {
   // Ensure Cornerstone3D is fully initialized before attempting to create volumes
   await cornerstoneInit();
 
-  const { imageLoader, volumeLoader } = await import('@cornerstonejs/core');
+  const { volumeLoader } = await import('@cornerstonejs/core');
 
   const { seriesUID, instances, metadata } = parsedSeries;
-  const volumeId = `local:${seriesUID}:${crypto.randomUUID()}`;
+  const volumeId = `cornerstoneStreamingImageVolume:${seriesUID}`;
   const imageIds = instances.map((i) => i.imageId);
 
-  // Prime Cornerstone's dataset cache so metadata providers can answer
-  // imagePixelModule/imagePlaneModule queries during volume construction.
-  await Promise.all(
-    imageIds.map((imageId) =>
-      imageLoader.loadAndCacheImage(imageId, {
-        priority: 0,
-        requestType: 'prefetch',
-      })
-    )
-  );
+  const volume = await volumeLoader.createAndCacheVolume(volumeId, { imageIds });
 
-  const volume = await volumeLoader.createAndCacheVolumeFromImages(volumeId, imageIds);
+  // Fire-and-forget: streaming loads frames in the background
+  (volume as { load: () => void }).load();
 
   const csVolume = volume as {
     dimensions: [number, number, number];
@@ -48,7 +41,7 @@ export async function buildVolume(parsedSeries: ParsedSeries): Promise<LoadedSer
     spacing: csVolume.spacing,
     origin: csVolume.origin,
     directionCosines: csVolume.direction,
-    pixelData: new Float32Array(0), // pixel data managed by Cornerstone
+    pixelData: new Float32Array(0),
     windowCenter: csVolume.windowCenter ?? 40,
     windowWidth: csVolume.windowWidth ?? 400,
   };

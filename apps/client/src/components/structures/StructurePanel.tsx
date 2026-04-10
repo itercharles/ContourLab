@@ -140,7 +140,12 @@ export default function StructurePanel() {
     }
   }, [isAdding]);
 
+  useEffect(() => {
+    StructureSetManager.syncSelectionToSeries(activeSeriesUID);
+  }, [activeSeriesUID, structureSets]);
+
   const handleAddClick = () => {
+    if (!activeSeriesUID) return;
     setNewName('');
     setIsAdding(true);
   };
@@ -182,8 +187,9 @@ export default function StructurePanel() {
         <span className="text-[10px] font-semibold tracking-widest uppercase text-[#6b6b6b]">Structures</span>
         <button
           onClick={handleAddClick}
-          title="Add new structure"
-          className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-blue-600 hover:text-white text-xs transition-colors"
+          title={activeSeriesUID ? 'Add new structure' : 'Load a series first'}
+          disabled={!activeSeriesUID}
+          className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-blue-600 hover:text-white text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#2e2e2e] disabled:hover:text-[#a0a0a0]"
         >
           <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <line x1="6" y1="1" x2="6" y2="11" />
