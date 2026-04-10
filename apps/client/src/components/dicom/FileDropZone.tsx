@@ -3,6 +3,33 @@ import { loadFiles } from '../../core/dicom/DicomLoader';
 import { buildVolume } from '../../core/dicom/VolumeBuilder';
 import { useVolumeStore } from '../../core/store/volumeStore';
 
+/** Recursively collect all File objects from dropped FileSystemEntry items */
+async function collectFilesFromEntries(entries: FileSystemEntry[]): Promise<File[]> {
+  const files: File[] = [];
+  const queue = [...entries];
+  while (queue.length > 0) {
+    const entry = queue.shift()!;
+    if (entry.isFile) {
+      await new Promise<void>((resolve) => {
+        (entry as FileSystemFileEntry).file((f) => { files.push(f); resolve(); });
+      });
+    } else if (entry.isDirectory) {
+      await new Promise<void>((resolve) => {
+        const reader = (entry as FileSystemDirectoryEntry).createReader();
+        const readAll = () => {
+          reader.readEntries((result) => {
+            if (result.length === 0) { resolve(); return; }
+            queue.push(...result);
+            readAll();
+          });
+        };
+        readAll();
+      });
+    }
+  }
+  return files;
+}
+
 export default function FileDropZone() {
   const isLoading = useVolumeStore((s) => s.isLoading);
   const loadError = useVolumeStore((s) => s.loadError);
@@ -44,11 +71,20 @@ export default function FileDropZone() {
   );
 
   const onDrop = useCallback(
-    (e: DragEvent<HTMLDivElement>) => {
+    async (e: DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       setIsDragOver(false);
-      const files = Array.from(e.dataTransfer.files);
-      void handleFiles(files);
+
+      // Use DataTransferItemList to support dropped folders (recursive)
+      const items = Array.from(e.dataTransfer.items);
+      if (items.length > 0 && items[0].webkitGetAsEntry) {
+        const files = await collectFilesFromEntries(
+          items.map((i) => i.webkitGetAsEntry()).filter(Boolean) as FileSystemEntry[]
+        );
+        void handleFiles(files);
+      } else {
+        void handleFiles(Array.from(e.dataTransfer.files));
+      }
     },
     [handleFiles]
   );
@@ -131,7 +167,7 @@ export default function FileDropZone() {
           </div>
         ) : (
           <p className={`text-[11px] leading-snug ${isDragOver ? 'text-blue-300' : 'text-[#6b6b6b]'}`}>
-            Drop DICOM files or click
+            Drop folder or files, or click
           </p>
         )}
 
@@ -139,6 +175,9 @@ export default function FileDropZone() {
           ref={inputRef}
           type="file"
           multiple
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore — webkitdirectory is not in the standard TS types but is widely supported
+          webkitdirectory=""
           accept=".dcm,*"
           className="sr-only"
           onChange={onFileInputChange}

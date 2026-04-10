@@ -70,11 +70,9 @@ export const MPRController = {
     const toolGroup = ToolGroupManager.getToolGroup(toolGroupId);
     if (!toolGroup) return;
 
-    // Deactivate all tools, then activate the requested one
-    const tools = [
-      'WindowLevelTool', 'ZoomTool', 'PanTool', 'StackScrollTool',
-      'FreehandRoiTool', 'BrushTool',
-    ];
+    // Deactivate all primary-button tools, then activate the requested one
+    // These are the .toolName strings (not class names)
+    const tools = ['WindowLevel', 'Zoom', 'Pan', 'StackScroll'];
     for (const t of tools) {
       try { toolGroup.setToolPassive(t); } catch { /* not added */ }
     }

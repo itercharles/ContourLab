@@ -1,31 +1,31 @@
 import type { Volume } from '@webtps/shared-types';
 import type { ParsedSeries } from './DicomLoader';
 import type { LoadedSeries } from '../store/volumeStore';
+import { cornerstoneInit } from '../rendering/cornerstoneInit';
 
 /**
  * Build a Cornerstone3D streaming volume from a parsed DICOM series.
- * Returns the Cornerstone volume ID and shared-types Volume metadata.
+ *
+ * NOTE: createAndCacheVolume registers the volume; load() kicks off
+ * background streaming of image frames. We do NOT await load() — the
+ * streaming volume loader is fire-and-forget. Viewports render
+ * progressively as frames arrive via events.
  */
 export async function buildVolume(parsedSeries: ParsedSeries): Promise<LoadedSeries> {
-  const {
-    cornerstoneStreamingImageVolumeLoader,
-    volumeLoader,
-  } = await import('@cornerstonejs/core');
+  // Ensure Cornerstone3D is fully initialized before attempting to create volumes
+  await cornerstoneInit();
+
+  const { volumeLoader } = await import('@cornerstonejs/core');
 
   const { seriesUID, instances, metadata } = parsedSeries;
   const volumeId = `cornerstoneStreamingImageVolume:${seriesUID}`;
-
-  // Register the streaming volume loader if not already done
-  volumeLoader.registerUnknownVolumeLoader(
-    cornerstoneStreamingImageVolumeLoader.createAndCacheVolume as Parameters<typeof volumeLoader.registerUnknownVolumeLoader>[0]
-  );
-
   const imageIds = instances.map((i) => i.wadouriId);
 
   const volume = await volumeLoader.createAndCacheVolume(volumeId, { imageIds });
-  await (volume as { load: () => Promise<void> }).load();
 
-  // Extract volume geometry from Cornerstone's loaded volume
+  // Fire-and-forget: streaming loads frames in the background
+  (volume as { load: () => void }).load();
+
   const csVolume = volume as {
     dimensions: [number, number, number];
     spacing: [number, number, number];
@@ -41,7 +41,7 @@ export async function buildVolume(parsedSeries: ParsedSeries): Promise<LoadedSer
     spacing: csVolume.spacing,
     origin: csVolume.origin,
     directionCosines: csVolume.direction,
-    pixelData: new Float32Array(0), // managed by Cornerstone, not copied here
+    pixelData: new Float32Array(0), // pixel data managed by Cornerstone
     windowCenter: csVolume.windowCenter ?? 40,
     windowWidth: csVolume.windowWidth ?? 400,
   };

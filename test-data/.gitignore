@@ -1,0 +1,3 @@
+# DICOM test data — large binary files, not committed to git
+*.dcm
+*.DCM
