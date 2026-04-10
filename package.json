@@ -1,0 +1,18 @@
+{
+  "name": "webtps",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @webtps/client dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.7"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}

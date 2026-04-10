@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist",
+    "paths": {
+      "@webtps/shared-types": ["../../packages/shared-types/src"]
+    }
+  },
+  "include": ["src"]
+}
