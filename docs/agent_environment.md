@@ -1,7 +1,7 @@
 # Agent Environment
 
 WebTPS is a web-based radiation therapy Treatment Planning System — a monorepo
-containing the React frontend, Node.js API gateway, and Python compute services.
+containing the React frontend, ASP.NET Core API gateway, and Python compute services.
 
 Compliance and traceability (DHF, requirements, change requests) are managed in
 the **WebTPS-DHF** repository. Compliance analysis runs via the **CompliantFlow**
@@ -27,7 +27,7 @@ working in this repository.
 WebTPS/
 ├── apps/
 │   ├── client/          — React 18 + TypeScript frontend (Vite)
-│   └── server/          — Node.js API gateway (Express)
+│   └── api/             — ASP.NET Core 10 Web API (C#, port 4000)
 ├── packages/
 │   └── shared-types/    — Canonical TypeScript data model interfaces
 ├── docs/                — Agent documentation
@@ -45,20 +45,20 @@ Uses **pnpm workspaces**. Always run pnpm from the repo root.
 pnpm install                              # install all workspace deps
 pnpm dev                                  # run frontend dev server (port 3000)
 pnpm --filter @webtps/client dev          # frontend only
-pnpm --filter @webtps/server dev          # server only
+pnpm api                                  # run ASP.NET Core API (port 4000)
 pnpm -r build                             # build all workspaces
 pnpm -r test                              # test all workspaces
 pnpm -r typecheck                         # typecheck all workspaces
 ```
 
-Node.js ≥ 20 and pnpm ≥ 9 are required.
+Node.js ≥ 20, pnpm ≥ 9, and .NET SDK 10 are required.
 
 ### Key Conventions
 
 - **Data model**: All shared TypeScript interfaces live in
   `packages/shared-types/src/index.ts`. Import as `@webtps/shared-types`.
 - **Frontend**: `apps/client/` — React 18, Vite, Tailwind CSS. Entry: `src/main.tsx`.
-- **Server**: `apps/server/` — Express on port 4000. Entry: `src/index.ts`.
+- **API**: `apps/api/` — ASP.NET Core 10 Web API on port 4000. Entry: `Program.cs`. Controllers in `Controllers/`.
 - **Proxy**: Vite dev server proxies `/api` and `/ws` to `localhost:4000`.
 - **Styling**: Tailwind CSS. No inline styles. Prefer utility classes.
 - **Type safety**: TypeScript strict mode throughout. No `any` types.

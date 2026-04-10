@@ -5,6 +5,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
+    headers: {
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    },
     proxy: {
       '/api': 'http://localhost:4000',
       '/ws': {
@@ -12,5 +16,8 @@ export default defineConfig({
         ws: true,
       },
     },
+  },
+  optimizeDeps: {
+    exclude: ['@cornerstonejs/dicom-image-loader'],
   },
 });
