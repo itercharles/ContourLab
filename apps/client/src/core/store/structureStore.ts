@@ -6,10 +6,13 @@ interface StructureState {
   structureSets: StructureSet[];
   activeStructureSetId: string | null;
   activeStructureId: string | null;
+  dirtySeriesUIDs: string[];
   addStructureSet: (ss: StructureSet) => void;
   replaceStructureSets: (structureSets: StructureSet[]) => void;
   setActiveStructureSet: (id: string | null) => void;
   setActiveStructure: (id: string | null) => void;
+  markSeriesDirty: (seriesUID: string) => void;
+  markSeriesClean: (seriesUID: string) => void;
   addStructure: (setId: string, s: Structure) => void;
   updateStructure: (setId: string, structureId: string, patch: Partial<Structure>) => void;
   deleteStructure: (setId: string, structureId: string) => void;
@@ -28,16 +31,24 @@ function findStructure(state: StructureState, setId: string, structureId: string
   return ss.structures.find((s) => s.id === structureId) ?? null;
 }
 
+function markSeriesDirty(state: StructureState, seriesUID: string) {
+  if (!state.dirtySeriesUIDs.includes(seriesUID)) {
+    state.dirtySeriesUIDs.push(seriesUID);
+  }
+}
+
 export const useStructureStore = create<StructureState>()(
   immer((set) => ({
     structureSets: [],
     activeStructureSetId: null,
     activeStructureId: null,
+    dirtySeriesUIDs: [],
 
     addStructureSet: (ss) =>
       set((state) => {
         state.structureSets.push(ss);
         if (state.activeStructureSetId === null) state.activeStructureSetId = ss.id;
+        markSeriesDirty(state, ss.referencedSeriesUID);
       }),
 
     replaceStructureSets: (structureSets) =>
@@ -55,10 +66,22 @@ export const useStructureStore = create<StructureState>()(
         state.activeStructureId = id;
       }),
 
+    markSeriesDirty: (seriesUID) =>
+      set((state) => {
+        markSeriesDirty(state, seriesUID);
+      }),
+
+    markSeriesClean: (seriesUID) =>
+      set((state) => {
+        state.dirtySeriesUIDs = state.dirtySeriesUIDs.filter((uid) => uid !== seriesUID);
+      }),
+
     addStructure: (setId, s) =>
       set((state) => {
         const ss = state.structureSets.find((x) => x.id === setId);
-        if (ss) ss.structures.push(s);
+        if (!ss) return;
+        ss.structures.push(s);
+        markSeriesDirty(state, ss.referencedSeriesUID);
       }),
 
     updateStructure: (setId, structureId, patch) =>
@@ -66,7 +89,10 @@ export const useStructureStore = create<StructureState>()(
         const ss = state.structureSets.find((x) => x.id === setId);
         if (!ss) return;
         const idx = ss.structures.findIndex((s) => s.id === structureId);
-        if (idx !== -1) Object.assign(ss.structures[idx], patch);
+        if (idx !== -1) {
+          Object.assign(ss.structures[idx], patch);
+          markSeriesDirty(state, ss.referencedSeriesUID);
+        }
       }),
 
     deleteStructure: (setId, structureId) =>
@@ -75,6 +101,7 @@ export const useStructureStore = create<StructureState>()(
         if (!ss) return;
         ss.structures = ss.structures.filter((s) => s.id !== structureId);
         if (state.activeStructureId === structureId) state.activeStructureId = null;
+        markSeriesDirty(state, ss.referencedSeriesUID);
       }),
 
     addContourSlice: (setId, structureId, slice) =>
@@ -82,7 +109,10 @@ export const useStructureStore = create<StructureState>()(
         const ss = state.structureSets.find((x) => x.id === setId);
         if (!ss) return;
         const structure = ss.structures.find((s) => s.id === structureId);
-        if (structure) structure.contours.push(slice);
+        if (structure) {
+          structure.contours.push(slice);
+          markSeriesDirty(state, ss.referencedSeriesUID);
+        }
       }),
 
     updateContourSlice: (setId, structureId, slicePos, slice) =>
@@ -98,6 +128,7 @@ export const useStructureStore = create<StructureState>()(
         } else {
           structure.contours.push(slice);
         }
+        markSeriesDirty(state, ss.referencedSeriesUID);
       }),
   }))
 );

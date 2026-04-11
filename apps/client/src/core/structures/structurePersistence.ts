@@ -71,6 +71,37 @@ export function exportStructureSets(
   };
 }
 
+export function exportStructureSetsForSeries(
+  structureSets: StructureSet[],
+  activeStructureSetId: string | null,
+  activeStructureId: string | null,
+  seriesUID: string
+): StructureExportPayload {
+  const scopedStructureSets = structureSets.filter(
+    (structureSet) => structureSet.referencedSeriesUID === seriesUID
+  );
+  const activeStructureSetBelongsToSeries = scopedStructureSets.some(
+    (structureSet) => structureSet.id === activeStructureSetId
+  );
+
+  return exportStructureSets(
+    scopedStructureSets,
+    activeStructureSetBelongsToSeries ? activeStructureSetId : null,
+    activeStructureSetBelongsToSeries ? activeStructureId : null
+  );
+}
+
+export function replaceStructureSetsForSeries(
+  existingStructureSets: StructureSet[],
+  importedStructureSets: StructureSet[],
+  seriesUID: string
+): StructureSet[] {
+  return [
+    ...existingStructureSets.filter((structureSet) => structureSet.referencedSeriesUID !== seriesUID),
+    ...importedStructureSets,
+  ];
+}
+
 function validatePayload(payload: unknown): asserts payload is StructureExportPayload {
   if (!payload || typeof payload !== 'object') {
     throw new Error('Invalid structure JSON payload.');

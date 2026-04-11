@@ -14,6 +14,19 @@ export function isContourOnSlice(
   return Math.abs(contourSlicePosition - currentSlicePosition) <= tolerance;
 }
 
+export function isContourOnFrame(
+  contour: ContourSlice,
+  currentSOPInstanceUID: string | undefined,
+  currentSlicePosition: number,
+  tolerance: number
+): boolean {
+  if (currentSOPInstanceUID && contour.referencedSOPInstanceUID) {
+    return contour.referencedSOPInstanceUID === currentSOPInstanceUID;
+  }
+
+  return isContourOnSlice(contour.slicePosition, currentSlicePosition, tolerance);
+}
+
 export function findContourOnSlice(
   contours: ContourSlice[],
   currentSlicePosition: number,
@@ -21,6 +34,26 @@ export function findContourOnSlice(
 ): ContourSlice | undefined {
   return contours.reduce<ContourSlice | undefined>((closest, contour) => {
     if (!isContourOnSlice(contour.slicePosition, currentSlicePosition, tolerance)) {
+      return closest;
+    }
+
+    if (!closest) return contour;
+
+    return Math.abs(contour.slicePosition - currentSlicePosition) <
+      Math.abs(closest.slicePosition - currentSlicePosition)
+      ? contour
+      : closest;
+  }, undefined);
+}
+
+export function findContourOnFrame(
+  contours: ContourSlice[],
+  currentSOPInstanceUID: string | undefined,
+  currentSlicePosition: number,
+  tolerance: number
+): ContourSlice | undefined {
+  return contours.reduce<ContourSlice | undefined>((closest, contour) => {
+    if (!isContourOnFrame(contour, currentSOPInstanceUID, currentSlicePosition, tolerance)) {
       return closest;
     }
 

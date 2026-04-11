@@ -3,7 +3,17 @@ import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
 import type { Structure } from '@webtps/shared-types';
-import { exportStructureSets, importStructureSets } from '../../core/structures/structurePersistence';
+import {
+  exportStructureSets,
+  importStructureSets,
+  replaceStructureSetsForSeries,
+} from '../../core/structures/structurePersistence';
+import { exportRtstructBlob } from '../../core/structures/rtstructExport';
+import {
+  loadStructureDraftForSeries,
+  saveStructureDraftForSeries,
+} from '../../core/structures/structureDraftStore';
+import { uploadDicomBlobToRepository } from '../../core/dicom/dicomWebClient';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 
 interface StructureRowProps {
@@ -11,11 +21,14 @@ interface StructureRowProps {
   setId: string;
   isActive: boolean;
   onSelect: () => void;
+  onStatus: (message: string) => void;
 }
 
-function StructureRow({ structure, setId, isActive, onSelect }: StructureRowProps) {
+function StructureRow({ structure, setId, isActive, onSelect, onStatus }: StructureRowProps) {
   const updateStructure = useStructureStore((s) => s.updateStructure);
   const deleteStructure = useStructureStore((s) => s.deleteStructure);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [draftName, setDraftName] = useState(structure.name);
 
   const [r, g, b] = structure.color;
   const colorStyle = `rgb(${r}, ${g}, ${b})`;
@@ -37,6 +50,46 @@ function StructureRow({ structure, setId, isActive, onSelect }: StructureRowProp
     }
   };
 
+  const beginRename = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    setDraftName(structure.name);
+    setIsRenaming(true);
+    onSelect();
+  };
+
+  const commitRename = () => {
+    const nextName = draftName.trim();
+    if (!nextName || nextName === structure.name) {
+      setIsRenaming(false);
+      setDraftName(structure.name);
+      return;
+    }
+
+    try {
+      StructureSetManager.renameStructure(setId, structure.id, nextName);
+      setIsRenaming(false);
+      onStatus(`Renamed structure to ${nextName}.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to rename structure.';
+      onStatus(message);
+      setDraftName(structure.name);
+      setIsRenaming(false);
+    }
+  };
+
+  const cancelRename = () => {
+    setDraftName(structure.name);
+    setIsRenaming(false);
+  };
+
+  const handleRenameKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      commitRename();
+    } else if (event.key === 'Escape') {
+      cancelRename();
+    }
+  };
+
   return (
     <div
       onClick={onSelect}
@@ -54,10 +107,26 @@ function StructureRow({ structure, setId, isActive, onSelect }: StructureRowProp
         style={{ backgroundColor: colorStyle }}
       />
 
-      {/* Name */}
-      <span className="text-[11px] text-[#e5e5e5] truncate flex-1">
-        {structure.name}
-      </span>
+      {isRenaming ? (
+        <input
+          value={draftName}
+          onChange={(event) => setDraftName(event.target.value)}
+          onBlur={commitRename}
+          onKeyDown={handleRenameKeyDown}
+          onClick={(event) => event.stopPropagation()}
+          autoFocus
+          className="min-w-0 flex-1 bg-[#111] border border-blue-500 text-[11px] text-[#e5e5e5] rounded px-1 py-0.5 focus:outline-none"
+        />
+      ) : (
+        <button
+          type="button"
+          onDoubleClick={beginRename}
+          title="Double-click to rename"
+          className="min-w-0 flex-1 text-left text-[11px] text-[#e5e5e5] truncate focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+        >
+          {structure.name}
+        </button>
+      )}
 
       {/* Volume */}
       {(structure.volume_cc ?? 0) > 0 && (
@@ -132,13 +201,29 @@ export default function StructurePanel() {
   const setActiveStructure = useStructureStore((s) => s.setActiveStructure);
   const setActiveStructureSet = useStructureStore((s) => s.setActiveStructureSet);
   const replaceStructureSets = useStructureStore((s) => s.replaceStructureSets);
+  const dirtySeriesUIDs = useStructureStore((s) => s.dirtySeriesUIDs);
+  const markSeriesDirty = useStructureStore((s) => s.markSeriesDirty);
+  const markSeriesClean = useStructureStore((s) => s.markSeriesClean);
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
+  const loadedSeries = useVolumeStore((s) => s.loadedSeries);
 
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const attemptedAutoLoadSeriesRef = useRef(new Set<string>());
+  const draftSaveTimerRef = useRef<number | null>(null);
+  const isActiveSeriesDirty = !!activeSeriesUID && dirtySeriesUIDs.includes(activeSeriesUID);
+  const activeLoadedSeries = activeSeriesUID
+    ? loadedSeries.find((series) => series.seriesUID === activeSeriesUID)
+    : undefined;
+  const activeSeriesStructureSet = activeSeriesUID
+    ? (
+        structureSets.find((structureSet) => structureSet.id === activeStructureSetId) ??
+        structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID)
+      )
+    : undefined;
 
   useEffect(() => {
     if (isAdding && inputRef.current) {
@@ -149,6 +234,113 @@ export default function StructurePanel() {
   useEffect(() => {
     StructureSetManager.syncSelectionToSeries(activeSeriesUID);
   }, [activeSeriesUID, structureSets]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (dirtySeriesUIDs.length === 0) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [dirtySeriesUIDs]);
+
+  useEffect(() => {
+    if (!activeSeriesUID) return;
+    if (attemptedAutoLoadSeriesRef.current.has(activeSeriesUID)) return;
+
+    const hasLocalStructures = structureSets.some(
+      (structureSet) => structureSet.referencedSeriesUID === activeSeriesUID
+    );
+    if (hasLocalStructures) {
+      attemptedAutoLoadSeriesRef.current.add(activeSeriesUID);
+      return;
+    }
+
+    attemptedAutoLoadSeriesRef.current.add(activeSeriesUID);
+    let cancelled = false;
+
+    const autoLoad = async () => {
+      try {
+        const imported = await loadStructureDraftForSeries(activeSeriesUID);
+        if (cancelled || !imported || imported.structureSets.length === 0) {
+          if (!cancelled) {
+            logClientDebug('StructurePanel', `draft:empty series=${activeSeriesUID}`);
+          }
+          return;
+        }
+
+        replaceStructureSets(
+          replaceStructureSetsForSeries(structureSets, imported.structureSets, activeSeriesUID)
+        );
+        setActiveStructureSet(imported.activeStructureSetId);
+        setActiveStructure(imported.activeStructureId);
+        StructureSetManager.syncSelectionToSeries(activeSeriesUID);
+        markSeriesClean(activeSeriesUID);
+        setStatusMessage(`Restored ${imported.structureSets.length} local draft structure set(s).`);
+        logClientDebug('StructurePanel', `draft:load series=${activeSeriesUID} count=${imported.structureSets.length}`);
+      } catch (error) {
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : 'Failed to restore local draft.';
+        setStatusMessage(message);
+        logClientDebug('StructurePanel', `draft:load:error ${message}`);
+      }
+    };
+
+    void autoLoad();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeSeriesUID,
+    markSeriesClean,
+    replaceStructureSets,
+    setActiveStructure,
+    setActiveStructureSet,
+    structureSets,
+  ]);
+
+  useEffect(() => {
+    if (!activeSeriesUID || !isActiveSeriesDirty) return;
+
+    if (draftSaveTimerRef.current !== null) {
+      window.clearTimeout(draftSaveTimerRef.current);
+    }
+
+    draftSaveTimerRef.current = window.setTimeout(() => {
+      void saveStructureDraftForSeries(
+        activeSeriesUID,
+        structureSets,
+        activeStructureSetId,
+        activeStructureId
+      )
+        .then(() => {
+          markSeriesClean(activeSeriesUID);
+          setStatusMessage('Local draft auto-saved in this browser.');
+          logClientDebug('StructurePanel', `draft:save series=${activeSeriesUID}`);
+        })
+        .catch((error) => {
+          const message = error instanceof Error ? error.message : 'Failed to auto-save local draft.';
+          setStatusMessage(message);
+          logClientDebug('StructurePanel', `draft:save:error ${message}`);
+        });
+    }, 600);
+
+    return () => {
+      if (draftSaveTimerRef.current !== null) {
+        window.clearTimeout(draftSaveTimerRef.current);
+      }
+    };
+  }, [
+    activeSeriesUID,
+    activeStructureId,
+    activeStructureSetId,
+    isActiveSeriesDirty,
+    markSeriesClean,
+    structureSets,
+  ]);
 
   const handleAddClick = () => {
     if (!activeSeriesUID) return;
@@ -171,9 +363,15 @@ export default function StructurePanel() {
       setId = ss.id;
     }
 
-    StructureSetManager.createStructure(setId, name);
-    setIsAdding(false);
-    setNewName('');
+    try {
+      StructureSetManager.createStructure(setId, name);
+      setIsAdding(false);
+      setNewName('');
+      setStatusMessage(`Added structure ${name}.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to add structure.';
+      setStatusMessage(message);
+    }
   };
 
   const handleCancelAdd = () => {
@@ -223,6 +421,9 @@ export default function StructurePanel() {
       setActiveStructureSet(imported.activeStructureSetId);
       setActiveStructure(imported.activeStructureId);
       StructureSetManager.syncSelectionToSeries(activeSeriesUID);
+      for (const structureSet of imported.structureSets) {
+        markSeriesDirty(structureSet.referencedSeriesUID);
+      }
       setStatusMessage(`Imported ${imported.structureSets.length} structure set(s).`);
       logClientDebug('StructurePanel', `import count=${imported.structureSets.length}`);
     } catch (error) {
@@ -231,6 +432,24 @@ export default function StructurePanel() {
       logClientDebug('StructurePanel', `import:error ${message}`);
     } finally {
       event.target.value = '';
+    }
+  };
+
+  const handleUploadRtstruct = async () => {
+    if (!activeLoadedSeries || !activeSeriesStructureSet) return;
+
+    try {
+      const blob = await exportRtstructBlob(activeLoadedSeries, activeSeriesStructureSet);
+      await uploadDicomBlobToRepository(blob);
+      setStatusMessage(`Uploaded RTSTRUCT for ${activeSeriesStructureSet.label} to DICOM repository.`);
+      logClientDebug(
+        'StructurePanel',
+        `upload:rtstruct series=${activeLoadedSeries.seriesUID} set=${activeSeriesStructureSet.id}`
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to upload RTSTRUCT.';
+      setStatusMessage(message);
+      logClientDebug('StructurePanel', `upload:rtstruct:error ${message}`);
     }
   };
 
@@ -247,6 +466,22 @@ export default function StructurePanel() {
             className="hidden"
             onChange={handleImportFile}
           />
+          <button
+            onClick={handleUploadRtstruct}
+            title={
+              activeLoadedSeries && activeSeriesStructureSet
+                ? 'Upload active structure set as RTSTRUCT to DICOM repository'
+                : 'Select a structure set for the active series first'
+            }
+            disabled={!activeLoadedSeries || !activeSeriesStructureSet}
+            className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#22c55e] text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 1.5h6.5L10.5 3v7.5H2z" />
+              <path d="M6 8V3" />
+              <polyline points="3.5 5.5 6 3 8.5 5.5" />
+            </svg>
+          </button>
           <button
             onClick={handleExport}
             title={structureSets.length > 0 ? 'Export structures JSON' : 'No structures to export'}
@@ -287,6 +522,12 @@ export default function StructurePanel() {
       {statusMessage && (
         <div className="px-3 py-1 border-b border-[#2a2a2a] bg-[#242424] text-[10px] text-[#a0a0a0]">
           {statusMessage}
+        </div>
+      )}
+
+      {isActiveSeriesDirty && (
+        <div className="px-3 py-1 border-b border-[#2a2a2a] bg-[#2a2112] text-[10px] text-[#f59e0b]">
+          Local draft pending auto-save.
         </div>
       )}
 
@@ -343,6 +584,7 @@ export default function StructurePanel() {
                       setId={ss.id}
                       isActive={structure.id === activeStructureId}
                       onSelect={() => setActiveStructure(structure.id)}
+                      onStatus={setStatusMessage}
                     />
                   ))
                 )}

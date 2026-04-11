@@ -13,7 +13,13 @@ const mockStore = {
     mockStore.activeStructureId = id;
   }),
   addStructure: vi.fn(),
-  updateStructure: vi.fn(),
+  updateStructure: vi.fn((setId: string, structureId: string, patch: Partial<Structure>) => {
+    const ss = mockStore.structureSets.find((structureSet) => structureSet.id === setId);
+    const structure = ss?.structures.find((item) => item.id === structureId);
+    if (structure) {
+      Object.assign(structure, patch);
+    }
+  }),
 };
 
 vi.mock('../../store/structureStore', () => ({
@@ -101,5 +107,59 @@ describe('StructureSetManager.syncSelectionToSeries', () => {
 
     expect(mockStore.setActiveStructureSet).toHaveBeenCalledWith(null);
     expect(mockStore.setActiveStructure).toHaveBeenCalledWith(null);
+  });
+});
+
+describe('StructureSetManager structure naming', () => {
+  it('rejects duplicate structure names in a structure set', () => {
+    mockStore.structureSets = [
+      makeStructureSet('ss-1', 'series-a', [
+        {
+          ...makeStructure('ptv-1'),
+          name: 'PTV',
+        },
+      ]),
+    ];
+
+    expect(() => StructureSetManager.createStructure('ss-1', 'ptv')).toThrow(
+      'already exists'
+    );
+  });
+
+  it('renames a structure when the new name is unique', () => {
+    mockStore.structureSets = [
+      makeStructureSet('ss-1', 'series-a', [
+        {
+          ...makeStructure('ptv-1'),
+          name: 'PTV',
+        },
+      ]),
+    ];
+
+    StructureSetManager.renameStructure('ss-1', 'ptv-1', 'CTV');
+
+    expect(mockStore.updateStructure).toHaveBeenCalledWith('ss-1', 'ptv-1', {
+      name: 'CTV',
+      type: 'CTV',
+    });
+  });
+
+  it('rejects duplicate names during rename', () => {
+    mockStore.structureSets = [
+      makeStructureSet('ss-1', 'series-a', [
+        {
+          ...makeStructure('ptv-1'),
+          name: 'PTV',
+        },
+        {
+          ...makeStructure('ctv-1'),
+          name: 'CTV',
+        },
+      ]),
+    ];
+
+    expect(() => StructureSetManager.renameStructure('ss-1', 'ctv-1', 'ptv')).toThrow(
+      'already exists'
+    );
   });
 });

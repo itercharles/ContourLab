@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { StructureSet } from '@webtps/shared-types';
-import { exportStructureSets, importStructureSets } from '../structurePersistence';
+import {
+  exportStructureSets,
+  exportStructureSetsForSeries,
+  importStructureSets,
+  replaceStructureSetsForSeries,
+} from '../structurePersistence';
 
 function makeStructureSet(): StructureSet {
   return {
@@ -48,5 +53,34 @@ describe('structurePersistence', () => {
     expect(() =>
       importStructureSets(JSON.stringify({ version: 999, structureSets: [] }))
     ).toThrow('Unsupported structure JSON version');
+  });
+
+  it('exports only the requested series payload', () => {
+    const seriesA = makeStructureSet();
+    const seriesB = { ...makeStructureSet(), id: 'ss-2', referencedSeriesUID: 'series-2' };
+
+    const payload = exportStructureSetsForSeries(
+      [seriesA, seriesB],
+      'ss-1',
+      'structure-1',
+      'series-1'
+    );
+
+    expect(payload.structureSets).toHaveLength(1);
+    expect(payload.structureSets[0].referencedSeriesUID).toBe('series-1');
+    expect(payload.activeStructureSetId).toBe('ss-1');
+  });
+
+  it('replaces only the imported series during merge', () => {
+    const merged = replaceStructureSetsForSeries(
+      [
+        makeStructureSet(),
+        { ...makeStructureSet(), id: 'ss-2', referencedSeriesUID: 'series-2' },
+      ],
+      [{ ...makeStructureSet(), id: 'ss-3', referencedSeriesUID: 'series-1' }],
+      'series-1'
+    );
+
+    expect(merged.map((structureSet) => structureSet.id)).toEqual(['ss-2', 'ss-3']);
   });
 });

@@ -60,6 +60,12 @@ export const StructureSetManager = {
   ): Structure {
     const store = useStructureStore.getState();
     const ss = store.structureSets.find((s) => s.id === setId);
+    if (!ss) {
+      throw new Error('Structure set not found.');
+    }
+    if (!isUniqueStructureName(ss, name)) {
+      throw new Error(`Structure "${name.trim()}" already exists in this structure set.`);
+    }
     const index = ss?.structures.length ?? 0;
 
     const resolvedType = type ?? inferTypeFromName(name);
@@ -82,6 +88,30 @@ export const StructureSetManager = {
     return structure;
   },
 
+  renameStructure(setId: string, structureId: string, name: string): void {
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+      throw new Error('Structure name is required.');
+    }
+
+    const store = useStructureStore.getState();
+    const ss = store.structureSets.find((s) => s.id === setId);
+    if (!ss) {
+      throw new Error('Structure set not found.');
+    }
+
+    if (!isUniqueStructureName(ss, normalizedName, structureId)) {
+      throw new Error(`Structure "${normalizedName}" already exists in this structure set.`);
+    }
+
+    const resolvedType = inferTypeFromName(normalizedName);
+    store.updateStructure(setId, structureId, {
+      name: normalizedName,
+      type: resolvedType,
+    });
+    store.setActiveStructure(structureId);
+  },
+
   refreshVolume(
     setId: string,
     structureId: string,
@@ -96,3 +126,20 @@ export const StructureSetManager = {
     store.updateStructure(setId, structureId, { volume_cc });
   },
 };
+
+function isUniqueStructureName(
+  structureSet: StructureSet,
+  name: string,
+  exceptStructureId?: string
+): boolean {
+  const normalized = normalizeStructureName(name);
+  return !structureSet.structures.some(
+    (structure) =>
+      structure.id !== exceptStructureId &&
+      normalizeStructureName(structure.name) === normalized
+  );
+}
+
+function normalizeStructureName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toUpperCase();
+}

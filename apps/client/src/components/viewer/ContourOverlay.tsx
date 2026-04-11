@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ContourEngine } from '../../core/contouring/ContourEngine';
 import {
-  findContourOnSlice,
+  findContourOnFrame,
   flattenWorldPoints,
-  isContourOnSlice,
+  isContourOnFrame,
   projectContourToCanvasPath,
   type WorldPoint,
 } from '../../core/contouring/contourOverlayUtils';
@@ -147,9 +147,16 @@ export default function ContourOverlay({
     ? loadedSeries.find((series) => series.seriesUID === activeSeriesUID)
     : undefined;
 
-  const activeStructureSet =
-    structureSets.find((structureSet) => structureSet.id === activeStructureSetId) ??
-    structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID);
+  const activeStructureSet = useMemo(() => {
+    const seriesStructureSets = structureSets.filter(
+      (structureSet) => structureSet.referencedSeriesUID === activeSeriesUID
+    );
+
+    return (
+      seriesStructureSets.find((structureSet) => structureSet.id === activeStructureSetId) ??
+      seriesStructureSets[0]
+    );
+  }, [activeSeriesUID, activeStructureSetId, structureSets]);
 
   const activeStructure = activeStructureSet?.structures.find(
     (structure) => structure.id === activeStructureId
@@ -187,9 +194,14 @@ export default function ContourOverlay({
   const sliceTolerance = Math.max(activeSeries?.volume.spacing[2] ?? 1, 1) / 2;
   const activeContourOnSlice = useMemo(
     () => activeStructure
-      ? findContourOnSlice(activeStructure.contours, currentSlicePosition, sliceTolerance)
+      ? findContourOnFrame(
+          activeStructure.contours,
+          currentFrame?.sopInstanceUID,
+          currentSlicePosition,
+          sliceTolerance
+        )
       : undefined,
-    [activeStructure, currentSlicePosition, sliceTolerance]
+    [activeStructure, currentFrame?.sopInstanceUID, currentSlicePosition, sliceTolerance]
   );
 
   useEffect(() => {
@@ -262,7 +274,12 @@ export default function ContourOverlay({
         const color = `rgb(${structure.color.join(', ')})`;
         return structure.contours
           .filter((contour) =>
-            isContourOnSlice(contour.slicePosition, currentSlicePosition, sliceTolerance)
+            isContourOnFrame(
+              contour,
+              currentFrame?.sopInstanceUID,
+              currentSlicePosition,
+              sliceTolerance
+            )
           )
           .flatMap((contour) => {
             try {
@@ -281,6 +298,7 @@ export default function ContourOverlay({
     activeStructureSet,
     canvasMetrics.offsetX,
     canvasMetrics.offsetY,
+    currentFrame?.sopInstanceUID,
     currentSlicePosition,
     sliceTolerance,
     viewport,

@@ -1,8 +1,8 @@
-import { parseDicomTags, buildMetadata, DicomMetadataStore, type ImageMetadata } from './DicomMetadataStore';
+import { parseDicomTags, buildImageMetadata, buildMetadata, DicomMetadataStore } from './DicomMetadataStore';
 import type { SeriesMetadata } from './DicomMetadataStore';
 
 export interface ParsedInstance {
-  file: File;
+  file?: File;
   imageId: string;
   seriesUID: string;
   sopInstanceUID: string;
@@ -52,29 +52,7 @@ export async function loadFiles(
           // Store per-imageId metadata so our Cornerstone3D provider can answer
           // imagePixelModule / imagePlaneModule / transferSyntax queries before
           // any DICOM file has been loaded by the wadouri image loader.
-          const imageMeta: ImageMetadata = {
-            samplesPerPixel: tags.samplesPerPixel,
-            photometricInterpretation: tags.photometricInterpretation,
-            rows: tags.rows,
-            columns: tags.columns,
-            bitsAllocated: tags.bitsAllocated,
-            bitsStored: tags.bitsStored,
-            highBit: tags.highBit,
-            pixelRepresentation: tags.pixelRepresentation,
-            imageOrientationPatient: tags.imageOrientationPatient,
-            imagePositionPatient: tags.imagePositionPatient,
-            rowPixelSpacing: tags.pixelSpacing[0],
-            columnPixelSpacing: tags.pixelSpacing[1],
-            sliceThickness: tags.sliceThickness,
-            sliceLocation: tags.sliceLocation,
-            frameOfReferenceUID: tags.frameOfReferenceUID,
-            modality: tags.modality,
-            seriesInstanceUID: tags.seriesInstanceUID,
-            transferSyntaxUID: tags.transferSyntaxUID,
-            windowCenter: tags.windowCenter,
-            windowWidth: tags.windowWidth,
-          };
-          DicomMetadataStore.setImageMetadata(imageId, imageMeta);
+          DicomMetadataStore.setImageMetadata(imageId, buildImageMetadata(tags));
 
           const parsed: ParsedInstance = {
             file,

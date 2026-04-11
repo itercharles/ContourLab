@@ -1,5 +1,5 @@
 import { useVolumeStore } from '../../core/store/volumeStore';
-import FileDropZone from '../dicom/FileDropZone';
+import DicomRepoPanel from '../dicom/DicomRepoPanel';
 
 export default function LeftSidebar() {
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
@@ -14,14 +14,12 @@ export default function LeftSidebar() {
         <p className="text-[10px] text-[#6b6b6b] mt-0.5">Treatment Planning System</p>
       </div>
 
-      {/* File loader section */}
+      {/* Repository section */}
       <div className="border-b border-[#2a2a2a]">
         <p className="px-3 py-1 text-[10px] font-semibold tracking-widest uppercase text-[#6b6b6b] border-b border-[#2a2a2a]">
-          Load DICOM
+          DICOM Repository
         </p>
-        <div className="px-2 py-2">
-          <FileDropZone />
-        </div>
+        <DicomRepoPanel />
       </div>
 
       {/* Series list section */}

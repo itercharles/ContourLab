@@ -35,6 +35,36 @@ export interface ImageMetadata {
   windowWidth?: number;
 }
 
+export interface NormalizedDicomMetadata {
+  sopInstanceUID: string;
+  seriesInstanceUID: string;
+  studyInstanceUID: string;
+  instanceNumber: number;
+  sliceLocation: number;
+  patientName: string;
+  patientID: string;
+  studyDate: string;
+  studyDescription: string;
+  seriesDescription: string;
+  modality: string;
+  rows: number;
+  columns: number;
+  pixelSpacing: [number, number];
+  sliceThickness: number;
+  imagePositionPatient: [number, number, number];
+  imageOrientationPatient: number[];
+  samplesPerPixel: number;
+  photometricInterpretation: string;
+  bitsAllocated: number;
+  bitsStored: number;
+  highBit: number;
+  pixelRepresentation: number;
+  transferSyntaxUID: string;
+  frameOfReferenceUID: string;
+  windowCenter: number | undefined;
+  windowWidth: number | undefined;
+}
+
 // Keyed by seriesInstanceUID
 const metadataBySeriesUID = new Map<string, SeriesMetadata>();
 
@@ -64,6 +94,16 @@ export const DicomMetadataStore = {
 
   getImageMetadata(imageId: string): ImageMetadata | undefined {
     return metadataByImageId.get(imageId);
+  },
+
+  getFirstImageMetadataForSeries(seriesUID: string): ImageMetadata | undefined {
+    for (const meta of metadataByImageId.values()) {
+      if (meta.seriesInstanceUID === seriesUID) {
+        return meta;
+      }
+    }
+
+    return undefined;
   },
 
   clearImageMetadata(): void {
@@ -133,35 +173,7 @@ export function cornerstoneMetadataProvider(type: string, imageId: string): unkn
  * Parse minimal DICOM tags from a File using dicom-parser.
  * Returns the tag values needed for metadata grouping and Cornerstone3D metadata.
  */
-export async function parseDicomTags(file: File): Promise<{
-  sopInstanceUID: string;
-  seriesInstanceUID: string;
-  studyInstanceUID: string;
-  instanceNumber: number;
-  sliceLocation: number;
-  patientName: string;
-  patientID: string;
-  studyDate: string;
-  studyDescription: string;
-  seriesDescription: string;
-  modality: string;
-  rows: number;
-  columns: number;
-  pixelSpacing: [number, number];
-  sliceThickness: number;
-  imagePositionPatient: [number, number, number];
-  imageOrientationPatient: number[];
-  samplesPerPixel: number;
-  photometricInterpretation: string;
-  bitsAllocated: number;
-  bitsStored: number;
-  highBit: number;
-  pixelRepresentation: number;
-  transferSyntaxUID: string;
-  frameOfReferenceUID: string;
-  windowCenter: number | undefined;
-  windowWidth: number | undefined;
-}> {
+export async function parseDicomTags(file: File): Promise<NormalizedDicomMetadata> {
   const { default: dicomParser } = await import('dicom-parser');
 
   const buffer = await file.arrayBuffer();
@@ -235,11 +247,36 @@ export async function parseDicomTags(file: File): Promise<{
   };
 }
 
+export function buildImageMetadata(tags: NormalizedDicomMetadata): ImageMetadata {
+  return {
+    samplesPerPixel: tags.samplesPerPixel,
+    photometricInterpretation: tags.photometricInterpretation,
+    rows: tags.rows,
+    columns: tags.columns,
+    bitsAllocated: tags.bitsAllocated,
+    bitsStored: tags.bitsStored,
+    highBit: tags.highBit,
+    pixelRepresentation: tags.pixelRepresentation,
+    imageOrientationPatient: tags.imageOrientationPatient,
+    imagePositionPatient: tags.imagePositionPatient,
+    rowPixelSpacing: tags.pixelSpacing[0],
+    columnPixelSpacing: tags.pixelSpacing[1],
+    sliceThickness: tags.sliceThickness,
+    sliceLocation: tags.sliceLocation,
+    frameOfReferenceUID: tags.frameOfReferenceUID,
+    modality: tags.modality,
+    seriesInstanceUID: tags.seriesInstanceUID,
+    transferSyntaxUID: tags.transferSyntaxUID,
+    windowCenter: tags.windowCenter,
+    windowWidth: tags.windowWidth,
+  };
+}
+
 /**
  * Build shared-types metadata objects from parsed DICOM tags.
  */
 export function buildMetadata(
-  tags: Awaited<ReturnType<typeof parseDicomTags>>
+  tags: NormalizedDicomMetadata
 ): { patient: Patient; study: Study; series: Series; instance: Instance } {
   const instance: Instance = {
     sopInstanceUID: tags.sopInstanceUID,

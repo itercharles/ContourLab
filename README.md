@@ -18,7 +18,7 @@ This project uses three repositories:
 WebTPS/
 ├── apps/
 │   ├── client/              — React 18 + TypeScript frontend (Vite, port 3000)
-│   └── server/              — Node.js API gateway (Express, port 4000)
+│   └── api/                 — ASP.NET Core API gateway (port 4000)
 ├── packages/
 │   └── shared-types/        — Canonical TypeScript data model interfaces
 ├── docs/
@@ -45,18 +45,32 @@ pnpm install
 
 ```bash
 pnpm dev          # frontend at http://localhost:3000
+pnpm api          # API at http://localhost:4000
+pnpm repo:up      # local Orthanc DICOM repo at http://localhost:8042
 ```
 
-The Vite dev server proxies `/api` to the Express server on port 4000. To run
-both together:
+The Vite dev server proxies `/api` to port `4000` and `/dicom-web` to the
+local Orthanc repository on port `8042`.
+
+### Local DICOM Repository
+
+WebTPS now loads imaging through a DICOMweb repository rather than directly
+opening local files in the viewer. For local development, start the bundled
+Orthanc service:
 
 ```bash
-# Terminal 1
-pnpm --filter @webtps/server dev
-
-# Terminal 2
-pnpm --filter @webtps/client dev
+pnpm repo:up
 ```
+
+Key endpoints:
+
+- Web app: `http://localhost:3000`
+- API: `http://localhost:4000`
+- Orthanc UI: `http://localhost:8042/`
+- DICOMweb root: `http://localhost:8042/dicom-web`
+
+Use the repository panel in the app to upload DICOM instances into Orthanc for
+development, then query and load series from the repository.
 
 ## Testing
 

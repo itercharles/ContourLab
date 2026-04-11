@@ -2,6 +2,8 @@
 
 WebTPS is a web-based radiation therapy Treatment Planning System — a monorepo
 containing the React frontend, ASP.NET Core API gateway, and Python compute services.
+Local development also depends on a DICOMweb-capable repository for image
+access. The default developer setup uses Orthanc via Docker.
 
 Compliance and traceability (DHF, requirements, change requests) are managed in
 the **WebTPS-DHF** repository. Compliance analysis runs via the **CompliantFlow**
@@ -46,6 +48,8 @@ pnpm install                              # install all workspace deps
 pnpm dev                                  # run frontend dev server (port 3000)
 pnpm --filter @webtps/client dev          # frontend only
 pnpm api                                  # run ASP.NET Core API (port 4000)
+pnpm repo:up                              # run local Orthanc DICOM repo (port 8042)
+pnpm repo:down                            # stop local Orthanc DICOM repo
 pnpm -r build                             # build all workspaces
 pnpm -r test                              # test all workspaces
 pnpm -r typecheck                         # typecheck all workspaces
@@ -60,6 +64,8 @@ Node.js ≥ 20, pnpm ≥ 9, and .NET SDK 10 are required.
 - **Frontend**: `apps/client/` — React 18, Vite, Tailwind CSS. Entry: `src/main.tsx`.
 - **API**: `apps/api/` — ASP.NET Core 10 Web API on port 4000. Entry: `Program.cs`. Controllers in `Controllers/`.
 - **Proxy**: Vite dev server proxies `/api` and `/ws` to `localhost:4000`.
+- **DICOM repo**: Vite dev server proxies `/dicom-web` to the local Orthanc
+  repository on `localhost:8042`.
 - **Styling**: Tailwind CSS. No inline styles. Prefer utility classes.
 - **Type safety**: TypeScript strict mode throughout. No `any` types.
 

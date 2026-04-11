@@ -134,9 +134,9 @@ Image Import → Registration → Contouring → Prescription → Beam Setup
 | 3D Visualization | VTK.js | Volume rendering, isosurface extraction, beam geometry |
 | State Management | Zustand + Immer | Lightweight, immutable updates for large structure state |
 | UI Components | Radix UI + Tailwind CSS | Accessible, composable, medical-grade UI |
-| Backend | Node.js (API Gateway) + Python (Compute) | Node for real-time, Python for scientific compute |
+| Backend | ASP.NET Core (API Gateway) + Python (Compute) | ASP.NET Core for API orchestration, Python for scientific compute |
 | Dose Calculation | C++/CUDA compiled to WASM (client) + GPU server | Hybrid: simple calcs in browser, MC on server |
-| DICOM Services | Orthanc (PACS) + dcmjs (parsing) | Open-source DICOMweb server |
+| DICOM Services | Orthanc (development PACS) + DICOMweb integration | Open-source local DICOMweb server with standards-based production path |
 | Database | PostgreSQL + PostGIS | Spatial queries for structure data |
 | Real-time Collaboration | WebSocket (Socket.io) + CRDT | Conflict-free concurrent editing |
 | AI/ML Inference | ONNX Runtime (server) or TensorFlow.js (client) | Auto-contouring models |
@@ -298,7 +298,7 @@ Phase 1: CONTOURING APP         Phase 2: REVIEW APP            Phase 3: PLANNING
 **Description**: Multi-planar reconstruction (MPR) viewer supporting axial, sagittal, and coronal views with synchronized crosshairs.
 
 **Features**:
-- Load CT/MRI/PET via DICOMweb (WADO-RS) or local file upload
+- Load CT/MRI/PET via DICOMweb (QIDO-RS + WADO-RS) from a connected repository
 - Window/level adjustment (presets for CT: lung, bone, soft tissue, brain)
 - Zoom, pan, scroll through slices
 - Measurement tools (distance, angle, area, HU probe)
@@ -311,11 +311,12 @@ Frontend:
   - Cornerstone3D for DICOM decoding and GPU rendering
   - @cornerstonejs/streaming-image-volume-loader for progressive loading
   - Custom React components wrapping Cornerstone viewports
+  - Repository panel for query, upload, and series selection
   
 Backend:
-  - Orthanc DICOM server with DICOMweb plugin
-  - /api/dicom/studies/{studyUID}/series/{seriesUID} endpoints
-  - Streaming transfer for large CT volumes (512x512x300+ slices)
+  - Orthanc DICOM server with DICOMweb plugin for development
+  - Standards-based DICOMweb integration target for production PACS/VNA
+  - ASP.NET Core API for structure persistence and future orchestration
 ```
 
 **Key Files to Generate**:
@@ -576,9 +577,8 @@ DICOM:
   GET    /api/dicom/wado-rs/studies/{uid}/series/{uid}  — Retrieve images
 
 Structures:
-  GET    /api/structures/{structureSetId}               — Get structure set
-  PUT    /api/structures/{structureSetId}               — Save structure set
-  PATCH  /api/structures/{structureSetId}/structures/{id} — Update single structure
+  IndexedDB local draft auto-save                       — Browser-local editable structure draft
+  STOW-RS /dicom-web/studies                            — Upload RTSTRUCT to DICOM repository
   POST   /api/structures/{structureSetId}/interpolate   — Trigger interpolation
   
 AI:

@@ -62,6 +62,9 @@ export default defineConfig({
     globals: true,
   },
   plugins: [react()],
+  worker: {
+    format: 'es',
+  },
   server: {
     port: 3000,
     headers: {
@@ -70,6 +73,8 @@ export default defineConfig({
     },
     proxy: {
       '/api': 'http://localhost:4000',
+      '/dicom-web': 'http://localhost:8042',
+      '/orthanc': 'http://localhost:8042',
       '/ws': {
         target: 'ws://localhost:4000',
         ws: true,
