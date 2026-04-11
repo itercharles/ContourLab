@@ -15,6 +15,7 @@ import {
   saveStructureDraftForSeries,
 } from '../../core/structures/structureDraftStore';
 import {
+  type DicomWebRtstructInstance,
   queryRtstructInstancesForStudy,
   retrieveDicomWebInstance,
   uploadDicomBlobToRepository,
@@ -44,6 +45,17 @@ function hexToRgb(value: string): [number, number, number] {
     Number.parseInt(normalized.slice(2, 4), 16),
     Number.parseInt(normalized.slice(4, 6), 16),
   ];
+}
+
+function formatDicomDateTime(date: string, time: string): string {
+  const datePart = date.length === 8
+    ? `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`
+    : 'unknown date';
+  const timePart = time.length >= 6
+    ? `${time.slice(0, 2)}:${time.slice(2, 4)}:${time.slice(4, 6)}`
+    : 'unknown time';
+
+  return `${datePart} ${timePart}`;
 }
 
 interface StructureRowProps {
@@ -241,6 +253,9 @@ export default function StructurePanel() {
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [rtstructCandidates, setRtstructCandidates] = useState<DicomWebRtstructInstance[]>([]);
+  const [isQueryingRtstruct, setIsQueryingRtstruct] = useState(false);
+  const [importingRtstructSop, setImportingRtstructSop] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const attemptedAutoLoadSeriesRef = useRef(new Set<string>());
@@ -262,6 +277,7 @@ export default function StructurePanel() {
   const activeStructure = activeSeriesStructureSet?.structures.find(
     (structure) => structure.id === activeStructureId
   );
+  const importWouldReplaceActiveStructures = (activeSeriesStructureSet?.structures.length ?? 0) > 0;
 
   useEffect(() => {
     if (isAdding && inputRef.current) {
@@ -495,17 +511,41 @@ export default function StructurePanel() {
     if (!activeLoadedSeries || !activeSeriesUID) return;
 
     try {
+      setIsQueryingRtstruct(true);
       setStatusMessage('Searching DICOM repository for RTSTRUCT...');
       const rtstructInstances = await queryRtstructInstancesForStudy(
         activeLoadedSeries.study.studyInstanceUID
       );
       if (rtstructInstances.length === 0) {
+        setRtstructCandidates([]);
         setStatusMessage('No RTSTRUCT found in the DICOM repository for this study.');
         logClientDebug('StructurePanel', `import:rtstruct:none study=${activeLoadedSeries.study.studyInstanceUID}`);
         return;
       }
 
-      const instance = rtstructInstances[0];
+      setStatusMessage(
+        `Found ${rtstructInstances.length} RTSTRUCT object(s). Select one to import.`
+      );
+      setRtstructCandidates(rtstructInstances);
+      logClientDebug(
+        'StructurePanel',
+        `import:rtstruct:candidates study=${activeLoadedSeries.study.studyInstanceUID} count=${rtstructInstances.length}`
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to query RTSTRUCT.';
+      setStatusMessage(message);
+      logClientDebug('StructurePanel', `import:rtstruct:error ${message}`);
+    } finally {
+      setIsQueryingRtstruct(false);
+    }
+  };
+
+  const handleImportRtstructCandidate = async (instance: DicomWebRtstructInstance) => {
+    if (!activeSeriesUID) return;
+
+    try {
+      setImportingRtstructSop(instance.sopInstanceUID);
+      setStatusMessage(`Importing RTSTRUCT ${instance.sopInstanceUID}...`);
       const buffer = await retrieveDicomWebInstance(instance);
       const importedStructureSet = await importRtstructArrayBuffer(buffer, activeSeriesUID);
       replaceStructureSets(
@@ -513,7 +553,8 @@ export default function StructurePanel() {
       );
       setActiveStructureSet(importedStructureSet.id);
       setActiveStructure(importedStructureSet.structures[0]?.id ?? null);
-      markSeriesClean(activeSeriesUID);
+      markSeriesDirty(activeSeriesUID);
+      setRtstructCandidates([]);
       setStatusMessage(
         `Imported RTSTRUCT with ${importedStructureSet.structures.length} structure(s) from repository.`
       );
@@ -525,6 +566,8 @@ export default function StructurePanel() {
       const message = error instanceof Error ? error.message : 'Failed to import RTSTRUCT.';
       setStatusMessage(message);
       logClientDebug('StructurePanel', `import:rtstruct:error ${message}`);
+    } finally {
+      setImportingRtstructSop(null);
     }
   };
 
@@ -580,10 +623,10 @@ export default function StructurePanel() {
             onClick={handleImportRtstructFromRepository}
             title={
               activeLoadedSeries
-                ? 'Import latest RTSTRUCT from DICOM repository for this study'
+                ? 'Find RTSTRUCT objects in DICOM repository for this study'
                 : 'Load a series before importing RTSTRUCT'
             }
-            disabled={!activeLoadedSeries}
+            disabled={!activeLoadedSeries || isQueryingRtstruct}
             className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -638,6 +681,57 @@ export default function StructurePanel() {
       {isActiveSeriesDirty && (
         <div className="px-3 py-1 border-b border-[#2a2a2a] bg-[#2a2112] text-[10px] text-[#f59e0b]">
           Local draft pending auto-save.
+        </div>
+      )}
+
+      {rtstructCandidates.length > 0 && (
+        <div className="border-b border-[#2a2a2a] bg-[#202020] px-3 py-2 flex-none">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] uppercase tracking-widest text-[#6b6b6b]">
+              Repository RTSTRUCT
+            </p>
+            <button
+              type="button"
+              onClick={() => setRtstructCandidates([])}
+              className="text-[10px] text-[#6b6b6b] hover:text-[#e5e5e5] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+            >
+              Cancel
+            </button>
+          </div>
+          {importWouldReplaceActiveStructures && (
+            <p className="mt-1 text-[10px] leading-snug text-[#f59e0b]">
+              Import replaces the current active-series structures and updates the local browser draft.
+            </p>
+          )}
+          <div className="mt-1.5 space-y-1">
+            {rtstructCandidates.map((instance) => (
+              <div
+                key={instance.sopInstanceUID}
+                className="flex items-center gap-2 border border-[#2a2a2a] bg-[#1a1a1a] px-2 py-1"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[11px] text-[#e5e5e5]" title={instance.seriesDescription}>
+                    {instance.seriesDescription || 'RTSTRUCT'}
+                  </p>
+                  <p className="truncate text-[10px] text-[#6b6b6b]" title={instance.sopInstanceUID}>
+                    {formatDicomDateTime(instance.seriesDate, instance.seriesTime)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleImportRtstructCandidate(instance)}
+                  disabled={!!importingRtstructSop}
+                  className="h-5 px-2 text-[10px] rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-blue-600 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                >
+                  {importingRtstructSop === instance.sopInstanceUID
+                    ? 'Importing'
+                    : importWouldReplaceActiveStructures
+                      ? 'Replace'
+                      : 'Import'}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

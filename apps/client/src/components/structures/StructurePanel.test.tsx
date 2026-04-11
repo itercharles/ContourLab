@@ -146,7 +146,7 @@ describe('StructurePanel local draft and RTSTRUCT upload interactions', () => {
     expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledWith(rtstructBlob);
   });
 
-  it('imports the latest RTSTRUCT from the DICOM repository for the active study', async () => {
+  it('lists RTSTRUCT candidates before replacing active-series structures', async () => {
     const imported = makeStructureSet();
     imported.id = 'ss-imported';
     imported.structures[0].id = 'structure-imported';
@@ -167,15 +167,25 @@ describe('StructurePanel local draft and RTSTRUCT upload interactions', () => {
 
     render(<StructurePanel />);
 
-    fireEvent.click(screen.getByTitle('Import latest RTSTRUCT from DICOM repository for this study'));
+    fireEvent.click(screen.getByTitle('Find RTSTRUCT objects in DICOM repository for this study'));
 
     await waitFor(() => expect(mocks.queryRtstructInstancesForStudy).toHaveBeenCalledWith('study-1'));
+    expect(await screen.findByText('Repository RTSTRUCT')).toBeTruthy();
+    expect(screen.getByText('RTSTRUCT Thorax CT')).toBeTruthy();
+    expect(screen.getByText('Import replaces the current active-series structures and updates the local browser draft.')).toBeTruthy();
+
+    fireEvent.click(screen.getByText('Replace'));
+
+    await waitFor(() => expect(mocks.retrieveDicomWebInstance).toHaveBeenCalledWith(expect.objectContaining({
+      sopInstanceUID: 'rtss-1',
+    })));
     expect(mocks.retrieveDicomWebInstance).toHaveBeenCalledWith(expect.objectContaining({
       sopInstanceUID: 'rtss-1',
     }));
     expect(mocks.importRtstructArrayBuffer).toHaveBeenCalledWith(dicomBuffer, 'series-1');
     expect(useStructureStore.getState().activeStructureSetId).toBe('ss-imported');
     expect(useStructureStore.getState().activeStructureId).toBe('structure-imported');
+    expect(useStructureStore.getState().dirtySeriesUIDs).toContain('series-1');
   });
 
   it('renames a structure with inline editing on double-click', async () => {
