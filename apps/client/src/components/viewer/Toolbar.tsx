@@ -1,10 +1,15 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useUIStore, type ViewerTool, type WLPreset } from '../../core/store/uiStore';
 import { MPRController, VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
+import { ContourEngine } from '../../core/contouring/ContourEngine';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
+import { findContourOnSlice } from '../../core/contouring/contourOverlayUtils';
 import { WINDOW_LEVEL_PRESETS } from '../../core/rendering/WindowLevelPresets';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
+import { StructureSetManager } from '../../core/structures/StructureSetManager';
+import { logClientDebug } from '../../core/debug/clientDebugLog';
 
 // Map our ViewerTool names to Cornerstone tool names
 const TOOL_NAME_MAP: Partial<Record<ViewerTool, string>> = {
@@ -26,25 +31,25 @@ const TOOL_META: Record<ViewerTool, {
     shortLabel: 'WL',
     name: 'Window / Level',
     shortcut: 'W',
-    description: 'Adjust image brightness and contrast. Wheel changes slices.',
+    description: 'Left-drag adjusts window/level. Wheel changes slices. Middle-drag pans. Right-drag zooms.',
   },
   zoom: {
     shortLabel: 'Z',
     name: 'Zoom',
     shortcut: 'Z',
-    description: 'Magnify or reduce the viewport. Ctrl + wheel also zooms.',
+    description: 'Left-drag zooms. Ctrl + wheel also zooms. Right-drag zooms in any tool.',
   },
   pan: {
     shortLabel: 'P',
     name: 'Pan',
     shortcut: 'P',
-    description: 'Move the image within the viewport.',
+    description: 'Left-drag pans. Middle-drag pans in any tool.',
   },
   scroll: {
     shortLabel: 'S',
     name: 'Scroll',
     shortcut: 'S',
-    description: 'Move through image slices. Mouse wheel also scrolls slices.',
+    description: 'Wheel scrolls slices in any tool. Shift + left-drag also scrolls.',
   },
   crosshairs: {
     shortLabel: 'CH',
@@ -55,7 +60,7 @@ const TOOL_META: Record<ViewerTool, {
     shortLabel: 'F',
     name: 'Freehand Contour',
     shortcut: 'F',
-    description: 'Draw a contour on the axial slice.',
+    description: 'Left-drag draws on the axial slice. Delete removes the current-slice contour.',
   },
   polygon: {
     shortLabel: 'PG',
@@ -115,7 +120,12 @@ function ToolButton({ label, description, tool, activeTool, onClick, shortcut }:
   );
 }
 
+interface AxialViewportLike {
+  getCamera?: () => { focalPoint?: [number, number, number] };
+}
+
 export default function Toolbar() {
+  const [axialRevision, setAxialRevision] = useState(0);
   const activeTool = useUIStore((s) => s.activeTool);
   const setActiveTool = useUIStore((s) => s.setActiveTool);
   const windowLevelPreset = useUIStore((s) => s.windowLevelPreset);
@@ -136,6 +146,37 @@ export default function Toolbar() {
   const activeStructure = activeStructureSet?.structures.find(
     (structure) => structure.id === activeStructureId
   );
+  useEffect(() => {
+    const axialElement = document.querySelector<HTMLDivElement>(
+      `[data-viewport-id="${VIEWPORT_IDS.AXIAL}"]`
+    );
+    if (!axialElement) return;
+
+    const update = () => setAxialRevision((value) => value + 1);
+    axialElement.addEventListener('CORNERSTONE_IMAGE_RENDERED', update);
+    axialElement.addEventListener('CORNERSTONE_CAMERA_MODIFIED', update);
+
+    return () => {
+      axialElement.removeEventListener('CORNERSTONE_IMAGE_RENDERED', update);
+      axialElement.removeEventListener('CORNERSTONE_CAMERA_MODIFIED', update);
+    };
+  }, []);
+
+  const axialViewport = useMemo(() => {
+    void axialRevision;
+    return ViewportManager.getRenderingEngine()?.getViewport(VIEWPORT_IDS.AXIAL) as
+      | AxialViewportLike
+      | undefined;
+  }, [axialRevision]);
+
+  const axialSlicePosition = axialViewport?.getCamera?.()?.focalPoint?.[2] ?? 0;
+  const axialSliceTolerance = Math.max(
+    useVolumeStore.getState().loadedSeries.find((series) => series.seriesUID === activeSeriesUID)?.volume.spacing[2] ?? 1,
+    1
+  ) / 2;
+  const activeContourOnSlice = activeStructure
+    ? findContourOnSlice(activeStructure.contours, axialSlicePosition, axialSliceTolerance)
+    : undefined;
   const canUseFreehand =
     !!activeSeriesUID &&
     !!activeStructureSet &&
@@ -152,6 +193,11 @@ export default function Toolbar() {
     activeTool === 'freehand' && freehandBlockedReason
       ? freehandBlockedReason
       : activeToolMeta.description;
+  const canDeleteContour =
+    !!activeStructureSet &&
+    !!activeStructure &&
+    !(activeStructure.isLocked ?? false) &&
+    !!activeContourOnSlice;
 
   const handleToolClick = async (tool: ViewerTool) => {
     if (tool === 'freehand' && !canUseFreehand) {
@@ -206,6 +252,29 @@ export default function Toolbar() {
 
   const handleRedo = () => {
     if (UndoRedoManager.canRedo()) UndoRedoManager.redo();
+  };
+
+  const handleDeleteContour = () => {
+    if (!activeStructureSet || !activeStructure || !activeContourOnSlice || !activeSeriesUID) return;
+
+    ContourEngine.deleteContourOnSlice(
+      activeStructureSet.id,
+      activeStructure.id,
+      activeContourOnSlice.slicePosition
+    );
+    const activeSeries = useVolumeStore
+      .getState()
+      .loadedSeries.find((series) => series.seriesUID === activeSeriesUID);
+    StructureSetManager.refreshVolume(
+      activeStructureSet.id,
+      activeStructure.id,
+      activeSeries?.volume.spacing[2] || 1
+    );
+    setActiveViewport('AXIAL');
+    logClientDebug(
+      'Toolbar',
+      `delete:slice slice=${activeContourOnSlice.slicePosition.toFixed(2)} structure=${activeStructure.id}`
+    );
   };
 
   return (
@@ -311,6 +380,19 @@ export default function Toolbar() {
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M11 4H5a4 4 0 0 0 0 8h4" />
             <polyline points="8 1 11 4 8 7" />
+          </svg>
+        </button>
+        <button
+          onClick={handleDeleteContour}
+          disabled={!canDeleteContour}
+          title="Delete contour on current slice [Delete]"
+          className="w-7 h-7 flex items-center justify-center rounded text-[11px] font-medium bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#ef4444] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="2 3 3 3 10 3" />
+            <path d="M9.5 3l-.5 6H4L3.5 3" />
+            <path d="M5 5v3M7 5v3" />
+            <path d="M4.5 3V2h3v1" />
           </svg>
         </button>
       </div>

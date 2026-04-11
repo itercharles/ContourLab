@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ContourEngine } from '../../core/contouring/ContourEngine';
 import {
+  findContourOnSlice,
   flattenWorldPoints,
   isContourOnSlice,
   projectContourToCanvasPath,
@@ -44,6 +45,18 @@ interface CanvasMetrics {
   height: number;
 }
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+
+  const tagName = target.tagName.toLowerCase();
+  return (
+    target.isContentEditable ||
+    tagName === 'input' ||
+    tagName === 'textarea' ||
+    tagName === 'select'
+  );
+}
+
 export default function ContourOverlay({
   viewportId,
   viewportElement,
@@ -85,23 +98,6 @@ export default function ContourOverlay({
       viewportElement.removeEventListener('CORNERSTONE_CAMERA_MODIFIED', update);
     };
   }, [viewportElement]);
-
-  useEffect(() => {
-    if (activeTool !== 'freehand') {
-      clearDraft();
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || !drawingRef.current) return;
-      event.preventDefault();
-      logClientDebug('ContourOverlay', `pointercancel:escape viewport=${viewportId}`);
-      clearDraft('Contour cancelled.');
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTool, viewportId]);
 
   const viewport = useMemo(() => {
     void revision;
@@ -189,6 +185,66 @@ export default function ContourOverlay({
 
   const currentSlicePosition = currentFrame?.sliceLocation ?? focalPointZ;
   const sliceTolerance = Math.max(activeSeries?.volume.spacing[2] ?? 1, 1) / 2;
+  const activeContourOnSlice = useMemo(
+    () => activeStructure
+      ? findContourOnSlice(activeStructure.contours, currentSlicePosition, sliceTolerance)
+      : undefined,
+    [activeStructure, currentSlicePosition, sliceTolerance]
+  );
+
+  useEffect(() => {
+    if (activeTool !== 'freehand') {
+      clearDraft();
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+
+      if (event.key === 'Escape' && drawingRef.current) {
+        event.preventDefault();
+        logClientDebug('ContourOverlay', `pointercancel:escape viewport=${viewportId}`);
+        clearDraft('Contour cancelled.');
+        return;
+      }
+
+      if (
+        event.key === 'Delete' &&
+        !drawingRef.current &&
+        activeStructureSet &&
+        activeStructure &&
+        activeSeries &&
+        activeContourOnSlice
+      ) {
+        event.preventDefault();
+        ContourEngine.deleteContourOnSlice(
+          activeStructureSet.id,
+          activeStructure.id,
+          activeContourOnSlice.slicePosition
+        );
+        StructureSetManager.refreshVolume(
+          activeStructureSet.id,
+          activeStructure.id,
+          activeSeries.volume.spacing[2] || 1
+        );
+        setStatusMessage(`Deleted contour on ${activeStructure.name}.`);
+        logClientDebug(
+          'ContourOverlay',
+          `delete:slice viewport=${viewportId} slice=${activeContourOnSlice.slicePosition.toFixed(2)}`
+        );
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    activeContourOnSlice,
+    activeSeries,
+    activeStructure,
+    activeStructureSet,
+    activeTool,
+    viewportId,
+  ]);
 
   const renderableContours = useMemo(() => {
     if (!viewport || !activeStructureSet) {

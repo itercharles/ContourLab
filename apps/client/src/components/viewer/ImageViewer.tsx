@@ -82,6 +82,7 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
     >
       <div
         ref={elRef}
+        data-viewport-id={id}
         className="w-full h-full"
       />
       {orientation === 'AXIAL' && (

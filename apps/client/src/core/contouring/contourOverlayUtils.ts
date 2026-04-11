@@ -1,3 +1,5 @@
+import type { ContourSlice } from '@webtps/shared-types';
+
 export type WorldPoint = [number, number, number];
 
 export function flattenWorldPoints(points: WorldPoint[]): Float32Array {
@@ -10,6 +12,25 @@ export function isContourOnSlice(
   tolerance: number
 ): boolean {
   return Math.abs(contourSlicePosition - currentSlicePosition) <= tolerance;
+}
+
+export function findContourOnSlice(
+  contours: ContourSlice[],
+  currentSlicePosition: number,
+  tolerance: number
+): ContourSlice | undefined {
+  return contours.reduce<ContourSlice | undefined>((closest, contour) => {
+    if (!isContourOnSlice(contour.slicePosition, currentSlicePosition, tolerance)) {
+      return closest;
+    }
+
+    if (!closest) return contour;
+
+    return Math.abs(contour.slicePosition - currentSlicePosition) <
+      Math.abs(closest.slicePosition - currentSlicePosition)
+      ? contour
+      : closest;
+  }, undefined);
 }
 
 export function projectContourToCanvasPath(
