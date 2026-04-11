@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { UndoRedoManager } from '../UndoRedoManager';
 import type { ContourCommand } from '../UndoRedoManager';
 
@@ -127,5 +127,20 @@ describe('UndoRedoManager', () => {
     expect(UndoRedoManager.getRedoDescription()).toBe('beta');
     UndoRedoManager.undo(); // redo stack top = 'alpha'
     expect(UndoRedoManager.getRedoDescription()).toBe('alpha');
+  });
+
+  it('notifies subscribers when stack state changes', () => {
+    const listener = vi.fn();
+    const unsubscribe = UndoRedoManager.subscribe(listener);
+
+    UndoRedoManager.push(makeNoopCommand('alpha'));
+    UndoRedoManager.undo();
+    UndoRedoManager.redo();
+
+    expect(listener).toHaveBeenCalledTimes(3);
+
+    unsubscribe();
+    UndoRedoManager.clear();
+    expect(listener).toHaveBeenCalledTimes(3);
   });
 });

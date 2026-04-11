@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
-import type { Structure } from '@webtps/shared-types';
+import type { Structure, StructureType } from '@webtps/shared-types';
 import {
   exportStructureSets,
   importStructureSets,
@@ -15,6 +15,31 @@ import {
 } from '../../core/structures/structureDraftStore';
 import { uploadDicomBlobToRepository } from '../../core/dicom/dicomWebClient';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
+
+const STRUCTURE_TYPES: StructureType[] = [
+  'GTV',
+  'CTV',
+  'PTV',
+  'OAR',
+  'EXTERNAL',
+  'AVOIDANCE',
+  'SUPPORT',
+];
+
+function rgbToHex([r, g, b]: [number, number, number]): string {
+  return `#${[r, g, b]
+    .map((value) => Math.max(0, Math.min(255, value)).toString(16).padStart(2, '0'))
+    .join('')}`;
+}
+
+function hexToRgb(value: string): [number, number, number] {
+  const normalized = value.replace('#', '');
+  return [
+    Number.parseInt(normalized.slice(0, 2), 16),
+    Number.parseInt(normalized.slice(2, 4), 16),
+    Number.parseInt(normalized.slice(4, 6), 16),
+  ];
+}
 
 interface StructureRowProps {
   structure: Structure;
@@ -201,6 +226,7 @@ export default function StructurePanel() {
   const setActiveStructure = useStructureStore((s) => s.setActiveStructure);
   const setActiveStructureSet = useStructureStore((s) => s.setActiveStructureSet);
   const replaceStructureSets = useStructureStore((s) => s.replaceStructureSets);
+  const updateStructure = useStructureStore((s) => s.updateStructure);
   const dirtySeriesUIDs = useStructureStore((s) => s.dirtySeriesUIDs);
   const markSeriesDirty = useStructureStore((s) => s.markSeriesDirty);
   const markSeriesClean = useStructureStore((s) => s.markSeriesClean);
@@ -218,12 +244,19 @@ export default function StructurePanel() {
   const activeLoadedSeries = activeSeriesUID
     ? loadedSeries.find((series) => series.seriesUID === activeSeriesUID)
     : undefined;
+  const activeStructureSetById = structureSets.find(
+    (structureSet) => structureSet.id === activeStructureSetId
+  );
   const activeSeriesStructureSet = activeSeriesUID
     ? (
-        structureSets.find((structureSet) => structureSet.id === activeStructureSetId) ??
-        structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID)
+        activeStructureSetById?.referencedSeriesUID === activeSeriesUID
+          ? activeStructureSetById
+          : structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID)
       )
     : undefined;
+  const activeStructure = activeSeriesStructureSet?.structures.find(
+    (structure) => structure.id === activeStructureId
+  );
 
   useEffect(() => {
     if (isAdding && inputRef.current) {
@@ -453,6 +486,25 @@ export default function StructurePanel() {
     }
   };
 
+  const handleActiveStructureColorChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!activeSeriesStructureSet || !activeStructure) return;
+
+    updateStructure(activeSeriesStructureSet.id, activeStructure.id, {
+      color: hexToRgb(event.target.value),
+    });
+    setStatusMessage(`Updated ${activeStructure.name} color.`);
+  };
+
+  const handleActiveStructureTypeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    if (!activeSeriesStructureSet || !activeStructure) return;
+
+    const nextType = event.target.value as StructureType;
+    updateStructure(activeSeriesStructureSet.id, activeStructure.id, {
+      type: nextType,
+    });
+    setStatusMessage(`Updated ${activeStructure.name} type to ${nextType}.`);
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Panel header */}
@@ -528,6 +580,59 @@ export default function StructurePanel() {
       {isActiveSeriesDirty && (
         <div className="px-3 py-1 border-b border-[#2a2a2a] bg-[#2a2112] text-[10px] text-[#f59e0b]">
           Local draft pending auto-save.
+        </div>
+      )}
+
+      {activeSeriesStructureSet && activeStructure && (
+        <div className="px-3 py-2 border-b border-[#2a2a2a] bg-[#202020] flex-none">
+          <div className="flex items-center gap-2">
+            <span
+              className="w-2.5 h-2.5 rounded-sm flex-none"
+              style={{ backgroundColor: rgbToHex(activeStructure.color) }}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] uppercase tracking-widest text-[#6b6b6b]">
+                Drawing target
+              </p>
+              <p className="truncate text-[11px] text-[#e5e5e5]" title={activeStructure.name}>
+                {activeStructure.name}
+                {activeStructure.isLocked ? (
+                  <span className="ml-1 text-[#f59e0b]">(locked)</span>
+                ) : null}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1">
+            <label htmlFor="active-structure-color" className="text-[10px] text-[#6b6b6b]">
+              Color
+            </label>
+            <input
+              id="active-structure-color"
+              aria-label="Active structure color"
+              type="color"
+              value={rgbToHex(activeStructure.color)}
+              onChange={handleActiveStructureColorChange}
+              className="h-6 w-full cursor-pointer rounded border border-[#3a3a3a] bg-[#2e2e2e]"
+            />
+
+            <label htmlFor="active-structure-type" className="text-[10px] text-[#6b6b6b]">
+              Type
+            </label>
+            <select
+              id="active-structure-type"
+              aria-label="Active structure type"
+              value={activeStructure.type}
+              onChange={handleActiveStructureTypeChange}
+              className="h-6 rounded border border-[#3a3a3a] bg-[#2e2e2e] px-1 text-[11px] text-[#e5e5e5] focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {STRUCTURE_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 

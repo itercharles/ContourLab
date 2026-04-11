@@ -138,7 +138,12 @@ describe('StructurePanel local draft and RTSTRUCT upload interactions', () => {
     render(<StructurePanel />);
 
     fireEvent.doubleClick(screen.getByTitle('Double-click to rename'));
-    fireEvent.change(screen.getByDisplayValue('PTV'), {
+    const renameInput = screen
+      .getAllByDisplayValue('PTV')
+      .find((element) => element.tagName.toLowerCase() === 'input');
+    expect(renameInput).toBeTruthy();
+
+    fireEvent.change(renameInput!, {
       target: { value: 'CTV' },
     });
     fireEvent.keyDown(screen.getByDisplayValue('CTV'), { key: 'Enter' });
@@ -150,6 +155,37 @@ describe('StructurePanel local draft and RTSTRUCT upload interactions', () => {
           .structureSets[0]
           .structures.some((structure) => structure.name === 'CTV')
       ).toBe(true)
+    );
+  });
+
+  it('shows the active drawing target and edits its color', async () => {
+    render(<StructurePanel />);
+
+    expect(screen.getByText('Drawing target')).toBeTruthy();
+    expect(screen.getAllByText('PTV').length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByLabelText('Active structure color'), {
+      target: { value: '#ff8800' },
+    });
+
+    await waitFor(() =>
+      expect(useStructureStore.getState().structureSets[0].structures[0].color).toEqual([
+        255,
+        136,
+        0,
+      ])
+    );
+  });
+
+  it('edits the active structure type', async () => {
+    render(<StructurePanel />);
+
+    fireEvent.change(screen.getByLabelText('Active structure type'), {
+      target: { value: 'OAR' },
+    });
+
+    await waitFor(() =>
+      expect(useStructureStore.getState().structureSets[0].structures[0].type).toBe('OAR')
     );
   });
 

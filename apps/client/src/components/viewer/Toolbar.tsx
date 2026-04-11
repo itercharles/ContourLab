@@ -4,7 +4,7 @@ import { MPRController, VIEWPORT_IDS } from '../../core/rendering/MPRController'
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { ContourEngine } from '../../core/contouring/ContourEngine';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
-import { findContourOnSlice } from '../../core/contouring/contourOverlayUtils';
+import { findContourOnFrame } from '../../core/contouring/contourOverlayUtils';
 import { WINDOW_LEVEL_PRESETS } from '../../core/rendering/WindowLevelPresets';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
@@ -124,8 +124,14 @@ interface AxialViewportLike {
   getCamera?: () => { focalPoint?: [number, number, number] };
 }
 
+interface SliceFrame {
+  sopInstanceUID: string;
+  sliceLocation: number;
+}
+
 export default function Toolbar() {
   const [axialRevision, setAxialRevision] = useState(0);
+  const [undoRedoRevision, setUndoRedoRevision] = useState(0);
   const activeTool = useUIStore((s) => s.activeTool);
   const setActiveTool = useUIStore((s) => s.setActiveTool);
   const windowLevelPreset = useUIStore((s) => s.windowLevelPreset);
@@ -136,13 +142,18 @@ export default function Toolbar() {
   const setRightSidebarOpen = useUIStore((s) => s.setRightSidebarOpen);
   const setActiveViewport = useUIStore((s) => s.setActiveViewport);
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
+  const loadedSeries = useVolumeStore((s) => s.loadedSeries);
   const structureSets = useStructureStore((s) => s.structureSets);
   const activeStructureSetId = useStructureStore((s) => s.activeStructureSetId);
   const activeStructureId = useStructureStore((s) => s.activeStructureId);
   const activeToolMeta = TOOL_META[activeTool];
+  const activeStructureSetById = structureSets.find(
+    (structureSet) => structureSet.id === activeStructureSetId
+  );
   const activeStructureSet =
-    structureSets.find((structureSet) => structureSet.id === activeStructureSetId) ??
-    structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID);
+    activeStructureSetById?.referencedSeriesUID === activeSeriesUID
+      ? activeStructureSetById
+      : structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID);
   const activeStructure = activeStructureSet?.structures.find(
     (structure) => structure.id === activeStructureId
   );
@@ -162,6 +173,12 @@ export default function Toolbar() {
     };
   }, []);
 
+  useEffect(() => {
+    return UndoRedoManager.subscribe(() => {
+      setUndoRedoRevision((value) => value + 1);
+    });
+  }, []);
+
   const axialViewport = useMemo(() => {
     void axialRevision;
     return ViewportManager.getRenderingEngine()?.getViewport(VIEWPORT_IDS.AXIAL) as
@@ -170,13 +187,38 @@ export default function Toolbar() {
   }, [axialRevision]);
 
   const axialSlicePosition = axialViewport?.getCamera?.()?.focalPoint?.[2] ?? 0;
-  const axialSliceTolerance = Math.max(
-    useVolumeStore.getState().loadedSeries.find((series) => series.seriesUID === activeSeriesUID)?.volume.spacing[2] ?? 1,
-    1
-  ) / 2;
+  const activeLoadedSeries = loadedSeries.find((series) => series.seriesUID === activeSeriesUID);
+  const currentFrame = useMemo(() => {
+    const instances: SliceFrame[] = (activeLoadedSeries?.series.instances ?? []).flatMap((instance) => (
+      Number.isFinite(instance.sliceLocation)
+        ? [{
+            sopInstanceUID: instance.sopInstanceUID,
+            sliceLocation: instance.sliceLocation as number,
+          }]
+        : []
+    ));
+    if (instances.length === 0) return undefined;
+
+    const [firstFrame, ...restFrames] = instances;
+    return restFrames.reduce((closest, frame) => (
+      Math.abs(frame.sliceLocation - axialSlicePosition) < Math.abs(closest.sliceLocation - axialSlicePosition)
+        ? frame
+        : closest
+    ), firstFrame);
+  }, [activeLoadedSeries?.series.instances, axialSlicePosition]);
+  const axialSliceTolerance = Math.max(activeLoadedSeries?.volume.spacing[2] ?? 1, 1) / 2;
+  const currentSlicePosition = currentFrame?.sliceLocation ?? axialSlicePosition;
   const activeContourOnSlice = activeStructure
-    ? findContourOnSlice(activeStructure.contours, axialSlicePosition, axialSliceTolerance)
+    ? findContourOnFrame(
+        activeStructure.contours,
+        currentFrame?.sopInstanceUID,
+        currentSlicePosition,
+        axialSliceTolerance
+      )
     : undefined;
+  void undoRedoRevision;
+  const canUndo = UndoRedoManager.canUndo();
+  const canRedo = UndoRedoManager.canRedo();
   const canUseFreehand =
     !!activeSeriesUID &&
     !!activeStructureSet &&
@@ -262,13 +304,10 @@ export default function Toolbar() {
       activeStructure.id,
       activeContourOnSlice.slicePosition
     );
-    const activeSeries = useVolumeStore
-      .getState()
-      .loadedSeries.find((series) => series.seriesUID === activeSeriesUID);
     StructureSetManager.refreshVolume(
       activeStructureSet.id,
       activeStructure.id,
-      activeSeries?.volume.spacing[2] || 1
+      activeLoadedSeries?.volume.spacing[2] || 1
     );
     setActiveViewport('AXIAL');
     logClientDebug(
@@ -362,8 +401,8 @@ export default function Toolbar() {
       <div className="flex items-center gap-1">
         <button
           onClick={handleUndo}
-          disabled={!UndoRedoManager.canUndo()}
-          title="Undo [Ctrl+Z]"
+          disabled={!canUndo}
+          title={canUndo ? `Undo: ${UndoRedoManager.getUndoDescription()} [Ctrl+Z]` : 'Undo [Ctrl+Z]'}
           className="w-7 h-7 flex items-center justify-center rounded text-[11px] font-medium bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -373,8 +412,8 @@ export default function Toolbar() {
         </button>
         <button
           onClick={handleRedo}
-          disabled={!UndoRedoManager.canRedo()}
-          title="Redo [Ctrl+Shift+Z]"
+          disabled={!canRedo}
+          title={canRedo ? `Redo: ${UndoRedoManager.getRedoDescription()} [Ctrl+Shift+Z]` : 'Redo [Ctrl+Shift+Z]'}
           className="w-7 h-7 flex items-center justify-center rounded text-[11px] font-medium bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -385,7 +424,11 @@ export default function Toolbar() {
         <button
           onClick={handleDeleteContour}
           disabled={!canDeleteContour}
-          title="Delete contour on current slice [Delete]"
+          title={
+            canDeleteContour
+              ? `Delete contour on z=${activeContourOnSlice.slicePosition.toFixed(1)} [Delete]`
+              : 'No active contour on current slice'
+          }
           className="w-7 h-7 flex items-center justify-center rounded text-[11px] font-medium bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#ef4444] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -396,6 +439,17 @@ export default function Toolbar() {
           </svg>
         </button>
       </div>
+
+      {activeTool === 'freehand' && activeStructure && (
+        <div className="ml-1 min-w-0 max-w-44 text-[10px] leading-none">
+          <p className="truncate text-[#a0a0a0]" title={activeStructure.name}>
+            ROI: {activeStructure.name}
+          </p>
+          <p className={activeContourOnSlice ? 'mt-0.5 text-[#22c55e]' : 'mt-0.5 text-[#6b6b6b]'}>
+            {activeContourOnSlice ? 'Current slice has contour' : 'No contour on current slice'}
+          </p>
+        </div>
+      )}
 
       {/* Spacer — pushes panel toggle to the right */}
       <div className="ml-auto" />

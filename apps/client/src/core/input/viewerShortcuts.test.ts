@@ -104,4 +104,27 @@ describe('installViewerShortcutHandler', () => {
 
     cleanup();
   });
+
+  it('does not activate freehand from a selected structure set that belongs to another series', () => {
+    mocks.volumeStore.activeSeriesUID = 'series-2';
+    mocks.structureStore.structureSets = [
+      {
+        id: 'ss-1',
+        referencedSeriesUID: 'series-1',
+        structures: [{ id: 'structure-1', isLocked: false }],
+      },
+    ];
+    mocks.structureStore.activeStructureSetId = 'ss-1';
+    mocks.structureStore.activeStructureId = 'structure-1';
+
+    const cleanup = installViewerShortcutHandler();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
+
+    expect(mocks.uiStore.setActiveTool).not.toHaveBeenCalled();
+    expect(mocks.uiStore.setRightSidebarOpen).toHaveBeenCalledWith(true);
+    expect(mocks.uiStore.setActiveViewport).toHaveBeenCalledWith('AXIAL');
+
+    cleanup();
+  });
 });

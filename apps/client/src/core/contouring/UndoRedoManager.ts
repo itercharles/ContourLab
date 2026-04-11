@@ -9,12 +9,20 @@ export interface ContourCommand {
 class UndoRedoManagerClass {
   private undoStack: ContourCommand[] = [];
   private redoStack: ContourCommand[] = [];
+  private listeners = new Set<() => void>();
+
+  private emit(): void {
+    for (const listener of this.listeners) {
+      listener();
+    }
+  }
 
   push(cmd: ContourCommand): void {
     cmd.execute();
     this.undoStack.push(cmd);
     if (this.undoStack.length > MAX_DEPTH) this.undoStack.shift();
     this.redoStack = [];
+    this.emit();
   }
 
   undo(): void {
@@ -22,6 +30,7 @@ class UndoRedoManagerClass {
     if (cmd) {
       cmd.undo();
       this.redoStack.push(cmd);
+      this.emit();
     }
   }
 
@@ -30,6 +39,7 @@ class UndoRedoManagerClass {
     if (cmd) {
       cmd.execute();
       this.undoStack.push(cmd);
+      this.emit();
     }
   }
 
@@ -44,6 +54,7 @@ class UndoRedoManagerClass {
   clear(): void {
     this.undoStack = [];
     this.redoStack = [];
+    this.emit();
   }
 
   getUndoDescription(): string | null {
@@ -52,6 +63,13 @@ class UndoRedoManagerClass {
 
   getRedoDescription(): string | null {
     return this.redoStack.at(-1)?.description ?? null;
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 }
 

@@ -29,13 +29,15 @@ async function activateTool(tool: ViewerTool): Promise<void> {
     const volumeStore = useVolumeStore.getState();
     const structureStore = useStructureStore.getState();
 
+    const activeStructureSetById = structureStore.structureSets.find(
+      (structureSet) => structureSet.id === structureStore.activeStructureSetId
+    );
     const activeStructureSet =
-      structureStore.structureSets.find(
-        (structureSet) => structureSet.id === structureStore.activeStructureSetId
-      ) ??
-      structureStore.structureSets.find(
-        (structureSet) => structureSet.referencedSeriesUID === volumeStore.activeSeriesUID
-      );
+      activeStructureSetById?.referencedSeriesUID === volumeStore.activeSeriesUID
+        ? activeStructureSetById
+        : structureStore.structureSets.find(
+            (structureSet) => structureSet.referencedSeriesUID === volumeStore.activeSeriesUID
+          );
 
     const activeStructure = activeStructureSet?.structures.find(
       (structure) => structure.id === structureStore.activeStructureId
