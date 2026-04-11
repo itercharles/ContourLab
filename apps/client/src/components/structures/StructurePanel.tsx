@@ -9,11 +9,16 @@ import {
   replaceStructureSetsForSeries,
 } from '../../core/structures/structurePersistence';
 import { exportRtstructBlob } from '../../core/structures/rtstructExport';
+import { importRtstructArrayBuffer } from '../../core/structures/rtstructImport';
 import {
   loadStructureDraftForSeries,
   saveStructureDraftForSeries,
 } from '../../core/structures/structureDraftStore';
-import { uploadDicomBlobToRepository } from '../../core/dicom/dicomWebClient';
+import {
+  queryRtstructInstancesForStudy,
+  retrieveDicomWebInstance,
+  uploadDicomBlobToRepository,
+} from '../../core/dicom/dicomWebClient';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 
 const STRUCTURE_TYPES: StructureType[] = [
@@ -486,6 +491,43 @@ export default function StructurePanel() {
     }
   };
 
+  const handleImportRtstructFromRepository = async () => {
+    if (!activeLoadedSeries || !activeSeriesUID) return;
+
+    try {
+      setStatusMessage('Searching DICOM repository for RTSTRUCT...');
+      const rtstructInstances = await queryRtstructInstancesForStudy(
+        activeLoadedSeries.study.studyInstanceUID
+      );
+      if (rtstructInstances.length === 0) {
+        setStatusMessage('No RTSTRUCT found in the DICOM repository for this study.');
+        logClientDebug('StructurePanel', `import:rtstruct:none study=${activeLoadedSeries.study.studyInstanceUID}`);
+        return;
+      }
+
+      const instance = rtstructInstances[0];
+      const buffer = await retrieveDicomWebInstance(instance);
+      const importedStructureSet = await importRtstructArrayBuffer(buffer, activeSeriesUID);
+      replaceStructureSets(
+        replaceStructureSetsForSeries(structureSets, [importedStructureSet], activeSeriesUID)
+      );
+      setActiveStructureSet(importedStructureSet.id);
+      setActiveStructure(importedStructureSet.structures[0]?.id ?? null);
+      markSeriesClean(activeSeriesUID);
+      setStatusMessage(
+        `Imported RTSTRUCT with ${importedStructureSet.structures.length} structure(s) from repository.`
+      );
+      logClientDebug(
+        'StructurePanel',
+        `import:rtstruct series=${activeSeriesUID} sop=${instance.sopInstanceUID} structures=${importedStructureSet.structures.length}`
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to import RTSTRUCT.';
+      setStatusMessage(message);
+      logClientDebug('StructurePanel', `import:rtstruct:error ${message}`);
+    }
+  };
+
   const handleActiveStructureColorChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!activeSeriesStructureSet || !activeStructure) return;
 
@@ -532,6 +574,22 @@ export default function StructurePanel() {
               <path d="M2 1.5h6.5L10.5 3v7.5H2z" />
               <path d="M6 8V3" />
               <polyline points="3.5 5.5 6 3 8.5 5.5" />
+            </svg>
+          </button>
+          <button
+            onClick={handleImportRtstructFromRepository}
+            title={
+              activeLoadedSeries
+                ? 'Import latest RTSTRUCT from DICOM repository for this study'
+                : 'Load a series before importing RTSTRUCT'
+            }
+            disabled={!activeLoadedSeries}
+            className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 1.5h6.5L10.5 3v7.5H2z" />
+              <path d="M6 3v5.5" />
+              <polyline points="3.5 6 6 8.5 8.5 6" />
             </svg>
           </button>
           <button

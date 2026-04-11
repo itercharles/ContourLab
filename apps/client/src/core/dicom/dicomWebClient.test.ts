@@ -31,4 +31,24 @@ describe('dicomWebClient summary parsing', () => {
       },
     ]);
   });
+
+  it('extracts a DICOM object from a multipart WADO-RS response', () => {
+    const encoder = new TextEncoder();
+    const payload = new Uint8Array([1, 2, 3, 4]);
+    const prefix = encoder.encode(
+      '--boundary-1\r\nContent-Type: application/dicom\r\n\r\n'
+    );
+    const suffix = encoder.encode('\r\n--boundary-1--\r\n');
+    const multipart = new Uint8Array(prefix.length + payload.length + suffix.length);
+    multipart.set(prefix, 0);
+    multipart.set(payload, prefix.length);
+    multipart.set(suffix, prefix.length + payload.length);
+
+    const extracted = __testables__.extractDicomPart(
+      multipart.buffer,
+      'multipart/related; type=application/dicom; boundary=boundary-1'
+    );
+
+    expect(Array.from(new Uint8Array(extracted))).toEqual([1, 2, 3, 4]);
+  });
 });

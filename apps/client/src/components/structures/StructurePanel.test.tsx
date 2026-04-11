@@ -9,7 +9,10 @@ const mocks = vi.hoisted(() => ({
   loadStructureDraftForSeries: vi.fn(),
   saveStructureDraftForSeries: vi.fn(),
   uploadDicomBlobToRepository: vi.fn(),
+  queryRtstructInstancesForStudy: vi.fn(),
+  retrieveDicomWebInstance: vi.fn(),
   exportRtstructBlob: vi.fn(),
+  importRtstructArrayBuffer: vi.fn(),
 }));
 
 vi.mock('../../core/structures/structureDraftStore', () => ({
@@ -19,10 +22,16 @@ vi.mock('../../core/structures/structureDraftStore', () => ({
 
 vi.mock('../../core/dicom/dicomWebClient', () => ({
   uploadDicomBlobToRepository: mocks.uploadDicomBlobToRepository,
+  queryRtstructInstancesForStudy: mocks.queryRtstructInstancesForStudy,
+  retrieveDicomWebInstance: mocks.retrieveDicomWebInstance,
 }));
 
 vi.mock('../../core/structures/rtstructExport', () => ({
   exportRtstructBlob: mocks.exportRtstructBlob,
+}));
+
+vi.mock('../../core/structures/rtstructImport', () => ({
+  importRtstructArrayBuffer: mocks.importRtstructArrayBuffer,
 }));
 
 vi.mock('../../core/debug/clientDebugLog', () => ({
@@ -90,6 +99,9 @@ beforeEach(() => {
   mocks.loadStructureDraftForSeries.mockResolvedValue(null);
   mocks.saveStructureDraftForSeries.mockResolvedValue(undefined);
   mocks.uploadDicomBlobToRepository.mockResolvedValue(undefined);
+  mocks.queryRtstructInstancesForStudy.mockResolvedValue([]);
+  mocks.retrieveDicomWebInstance.mockResolvedValue(new ArrayBuffer(0));
+  mocks.importRtstructArrayBuffer.mockResolvedValue(makeStructureSet());
   useVolumeStore.setState({
     loadedSeries: [makeLoadedSeries()],
     activeSeriesUID: 'series-1',
@@ -132,6 +144,38 @@ describe('StructurePanel local draft and RTSTRUCT upload interactions', () => {
 
     await waitFor(() => expect(mocks.exportRtstructBlob).toHaveBeenCalledTimes(1));
     expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledWith(rtstructBlob);
+  });
+
+  it('imports the latest RTSTRUCT from the DICOM repository for the active study', async () => {
+    const imported = makeStructureSet();
+    imported.id = 'ss-imported';
+    imported.structures[0].id = 'structure-imported';
+    imported.structures[0].name = 'Brainstem';
+    const dicomBuffer = new ArrayBuffer(8);
+    mocks.queryRtstructInstancesForStudy.mockResolvedValue([
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-series-1',
+        sopInstanceUID: 'rtss-1',
+        seriesDescription: 'RTSTRUCT Thorax CT',
+        seriesDate: '20260411',
+        seriesTime: '120000',
+      },
+    ]);
+    mocks.retrieveDicomWebInstance.mockResolvedValue(dicomBuffer);
+    mocks.importRtstructArrayBuffer.mockResolvedValue(imported);
+
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByTitle('Import latest RTSTRUCT from DICOM repository for this study'));
+
+    await waitFor(() => expect(mocks.queryRtstructInstancesForStudy).toHaveBeenCalledWith('study-1'));
+    expect(mocks.retrieveDicomWebInstance).toHaveBeenCalledWith(expect.objectContaining({
+      sopInstanceUID: 'rtss-1',
+    }));
+    expect(mocks.importRtstructArrayBuffer).toHaveBeenCalledWith(dicomBuffer, 'series-1');
+    expect(useStructureStore.getState().activeStructureSetId).toBe('ss-imported');
+    expect(useStructureStore.getState().activeStructureId).toBe('structure-imported');
   });
 
   it('renames a structure with inline editing on double-click', async () => {

@@ -25,6 +25,15 @@ export interface DicomWebSeriesSummary {
   instanceCount: number;
 }
 
+export interface DicomWebRtstructInstance {
+  studyInstanceUID: string;
+  seriesInstanceUID: string;
+  sopInstanceUID: string;
+  seriesDescription: string;
+  seriesDate: string;
+  seriesTime: string;
+}
+
 const DICOMWEB_BASE_URL =
   (import.meta.env.VITE_DICOMWEB_BASE_URL as string | undefined) ?? '/dicom-web';
 
@@ -129,6 +138,103 @@ export async function uploadDicomBlobToRepository(blob: Blob): Promise<void> {
   }
 }
 
+export async function queryRtstructInstancesForStudy(
+  studyInstanceUID: string
+): Promise<DicomWebRtstructInstance[]> {
+  const seriesUrl = new URL(`${getDicomWebBaseUrl()}/series`, window.location.origin);
+  seriesUrl.searchParams.append('StudyInstanceUID', studyInstanceUID);
+  for (const field of [
+    'StudyInstanceUID',
+    'SeriesInstanceUID',
+    'SeriesDescription',
+    'SeriesDate',
+    'SeriesTime',
+    'Modality',
+  ]) {
+    seriesUrl.searchParams.append('includefield', field);
+  }
+
+  const seriesResponse = await fetch(seriesUrl, {
+    headers: {
+      Accept: 'application/dicom+json',
+    },
+  });
+
+  if (!seriesResponse.ok) {
+    throw new Error(`Failed to query RTSTRUCT series (${seriesResponse.status})`);
+  }
+
+  const seriesPayload = (await seriesResponse.json()) as DicomWebDataset[];
+  const rtstructSeries = buildSeriesSummaries(seriesPayload)
+    .filter((series) => series.studyInstanceUID === studyInstanceUID && series.modality === 'RTSTRUCT')
+    .sort((a, b) => b.seriesDescription.localeCompare(a.seriesDescription));
+
+  const instances = await Promise.all(
+    rtstructSeries.map(async (series) => {
+      const metadataUrl = `${getDicomWebBaseUrl()}/studies/${encodeURIComponent(
+        studyInstanceUID
+      )}/series/${encodeURIComponent(series.seriesInstanceUID)}/metadata`;
+      const metadataResponse = await fetch(metadataUrl, {
+        headers: {
+          Accept: 'application/dicom+json',
+        },
+      });
+
+      if (!metadataResponse.ok) {
+        throw new Error(`Failed to query RTSTRUCT metadata (${metadataResponse.status})`);
+      }
+
+      const metadataPayload = (await metadataResponse.json()) as DicomWebDataset[];
+      return metadataPayload.flatMap((dataset) => {
+        const sopInstanceUID = getStringValue(dataset, '00080018');
+        if (!sopInstanceUID) return [];
+
+        return [{
+          studyInstanceUID,
+          seriesInstanceUID: series.seriesInstanceUID,
+          sopInstanceUID,
+          seriesDescription: series.seriesDescription,
+          seriesDate: getStringValue(
+            dataset,
+            '00080021',
+            getStringValue(dataset, '00080023', getStringValue(dataset, '00080012'))
+          ),
+          seriesTime: getStringValue(
+            dataset,
+            '00080031',
+            getStringValue(dataset, '00080033', getStringValue(dataset, '00080013'))
+          ),
+        }];
+      });
+    })
+  );
+
+  return instances
+    .flat()
+    .sort((a, b) => `${b.seriesDate}${b.seriesTime}`.localeCompare(`${a.seriesDate}${a.seriesTime}`));
+}
+
+export async function retrieveDicomWebInstance(instance: DicomWebRtstructInstance): Promise<ArrayBuffer> {
+  const response = await fetch(
+    `${getDicomWebBaseUrl()}/studies/${encodeURIComponent(instance.studyInstanceUID)}` +
+      `/series/${encodeURIComponent(instance.seriesInstanceUID)}` +
+      `/instances/${encodeURIComponent(instance.sopInstanceUID)}`,
+    {
+      headers: {
+        Accept: 'multipart/related; type=application/dicom, application/dicom',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to retrieve DICOM instance (${response.status})`);
+  }
+
+  const buffer = await response.arrayBuffer();
+  const contentType = response.headers.get('content-type') ?? '';
+  return extractDicomPart(buffer, contentType);
+}
+
 export async function loadSeriesFromDicomWeb(
   summary: DicomWebSeriesSummary
 ): Promise<LoadedSeries> {
@@ -181,6 +287,7 @@ export async function loadSeriesFromDicomWeb(
 
 export const __testables__ = {
   buildSeriesSummaries,
+  extractDicomPart,
 };
 
 function buildSeriesSummaries(payload: DicomWebDataset[]): DicomWebSeriesSummary[] {
@@ -197,6 +304,34 @@ function buildSeriesSummaries(payload: DicomWebDataset[]): DicomWebSeriesSummary
       instanceCount: getNumberValue(dataset, '00201209', 0),
     }))
     .filter((series) => Boolean(series.studyInstanceUID && series.seriesInstanceUID));
+}
+
+function extractDicomPart(buffer: ArrayBuffer, contentType: string): ArrayBuffer {
+  if (!contentType.toLowerCase().includes('multipart/related')) {
+    return buffer;
+  }
+
+  const boundary = contentType.match(/boundary="?([^";]+)"?/i)?.[1];
+  if (!boundary) {
+    return buffer;
+  }
+
+  const bytes = new Uint8Array(buffer);
+  const latin1 = new TextDecoder('latin1').decode(bytes);
+  const partHeaderStart = latin1.indexOf(`--${boundary}`);
+  if (partHeaderStart === -1) {
+    return buffer;
+  }
+
+  const headerEnd = latin1.indexOf('\r\n\r\n', partHeaderStart);
+  if (headerEnd === -1) {
+    return buffer;
+  }
+
+  const dataStart = headerEnd + 4;
+  const nextBoundary = latin1.indexOf(`\r\n--${boundary}`, dataStart);
+  const dataEnd = nextBoundary === -1 ? bytes.length : nextBoundary;
+  return bytes.slice(dataStart, dataEnd).buffer;
 }
 
 function parseInstance(
