@@ -30,6 +30,20 @@ interface RenderableContour {
   strokeWidth: number;
 }
 
+interface SliceFrame {
+  sopInstanceUID: string;
+  sliceLocation: number;
+}
+
+interface CanvasMetrics {
+  viewportWidth: number;
+  viewportHeight: number;
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+}
+
 export default function ContourOverlay({
   viewportId,
   viewportElement,
@@ -96,6 +110,43 @@ export default function ContourOverlay({
       | undefined;
   }, [revision, viewportId]);
 
+  const canvasMetrics = useMemo<CanvasMetrics>(() => {
+    if (!viewportElement) {
+      return {
+        viewportWidth: 0,
+        viewportHeight: 0,
+        offsetX: 0,
+        offsetY: 0,
+        width: 0,
+        height: 0,
+      };
+    }
+
+    const canvas = viewportElement.querySelector('canvas');
+    if (!(canvas instanceof HTMLCanvasElement)) {
+      return {
+        viewportWidth: viewportElement.clientWidth,
+        viewportHeight: viewportElement.clientHeight,
+        offsetX: 0,
+        offsetY: 0,
+        width: viewportElement.clientWidth,
+        height: viewportElement.clientHeight,
+      };
+    }
+
+    const viewportRect = viewportElement.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+
+    return {
+      viewportWidth: viewportRect.width,
+      viewportHeight: viewportRect.height,
+      offsetX: canvasRect.left - viewportRect.left,
+      offsetY: canvasRect.top - viewportRect.top,
+      width: canvasRect.width,
+      height: canvasRect.height,
+    };
+  }, [revision, viewportElement]);
+
   const activeSeries = activeSeriesUID
     ? loadedSeries.find((series) => series.seriesUID === activeSeriesUID)
     : undefined;
@@ -117,15 +168,23 @@ export default function ContourOverlay({
   }, [viewport, revision]);
 
   const currentFrame = useMemo(() => {
-    const instances = activeSeries?.series.instances;
-    if (!instances || instances.length === 0) return undefined;
+    const sourceInstances = activeSeries?.series.instances ?? [];
+    const instances: SliceFrame[] = sourceInstances.flatMap((instance) => (
+      Number.isFinite(instance.sliceLocation)
+        ? [{
+            sopInstanceUID: instance.sopInstanceUID,
+            sliceLocation: instance.sliceLocation as number,
+          }]
+        : []
+    ));
+    if (instances.length === 0) return undefined;
 
-    return instances.reduce((closest, frame) => {
-      if (!closest) return frame;
+    const [firstFrame, ...restFrames] = instances;
+    return restFrames.reduce((closest, frame) => {
       return Math.abs(frame.sliceLocation - focalPointZ) < Math.abs(closest.sliceLocation - focalPointZ)
         ? frame
         : closest;
-    }, instances[0]);
+    }, firstFrame);
   }, [activeSeries, focalPointZ]);
 
   const currentSlicePosition = currentFrame?.sliceLocation ?? focalPointZ;
@@ -135,6 +194,11 @@ export default function ContourOverlay({
     if (!viewport || !activeStructureSet) {
       return [] as RenderableContour[];
     }
+
+    const worldToOverlayCanvas = (worldPoint: [number, number, number]) => {
+      const [x, y] = viewport.worldToCanvas(worldPoint);
+      return [x + canvasMetrics.offsetX, y + canvasMetrics.offsetY] as [number, number];
+    };
 
     return activeStructureSet.structures
       .filter((structure) => structure.isVisible ?? true)
@@ -147,7 +211,7 @@ export default function ContourOverlay({
           .flatMap((contour) => {
             try {
               return [{
-                path: `${projectContourToCanvasPath(contour.points, viewport.worldToCanvas)} Z`,
+                path: `${projectContourToCanvasPath(contour.points, worldToOverlayCanvas)} Z`,
                 color,
                 strokeWidth: structure.id === activeStructureId ? 2 : 1.25,
               }];
@@ -159,6 +223,8 @@ export default function ContourOverlay({
   }, [
     activeStructureId,
     activeStructureSet,
+    canvasMetrics.offsetX,
+    canvasMetrics.offsetY,
     currentSlicePosition,
     sliceTolerance,
     viewport,
@@ -168,19 +234,25 @@ export default function ContourOverlay({
     if (!viewport || draftPoints.length < 2) return '';
 
     try {
+      const worldToOverlayCanvas = (worldPoint: [number, number, number]) => {
+        const [x, y] = viewport.worldToCanvas(worldPoint);
+        return [x + canvasMetrics.offsetX, y + canvasMetrics.offsetY] as [number, number];
+      };
+
       return `${projectContourToCanvasPath(
         flattenWorldPoints(draftPoints),
-        viewport.worldToCanvas
+        worldToOverlayCanvas
       )} Z`;
     } catch {
       return '';
     }
-  }, [draftPoints, viewport]);
+  }, [canvasMetrics.offsetX, canvasMetrics.offsetY, draftPoints, viewport]);
 
   const isDrawable =
     activeTool === 'freehand' &&
     !!viewport &&
     !!activeSeries &&
+    !!currentFrame &&
     !!activeStructureSet &&
     !!activeStructure &&
     !(activeStructure.isLocked ?? false);
@@ -196,10 +268,23 @@ export default function ContourOverlay({
         `set=${activeStructureSet?.id ?? 'none'}`,
         `structure=${activeStructure?.id ?? 'none'}`,
         `locked=${activeStructure?.isLocked ? 'yes' : 'no'}`,
+        `slice=${currentSlicePosition.toFixed(2)}`,
+        `frame=${currentFrame?.sopInstanceUID ?? 'none'}`,
+        `viewport=${canvasMetrics.viewportWidth.toFixed(1)}x${canvasMetrics.viewportHeight.toFixed(1)}`,
+        `canvas=${canvasMetrics.width.toFixed(1)}x${canvasMetrics.height.toFixed(1)}`,
+        `offset=${canvasMetrics.offsetX.toFixed(1)},${canvasMetrics.offsetY.toFixed(1)}`,
       ].join(' ')
     );
   }, [
+    canvasMetrics.viewportHeight,
+    canvasMetrics.viewportWidth,
     activeSeriesUID,
+    canvasMetrics.height,
+    canvasMetrics.offsetX,
+    canvasMetrics.offsetY,
+    canvasMetrics.width,
+    currentFrame?.sopInstanceUID,
+    currentSlicePosition,
     activeStructure?.id,
     activeStructure?.isLocked,
     activeStructureSet?.id,
@@ -216,6 +301,8 @@ export default function ContourOverlay({
 
     if (!activeSeries) {
       setStatusMessage('Load a series to draw.');
+    } else if (!currentFrame) {
+      setStatusMessage('Current slice metadata is unavailable.');
     } else if (!activeStructureSet || !activeStructure) {
       setStatusMessage('Create or select a structure to draw.');
     } else if (activeStructure.isLocked ?? false) {
@@ -223,14 +310,19 @@ export default function ContourOverlay({
     } else {
       setStatusMessage('Drag on the axial view to draw a contour.');
     }
-  }, [activeSeries, activeStructure, activeStructureSet, activeTool]);
+  }, [activeSeries, activeStructure, activeStructureSet, activeTool, currentFrame]);
 
   const getCanvasPoint = (event: React.PointerEvent<SVGSVGElement>): [number, number] | null => {
     const svg = svgRef.current;
     if (!svg) return null;
 
     const rect = svg.getBoundingClientRect();
-    return [event.clientX - rect.left, event.clientY - rect.top];
+    const rawX = event.clientX - rect.left - canvasMetrics.offsetX;
+    const rawY = event.clientY - rect.top - canvasMetrics.offsetY;
+    const clampedX = Math.min(Math.max(rawX, 0), canvasMetrics.width);
+    const clampedY = Math.min(Math.max(rawY, 0), canvasMetrics.height);
+
+    return [clampedX, clampedY];
   };
 
   const appendPoint = (canvasPoint: [number, number]) => {
@@ -241,8 +333,12 @@ export default function ContourOverlay({
       const point: WorldPoint = [worldPoint[0], worldPoint[1], currentSlicePosition];
       draftPointsRef.current = [...draftPointsRef.current, point];
       setDraftPoints(draftPointsRef.current);
-    } catch {
-      // Ignore transient projection failures while the viewport is updating.
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logClientDebug(
+        'ContourOverlay',
+        `appendPoint:error viewport=${viewportId} x=${canvasPoint[0].toFixed(1)} y=${canvasPoint[1].toFixed(1)} ${message}`
+      );
     }
   };
 
@@ -351,7 +447,15 @@ export default function ContourOverlay({
     <svg
       ref={svgRef}
       className="absolute inset-0 z-10"
-      style={{ pointerEvents: activeTool === 'freehand' ? 'auto' : 'none' }}
+      width={canvasMetrics.viewportWidth || undefined}
+      height={canvasMetrics.viewportHeight || undefined}
+      viewBox={
+        canvasMetrics.viewportWidth > 0 && canvasMetrics.viewportHeight > 0
+          ? `0 0 ${canvasMetrics.viewportWidth} ${canvasMetrics.viewportHeight}`
+          : undefined
+      }
+      preserveAspectRatio="none"
+      style={{ pointerEvents: activeTool === 'freehand' ? 'auto' : 'none', touchAction: 'none' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

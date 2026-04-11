@@ -1,5 +1,8 @@
 import { MPRController } from '../rendering/MPRController';
 import { useUIStore, type ViewerTool } from '../store/uiStore';
+import { useStructureStore } from '../store/structureStore';
+import { useVolumeStore } from '../store/volumeStore';
+import { logClientDebug } from '../debug/clientDebugLog';
 
 const TOOL_NAME_MAP: Partial<Record<ViewerTool, string>> = {
   windowLevel: 'WindowLevelTool',
@@ -21,6 +24,48 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 async function activateTool(tool: ViewerTool): Promise<void> {
+  if (tool === 'freehand') {
+    const uiStore = useUIStore.getState();
+    const volumeStore = useVolumeStore.getState();
+    const structureStore = useStructureStore.getState();
+
+    const activeStructureSet =
+      structureStore.structureSets.find(
+        (structureSet) => structureSet.id === structureStore.activeStructureSetId
+      ) ??
+      structureStore.structureSets.find(
+        (structureSet) => structureSet.referencedSeriesUID === volumeStore.activeSeriesUID
+      );
+
+    const activeStructure = activeStructureSet?.structures.find(
+      (structure) => structure.id === structureStore.activeStructureId
+    );
+
+    const canUseFreehand =
+      !!volumeStore.activeSeriesUID &&
+      !!activeStructureSet &&
+      !!activeStructure &&
+      !(activeStructure.isLocked ?? false);
+
+    if (!canUseFreehand) {
+      uiStore.setRightSidebarOpen(true);
+      uiStore.setActiveViewport('AXIAL');
+      logClientDebug(
+        'ViewerShortcut',
+        [
+          'freehand:blocked',
+          `series=${volumeStore.activeSeriesUID ?? 'none'}`,
+          `set=${activeStructureSet?.id ?? 'none'}`,
+          `structure=${activeStructure?.id ?? 'none'}`,
+          `locked=${activeStructure?.isLocked ? 'yes' : 'no'}`,
+        ].join(' ')
+      );
+      return;
+    }
+
+    uiStore.setActiveViewport('AXIAL');
+  }
+
   useUIStore.getState().setActiveTool(tool);
 
   const cornerstoneTool = TOOL_NAME_MAP[tool];

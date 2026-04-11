@@ -7,6 +7,7 @@ interface StructureState {
   activeStructureSetId: string | null;
   activeStructureId: string | null;
   addStructureSet: (ss: StructureSet) => void;
+  replaceStructureSets: (structureSets: StructureSet[]) => void;
   setActiveStructureSet: (id: string | null) => void;
   setActiveStructure: (id: string | null) => void;
   addStructure: (setId: string, s: Structure) => void;
@@ -37,6 +38,11 @@ export const useStructureStore = create<StructureState>()(
       set((state) => {
         state.structureSets.push(ss);
         if (state.activeStructureSetId === null) state.activeStructureSetId = ss.id;
+      }),
+
+    replaceStructureSets: (structureSets) =>
+      set((state) => {
+        state.structureSets = structureSets;
       }),
 
     setActiveStructureSet: (id) =>

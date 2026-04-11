@@ -1,10 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { Component, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { MPRController, VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import ContourOverlay from './ContourOverlay';
+
+class ContourErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(err: unknown) { console.error('ContourOverlay error:', err); }
+  render() { return this.state.failed ? null : this.props.children; }
+}
 
 interface ViewportPanelProps {
   id: string;
@@ -77,10 +85,12 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
         className="w-full h-full"
       />
       {orientation === 'AXIAL' && (
-        <ContourOverlay
-          viewportId={id}
-          viewportElement={viewportElement}
-        />
+        <ContourErrorBoundary>
+          <ContourOverlay
+            viewportId={id}
+            viewportElement={viewportElement}
+          />
+        </ContourErrorBoundary>
       )}
       <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
         {label}

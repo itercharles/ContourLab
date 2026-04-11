@@ -3,6 +3,8 @@ import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
 import type { Structure } from '@webtps/shared-types';
+import { exportStructureSets, importStructureSets } from '../../core/structures/structurePersistence';
+import { logClientDebug } from '../../core/debug/clientDebugLog';
 
 interface StructureRowProps {
   structure: Structure;
@@ -128,11 +130,15 @@ export default function StructurePanel() {
   const activeStructureSetId = useStructureStore((s) => s.activeStructureSetId);
   const activeStructureId = useStructureStore((s) => s.activeStructureId);
   const setActiveStructure = useStructureStore((s) => s.setActiveStructure);
+  const setActiveStructureSet = useStructureStore((s) => s.setActiveStructureSet);
+  const replaceStructureSets = useStructureStore((s) => s.replaceStructureSets);
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
 
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isAdding && inputRef.current) {
@@ -180,23 +186,109 @@ export default function StructurePanel() {
     else if (e.key === 'Escape') handleCancelAdd();
   };
 
+  const handleExport = () => {
+    if (structureSets.length === 0) return;
+
+    const payload = exportStructureSets(
+      structureSets,
+      activeStructureSetId,
+      activeStructureId
+    );
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: 'application/json',
+    });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const dateLabel = new Date().toISOString().replace(/[:.]/g, '-');
+
+    anchor.href = objectUrl;
+    anchor.download = `webtps-structures-${dateLabel}.json`;
+    anchor.click();
+    URL.revokeObjectURL(objectUrl);
+    setStatusMessage(`Exported ${payload.structureSets.length} structure set(s).`);
+    logClientDebug('StructurePanel', `export count=${payload.structureSets.length}`);
+  };
+
+  const handleImportClick = () => {
+    importInputRef.current?.click();
+  };
+
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const imported = importStructureSets(await file.text());
+      replaceStructureSets(imported.structureSets);
+      setActiveStructureSet(imported.activeStructureSetId);
+      setActiveStructure(imported.activeStructureId);
+      StructureSetManager.syncSelectionToSeries(activeSeriesUID);
+      setStatusMessage(`Imported ${imported.structureSets.length} structure set(s).`);
+      logClientDebug('StructurePanel', `import count=${imported.structureSets.length}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to import structure JSON.';
+      setStatusMessage(message);
+      logClientDebug('StructurePanel', `import:error ${message}`);
+    } finally {
+      event.target.value = '';
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Panel header */}
       <div className="px-3 py-1.5 flex items-center justify-between border-b border-[#2a2a2a] flex-none">
         <span className="text-[10px] font-semibold tracking-widest uppercase text-[#6b6b6b]">Structures</span>
-        <button
-          onClick={handleAddClick}
-          title={activeSeriesUID ? 'Add new structure' : 'Load a series first'}
-          disabled={!activeSeriesUID}
-          className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-blue-600 hover:text-white text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#2e2e2e] disabled:hover:text-[#a0a0a0]"
-        >
-          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <line x1="6" y1="1" x2="6" y2="11" />
-            <line x1="1" y1="6" x2="11" y2="6" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+          <button
+            onClick={handleExport}
+            title={structureSets.length > 0 ? 'Export structures JSON' : 'No structures to export'}
+            disabled={structureSets.length === 0}
+            className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 1v6" />
+              <polyline points="3.5 4.5 6 7 8.5 4.5" />
+              <path d="M2 9.5h8" />
+            </svg>
+          </button>
+          <button
+            onClick={handleImportClick}
+            title="Import structures JSON"
+            className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] text-xs transition-colors"
+          >
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 11V5" />
+              <polyline points="3.5 7.5 6 5 8.5 7.5" />
+              <path d="M2 2.5h8" />
+            </svg>
+          </button>
+          <button
+            onClick={handleAddClick}
+            title={activeSeriesUID ? 'Add new structure' : 'Load a series first'}
+            disabled={!activeSeriesUID}
+            className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-blue-600 hover:text-white text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#2e2e2e] disabled:hover:text-[#a0a0a0]"
+          >
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="6" y1="1" x2="6" y2="11" />
+              <line x1="1" y1="6" x2="11" y2="6" />
+            </svg>
+          </button>
+        </div>
       </div>
+
+      {statusMessage && (
+        <div className="px-3 py-1 border-b border-[#2a2a2a] bg-[#242424] text-[10px] text-[#a0a0a0]">
+          {statusMessage}
+        </div>
+      )}
 
       {/* Inline add form */}
       {isAdding && (
