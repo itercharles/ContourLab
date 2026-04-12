@@ -8,6 +8,9 @@ import type { StructureSet } from '@webtps/shared-types';
 const mocks = vi.hoisted(() => ({
   loadStructureDraftForSeries: vi.fn(),
   saveStructureDraftForSeries: vi.fn(),
+  getViewport: vi.fn(() => ({
+    getCamera: () => ({ focalPoint: [0, 0, 10] as [number, number, number] }),
+  })),
 }));
 
 vi.mock('../../core/structures/structureDraftStore', () => ({
@@ -17,6 +20,14 @@ vi.mock('../../core/structures/structureDraftStore', () => ({
 
 vi.mock('../../core/debug/clientDebugLog', () => ({
   logClientDebug: vi.fn(),
+}));
+
+vi.mock('../../core/rendering/ViewportManager', () => ({
+  ViewportManager: {
+    getRenderingEngine: vi.fn(() => ({
+      getViewport: mocks.getViewport,
+    })),
+  },
 }));
 
 function makeLoadedSeries(): LoadedSeries {
@@ -77,6 +88,9 @@ function makeStructureSet(): StructureSet {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.getViewport.mockReturnValue({
+    getCamera: () => ({ focalPoint: [0, 0, 10] as [number, number, number] }),
+  });
   mocks.loadStructureDraftForSeries.mockResolvedValue(null);
   mocks.saveStructureDraftForSeries.mockResolvedValue(undefined);
   useVolumeStore.setState({
@@ -181,6 +195,42 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByText('2 contour slices')).toBeTruthy();
     expect(screen.getByTitle('Jump to previous contour slice on the axial view ([)')).toBeTruthy();
     expect(screen.getByTitle('Jump to next contour slice on the axial view (])')).toBeTruthy();
+  });
+
+  it('marks structures that have contour data on the current axial slice', () => {
+    const loadedSeries = makeLoadedSeries();
+    loadedSeries.series.instances = [
+      { sopInstanceUID: 'sop-1', instanceNumber: 1, sliceLocation: 10 },
+      { sopInstanceUID: 'sop-2', instanceNumber: 2, sliceLocation: 20 },
+    ];
+    const structureSet = makeStructureSet();
+    structureSet.structures[0].contours = [
+      {
+        referencedSOPInstanceUID: 'sop-1',
+        slicePosition: 10,
+        points: new Float32Array([0, 0, 10, 1, 0, 10, 1, 1, 10]),
+        isClosed: true,
+      },
+      {
+        referencedSOPInstanceUID: 'sop-2',
+        slicePosition: 20,
+        points: new Float32Array([0, 0, 20, 1, 0, 20, 1, 1, 20]),
+        isClosed: true,
+      },
+    ];
+    useVolumeStore.setState({
+      loadedSeries: [loadedSeries],
+      activeSeriesUID: loadedSeries.seriesUID,
+    });
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    expect(screen.getByTitle('Contour on current axial slice')).toBeTruthy();
   });
 
   it('shows the active structure set source when it came from repository RTSTRUCT', () => {

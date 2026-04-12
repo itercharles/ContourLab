@@ -14,6 +14,7 @@ import {
   getReviewSlices,
   type ContourReviewDirection,
 } from '../../core/structures/contourReview';
+import { findContourOnFrame } from '../../core/contouring/contourOverlayUtils';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
@@ -73,15 +74,30 @@ interface AxialViewportLike {
   render?: () => void;
 }
 
+interface SliceFrame {
+  sopInstanceUID: string;
+  sliceLocation: number;
+}
+
 interface StructureRowProps {
   structure: Structure;
   setId: string;
   isActive: boolean;
+  contourSliceCount: number;
+  hasContourOnCurrentSlice: boolean;
   onSelect: () => void;
   onStatus: (message: string) => void;
 }
 
-function StructureRow({ structure, setId, isActive, onSelect, onStatus }: StructureRowProps) {
+function StructureRow({
+  structure,
+  setId,
+  isActive,
+  contourSliceCount,
+  hasContourOnCurrentSlice,
+  onSelect,
+  onStatus,
+}: StructureRowProps) {
   const updateStructure = useStructureStore((s) => s.updateStructure);
   const deleteStructure = useStructureStore((s) => s.deleteStructure);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -192,6 +208,22 @@ function StructureRow({ structure, setId, isActive, onSelect, onStatus }: Struct
         </span>
       )}
 
+      {hasContourOnCurrentSlice ? (
+        <span
+          title="Contour on current axial slice"
+          className="mr-1 rounded border border-[#15803d] bg-[#12301f] px-1 text-[9px] font-semibold uppercase tracking-wider text-[#22c55e] flex-none"
+        >
+          slice
+        </span>
+      ) : contourSliceCount > 0 ? (
+        <span
+          title={`${contourSliceCount} contour slice${contourSliceCount === 1 ? '' : 's'}`}
+          className="mr-1 text-[10px] text-[#6b6b6b] flex-none"
+        >
+          {contourSliceCount} sl
+        </span>
+      ) : null}
+
       {/* Action buttons — visible on row hover or when active */}
       <div className={`flex items-center gap-0.5 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
         {/* Visibility toggle */}
@@ -268,6 +300,7 @@ export default function StructurePanel() {
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [axialRevision, setAxialRevision] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const attemptedAutoLoadSeriesRef = useRef(new Set<string>());
   const draftSaveTimerRef = useRef<number | null>(null);
@@ -291,12 +324,73 @@ export default function StructurePanel() {
   const activeStructureReviewSlices = activeStructure
     ? getReviewSlices(activeStructure.contours)
     : [];
+  void axialRevision;
+  const axialViewport = ViewportManager
+    .getRenderingEngine()
+    ?.getViewport(VIEWPORT_IDS.AXIAL) as AxialViewportLike | undefined;
+  const axialSlicePosition = axialViewport?.getCamera?.().focalPoint?.[2] ?? 0;
+  const activeSeriesFrames: SliceFrame[] = (activeLoadedSeries?.series.instances ?? []).flatMap(
+    (instance) => Number.isFinite(instance.sliceLocation)
+      ? [{
+          sopInstanceUID: instance.sopInstanceUID,
+          sliceLocation: instance.sliceLocation as number,
+        }]
+      : []
+  );
+  const [firstFrame, ...restFrames] = activeSeriesFrames;
+  const currentFrame = firstFrame
+    ? restFrames.reduce((closest, frame) => (
+        Math.abs(frame.sliceLocation - axialSlicePosition) < Math.abs(closest.sliceLocation - axialSlicePosition)
+          ? frame
+          : closest
+      ), firstFrame)
+    : undefined;
+  const currentSlicePosition = currentFrame?.sliceLocation ?? axialSlicePosition;
+  const sliceTolerance = Math.max(activeLoadedSeries?.volume.spacing[2] ?? 1, 1) / 2;
 
   useEffect(() => {
     if (isAdding && inputRef.current) {
       inputRef.current.focus();
     }
   }, [isAdding]);
+
+  useEffect(() => {
+    let animationFrame: number | null = null;
+    let cleanup: (() => void) | null = null;
+    let attempts = 0;
+
+    const attach = () => {
+      const axialElement = document.querySelector<HTMLDivElement>(
+        `[data-viewport-id="${VIEWPORT_IDS.AXIAL}"]`
+      );
+
+      if (!axialElement) {
+        attempts += 1;
+        if (attempts < 60) {
+          animationFrame = window.requestAnimationFrame(attach);
+        }
+        return;
+      }
+
+      const update = () => setAxialRevision((value) => value + 1);
+      axialElement.addEventListener('CORNERSTONE_IMAGE_RENDERED', update);
+      axialElement.addEventListener('CORNERSTONE_CAMERA_MODIFIED', update);
+      cleanup = () => {
+        axialElement.removeEventListener('CORNERSTONE_IMAGE_RENDERED', update);
+        axialElement.removeEventListener('CORNERSTONE_CAMERA_MODIFIED', update);
+      };
+      update();
+    };
+
+    attach();
+
+    return () => {
+      if (animationFrame !== null) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+      cleanup?.();
+    };
+  }, []);
 
   useEffect(() => {
     StructureSetManager.syncSelectionToSeries(activeSeriesUID);
@@ -749,6 +843,13 @@ export default function StructurePanel() {
                       structure={structure}
                       setId={ss.id}
                       isActive={structure.id === activeStructureId}
+                      contourSliceCount={getReviewSlices(structure.contours).length}
+                      hasContourOnCurrentSlice={!!findContourOnFrame(
+                        structure.contours,
+                        currentFrame?.sopInstanceUID,
+                        currentSlicePosition,
+                        sliceTolerance
+                      )}
                       onSelect={() => setActiveStructure(structure.id)}
                       onStatus={setStatusMessage}
                     />

@@ -11,7 +11,7 @@ import {
 } from '../../core/dicom/dicomWebClient';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useStructureStore } from '../../core/store/structureStore';
-import { exportRtstructBlob } from '../../core/structures/rtstructExport';
+import { exportRtstructObject } from '../../core/structures/rtstructExport';
 import { importRtstructArrayBuffer } from '../../core/structures/rtstructImport';
 import { replaceStructureSetsForSeries } from '../../core/structures/structurePersistence';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
@@ -116,6 +116,8 @@ export default function DicomRepoPanel() {
   const setActiveStructureSet = useStructureStore((s) => s.setActiveStructureSet);
   const setActiveStructure = useStructureStore((s) => s.setActiveStructure);
   const markSeriesDirty = useStructureStore((s) => s.markSeriesDirty);
+  const markSeriesClean = useStructureStore((s) => s.markSeriesClean);
+  const dirtySeriesUIDs = useStructureStore((s) => s.dirtySeriesUIDs);
 
   const [series, setSeries] = useState<DicomWebSeriesSummary[]>([]);
   const [rtstructByStudy, setRtstructByStudy] = useState<Record<string, DicomWebRtstructInstance[]>>({});
@@ -144,6 +146,7 @@ export default function DicomRepoPanel() {
           : structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID)
       )
     : undefined;
+  const isActiveSeriesDirty = !!activeSeriesUID && dirtySeriesUIDs.includes(activeSeriesUID);
   const patientGroups = useMemo(() => groupSeriesByPatient(series), [series]);
   const filteredPatientGroups = useMemo(() => {
     const query = patientQuery.trim().toLowerCase();
@@ -200,7 +203,14 @@ export default function DicomRepoPanel() {
           const instances = await queryRtstructInstancesForStudy(studyUID);
           setRtstructByStudy((current) => ({
             ...current,
-            [studyUID]: instances,
+            [studyUID]: [
+              ...instances,
+              ...(current[studyUID] ?? []).filter(
+                (currentInstance) => !instances.some(
+                  (instance) => instance.sopInstanceUID === currentInstance.sopInstanceUID
+                )
+              ),
+            ],
           }));
           logClientDebug('DicomRepoPanel', `query:rtstruct:auto study=${studyUID} count=${instances.length}`);
         } catch (error) {
@@ -372,17 +382,53 @@ export default function DicomRepoPanel() {
   );
 
   const onPushChanges = useCallback(async () => {
-    if (!activeLoadedSeries || !activeSeriesStructureSet) return;
+    if (!activeLoadedSeries || !activeSeriesStructureSet || !isActiveSeriesDirty) return;
 
     try {
       setIsPushingChanges(true);
       setStatus({ tone: 'muted', message: `Pushing ${activeSeriesStructureSet.label} changes as RTSTRUCT...` });
-      const blob = await exportRtstructBlob(activeLoadedSeries, activeSeriesStructureSet);
-      await uploadDicomBlobToRepository(blob);
+      const exported = await exportRtstructObject(activeLoadedSeries, activeSeriesStructureSet);
+      await uploadDicomBlobToRepository(exported.blob);
+      const pushedStructureSet = {
+        ...activeSeriesStructureSet,
+        source: {
+          type: 'rtstruct' as const,
+          label: exported.identifiers.seriesDescription,
+          sopInstanceUID: exported.identifiers.sopInstanceUID,
+          studyInstanceUID: exported.identifiers.studyInstanceUID,
+          seriesInstanceUID: exported.identifiers.seriesInstanceUID,
+          importedAt: new Date().toISOString(),
+        },
+      };
+      replaceStructureSets(
+        structureSets.map((structureSet) =>
+          structureSet.id === activeSeriesStructureSet.id ? pushedStructureSet : structureSet
+        )
+      );
+      setActiveStructureSet(pushedStructureSet.id);
+      setActiveStructure(pushedStructureSet.structures[0]?.id ?? null);
+      markSeriesClean(activeLoadedSeries.seriesUID);
+      const pushedInstance: DicomWebRtstructInstance = {
+        studyInstanceUID: exported.identifiers.studyInstanceUID,
+        seriesInstanceUID: exported.identifiers.seriesInstanceUID,
+        sopInstanceUID: exported.identifiers.sopInstanceUID,
+        seriesDescription: exported.identifiers.seriesDescription,
+        seriesDate: exported.identifiers.seriesDate,
+        seriesTime: exported.identifiers.seriesTime,
+      };
+      setRtstructByStudy((current) => ({
+        ...current,
+        [exported.identifiers.studyInstanceUID]: [
+          pushedInstance,
+          ...(current[exported.identifiers.studyInstanceUID] ?? []).filter(
+            (instance) => instance.sopInstanceUID !== pushedInstance.sopInstanceUID
+          ),
+        ],
+      }));
       setStatus({ tone: 'muted', message: `Pushed ${activeSeriesStructureSet.label} changes to the DICOM repository.` });
       logClientDebug(
         'DicomRepoPanel',
-        `upload:rtstruct series=${activeLoadedSeries.seriesUID} set=${activeSeriesStructureSet.id}`
+        `upload:rtstruct series=${activeLoadedSeries.seriesUID} set=${activeSeriesStructureSet.id} sop=${exported.identifiers.sopInstanceUID}`
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to push structure changes.';
@@ -391,7 +437,16 @@ export default function DicomRepoPanel() {
     } finally {
       setIsPushingChanges(false);
     }
-  }, [activeLoadedSeries, activeSeriesStructureSet]);
+  }, [
+    activeLoadedSeries,
+    activeSeriesStructureSet,
+    isActiveSeriesDirty,
+    markSeriesClean,
+    replaceStructureSets,
+    setActiveStructure,
+    setActiveStructureSet,
+    structureSets,
+  ]);
 
   const onLoadRtstruct = useCallback(
     async (instance: DicomWebRtstructInstance, imageSeries: DicomWebSeriesSummary[]) => {
@@ -505,12 +560,14 @@ export default function DicomRepoPanel() {
           <button
             type="button"
             onClick={() => void onPushChanges()}
-            disabled={!activeLoadedSeries || !activeSeriesStructureSet || isPushingChanges}
+            disabled={!activeLoadedSeries || !activeSeriesStructureSet || !isActiveSeriesDirty || isPushingChanges}
             className="h-7 rounded bg-[#242424] px-2 text-[11px] text-[#e5e5e5] hover:bg-[#2e2e2e] disabled:text-[#6b6b6b] disabled:hover:bg-[#242424] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
             title={
-              activeLoadedSeries && activeSeriesStructureSet
-                ? 'Push active structure changes to the DICOM repository as RTSTRUCT'
-                : 'Select a structure set for the active series first'
+              !activeLoadedSeries || !activeSeriesStructureSet
+                ? 'Select a structure set for the active series first'
+                : !isActiveSeriesDirty
+                  ? 'No local structure changes to push'
+                  : 'Push active structure changes to the DICOM repository as RTSTRUCT'
             }
           >
             {isPushingChanges ? 'Pushing' : 'Push Changes'}

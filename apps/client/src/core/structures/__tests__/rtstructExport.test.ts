@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { exportRtstructBlob } from '../rtstructExport';
+import { exportRtstructBlob, exportRtstructObject } from '../rtstructExport';
 import type { LoadedSeries } from '../../store/volumeStore';
 import type { StructureSet } from '@webtps/shared-types';
 
@@ -65,5 +65,17 @@ vi.mock('dcmjs', () => ({
 describe('exportRtstructBlob', () => {
   it('creates a DICOM blob for a structure set', async () => {
     await expect(exportRtstructBlob(loadedSeries, structureSet)).resolves.toBeInstanceOf(Blob);
+  });
+
+  it('returns identifiers for the newly generated RTSTRUCT object', async () => {
+    const exported = await exportRtstructObject(loadedSeries, structureSet);
+
+    expect(exported.blob).toBeInstanceOf(Blob);
+    expect(exported.identifiers).toEqual(expect.objectContaining({
+      studyInstanceUID: '1.2.study',
+      seriesInstanceUID: '2.25.1',
+      sopInstanceUID: '2.25.1',
+      seriesDescription: 'RTSTRUCT Thorax CT',
+    }));
   });
 });

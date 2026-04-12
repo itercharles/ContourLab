@@ -45,12 +45,34 @@ export async function exportRtstructBlob(
   loadedSeries: LoadedSeries,
   structureSet: StructureSet
 ): Promise<Blob> {
+  return (await exportRtstructObject(loadedSeries, structureSet)).blob;
+}
+
+export interface ExportedRtstructObject {
+  blob: Blob;
+  identifiers: {
+    studyInstanceUID: string;
+    seriesInstanceUID: string;
+    sopInstanceUID: string;
+    seriesDescription: string;
+    seriesDate: string;
+    seriesTime: string;
+  };
+}
+
+export async function exportRtstructObject(
+  loadedSeries: LoadedSeries,
+  structureSet: StructureSet
+): Promise<ExportedRtstructObject> {
   const dcmjs = await import('dcmjs');
   const { DicomMetaDictionary, DicomDict } = dcmjs.data;
 
   const now = new Date();
   const sopInstanceUID = DicomMetaDictionary.uid();
   const seriesInstanceUID = DicomMetaDictionary.uid();
+  const seriesDescription = `RTSTRUCT ${loadedSeries.series.seriesDescription ?? loadedSeries.seriesUID}`;
+  const seriesDate = formatDate(now);
+  const seriesTime = formatTime(now);
   const imageMetadata = DicomMetadataStore.getFirstImageMetadataForSeries(loadedSeries.seriesUID);
   const referencedFrameOfReferenceUID = imageMetadata?.frameOfReferenceUID ?? DicomMetaDictionary.uid();
   const referencedSOPClassUID = getImageStorageSOPClassUID(loadedSeries.series.modality);
@@ -64,7 +86,7 @@ export async function exportRtstructBlob(
 
   const roiContourSequence = structureSet.structures.map((structure, index) => ({
     ReferencedROINumber: index + 1,
-   ROIDisplayColor: structure.color,
+    ROIDisplayColor: structure.color,
     ContourSequence: structure.contours.map((contour) => ({
       ContourGeometricType: 'CLOSED_PLANAR',
       NumberOfContourPoints: contour.points.length / 3,
@@ -92,17 +114,17 @@ export async function exportRtstructBlob(
     StudyInstanceUID: loadedSeries.study.studyInstanceUID,
     SeriesInstanceUID: seriesInstanceUID,
     Modality: 'RTSTRUCT',
-    SeriesDescription: `RTSTRUCT ${loadedSeries.series.seriesDescription ?? loadedSeries.seriesUID}`,
+    SeriesDescription: seriesDescription,
     StructureSetLabel: structureSet.label.slice(0, 16) || 'RTSTRUCT',
     StructureSetName: structureSet.label,
-    StructureSetDate: formatDate(now),
-    StructureSetTime: formatTime(now),
-    SeriesDate: formatDate(now),
-    SeriesTime: formatTime(now),
-    ContentDate: formatDate(now),
-    ContentTime: formatTime(now),
-    InstanceCreationDate: formatDate(now),
-    InstanceCreationTime: formatTime(now),
+    StructureSetDate: seriesDate,
+    StructureSetTime: seriesTime,
+    SeriesDate: seriesDate,
+    SeriesTime: seriesTime,
+    ContentDate: seriesDate,
+    ContentTime: seriesTime,
+    InstanceCreationDate: seriesDate,
+    InstanceCreationTime: seriesTime,
     PatientName: formatPatientName(loadedSeries.patient.name),
     PatientID: loadedSeries.patient.mrn || loadedSeries.patient.id,
     PatientBirthDate: loadedSeries.patient.dateOfBirth?.replaceAll('-', '') || '',
@@ -134,7 +156,17 @@ export async function exportRtstructBlob(
   dicomDict.dict = DicomMetaDictionary.denaturalizeDataset(dataset);
   const buffer = dicomDict.write();
 
-  return new Blob([buffer], { type: 'application/dicom' });
+  return {
+    blob: new Blob([buffer], { type: 'application/dicom' }),
+    identifiers: {
+      studyInstanceUID: loadedSeries.study.studyInstanceUID,
+      seriesInstanceUID,
+      sopInstanceUID,
+      seriesDescription,
+      seriesDate,
+      seriesTime,
+    },
+  };
 }
 
 export function getRtstructFilename(loadedSeries: LoadedSeries, structureSet: StructureSet): string {

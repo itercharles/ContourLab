@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   uploadDicomBlobToRepository: vi.fn(),
   queryRtstructInstancesForStudy: vi.fn(),
   retrieveDicomWebInstance: vi.fn(),
-  exportRtstructBlob: vi.fn(),
+  exportRtstructObject: vi.fn(),
   importRtstructArrayBuffer: vi.fn(),
 }));
 
@@ -26,7 +26,7 @@ vi.mock('../../core/dicom/dicomWebClient', () => ({
 }));
 
 vi.mock('../../core/structures/rtstructExport', () => ({
-  exportRtstructBlob: mocks.exportRtstructBlob,
+  exportRtstructObject: mocks.exportRtstructObject,
 }));
 
 vi.mock('../../core/structures/rtstructImport', () => ({
@@ -114,7 +114,17 @@ beforeEach(() => {
   mocks.uploadDicomBlobToRepository.mockResolvedValue(undefined);
   mocks.queryRtstructInstancesForStudy.mockResolvedValue([]);
   mocks.retrieveDicomWebInstance.mockResolvedValue(new ArrayBuffer(0));
-  mocks.exportRtstructBlob.mockResolvedValue(new Blob(['dicom'], { type: 'application/dicom' }));
+  mocks.exportRtstructObject.mockResolvedValue({
+    blob: new Blob(['dicom'], { type: 'application/dicom' }),
+    identifiers: {
+      studyInstanceUID: 'study-1',
+      seriesInstanceUID: 'new-rtss-series',
+      sopInstanceUID: 'new-rtss-sop',
+      seriesDescription: 'RTSTRUCT Axial',
+      seriesDate: '20260412',
+      seriesTime: '101112',
+    },
+  });
   mocks.importRtstructArrayBuffer.mockResolvedValue(makeStructureSet());
 
   useVolumeStore.setState({
@@ -217,15 +227,55 @@ describe('DicomRepoPanel', () => {
       isLoading: false,
       loadError: null,
     });
-    const rtstructBlob = new Blob(['dicom'], { type: 'application/dicom' });
-    mocks.exportRtstructBlob.mockResolvedValue(rtstructBlob);
+    useStructureStore.getState().markSeriesDirty('series-1');
+    const exportedRtstruct = {
+      blob: new Blob(['dicom'], { type: 'application/dicom' }),
+      identifiers: {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'new-rtss-series',
+        sopInstanceUID: 'new-rtss-sop',
+        seriesDescription: 'RTSTRUCT Axial',
+        seriesDate: '20260412',
+        seriesTime: '101112',
+      },
+    };
+    mocks.exportRtstructObject.mockResolvedValue(exportedRtstruct);
 
     render(<DicomRepoPanel />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Push Changes' }));
 
-    await waitFor(() => expect(mocks.exportRtstructBlob).toHaveBeenCalledTimes(1));
-    expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledWith(rtstructBlob);
+    await waitFor(() => expect(mocks.exportRtstructObject).toHaveBeenCalledTimes(1));
+    expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledWith(exportedRtstruct.blob);
+    await waitFor(() => expect(
+      useStructureStore.getState().structureSets[0].source
+    ).toEqual(expect.objectContaining({
+      type: 'rtstruct',
+      label: 'RTSTRUCT Axial',
+      sopInstanceUID: 'new-rtss-sop',
+      seriesInstanceUID: 'new-rtss-series',
+    })));
+    expect(useStructureStore.getState().dirtySeriesUIDs).not.toContain('series-1');
+    expect(await screen.findByText('Active in workspace')).toBeTruthy();
+  });
+
+  it('disables Push Changes when the active structure set has no local edits', async () => {
+    useVolumeStore.setState({
+      loadedSeries: [makeLoadedSeries()],
+      activeSeriesUID: 'series-1',
+      isLoading: false,
+      loadError: null,
+    });
+
+    render(<DicomRepoPanel />);
+
+    await waitFor(() => expect(mocks.queryDicomWebSeries).toHaveBeenCalledTimes(1));
+
+    const pushButton = screen.getByRole('button', { name: 'Push Changes' }) as HTMLButtonElement;
+    expect(pushButton.disabled).toBe(true);
+    expect(pushButton.getAttribute('title')).toBe(
+      'No local structure changes to push'
+    );
   });
 
   it('loads RTSTRUCT structure sets from a double-clicked repository row', async () => {
