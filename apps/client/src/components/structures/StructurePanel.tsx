@@ -4,8 +4,6 @@ import { useVolumeStore } from '../../core/store/volumeStore';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
 import type { Structure, StructureType } from '@webtps/shared-types';
 import {
-  exportStructureSets,
-  importStructureSets,
   replaceStructureSetsForSeries,
 } from '../../core/structures/structurePersistence';
 import { exportRtstructBlob } from '../../core/structures/rtstructExport';
@@ -257,7 +255,6 @@ export default function StructurePanel() {
   const [isQueryingRtstruct, setIsQueryingRtstruct] = useState(false);
   const [importingRtstructSop, setImportingRtstructSop] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const importInputRef = useRef<HTMLInputElement>(null);
   const attemptedAutoLoadSeriesRef = useRef(new Set<string>());
   const draftSaveTimerRef = useRef<number | null>(null);
   const isActiveSeriesDirty = !!activeSeriesUID && dirtySeriesUIDs.includes(activeSeriesUID);
@@ -438,57 +435,6 @@ export default function StructurePanel() {
     else if (e.key === 'Escape') handleCancelAdd();
   };
 
-  const handleExport = () => {
-    if (structureSets.length === 0) return;
-
-    const payload = exportStructureSets(
-      structureSets,
-      activeStructureSetId,
-      activeStructureId
-    );
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: 'application/json',
-    });
-    const objectUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    const dateLabel = new Date().toISOString().replace(/[:.]/g, '-');
-
-    anchor.href = objectUrl;
-    anchor.download = `webtps-structures-${dateLabel}.json`;
-    anchor.click();
-    URL.revokeObjectURL(objectUrl);
-    setStatusMessage(`Exported ${payload.structureSets.length} structure set(s).`);
-    logClientDebug('StructurePanel', `export count=${payload.structureSets.length}`);
-  };
-
-  const handleImportClick = () => {
-    importInputRef.current?.click();
-  };
-
-  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const imported = importStructureSets(await file.text());
-      replaceStructureSets(imported.structureSets);
-      setActiveStructureSet(imported.activeStructureSetId);
-      setActiveStructure(imported.activeStructureId);
-      StructureSetManager.syncSelectionToSeries(activeSeriesUID);
-      for (const structureSet of imported.structureSets) {
-        markSeriesDirty(structureSet.referencedSeriesUID);
-      }
-      setStatusMessage(`Imported ${imported.structureSets.length} structure set(s).`);
-      logClientDebug('StructurePanel', `import count=${imported.structureSets.length}`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to import structure JSON.';
-      setStatusMessage(message);
-      logClientDebug('StructurePanel', `import:error ${message}`);
-    } finally {
-      event.target.value = '';
-    }
-  };
-
   const handleUploadRtstruct = async () => {
     if (!activeLoadedSeries || !activeSeriesStructureSet) return;
 
@@ -556,11 +502,11 @@ export default function StructurePanel() {
       markSeriesDirty(activeSeriesUID);
       setRtstructCandidates([]);
       setStatusMessage(
-        `Imported RTSTRUCT with ${importedStructureSet.structures.length} structure(s) from repository.`
+        `Replaced with RTSTRUCT containing ${importedStructureSet.structures.length} structure(s).`
       );
       logClientDebug(
         'StructurePanel',
-        `import:rtstruct series=${activeSeriesUID} sop=${instance.sopInstanceUID} structures=${importedStructureSet.structures.length}`
+        `import:rtstruct mode=replace series=${activeSeriesUID} sop=${instance.sopInstanceUID} structures=${importedStructureSet.structures.length}`
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import RTSTRUCT.';
@@ -596,13 +542,6 @@ export default function StructurePanel() {
       <div className="px-3 py-1.5 flex items-center justify-between border-b border-[#2a2a2a] flex-none">
         <span className="text-[10px] font-semibold tracking-widest uppercase text-[#6b6b6b]">Structures</span>
         <div className="flex items-center gap-1">
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={handleImportFile}
-          />
           <button
             onClick={handleUploadRtstruct}
             title={
@@ -633,29 +572,6 @@ export default function StructurePanel() {
               <path d="M2 1.5h6.5L10.5 3v7.5H2z" />
               <path d="M6 3v5.5" />
               <polyline points="3.5 6 6 8.5 8.5 6" />
-            </svg>
-          </button>
-          <button
-            onClick={handleExport}
-            title={structureSets.length > 0 ? 'Export structures JSON' : 'No structures to export'}
-            disabled={structureSets.length === 0}
-            className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 1v6" />
-              <polyline points="3.5 4.5 6 7 8.5 4.5" />
-              <path d="M2 9.5h8" />
-            </svg>
-          </button>
-          <button
-            onClick={handleImportClick}
-            title="Import structures JSON"
-            className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] text-xs transition-colors"
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 11V5" />
-              <polyline points="3.5 7.5 6 5 8.5 7.5" />
-              <path d="M2 2.5h8" />
             </svg>
           </button>
           <button
@@ -698,11 +614,9 @@ export default function StructurePanel() {
               Cancel
             </button>
           </div>
-          {importWouldReplaceActiveStructures && (
-            <p className="mt-1 text-[10px] leading-snug text-[#f59e0b]">
-              Import replaces the current active-series structures and updates the local browser draft.
-            </p>
-          )}
+          <p className="mt-1 text-[10px] leading-snug text-[#a0a0a0]">
+            Import replaces the current active-series structures and updates the local browser draft.
+          </p>
           <div className="mt-1.5 space-y-1">
             {rtstructCandidates.map((instance) => (
               <div
@@ -721,13 +635,13 @@ export default function StructurePanel() {
                   type="button"
                   onClick={() => void handleImportRtstructCandidate(instance)}
                   disabled={!!importingRtstructSop}
-                  className="h-5 px-2 text-[10px] rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-blue-600 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                  className={`h-5 px-2 text-[10px] rounded bg-[#2e2e2e] text-[#a0a0a0] disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                    importWouldReplaceActiveStructures
+                      ? 'hover:bg-[#7f1d1d] hover:text-white'
+                      : 'hover:bg-blue-600 hover:text-white'
+                  }`}
                 >
-                  {importingRtstructSop === instance.sopInstanceUID
-                    ? 'Importing'
-                    : importWouldReplaceActiveStructures
-                      ? 'Replace'
-                      : 'Import'}
+                  {importingRtstructSop === instance.sopInstanceUID ? 'Replacing' : 'Replace'}
                 </button>
               </div>
             ))}

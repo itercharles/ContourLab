@@ -71,8 +71,8 @@ describe('structurePersistence', () => {
     expect(payload.activeStructureSetId).toBe('ss-1');
   });
 
-  it('replaces only the imported series during merge', () => {
-    const merged = replaceStructureSetsForSeries(
+  it('replaces only the active series structure sets', () => {
+    const structureSets = replaceStructureSetsForSeries(
       [
         makeStructureSet(),
         { ...makeStructureSet(), id: 'ss-2', referencedSeriesUID: 'series-2' },
@@ -81,6 +81,6 @@ describe('structurePersistence', () => {
       'series-1'
     );
 
-    expect(merged.map((structureSet) => structureSet.id)).toEqual(['ss-2', 'ss-3']);
+    expect(structureSets.map((structureSet) => structureSet.id)).toEqual(['ss-2', 'ss-3']);
   });
 });

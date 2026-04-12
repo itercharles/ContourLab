@@ -96,6 +96,20 @@ describe('StructureSetManager.syncSelectionToSeries', () => {
     expect(mockStore.setActiveStructure).not.toHaveBeenCalled();
   });
 
+  it('preserves the active structure set when multiple sets belong to the active series', () => {
+    mockStore.structureSets = [
+      makeStructureSet('ss-original', 'series-a', [makeStructure('heart')]),
+      makeStructureSet('ss-imported', 'series-a', [makeStructure('brainstem')]),
+    ];
+    mockStore.activeStructureSetId = 'ss-imported';
+    mockStore.activeStructureId = 'brainstem';
+
+    StructureSetManager.syncSelectionToSeries('series-a');
+
+    expect(mockStore.setActiveStructureSet).toHaveBeenCalledWith('ss-imported');
+    expect(mockStore.setActiveStructure).not.toHaveBeenCalled();
+  });
+
   it('clears active selection when the series has no structure set', () => {
     mockStore.structureSets = [
       makeStructureSet('ss-1', 'series-a', [makeStructure('heart')]),

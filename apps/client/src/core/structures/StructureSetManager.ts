@@ -30,7 +30,12 @@ export const StructureSetManager = {
       return;
     }
 
-    const targetSet = store.structureSets.find(
+    const activeSet = store.structureSets.find(
+      (structureSet) =>
+        structureSet.id === store.activeStructureSetId &&
+        structureSet.referencedSeriesUID === referencedSeriesUID
+    );
+    const targetSet = activeSet ?? store.structureSets.find(
       (structureSet) => structureSet.referencedSeriesUID === referencedSeriesUID
     );
 

@@ -185,6 +185,8 @@ describe('StructurePanel local draft and RTSTRUCT upload interactions', () => {
     expect(mocks.importRtstructArrayBuffer).toHaveBeenCalledWith(dicomBuffer, 'series-1');
     expect(useStructureStore.getState().activeStructureSetId).toBe('ss-imported');
     expect(useStructureStore.getState().activeStructureId).toBe('structure-imported');
+    expect(useStructureStore.getState().structureSets).toHaveLength(1);
+    expect(useStructureStore.getState().structureSets[0].id).toBe('ss-imported');
     expect(useStructureStore.getState().dirtySeriesUIDs).toContain('series-1');
   });
 
