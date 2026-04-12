@@ -154,6 +154,35 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     );
   });
 
+  it('shows contour review navigation for the active structure', () => {
+    const structureSet = makeStructureSet();
+    structureSet.structures[0].contours = [
+      {
+        referencedSOPInstanceUID: 'sop-1',
+        slicePosition: 10,
+        points: new Float32Array([0, 0, 10, 1, 0, 10, 1, 1, 10]),
+        isClosed: true,
+      },
+      {
+        referencedSOPInstanceUID: 'sop-2',
+        slicePosition: 20,
+        points: new Float32Array([0, 0, 20, 1, 0, 20, 1, 1, 20]),
+        isClosed: true,
+      },
+    ];
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    expect(screen.getByText('2 contour slices')).toBeTruthy();
+    expect(screen.getByTitle('Jump to previous contour slice on the axial view')).toBeTruthy();
+    expect(screen.getByTitle('Jump to next contour slice on the axial view')).toBeTruthy();
+  });
+
   it('shows the active structure set source when it came from repository RTSTRUCT', () => {
     const structureSet = makeStructureSet();
     structureSet.source = {

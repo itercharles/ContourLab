@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
+import { useUIStore } from '../../core/store/uiStore';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
 import type { Structure, StructureSet, StructureType } from '@webtps/shared-types';
 import {
@@ -8,6 +9,13 @@ import {
   saveStructureDraftForSeries,
 } from '../../core/structures/structureDraftStore';
 import { replaceStructureSetsForSeries } from '../../core/structures/structurePersistence';
+import {
+  findAdjacentReviewSlice,
+  getReviewSlices,
+  type ContourReviewDirection,
+} from '../../core/structures/contourReview';
+import { ViewportManager } from '../../core/rendering/ViewportManager';
+import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 
 const STRUCTURE_TYPES: StructureType[] = [
@@ -45,6 +53,12 @@ function formatSourceLabel(structureSet: StructureSet): string {
   }
 
   return structureSet.label || 'Manual structure set';
+}
+
+interface AxialViewportLike {
+  getCamera?: () => { focalPoint?: [number, number, number] };
+  scroll?: (delta: number) => void;
+  render?: () => void;
 }
 
 interface StructureRowProps {
@@ -236,6 +250,8 @@ export default function StructurePanel() {
   const dirtySeriesUIDs = useStructureStore((s) => s.dirtySeriesUIDs);
   const markSeriesClean = useStructureStore((s) => s.markSeriesClean);
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
+  const loadedSeries = useVolumeStore((s) => s.loadedSeries);
+  const setActiveViewport = useUIStore((s) => s.setActiveViewport);
 
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -257,6 +273,12 @@ export default function StructurePanel() {
   const activeStructure = activeSeriesStructureSet?.structures.find(
     (structure) => structure.id === activeStructureId
   );
+  const activeLoadedSeries = activeSeriesUID
+    ? loadedSeries.find((series) => series.seriesUID === activeSeriesUID)
+    : undefined;
+  const activeStructureReviewSlices = activeStructure
+    ? getReviewSlices(activeStructure.contours)
+    : [];
 
   useEffect(() => {
     if (isAdding && inputRef.current) {
@@ -436,6 +458,72 @@ export default function StructurePanel() {
     setStatusMessage(`Updated ${activeStructure.name} type to ${nextType}.`);
   };
 
+  const handleReviewNavigate = (direction: ContourReviewDirection) => {
+    if (!activeStructure || !activeLoadedSeries) return;
+
+    const viewport = ViewportManager
+      .getRenderingEngine()
+      ?.getViewport(VIEWPORT_IDS.AXIAL) as AxialViewportLike | undefined;
+    if (!viewport?.scroll) {
+      setStatusMessage('Axial viewport is not ready for contour review navigation.');
+      logClientDebug('StructurePanel', 'review:navigate:error axial viewport unavailable');
+      return;
+    }
+
+    const currentSlicePosition = viewport.getCamera?.().focalPoint?.[2]
+      ?? activeStructure.contours[0]?.slicePosition
+      ?? 0;
+    const targetSlice = findAdjacentReviewSlice(
+      activeStructure.contours,
+      currentSlicePosition,
+      direction
+    );
+
+    if (!targetSlice) {
+      setStatusMessage(`No contour slices to review for ${activeStructure.name}.`);
+      return;
+    }
+
+    const frames = activeLoadedSeries.series.instances
+      .map((instance, index) => ({
+        index,
+        sliceLocation: instance.sliceLocation,
+      }))
+      .filter((frame): frame is { index: number; sliceLocation: number } =>
+        Number.isFinite(frame.sliceLocation)
+      );
+
+    if (frames.length === 0) {
+      setStatusMessage('Image slice metadata is unavailable for contour review navigation.');
+      logClientDebug('StructurePanel', 'review:navigate:error missing sliceLocation');
+      return;
+    }
+
+    const closestFrameIndexTo = (slicePosition: number) =>
+      frames.reduce((closest, frame) => {
+        const closestDistance = Math.abs(closest.sliceLocation - slicePosition);
+        const frameDistance = Math.abs(frame.sliceLocation - slicePosition);
+        return frameDistance < closestDistance ? frame : closest;
+      }).index;
+
+    const currentIndex = closestFrameIndexTo(currentSlicePosition);
+    const targetIndex = closestFrameIndexTo(targetSlice.slicePosition);
+    const scrollDelta = targetIndex - currentIndex;
+
+    if (scrollDelta !== 0) {
+      viewport.scroll(scrollDelta);
+    }
+    viewport.render?.();
+    setActiveViewport('AXIAL');
+    setStatusMessage(
+      `Reviewing ${activeStructure.name}: z=${targetSlice.slicePosition.toFixed(1)} mm.`
+    );
+    logClientDebug(
+      'StructurePanel',
+      `review:navigate ${direction} structure=${activeStructure.id} z=${targetSlice.slicePosition}`
+    );
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Panel header */}
@@ -547,6 +635,32 @@ export default function StructurePanel() {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="mt-2 flex items-center gap-1.5 border-t border-[#2a2a2a] pt-2">
+            <span className="mr-auto text-[10px] text-[#6b6b6b]">
+              {activeStructureReviewSlices.length === 1
+                ? '1 contour slice'
+                : `${activeStructureReviewSlices.length} contour slices`}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleReviewNavigate('previous')}
+              disabled={activeStructureReviewSlices.length === 0}
+              title="Jump to previous contour slice on the axial view"
+              className="rounded border border-[#3a3a3a] bg-[#242424] px-2 py-1 text-[10px] text-[#c8c8c8] transition-colors hover:border-cyan-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#3a3a3a] disabled:hover:text-[#c8c8c8]"
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              onClick={() => handleReviewNavigate('next')}
+              disabled={activeStructureReviewSlices.length === 0}
+              title="Jump to next contour slice on the axial view"
+              className="rounded border border-[#3a3a3a] bg-[#242424] px-2 py-1 text-[10px] text-[#c8c8c8] transition-colors hover:border-cyan-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#3a3a3a] disabled:hover:text-[#c8c8c8]"
+            >
+              Next
+            </button>
           </div>
         </div>
       )}
