@@ -70,7 +70,7 @@ export async function queryDicomWebSeries(): Promise<DicomWebSeriesSummary[]> {
 
   const payload = (await response.json()) as DicomWebDataset[];
   return buildSeriesSummaries(payload)
-    .filter((series) => ['CT', 'MR', 'PT'].includes(series.modality))
+    .filter(isPlanningCtSeries)
     .sort((a, b) => {
       const dateCompare = b.studyDate.localeCompare(a.studyDate);
       if (dateCompare !== 0) {
@@ -288,7 +288,14 @@ export async function loadSeriesFromDicomWeb(
 export const __testables__ = {
   buildSeriesSummaries,
   extractDicomPart,
+  isPlanningCtSeries,
 };
+
+function isPlanningCtSeries(series: DicomWebSeriesSummary): boolean {
+  if (series.modality !== 'CT') return false;
+
+  return !/\b(cbct|cone[-\s]?beam|localizer|scout)\b/i.test(series.seriesDescription);
+}
 
 function buildSeriesSummaries(payload: DicomWebDataset[]): DicomWebSeriesSummary[] {
   return payload

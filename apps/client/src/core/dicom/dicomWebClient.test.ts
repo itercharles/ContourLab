@@ -32,6 +32,44 @@ describe('dicomWebClient summary parsing', () => {
     ]);
   });
 
+  it('keeps planning CT series and excludes non-planning modalities or CBCT-like series', () => {
+    expect(__testables__.isPlanningCtSeries({
+      patientId: 'MRN-1',
+      patientName: 'DOE^JANE',
+      studyDate: '20260411',
+      studyDescription: 'CT Simulation',
+      studyInstanceUID: 'study-1',
+      seriesDescription: 'CT SIM AXIAL 2.5mm',
+      seriesInstanceUID: 'series-1',
+      modality: 'CT',
+      instanceCount: 128,
+    })).toBe(true);
+
+    expect(__testables__.isPlanningCtSeries({
+      patientId: 'MRN-1',
+      patientName: 'DOE^JANE',
+      studyDate: '20260411',
+      studyDescription: 'MR Simulation',
+      studyInstanceUID: 'study-1',
+      seriesDescription: 'MR T2',
+      seriesInstanceUID: 'series-2',
+      modality: 'MR',
+      instanceCount: 64,
+    })).toBe(false);
+
+    expect(__testables__.isPlanningCtSeries({
+      patientId: 'MRN-1',
+      patientName: 'DOE^JANE',
+      studyDate: '20260411',
+      studyDescription: 'Treatment CBCT',
+      studyInstanceUID: 'study-1',
+      seriesDescription: 'CBCT Pelvis',
+      seriesInstanceUID: 'series-3',
+      modality: 'CT',
+      instanceCount: 64,
+    })).toBe(false);
+  });
+
   it('extracts a DICOM object from a multipart WADO-RS response', () => {
     const encoder = new TextEncoder();
     const payload = new Uint8Array([1, 2, 3, 4]);

@@ -2,22 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
-import type { Structure, StructureType } from '@webtps/shared-types';
-import {
-  replaceStructureSetsForSeries,
-} from '../../core/structures/structurePersistence';
-import { exportRtstructBlob } from '../../core/structures/rtstructExport';
-import { importRtstructArrayBuffer } from '../../core/structures/rtstructImport';
+import type { Structure, StructureSet, StructureType } from '@webtps/shared-types';
 import {
   loadStructureDraftForSeries,
   saveStructureDraftForSeries,
 } from '../../core/structures/structureDraftStore';
-import {
-  type DicomWebRtstructInstance,
-  queryRtstructInstancesForStudy,
-  retrieveDicomWebInstance,
-  uploadDicomBlobToRepository,
-} from '../../core/dicom/dicomWebClient';
+import { replaceStructureSetsForSeries } from '../../core/structures/structurePersistence';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 
 const STRUCTURE_TYPES: StructureType[] = [
@@ -45,15 +35,16 @@ function hexToRgb(value: string): [number, number, number] {
   ];
 }
 
-function formatDicomDateTime(date: string, time: string): string {
-  const datePart = date.length === 8
-    ? `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`
-    : 'unknown date';
-  const timePart = time.length >= 6
-    ? `${time.slice(0, 2)}:${time.slice(2, 4)}:${time.slice(4, 6)}`
-    : 'unknown time';
+function formatSourceLabel(structureSet: StructureSet): string {
+  if (structureSet.source?.type === 'rtstruct') {
+    return structureSet.source.label || structureSet.label || 'RTSTRUCT';
+  }
 
-  return `${datePart} ${timePart}`;
+  if (structureSet.source?.type === 'local-draft') {
+    return 'Local draft';
+  }
+
+  return structureSet.label || 'Manual structure set';
 }
 
 interface StructureRowProps {
@@ -243,24 +234,16 @@ export default function StructurePanel() {
   const replaceStructureSets = useStructureStore((s) => s.replaceStructureSets);
   const updateStructure = useStructureStore((s) => s.updateStructure);
   const dirtySeriesUIDs = useStructureStore((s) => s.dirtySeriesUIDs);
-  const markSeriesDirty = useStructureStore((s) => s.markSeriesDirty);
   const markSeriesClean = useStructureStore((s) => s.markSeriesClean);
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
-  const loadedSeries = useVolumeStore((s) => s.loadedSeries);
 
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [rtstructCandidates, setRtstructCandidates] = useState<DicomWebRtstructInstance[]>([]);
-  const [isQueryingRtstruct, setIsQueryingRtstruct] = useState(false);
-  const [importingRtstructSop, setImportingRtstructSop] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const attemptedAutoLoadSeriesRef = useRef(new Set<string>());
   const draftSaveTimerRef = useRef<number | null>(null);
   const isActiveSeriesDirty = !!activeSeriesUID && dirtySeriesUIDs.includes(activeSeriesUID);
-  const activeLoadedSeries = activeSeriesUID
-    ? loadedSeries.find((series) => series.seriesUID === activeSeriesUID)
-    : undefined;
   const activeStructureSetById = structureSets.find(
     (structureSet) => structureSet.id === activeStructureSetId
   );
@@ -274,7 +257,6 @@ export default function StructurePanel() {
   const activeStructure = activeSeriesStructureSet?.structures.find(
     (structure) => structure.id === activeStructureId
   );
-  const importWouldReplaceActiveStructures = (activeSeriesStructureSet?.structures.length ?? 0) > 0;
 
   useEffect(() => {
     if (isAdding && inputRef.current) {
@@ -435,88 +417,6 @@ export default function StructurePanel() {
     else if (e.key === 'Escape') handleCancelAdd();
   };
 
-  const handleUploadRtstruct = async () => {
-    if (!activeLoadedSeries || !activeSeriesStructureSet) return;
-
-    try {
-      const blob = await exportRtstructBlob(activeLoadedSeries, activeSeriesStructureSet);
-      await uploadDicomBlobToRepository(blob);
-      setStatusMessage(`Uploaded RTSTRUCT for ${activeSeriesStructureSet.label} to DICOM repository.`);
-      logClientDebug(
-        'StructurePanel',
-        `upload:rtstruct series=${activeLoadedSeries.seriesUID} set=${activeSeriesStructureSet.id}`
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to upload RTSTRUCT.';
-      setStatusMessage(message);
-      logClientDebug('StructurePanel', `upload:rtstruct:error ${message}`);
-    }
-  };
-
-  const handleImportRtstructFromRepository = async () => {
-    if (!activeLoadedSeries || !activeSeriesUID) return;
-
-    try {
-      setIsQueryingRtstruct(true);
-      setStatusMessage('Searching DICOM repository for RTSTRUCT...');
-      const rtstructInstances = await queryRtstructInstancesForStudy(
-        activeLoadedSeries.study.studyInstanceUID
-      );
-      if (rtstructInstances.length === 0) {
-        setRtstructCandidates([]);
-        setStatusMessage('No RTSTRUCT found in the DICOM repository for this study.');
-        logClientDebug('StructurePanel', `import:rtstruct:none study=${activeLoadedSeries.study.studyInstanceUID}`);
-        return;
-      }
-
-      setStatusMessage(
-        `Found ${rtstructInstances.length} RTSTRUCT object(s). Select one to import.`
-      );
-      setRtstructCandidates(rtstructInstances);
-      logClientDebug(
-        'StructurePanel',
-        `import:rtstruct:candidates study=${activeLoadedSeries.study.studyInstanceUID} count=${rtstructInstances.length}`
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to query RTSTRUCT.';
-      setStatusMessage(message);
-      logClientDebug('StructurePanel', `import:rtstruct:error ${message}`);
-    } finally {
-      setIsQueryingRtstruct(false);
-    }
-  };
-
-  const handleImportRtstructCandidate = async (instance: DicomWebRtstructInstance) => {
-    if (!activeSeriesUID) return;
-
-    try {
-      setImportingRtstructSop(instance.sopInstanceUID);
-      setStatusMessage(`Importing RTSTRUCT ${instance.sopInstanceUID}...`);
-      const buffer = await retrieveDicomWebInstance(instance);
-      const importedStructureSet = await importRtstructArrayBuffer(buffer, activeSeriesUID);
-      replaceStructureSets(
-        replaceStructureSetsForSeries(structureSets, [importedStructureSet], activeSeriesUID)
-      );
-      setActiveStructureSet(importedStructureSet.id);
-      setActiveStructure(importedStructureSet.structures[0]?.id ?? null);
-      markSeriesDirty(activeSeriesUID);
-      setRtstructCandidates([]);
-      setStatusMessage(
-        `Replaced with RTSTRUCT containing ${importedStructureSet.structures.length} structure(s).`
-      );
-      logClientDebug(
-        'StructurePanel',
-        `import:rtstruct mode=replace series=${activeSeriesUID} sop=${instance.sopInstanceUID} structures=${importedStructureSet.structures.length}`
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to import RTSTRUCT.';
-      setStatusMessage(message);
-      logClientDebug('StructurePanel', `import:rtstruct:error ${message}`);
-    } finally {
-      setImportingRtstructSop(null);
-    }
-  };
-
   const handleActiveStructureColorChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!activeSeriesStructureSet || !activeStructure) return;
 
@@ -543,38 +443,6 @@ export default function StructurePanel() {
         <span className="text-[10px] font-semibold tracking-widest uppercase text-[#6b6b6b]">Structures</span>
         <div className="flex items-center gap-1">
           <button
-            onClick={handleUploadRtstruct}
-            title={
-              activeLoadedSeries && activeSeriesStructureSet
-                ? 'Upload active structure set as RTSTRUCT to DICOM repository'
-                : 'Select a structure set for the active series first'
-            }
-            disabled={!activeLoadedSeries || !activeSeriesStructureSet}
-            className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#22c55e] text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 1.5h6.5L10.5 3v7.5H2z" />
-              <path d="M6 8V3" />
-              <polyline points="3.5 5.5 6 3 8.5 5.5" />
-            </svg>
-          </button>
-          <button
-            onClick={handleImportRtstructFromRepository}
-            title={
-              activeLoadedSeries
-                ? 'Find RTSTRUCT objects in DICOM repository for this study'
-                : 'Load a series before importing RTSTRUCT'
-            }
-            disabled={!activeLoadedSeries || isQueryingRtstruct}
-            className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 1.5h6.5L10.5 3v7.5H2z" />
-              <path d="M6 3v5.5" />
-              <polyline points="3.5 6 6 8.5 8.5 6" />
-            </svg>
-          </button>
-          <button
             onClick={handleAddClick}
             title={activeSeriesUID ? 'Add new structure' : 'Load a series first'}
             disabled={!activeSeriesUID}
@@ -600,52 +468,33 @@ export default function StructurePanel() {
         </div>
       )}
 
-      {rtstructCandidates.length > 0 && (
-        <div className="border-b border-[#2a2a2a] bg-[#202020] px-3 py-2 flex-none">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] uppercase tracking-widest text-[#6b6b6b]">
-              Repository RTSTRUCT
-            </p>
-            <button
-              type="button"
-              onClick={() => setRtstructCandidates([])}
-              className="text-[10px] text-[#6b6b6b] hover:text-[#e5e5e5] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+      {activeSeriesStructureSet && (
+        <div className="border-b border-[#2a2a2a] bg-[#171717] px-3 py-2">
+          <div className="flex items-center gap-2">
+            <span className="rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[#a0a0a0]">
+              {activeSeriesStructureSet.source?.type === 'rtstruct' ? 'RTSS' : 'SET'}
+            </span>
+            <p
+              className="min-w-0 flex-1 truncate text-[11px] font-semibold text-[#e5e5e5]"
+              title={activeSeriesStructureSet.label}
             >
-              Cancel
-            </button>
+              {activeSeriesStructureSet.label}
+            </p>
           </div>
-          <p className="mt-1 text-[10px] leading-snug text-[#a0a0a0]">
-            Import replaces the current active-series structures and updates the local browser draft.
+          <p
+            className="mt-1 truncate text-[10px] text-[#6b6b6b]"
+            title={formatSourceLabel(activeSeriesStructureSet)}
+          >
+            Source: {formatSourceLabel(activeSeriesStructureSet)}
           </p>
-          <div className="mt-1.5 space-y-1">
-            {rtstructCandidates.map((instance) => (
-              <div
-                key={instance.sopInstanceUID}
-                className="flex items-center gap-2 border border-[#2a2a2a] bg-[#1a1a1a] px-2 py-1"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[11px] text-[#e5e5e5]" title={instance.seriesDescription}>
-                    {instance.seriesDescription || 'RTSTRUCT'}
-                  </p>
-                  <p className="truncate text-[10px] text-[#6b6b6b]" title={instance.sopInstanceUID}>
-                    {formatDicomDateTime(instance.seriesDate, instance.seriesTime)}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void handleImportRtstructCandidate(instance)}
-                  disabled={!!importingRtstructSop}
-                  className={`h-5 px-2 text-[10px] rounded bg-[#2e2e2e] text-[#a0a0a0] disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
-                    importWouldReplaceActiveStructures
-                      ? 'hover:bg-[#7f1d1d] hover:text-white'
-                      : 'hover:bg-blue-600 hover:text-white'
-                  }`}
-                >
-                  {importingRtstructSop === instance.sopInstanceUID ? 'Replacing' : 'Replace'}
-                </button>
-              </div>
-            ))}
-          </div>
+          {activeSeriesStructureSet.source?.sopInstanceUID && (
+            <p
+              className="mt-0.5 truncate font-mono text-[10px] text-[#6b6b6b]"
+              title={activeSeriesStructureSet.source.sopInstanceUID}
+            >
+              SOP: {activeSeriesStructureSet.source.sopInstanceUID}
+            </p>
+          )}
         </div>
       )}
 

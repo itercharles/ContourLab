@@ -73,12 +73,22 @@ export interface Structure {
   isVisible?: boolean;
 }
 
+export interface StructureSetSource {
+  type: 'manual' | 'rtstruct' | 'local-draft';
+  label?: string;
+  sopInstanceUID?: string;
+  studyInstanceUID?: string;
+  seriesInstanceUID?: string;
+  importedAt?: string;
+}
+
 export interface StructureSet {
   id: string;
   label: string;
   referencedSeriesUID: string;
   structures: Structure[];
   version: number;                            // for collaborative editing
+  source?: StructureSetSource;
 }
 
 // ---------------------------------------------------------------------------
