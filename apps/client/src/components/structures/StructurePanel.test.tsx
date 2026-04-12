@@ -179,8 +179,8 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     render(<StructurePanel />);
 
     expect(screen.getByText('2 contour slices')).toBeTruthy();
-    expect(screen.getByTitle('Jump to previous contour slice on the axial view')).toBeTruthy();
-    expect(screen.getByTitle('Jump to next contour slice on the axial view')).toBeTruthy();
+    expect(screen.getByTitle('Jump to previous contour slice on the axial view ([)')).toBeTruthy();
+    expect(screen.getByTitle('Jump to next contour slice on the axial view (])')).toBeTruthy();
   });
 
   it('shows the active structure set source when it came from repository RTSTRUCT', () => {

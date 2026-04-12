@@ -43,6 +43,18 @@ function hexToRgb(value: string): [number, number, number] {
   ];
 }
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+
+  const tagName = target.tagName.toLowerCase();
+  return (
+    target.isContentEditable ||
+    tagName === 'input' ||
+    tagName === 'textarea' ||
+    tagName === 'select'
+  );
+}
+
 function formatSourceLabel(structureSet: StructureSet): string {
   if (structureSet.source?.type === 'rtstruct') {
     return structureSet.source.label || structureSet.label || 'RTSTRUCT';
@@ -524,6 +536,26 @@ export default function StructurePanel() {
     );
   };
 
+  useEffect(() => {
+    const handleReviewKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (isEditableTarget(event.target)) return;
+      if (activeStructureReviewSlices.length === 0) return;
+
+      if (event.key === '[') {
+        event.preventDefault();
+        handleReviewNavigate('previous');
+      } else if (event.key === ']') {
+        event.preventDefault();
+        handleReviewNavigate('next');
+      }
+    };
+
+    window.addEventListener('keydown', handleReviewKeyDown);
+    return () => window.removeEventListener('keydown', handleReviewKeyDown);
+  }, [activeStructureReviewSlices.length, handleReviewNavigate]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Panel header */}
@@ -647,19 +679,19 @@ export default function StructurePanel() {
               type="button"
               onClick={() => handleReviewNavigate('previous')}
               disabled={activeStructureReviewSlices.length === 0}
-              title="Jump to previous contour slice on the axial view"
+              title="Jump to previous contour slice on the axial view ([)"
               className="rounded border border-[#3a3a3a] bg-[#242424] px-2 py-1 text-[10px] text-[#c8c8c8] transition-colors hover:border-cyan-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#3a3a3a] disabled:hover:text-[#c8c8c8]"
             >
-              Prev
+              Prev [
             </button>
             <button
               type="button"
               onClick={() => handleReviewNavigate('next')}
               disabled={activeStructureReviewSlices.length === 0}
-              title="Jump to next contour slice on the axial view"
+              title="Jump to next contour slice on the axial view (])"
               className="rounded border border-[#3a3a3a] bg-[#242424] px-2 py-1 text-[10px] text-[#c8c8c8] transition-colors hover:border-cyan-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#3a3a3a] disabled:hover:text-[#c8c8c8]"
             >
-              Next
+              Next ]
             </button>
           </div>
         </div>
