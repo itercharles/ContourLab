@@ -3,6 +3,7 @@ import LeftSidebar from './LeftSidebar';
 import RightSidebar from './RightSidebar';
 import Toolbar from '../viewer/Toolbar';
 import ImageViewer from '../viewer/ImageViewer';
+import WorkspaceContextBar from './WorkspaceContextBar';
 
 export default function WorkspaceLayout() {
   const rightSidebarOpen = useUIStore((s) => s.rightSidebarOpen);
@@ -20,6 +21,7 @@ export default function WorkspaceLayout() {
       {/* Center: toolbar + image viewer */}
       <div className="flex-1 flex flex-col min-w-0">
         <Toolbar />
+        <WorkspaceContextBar />
         <ImageViewer />
       </div>
 
