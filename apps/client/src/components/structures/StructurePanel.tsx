@@ -68,6 +68,23 @@ function formatSourceLabel(structureSet: StructureSet): string {
   return structureSet.label || 'Manual structure set';
 }
 
+function formatSourceTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString([], {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatSopTail(sopInstanceUID: string): string {
+  return sopInstanceUID.split('.').at(-1) || sopInstanceUID.slice(-8) || 'unknown';
+}
+
 interface AxialViewportLike {
   getCamera?: () => { focalPoint?: [number, number, number] };
   scroll?: (delta: number) => void;
@@ -706,7 +723,12 @@ export default function StructurePanel() {
               className="mt-0.5 truncate font-mono text-[10px] text-[#6b6b6b]"
               title={activeSeriesStructureSet.source.sopInstanceUID}
             >
-              SOP: {activeSeriesStructureSet.source.sopInstanceUID}
+              SOP: …{formatSopTail(activeSeriesStructureSet.source.sopInstanceUID)}
+            </p>
+          )}
+          {activeSeriesStructureSet.source?.importedAt && (
+            <p className="mt-0.5 truncate text-[10px] text-[#6b6b6b]">
+              Source time: {formatSourceTimestamp(activeSeriesStructureSet.source.importedAt)}
             </p>
           )}
         </div>

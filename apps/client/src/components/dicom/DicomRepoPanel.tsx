@@ -52,6 +52,17 @@ function formatDicomDateTime(date: string, time: string): string {
   return `${datePart} ${timePart}`;
 }
 
+function formatSopTail(sopInstanceUID: string): string {
+  return sopInstanceUID.split('.').at(-1) || sopInstanceUID.slice(-8) || 'unknown';
+}
+
+function compareRtstructInstances(a: DicomWebRtstructInstance, b: DicomWebRtstructInstance): number {
+  const timeCompare = `${b.seriesDate}${b.seriesTime}`.localeCompare(`${a.seriesDate}${a.seriesTime}`);
+  if (timeCompare !== 0) return timeCompare;
+
+  return b.sopInstanceUID.localeCompare(a.sopInstanceUID);
+}
+
 function formatPatientName(name: string, patientId: string): string {
   if (!name) return patientId || 'Unknown patient';
   const [family, given] = name.split('^');
@@ -210,7 +221,7 @@ export default function DicomRepoPanel() {
                   (instance) => instance.sopInstanceUID === currentInstance.sopInstanceUID
                 )
               ),
-            ],
+            ].sort(compareRtstructInstances),
           }));
           logClientDebug('DicomRepoPanel', `query:rtstruct:auto study=${studyUID} count=${instances.length}`);
         } catch (error) {
@@ -415,6 +426,7 @@ export default function DicomRepoPanel() {
         seriesDescription: exported.identifiers.seriesDescription,
         seriesDate: exported.identifiers.seriesDate,
         seriesTime: exported.identifiers.seriesTime,
+        roiCount: activeSeriesStructureSet.structures.length,
       };
       setRtstructByStudy((current) => ({
         ...current,
@@ -423,7 +435,7 @@ export default function DicomRepoPanel() {
           ...(current[exported.identifiers.studyInstanceUID] ?? []).filter(
             (instance) => instance.sopInstanceUID !== pushedInstance.sopInstanceUID
           ),
-        ],
+        ].sort(compareRtstructInstances),
       }));
       setStatus({ tone: 'muted', message: `Pushed ${activeSeriesStructureSet.label} changes to the DICOM repository.` });
       logClientDebug(
@@ -802,10 +814,13 @@ export default function DicomRepoPanel() {
                       <p className="mt-1 text-[10px] text-[#6b6b6b]">No RTSTRUCT in this study.</p>
                     ) : (
                       <div className="mt-1 space-y-1">
-                        {rtstructByStudy[study.studyInstanceUID].map((instance) => {
+                        {[...(rtstructByStudy[study.studyInstanceUID] ?? [])]
+                          .sort(compareRtstructInstances)
+                          .map((instance, index) => {
                           const isActiveRtstruct =
                             activeSeriesStructureSet?.source?.type === 'rtstruct' &&
                             activeSeriesStructureSet.source.sopInstanceUID === instance.sopInstanceUID;
+                          const isLatestRtstruct = index === 0;
 
                           return (
                             <div
@@ -841,10 +856,18 @@ export default function DicomRepoPanel() {
                                     ACTIVE
                                   </span>
                                 )}
+                                {isLatestRtstruct && !isActiveRtstruct && (
+                                  <span className="rounded bg-[#2a2a2a] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[#c8c8c8]">
+                                    LATEST
+                                  </span>
+                                )}
                               </div>
                               <div className="mt-0.5 flex items-center gap-2">
                                 <span className="min-w-0 flex-1 truncate text-[10px] text-[#6b6b6b]" title={instance.sopInstanceUID}>
                                   {formatDicomDateTime(instance.seriesDate, instance.seriesTime)}
+                                  {' · '}
+                                  SOP …{formatSopTail(instance.sopInstanceUID)}
+                                  {typeof instance.roiCount === 'number' ? ` · ${instance.roiCount} ROI` : ''}
                                 </span>
                                 <span className="text-[10px] text-[#6b6b6b]">
                                   {importingRtstructSop === instance.sopInstanceUID

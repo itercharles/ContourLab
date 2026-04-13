@@ -119,12 +119,13 @@ beforeEach(() => {
     identifiers: {
       studyInstanceUID: 'study-1',
       seriesInstanceUID: 'new-rtss-series',
-      sopInstanceUID: 'new-rtss-sop',
-      seriesDescription: 'RTSTRUCT Axial',
-      seriesDate: '20260412',
-      seriesTime: '101112',
-    },
-  });
+        sopInstanceUID: 'new-rtss-sop',
+        seriesDescription: 'RTSTRUCT Axial',
+        seriesDate: '20260412',
+        seriesTime: '101112',
+        roiCount: 1,
+      },
+    });
   mocks.importRtstructArrayBuffer.mockResolvedValue(makeStructureSet());
 
   useVolumeStore.setState({
@@ -237,6 +238,7 @@ describe('DicomRepoPanel', () => {
         seriesDescription: 'RTSTRUCT Axial',
         seriesDate: '20260412',
         seriesTime: '101112',
+        roiCount: 1,
       },
     };
     mocks.exportRtstructObject.mockResolvedValue(exportedRtstruct);
@@ -257,6 +259,8 @@ describe('DicomRepoPanel', () => {
     })));
     expect(useStructureStore.getState().dirtySeriesUIDs).not.toContain('series-1');
     expect(await screen.findByText('Active in workspace')).toBeTruthy();
+    expect(screen.getByText(/SOP .*new-rtss-sop/)).toBeTruthy();
+    expect(screen.getByText(/1 ROI/)).toBeTruthy();
   });
 
   it('disables Push Changes when the active structure set has no local edits', async () => {
@@ -287,11 +291,21 @@ describe('DicomRepoPanel', () => {
     mocks.queryRtstructInstancesForStudy.mockResolvedValue([
       {
         studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-series-2',
+        sopInstanceUID: 'rtss-2',
+        seriesDescription: 'RTSTRUCT Latest Thorax CT',
+        seriesDate: '20260412',
+        seriesTime: '120000',
+        roiCount: 3,
+      },
+      {
+        studyInstanceUID: 'study-1',
         seriesInstanceUID: 'rtss-series-1',
         sopInstanceUID: 'rtss-1',
         seriesDescription: 'RTSTRUCT Thorax CT',
         seriesDate: '20260411',
         seriesTime: '120000',
+        roiCount: 2,
       },
     ]);
     mocks.retrieveDicomWebInstance.mockResolvedValue(dicomBuffer);
@@ -301,6 +315,8 @@ describe('DicomRepoPanel', () => {
 
     await waitFor(() => expect(mocks.queryRtstructInstancesForStudy).toHaveBeenCalledWith('study-1'));
     expect(await screen.findByText('Structure Sets')).toBeTruthy();
+    expect(screen.getByText('LATEST')).toBeTruthy();
+    expect(screen.getByText(/3 ROI/)).toBeTruthy();
     expect(screen.getByText('RTSTRUCT Thorax CT')).toBeTruthy();
 
     fireEvent.doubleClick(screen.getByRole('button', { name: /RTSTRUCT Thorax CT/i }));
@@ -324,7 +340,7 @@ describe('DicomRepoPanel', () => {
     }));
     expect(useStructureStore.getState().dirtySeriesUIDs).toContain('series-1');
     expect(screen.getAllByText('ACTIVE').length).toBeGreaterThanOrEqual(3);
-    expect(screen.getByText('Plans')).toBeTruthy();
-    expect(screen.getByText('No plans yet')).toBeTruthy();
+    expect(screen.getAllByText('Plans').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('No plans yet').length).toBeGreaterThanOrEqual(1);
   });
 });

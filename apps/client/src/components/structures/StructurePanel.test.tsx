@@ -254,7 +254,8 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     expect(screen.getByText('RTSS')).toBeTruthy();
     expect(screen.getByText('Source: RTSTRUCT Thorax CT')).toBeTruthy();
-    expect(screen.getByText('SOP: 1.2.3.4.5')).toBeTruthy();
+    expect(screen.getByText('SOP: …5')).toBeTruthy();
+    expect(screen.getByText(/Source time:/)).toBeTruthy();
   });
 
   it('edits the active structure type', async () => {

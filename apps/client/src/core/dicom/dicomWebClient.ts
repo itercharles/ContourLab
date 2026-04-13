@@ -32,6 +32,7 @@ export interface DicomWebRtstructInstance {
   seriesDescription: string;
   seriesDate: string;
   seriesTime: string;
+  roiCount?: number;
 }
 
 const DICOMWEB_BASE_URL =
@@ -204,6 +205,7 @@ export async function queryRtstructInstancesForStudy(
             '00080031',
             getStringValue(dataset, '00080033', getStringValue(dataset, '00080013'))
           ),
+          roiCount: getSequenceLength(dataset, '30060020'),
         }];
       });
     })
@@ -212,6 +214,11 @@ export async function queryRtstructInstancesForStudy(
   return instances
     .flat()
     .sort((a, b) => `${b.seriesDate}${b.seriesTime}`.localeCompare(`${a.seriesDate}${a.seriesTime}`));
+}
+
+function getSequenceLength(dataset: DicomWebDataset, tag: string): number | undefined {
+  const value = dataset[tag]?.Value;
+  return Array.isArray(value) ? value.length : undefined;
 }
 
 export async function retrieveDicomWebInstance(instance: DicomWebRtstructInstance): Promise<ArrayBuffer> {
