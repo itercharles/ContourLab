@@ -104,6 +104,7 @@ beforeEach(() => {
     activeStructureSetId: 'ss-1',
     activeStructureId: 'structure-1',
     dirtySeriesUIDs: [],
+    repositoryDirtySeriesUIDs: [],
   });
 });
 
@@ -248,6 +249,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
       activeStructureSetId: structureSet.id,
       activeStructureId: structureSet.structures[0].id,
       dirtySeriesUIDs: [],
+      repositoryDirtySeriesUIDs: [],
     });
 
     render(<StructurePanel />);

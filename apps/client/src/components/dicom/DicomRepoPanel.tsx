@@ -126,9 +126,10 @@ export default function DicomRepoPanel() {
   const replaceStructureSets = useStructureStore((s) => s.replaceStructureSets);
   const setActiveStructureSet = useStructureStore((s) => s.setActiveStructureSet);
   const setActiveStructure = useStructureStore((s) => s.setActiveStructure);
-  const markSeriesDirty = useStructureStore((s) => s.markSeriesDirty);
+  const markSeriesDraftDirty = useStructureStore((s) => s.markSeriesDraftDirty);
   const markSeriesClean = useStructureStore((s) => s.markSeriesClean);
-  const dirtySeriesUIDs = useStructureStore((s) => s.dirtySeriesUIDs);
+  const markSeriesRepositoryClean = useStructureStore((s) => s.markSeriesRepositoryClean);
+  const repositoryDirtySeriesUIDs = useStructureStore((s) => s.repositoryDirtySeriesUIDs);
 
   const [series, setSeries] = useState<DicomWebSeriesSummary[]>([]);
   const [rtstructByStudy, setRtstructByStudy] = useState<Record<string, DicomWebRtstructInstance[]>>({});
@@ -157,7 +158,7 @@ export default function DicomRepoPanel() {
           : structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID)
       )
     : undefined;
-  const isActiveSeriesDirty = !!activeSeriesUID && dirtySeriesUIDs.includes(activeSeriesUID);
+  const isActiveSeriesRepositoryDirty = !!activeSeriesUID && repositoryDirtySeriesUIDs.includes(activeSeriesUID);
   const patientGroups = useMemo(() => groupSeriesByPatient(series), [series]);
   const filteredPatientGroups = useMemo(() => {
     const query = patientQuery.trim().toLowerCase();
@@ -393,7 +394,7 @@ export default function DicomRepoPanel() {
   );
 
   const onPushChanges = useCallback(async () => {
-    if (!activeLoadedSeries || !activeSeriesStructureSet || !isActiveSeriesDirty) return;
+    if (!activeLoadedSeries || !activeSeriesStructureSet || !isActiveSeriesRepositoryDirty) return;
 
     try {
       setIsPushingChanges(true);
@@ -419,6 +420,7 @@ export default function DicomRepoPanel() {
       setActiveStructureSet(pushedStructureSet.id);
       setActiveStructure(pushedStructureSet.structures[0]?.id ?? null);
       markSeriesClean(activeLoadedSeries.seriesUID);
+      markSeriesRepositoryClean(activeLoadedSeries.seriesUID);
       const pushedInstance: DicomWebRtstructInstance = {
         studyInstanceUID: exported.identifiers.studyInstanceUID,
         seriesInstanceUID: exported.identifiers.seriesInstanceUID,
@@ -452,8 +454,9 @@ export default function DicomRepoPanel() {
   }, [
     activeLoadedSeries,
     activeSeriesStructureSet,
-    isActiveSeriesDirty,
+    isActiveSeriesRepositoryDirty,
     markSeriesClean,
+    markSeriesRepositoryClean,
     replaceStructureSets,
     setActiveStructure,
     setActiveStructureSet,
@@ -498,7 +501,7 @@ export default function DicomRepoPanel() {
         );
         setActiveStructureSet(sourcedStructureSet.id);
         setActiveStructure(sourcedStructureSet.structures[0]?.id ?? null);
-        markSeriesDirty(targetSeriesUID);
+        markSeriesDraftDirty(targetSeriesUID);
         setStatus({
           tone: 'muted',
           message: `Loaded ${sourcedStructureSet.label} into the active image set.`,
@@ -517,7 +520,7 @@ export default function DicomRepoPanel() {
     },
     [
       activeSeriesUID,
-      markSeriesDirty,
+      markSeriesDraftDirty,
       onLoadSeries,
       replaceStructureSets,
       setActiveStructure,
@@ -572,12 +575,12 @@ export default function DicomRepoPanel() {
           <button
             type="button"
             onClick={() => void onPushChanges()}
-            disabled={!activeLoadedSeries || !activeSeriesStructureSet || !isActiveSeriesDirty || isPushingChanges}
+            disabled={!activeLoadedSeries || !activeSeriesStructureSet || !isActiveSeriesRepositoryDirty || isPushingChanges}
             className="h-7 rounded bg-[#242424] px-2 text-[11px] text-[#e5e5e5] hover:bg-[#2e2e2e] disabled:text-[#6b6b6b] disabled:hover:bg-[#242424] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
             title={
               !activeLoadedSeries || !activeSeriesStructureSet
                 ? 'Select a structure set for the active series first'
-                : !isActiveSeriesDirty
+                : !isActiveSeriesRepositoryDirty
                   ? 'No local structure changes to push'
                   : 'Push active structure changes to the DICOM repository as RTSTRUCT'
             }

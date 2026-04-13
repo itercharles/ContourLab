@@ -309,6 +309,7 @@ export default function StructurePanel() {
   const replaceStructureSets = useStructureStore((s) => s.replaceStructureSets);
   const updateStructure = useStructureStore((s) => s.updateStructure);
   const dirtySeriesUIDs = useStructureStore((s) => s.dirtySeriesUIDs);
+  const repositoryDirtySeriesUIDs = useStructureStore((s) => s.repositoryDirtySeriesUIDs);
   const markSeriesClean = useStructureStore((s) => s.markSeriesClean);
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
@@ -415,14 +416,14 @@ export default function StructurePanel() {
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (dirtySeriesUIDs.length === 0) return;
+      if (dirtySeriesUIDs.length === 0 && repositoryDirtySeriesUIDs.length === 0) return;
       event.preventDefault();
       event.returnValue = '';
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [dirtySeriesUIDs]);
+  }, [dirtySeriesUIDs, repositoryDirtySeriesUIDs]);
 
   useEffect(() => {
     if (!activeSeriesUID) return;

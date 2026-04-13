@@ -139,6 +139,7 @@ beforeEach(() => {
     activeStructureSetId: 'ss-1',
     activeStructureId: 'structure-1',
     dirtySeriesUIDs: [],
+    repositoryDirtySeriesUIDs: [],
   });
 });
 
@@ -258,6 +259,7 @@ describe('DicomRepoPanel', () => {
       seriesInstanceUID: 'new-rtss-series',
     })));
     expect(useStructureStore.getState().dirtySeriesUIDs).not.toContain('series-1');
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
     expect(await screen.findByText('Active in workspace')).toBeTruthy();
     expect(screen.getByText(/SOP .*new-rtss-sop/)).toBeTruthy();
     expect(screen.getByText(/1 ROI/)).toBeTruthy();
@@ -280,6 +282,27 @@ describe('DicomRepoPanel', () => {
     expect(pushButton.getAttribute('title')).toBe(
       'No local structure changes to push'
     );
+  });
+
+  it('keeps Push Changes enabled after local draft auto-save clears draft dirty state', async () => {
+    useVolumeStore.setState({
+      loadedSeries: [makeLoadedSeries()],
+      activeSeriesUID: 'series-1',
+      isLoading: false,
+      loadError: null,
+    });
+    const store = useStructureStore.getState();
+    store.markSeriesDirty('series-1');
+    store.markSeriesClean('series-1');
+
+    render(<DicomRepoPanel />);
+
+    await waitFor(() => expect(mocks.queryDicomWebSeries).toHaveBeenCalledTimes(1));
+
+    const pushButton = screen.getByRole('button', { name: 'Push Changes' }) as HTMLButtonElement;
+    expect(useStructureStore.getState().dirtySeriesUIDs).not.toContain('series-1');
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).toContain('series-1');
+    expect(pushButton.disabled).toBe(false);
   });
 
   it('loads RTSTRUCT structure sets from a double-clicked repository row', async () => {
@@ -339,6 +362,7 @@ describe('DicomRepoPanel', () => {
       seriesInstanceUID: 'rtss-series-1',
     }));
     expect(useStructureStore.getState().dirtySeriesUIDs).toContain('series-1');
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
     expect(screen.getAllByText('ACTIVE').length).toBeGreaterThanOrEqual(3);
     expect(screen.getAllByText('Plans').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('No plans yet').length).toBeGreaterThanOrEqual(1);

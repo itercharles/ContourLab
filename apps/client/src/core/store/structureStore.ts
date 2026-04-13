@@ -7,12 +7,15 @@ interface StructureState {
   activeStructureSetId: string | null;
   activeStructureId: string | null;
   dirtySeriesUIDs: string[];
+  repositoryDirtySeriesUIDs: string[];
   addStructureSet: (ss: StructureSet) => void;
   replaceStructureSets: (structureSets: StructureSet[]) => void;
   setActiveStructureSet: (id: string | null) => void;
   setActiveStructure: (id: string | null) => void;
   markSeriesDirty: (seriesUID: string) => void;
+  markSeriesDraftDirty: (seriesUID: string) => void;
   markSeriesClean: (seriesUID: string) => void;
+  markSeriesRepositoryClean: (seriesUID: string) => void;
   addStructure: (setId: string, s: Structure) => void;
   updateStructure: (setId: string, structureId: string, patch: Partial<Structure>) => void;
   deleteStructure: (setId: string, structureId: string) => void;
@@ -35,6 +38,15 @@ function markSeriesDirty(state: StructureState, seriesUID: string) {
   if (!state.dirtySeriesUIDs.includes(seriesUID)) {
     state.dirtySeriesUIDs.push(seriesUID);
   }
+  if (!state.repositoryDirtySeriesUIDs.includes(seriesUID)) {
+    state.repositoryDirtySeriesUIDs.push(seriesUID);
+  }
+}
+
+function markSeriesDraftDirty(state: StructureState, seriesUID: string) {
+  if (!state.dirtySeriesUIDs.includes(seriesUID)) {
+    state.dirtySeriesUIDs.push(seriesUID);
+  }
 }
 
 export const useStructureStore = create<StructureState>()(
@@ -43,6 +55,7 @@ export const useStructureStore = create<StructureState>()(
     activeStructureSetId: null,
     activeStructureId: null,
     dirtySeriesUIDs: [],
+    repositoryDirtySeriesUIDs: [],
 
     addStructureSet: (ss) =>
       set((state) => {
@@ -71,9 +84,19 @@ export const useStructureStore = create<StructureState>()(
         markSeriesDirty(state, seriesUID);
       }),
 
+    markSeriesDraftDirty: (seriesUID) =>
+      set((state) => {
+        markSeriesDraftDirty(state, seriesUID);
+      }),
+
     markSeriesClean: (seriesUID) =>
       set((state) => {
         state.dirtySeriesUIDs = state.dirtySeriesUIDs.filter((uid) => uid !== seriesUID);
+      }),
+
+    markSeriesRepositoryClean: (seriesUID) =>
+      set((state) => {
+        state.repositoryDirtySeriesUIDs = state.repositoryDirtySeriesUIDs.filter((uid) => uid !== seriesUID);
       }),
 
     addStructure: (setId, s) =>

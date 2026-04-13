@@ -18,6 +18,7 @@ beforeEach(() => {
     activeStructureSetId: null,
     activeStructureId: null,
     dirtySeriesUIDs: [],
+    repositoryDirtySeriesUIDs: [],
   });
 });
 
@@ -26,9 +27,10 @@ describe('structureStore dirty tracking', () => {
     useStructureStore.getState().addStructureSet(makeStructureSet());
 
     expect(useStructureStore.getState().dirtySeriesUIDs).toEqual(['series-1']);
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).toEqual(['series-1']);
   });
 
-  it('clears dirty state for a specific series', () => {
+  it('clears draft dirty state for a specific series without clearing repository dirty state', () => {
     const store = useStructureStore.getState();
     store.addStructureSet(makeStructureSet('series-1'));
     store.addStructureSet(makeStructureSet('series-2'));
@@ -36,5 +38,28 @@ describe('structureStore dirty tracking', () => {
     store.markSeriesClean('series-1');
 
     expect(useStructureStore.getState().dirtySeriesUIDs).toEqual(['series-2']);
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).toEqual([
+      'series-1',
+      'series-2',
+    ]);
+  });
+
+  it('clears repository dirty state for a specific series', () => {
+    const store = useStructureStore.getState();
+    store.addStructureSet(makeStructureSet('series-1'));
+    store.addStructureSet(makeStructureSet('series-2'));
+
+    store.markSeriesRepositoryClean('series-1');
+
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).toEqual(['series-2']);
+  });
+
+  it('can mark a draft dirty without enabling repository push state', () => {
+    const store = useStructureStore.getState();
+
+    store.markSeriesDraftDirty('series-1');
+
+    expect(useStructureStore.getState().dirtySeriesUIDs).toEqual(['series-1']);
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).toEqual([]);
   });
 });
