@@ -225,15 +225,20 @@ export default function ContourOverlay({
         !drawingRef.current &&
         activeStructureSet &&
         activeStructure &&
+        !(activeStructure.isLocked ?? false) &&
         activeSeries &&
         activeContourOnSlice
       ) {
         event.preventDefault();
-        ContourEngine.deleteContourOnSlice(
+        const deleted = ContourEngine.deleteContourOnSlice(
           activeStructureSet.id,
           activeStructure.id,
           activeContourOnSlice.slicePosition
         );
+        if (!deleted) {
+          setStatusMessage('Unlock the selected structure before deleting contours.');
+          return;
+        }
         StructureSetManager.refreshVolume(
           activeStructureSet.id,
           activeStructure.id,
@@ -493,11 +498,15 @@ export default function ContourOverlay({
       'ContourOverlay',
       `pointerup:commit viewport=${viewportId} points=${draftPointsRef.current.length} slice=${currentSlicePosition.toFixed(2)}`
     );
-    ContourEngine.addContour(activeStructureSet.id, activeStructure.id, {
+    const saved = ContourEngine.addContour(activeStructureSet.id, activeStructure.id, {
       points: flattenWorldPoints(draftPointsRef.current),
       slicePosition: currentSlicePosition,
       sopInstanceUID: currentFrame.sopInstanceUID,
     });
+    if (!saved) {
+      clearDraft('Unlock the selected structure before saving contours.');
+      return;
+    }
     StructureSetManager.refreshVolume(
       activeStructureSet.id,
       activeStructure.id,

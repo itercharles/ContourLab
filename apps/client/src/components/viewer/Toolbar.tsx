@@ -298,12 +298,14 @@ export default function Toolbar() {
 
   const handleDeleteContour = () => {
     if (!activeStructureSet || !activeStructure || !activeContourOnSlice || !activeSeriesUID) return;
+    if (activeStructure.isLocked ?? false) return;
 
-    ContourEngine.deleteContourOnSlice(
+    const deleted = ContourEngine.deleteContourOnSlice(
       activeStructureSet.id,
       activeStructure.id,
       activeContourOnSlice.slicePosition
     );
+    if (!deleted) return;
     StructureSetManager.refreshVolume(
       activeStructureSet.id,
       activeStructure.id,

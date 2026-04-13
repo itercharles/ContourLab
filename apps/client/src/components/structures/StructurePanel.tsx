@@ -241,6 +241,15 @@ function StructureRow({
         </span>
       ) : null}
 
+      {structure.isLocked ? (
+        <span
+          title="Locked structure"
+          className="mr-1 rounded border border-[#854d0e] bg-[#2a2112] px-1 text-[9px] font-semibold uppercase tracking-wider text-[#f59e0b] flex-none"
+        >
+          locked
+        </span>
+      ) : null}
+
       {/* Action buttons — visible on row hover or when active */}
       <div className={`flex items-center gap-0.5 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
         {/* Visibility toggle */}
@@ -323,6 +332,8 @@ export default function StructurePanel() {
   const attemptedAutoLoadSeriesRef = useRef(new Set<string>());
   const draftSaveTimerRef = useRef<number | null>(null);
   const isActiveSeriesDirty = !!activeSeriesUID && dirtySeriesUIDs.includes(activeSeriesUID);
+  const isActiveSeriesRepositoryDirty =
+    !!activeSeriesUID && repositoryDirtySeriesUIDs.includes(activeSeriesUID);
   const activeStructureSetById = structureSets.find(
     (structureSet) => structureSet.id === activeStructureSetId
   );
@@ -753,6 +764,33 @@ export default function StructurePanel() {
                 ) : null}
               </p>
             </div>
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span
+              className={`rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
+                activeStructure.isLocked
+                  ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
+                  : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
+              }`}
+              title={activeStructure.isLocked ? 'Structure is locked and cannot be contoured' : 'Structure is editable'}
+            >
+              {activeStructure.isLocked ? 'Locked' : 'Editable'}
+            </span>
+            <span
+              className={`rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
+                isActiveSeriesRepositoryDirty
+                  ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
+                  : 'border-[#2a2a2a] bg-[#171717] text-[#6b6b6b]'
+              }`}
+              title={
+                isActiveSeriesRepositoryDirty
+                  ? 'Active structure changes have not been pushed to the DICOM repository'
+                  : 'Active structure changes are synchronized with the DICOM repository'
+              }
+            >
+              {isActiveSeriesRepositoryDirty ? 'Unsynced' : 'Synced'}
+            </span>
           </div>
 
           <div className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1">

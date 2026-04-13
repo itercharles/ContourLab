@@ -39,7 +39,7 @@ import { UndoRedoManager } from '../UndoRedoManager';
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeStructure(contours: ContourSlice[] = []): Structure {
+function makeStructure(contours: ContourSlice[] = [], patch: Partial<Structure> = {}): Structure {
   return {
     id: 'struct-1',
     name: 'PTV',
@@ -49,6 +49,7 @@ function makeStructure(contours: ContourSlice[] = []): Structure {
     isVisible: true,
     isLocked: false,
     volume_cc: 0,
+    ...patch,
   };
 }
 
@@ -158,6 +159,29 @@ describe('ContourEngine.addContour', () => {
     expect(patch.contours).toBeDefined();
     expect(patch.contours!.every((c) => c.slicePosition !== 5)).toBe(true);
   });
+
+  it('does not add or replace contours on a locked structure', () => {
+    const existingSlice: ContourSlice = {
+      referencedSOPInstanceUID: '9.9.9',
+      slicePosition: 5,
+      points: new Float32Array([0,0,5, 2,0,5, 2,2,5]),
+      isClosed: true,
+    };
+    const structure = makeStructure([existingSlice], { isLocked: true });
+    const ss = makeStructureSet([structure]);
+    mockStore.structureSets = [ss];
+
+    const added = ContourEngine.addContour('ss-1', 'struct-1', {
+      points: new Float32Array([0,0,5, 3,0,5, 3,3,5, 0,3,5]),
+      slicePosition: 5,
+      sopInstanceUID: '1.2.3.4',
+    });
+
+    expect(added).toBe(false);
+    expect(UndoRedoManager.push).not.toHaveBeenCalled();
+    expect(mockStore.addContourSlice).not.toHaveBeenCalled();
+    expect(mockStore.updateContourSlice).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -228,5 +252,23 @@ describe('ContourEngine.deleteContourOnSlice', () => {
     expect(calledSetId).toBe('ss-1');
     expect(calledStructId).toBe('struct-1');
     expect(restoredSlice.slicePosition).toBe(10);
+  });
+
+  it('does not delete contours from a locked structure', () => {
+    const existingSlice: ContourSlice = {
+      referencedSOPInstanceUID: '9.9.9',
+      slicePosition: 10,
+      points: new Float32Array([0,0,10, 1,0,10, 1,1,10]),
+      isClosed: true,
+    };
+    const structure = makeStructure([existingSlice], { isLocked: true });
+    const ss = makeStructureSet([structure]);
+    mockStore.structureSets = [ss];
+
+    const deleted = ContourEngine.deleteContourOnSlice('ss-1', 'struct-1', 10);
+
+    expect(deleted).toBe(false);
+    expect(UndoRedoManager.push).not.toHaveBeenCalled();
+    expect(mockStore.updateStructure).not.toHaveBeenCalled();
   });
 });

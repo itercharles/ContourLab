@@ -16,12 +16,13 @@ export const ContourEngine = {
     structureSetId: string,
     structureId: string,
     data: FreehandContourData
-  ): void {
+  ): boolean {
     const store = useStructureStore.getState();
     const ss = store.structureSets.find((s) => s.id === structureSetId);
-    const existing = ss?.structures
-      .find((s) => s.id === structureId)
-      ?.contours.find((c) => c.slicePosition === data.slicePosition);
+    const structure = ss?.structures.find((s) => s.id === structureId);
+    if (!structure || (structure.isLocked ?? false)) return false;
+
+    const existing = structure.contours.find((c) => c.slicePosition === data.slicePosition);
 
     const newSlice: ContourSlice = {
       referencedSOPInstanceUID: data.sopInstanceUID,
@@ -53,6 +54,8 @@ export const ContourEngine = {
           }),
       });
     }
+
+    return true;
   },
 
   /**
@@ -62,14 +65,14 @@ export const ContourEngine = {
     structureSetId: string,
     structureId: string,
     slicePosition: number
-  ): void {
+  ): boolean {
     const store = useStructureStore.getState();
     const ss = store.structureSets.find((s) => s.id === structureSetId);
     const structure = ss?.structures.find((s) => s.id === structureId);
-    if (!structure) return;
+    if (!structure || (structure.isLocked ?? false)) return false;
 
     const removed = structure.contours.filter((c) => c.slicePosition === slicePosition);
-    if (removed.length === 0) return;
+    if (removed.length === 0) return false;
 
     UndoRedoManager.push({
       description: `Delete contour at z=${slicePosition.toFixed(1)}`,
@@ -83,5 +86,7 @@ export const ContourEngine = {
         }
       },
     });
+
+    return true;
   },
 };

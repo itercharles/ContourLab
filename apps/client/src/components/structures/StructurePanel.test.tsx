@@ -169,6 +169,22 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     );
   });
 
+  it('shows active structure editability and repository sync state', () => {
+    const structureSet = makeStructureSet();
+    structureSet.structures[0].isLocked = true;
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+      repositoryDirtySeriesUIDs: ['series-1'],
+    });
+
+    render(<StructurePanel />);
+
+    expect(screen.getAllByText('Locked').length).toBeGreaterThan(0);
+    expect(screen.getByText('Unsynced')).toBeTruthy();
+  });
+
   it('shows contour review navigation for the active structure', () => {
     const structureSet = makeStructureSet();
     structureSet.structures[0].contours = [
