@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import DicomRepoPanel from './DicomRepoPanel';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
 import { useStructureStore } from '../../core/store/structureStore';
@@ -366,5 +366,103 @@ describe('DicomRepoPanel', () => {
     expect(screen.getAllByText('ACTIVE').length).toBeGreaterThanOrEqual(3);
     expect(screen.getAllByText('Plans').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('No plans yet').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('round-trips a loaded RTSTRUCT through edit and push as a new active repository version', async () => {
+    const imported = makeStructureSet();
+    imported.id = 'ss-imported';
+    imported.structures[0].id = 'structure-imported';
+    imported.structures[0].name = 'PTV_Initial';
+    const sourceRtstruct = {
+      studyInstanceUID: 'study-1',
+      seriesInstanceUID: 'rtss-series-old',
+      sopInstanceUID: 'rtss-sop-old',
+      seriesDescription: 'RTSTRUCT Original',
+      seriesDate: '20260411',
+      seriesTime: '090000',
+      roiCount: 1,
+    };
+    const pushedRtstruct = {
+      blob: new Blob(['new-dicom'], { type: 'application/dicom' }),
+      identifiers: {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-series-new',
+        sopInstanceUID: 'rtss-sop-new',
+        seriesDescription: 'RTSTRUCT Axial Edited',
+        seriesDate: '20260412',
+        seriesTime: '101112',
+        roiCount: 1,
+      },
+    };
+    mocks.queryRtstructInstancesForStudy
+      .mockResolvedValueOnce([sourceRtstruct])
+      .mockResolvedValue([{
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-series-new',
+        sopInstanceUID: 'rtss-sop-new',
+        seriesDescription: 'RTSTRUCT Axial Edited',
+        seriesDate: '20260412',
+        seriesTime: '101112',
+        roiCount: 1,
+      }, sourceRtstruct]);
+    mocks.importRtstructArrayBuffer.mockResolvedValue(imported);
+    mocks.exportRtstructObject.mockResolvedValue(pushedRtstruct);
+
+    render(<DicomRepoPanel />);
+
+    await screen.findByText('RTSTRUCT Original');
+    fireEvent.doubleClick(screen.getByRole('button', { name: /RTSTRUCT Original/i }));
+
+    await waitFor(() => expect(useStructureStore.getState().activeStructureSetId).toBe('ss-imported'));
+    expect(useStructureStore.getState().structureSets[0].source).toEqual(expect.objectContaining({
+      sopInstanceUID: 'rtss-sop-old',
+      seriesInstanceUID: 'rtss-series-old',
+    }));
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
+
+    act(() => {
+      useStructureStore
+        .getState()
+        .updateStructure('ss-imported', 'structure-imported', { name: 'PTV_Edited' });
+    });
+
+    await waitFor(() => {
+      const pushButton = screen.getByRole('button', { name: 'Push Changes' }) as HTMLButtonElement;
+      expect(pushButton.disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Push Changes' }));
+
+    await waitFor(() => expect(mocks.exportRtstructObject).toHaveBeenCalledTimes(1));
+    expect(mocks.exportRtstructObject).toHaveBeenCalledWith(
+      expect.objectContaining({ seriesUID: 'series-1' }),
+      expect.objectContaining({
+        id: 'ss-imported',
+        source: expect.objectContaining({ sopInstanceUID: 'rtss-sop-old' }),
+        structures: expect.arrayContaining([
+          expect.objectContaining({ id: 'structure-imported', name: 'PTV_Edited' }),
+        ]),
+      })
+    );
+    expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledWith(pushedRtstruct.blob);
+
+    await waitFor(() => expect(useStructureStore.getState().structureSets[0].source).toEqual(
+      expect.objectContaining({
+        type: 'rtstruct',
+        label: 'RTSTRUCT Axial Edited',
+        sopInstanceUID: 'rtss-sop-new',
+        seriesInstanceUID: 'rtss-series-new',
+      })
+    ));
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
+    expect(await screen.findByText('RTSTRUCT Axial Edited')).toBeTruthy();
+    expect(screen.getByText(/SOP .*rtss-sop-new/)).toBeTruthy();
+    expect(screen.getByText('Active in workspace')).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText('Refresh DICOM repository'));
+
+    await waitFor(() => expect(mocks.queryRtstructInstancesForStudy).toHaveBeenCalledTimes(2));
+    expect(screen.getByText('RTSTRUCT Axial Edited')).toBeTruthy();
+    expect(screen.getByText(/SOP .*rtss-sop-new/)).toBeTruthy();
+    expect(screen.getByText('Active in workspace')).toBeTruthy();
   });
 });
