@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
+import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
 import type { Structure, StructureSet, StructureType } from '@webtps/shared-types';
 import {
@@ -14,6 +15,7 @@ import {
   getReviewSlices,
   type ContourReviewDirection,
 } from '../../core/structures/contourReview';
+import { ContourEngine } from '../../core/contouring/ContourEngine';
 import { findContourOnFrame } from '../../core/contouring/contourOverlayUtils';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
@@ -328,12 +330,16 @@ export default function StructurePanel() {
   const [newName, setNewName] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [axialRevision, setAxialRevision] = useState(0);
+  const [undoRedoRevision, setUndoRedoRevision] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const attemptedAutoLoadSeriesRef = useRef(new Set<string>());
   const draftSaveTimerRef = useRef<number | null>(null);
   const isActiveSeriesDirty = !!activeSeriesUID && dirtySeriesUIDs.includes(activeSeriesUID);
   const isActiveSeriesRepositoryDirty =
     !!activeSeriesUID && repositoryDirtySeriesUIDs.includes(activeSeriesUID);
+  void undoRedoRevision;
+  const canUndoContourEdit = UndoRedoManager.canUndo();
+  const undoDescription = UndoRedoManager.getUndoDescription();
   const activeStructureSetById = structureSets.find(
     (structureSet) => structureSet.id === activeStructureSetId
   );
@@ -376,6 +382,14 @@ export default function StructurePanel() {
     : undefined;
   const currentSlicePosition = currentFrame?.sliceLocation ?? axialSlicePosition;
   const sliceTolerance = Math.max(activeLoadedSeries?.volume.spacing[2] ?? 1, 1) / 2;
+  const activeContourOnCurrentSlice = activeStructure
+    ? findContourOnFrame(
+        activeStructure.contours,
+        currentFrame?.sopInstanceUID,
+        currentSlicePosition,
+        sliceTolerance
+      )
+    : undefined;
 
   useEffect(() => {
     if (isAdding && inputRef.current) {
@@ -419,6 +433,12 @@ export default function StructurePanel() {
       }
       cleanup?.();
     };
+  }, []);
+
+  useEffect(() => {
+    return UndoRedoManager.subscribe(() => {
+      setUndoRedoRevision((value) => value + 1);
+    });
   }, []);
 
   useEffect(() => {
@@ -659,6 +679,43 @@ export default function StructurePanel() {
     );
   };
 
+  const handleDeleteCurrentSliceContour = () => {
+    if (!activeSeriesStructureSet || !activeStructure || !activeContourOnCurrentSlice) return;
+
+    const deleted = ContourEngine.deleteContourOnSlice(
+      activeSeriesStructureSet.id,
+      activeStructure.id,
+      activeContourOnCurrentSlice.slicePosition
+    );
+
+    if (!deleted) {
+      setStatusMessage('Unlock the selected structure before deleting contours.');
+      return;
+    }
+
+    StructureSetManager.refreshVolume(
+      activeSeriesStructureSet.id,
+      activeStructure.id,
+      activeLoadedSeries?.volume.spacing[2] || 1
+    );
+    setActiveViewport('AXIAL');
+    setStatusMessage(`Deleted contour on ${activeStructure.name} at current slice. Undo: Cmd+Z.`);
+    logClientDebug(
+      'StructurePanel',
+      `delete:slice structure=${activeStructure.id} z=${activeContourOnCurrentSlice.slicePosition.toFixed(2)}`
+    );
+  };
+
+  const handleUndoContourEdit = () => {
+    if (!UndoRedoManager.canUndo()) return;
+
+    const description = UndoRedoManager.getUndoDescription();
+    UndoRedoManager.undo();
+    setActiveViewport('AXIAL');
+    setStatusMessage(description ? `Undid ${description}.` : 'Undid contour edit.');
+    logClientDebug('StructurePanel', `undo ${description ?? 'contour-edit'}`);
+  };
+
   useEffect(() => {
     const handleReviewKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
@@ -830,6 +887,34 @@ export default function StructurePanel() {
                 ? '1 contour slice'
                 : `${activeStructureReviewSlices.length} contour slices`}
             </span>
+            <button
+              type="button"
+              onClick={handleDeleteCurrentSliceContour}
+              disabled={!activeContourOnCurrentSlice || (activeStructure.isLocked ?? false)}
+              title={
+                activeStructure.isLocked
+                  ? 'Unlock the selected structure before deleting contours'
+                  : activeContourOnCurrentSlice
+                    ? 'Delete contour for the active structure on the current axial slice'
+                    : 'No contour for the active structure on the current axial slice'
+              }
+              className="rounded border border-[#3a3a3a] bg-[#242424] px-2 py-1 text-[10px] text-[#c8c8c8] transition-colors hover:border-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#3a3a3a] disabled:hover:text-[#c8c8c8]"
+            >
+              Delete Slice
+            </button>
+            <button
+              type="button"
+              onClick={handleUndoContourEdit}
+              disabled={!canUndoContourEdit}
+              title={
+                canUndoContourEdit
+                  ? `Undo ${undoDescription ?? 'last contour edit'} (Cmd+Z)`
+                  : 'No contour edit to undo'
+              }
+              className="rounded border border-[#3a3a3a] bg-[#242424] px-2 py-1 text-[10px] text-[#c8c8c8] transition-colors hover:border-blue-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#3a3a3a] disabled:hover:text-[#c8c8c8]"
+            >
+              Undo
+            </button>
             <button
               type="button"
               onClick={() => handleReviewNavigate('previous')}

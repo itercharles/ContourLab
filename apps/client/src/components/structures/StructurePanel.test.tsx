@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import StructurePanel from './StructurePanel';
+import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
 import type { StructureSet } from '@webtps/shared-types';
@@ -88,6 +89,7 @@ function makeStructureSet(): StructureSet {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  UndoRedoManager.clear();
   mocks.getViewport.mockReturnValue({
     getCamera: () => ({ focalPoint: [0, 0, 10] as [number, number, number] }),
   });
@@ -248,6 +250,134 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     render(<StructurePanel />);
 
     expect(screen.getByTitle('Contour on current axial slice')).toBeTruthy();
+  });
+
+  it('deletes the active structure contour on the current axial slice', async () => {
+    const loadedSeries = makeLoadedSeries();
+    loadedSeries.series.instances = [
+      { sopInstanceUID: 'sop-1', instanceNumber: 1, sliceLocation: 10 },
+      { sopInstanceUID: 'sop-2', instanceNumber: 2, sliceLocation: 20 },
+    ];
+    const structureSet = makeStructureSet();
+    structureSet.structures[0].contours = [
+      {
+        referencedSOPInstanceUID: 'sop-1',
+        slicePosition: 10,
+        points: new Float32Array([0, 0, 10, 1, 0, 10, 1, 1, 10]),
+        isClosed: true,
+      },
+      {
+        referencedSOPInstanceUID: 'sop-2',
+        slicePosition: 20,
+        points: new Float32Array([0, 0, 20, 1, 0, 20, 1, 1, 20]),
+        isClosed: true,
+      },
+    ];
+    useVolumeStore.setState({
+      loadedSeries: [loadedSeries],
+      activeSeriesUID: loadedSeries.seriesUID,
+    });
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    const deleteButton = screen.getByRole('button', { name: 'Delete Slice' }) as HTMLButtonElement;
+    expect(deleteButton.disabled).toBe(false);
+    fireEvent.click(deleteButton);
+
+    await waitFor(() =>
+      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(1)
+    );
+    expect(useStructureStore.getState().structureSets[0].structures[0].contours[0].slicePosition).toBe(20);
+    expect(screen.getByText('Deleted contour on PTV at current slice. Undo: Cmd+Z.')).toBeTruthy();
+  });
+
+  it('restores a deleted current-slice contour from the active structure undo button', async () => {
+    const loadedSeries = makeLoadedSeries();
+    loadedSeries.series.instances = [
+      { sopInstanceUID: 'sop-1', instanceNumber: 1, sliceLocation: 10 },
+      { sopInstanceUID: 'sop-2', instanceNumber: 2, sliceLocation: 20 },
+    ];
+    const structureSet = makeStructureSet();
+    structureSet.structures[0].contours = [
+      {
+        referencedSOPInstanceUID: 'sop-1',
+        slicePosition: 10,
+        points: new Float32Array([0, 0, 10, 1, 0, 10, 1, 1, 10]),
+        isClosed: true,
+      },
+      {
+        referencedSOPInstanceUID: 'sop-2',
+        slicePosition: 20,
+        points: new Float32Array([0, 0, 20, 1, 0, 20, 1, 1, 20]),
+        isClosed: true,
+      },
+    ];
+    useVolumeStore.setState({
+      loadedSeries: [loadedSeries],
+      activeSeriesUID: loadedSeries.seriesUID,
+    });
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Slice' }));
+
+    await waitFor(() =>
+      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(1)
+    );
+    const undoButton = screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement;
+    expect(undoButton.disabled).toBe(false);
+    expect(undoButton.getAttribute('title')).toContain('Undo Delete contour');
+
+    fireEvent.click(undoButton);
+
+    await waitFor(() =>
+      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(2)
+    );
+    expect(screen.getByText('Undid Delete contour at z=10.0.')).toBeTruthy();
+  });
+
+  it('disables current-slice contour deletion for locked structures', () => {
+    const loadedSeries = makeLoadedSeries();
+    loadedSeries.series.instances = [
+      { sopInstanceUID: 'sop-1', instanceNumber: 1, sliceLocation: 10 },
+    ];
+    const structureSet = makeStructureSet();
+    structureSet.structures[0].isLocked = true;
+    structureSet.structures[0].contours = [
+      {
+        referencedSOPInstanceUID: 'sop-1',
+        slicePosition: 10,
+        points: new Float32Array([0, 0, 10, 1, 0, 10, 1, 1, 10]),
+        isClosed: true,
+      },
+    ];
+    useVolumeStore.setState({
+      loadedSeries: [loadedSeries],
+      activeSeriesUID: loadedSeries.seriesUID,
+    });
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    const deleteButton = screen.getByRole('button', { name: 'Delete Slice' }) as HTMLButtonElement;
+    expect(deleteButton.disabled).toBe(true);
+    expect(deleteButton.getAttribute('title')).toBe(
+      'Unlock the selected structure before deleting contours'
+    );
   });
 
   it('shows the active structure set source when it came from repository RTSTRUCT', () => {
