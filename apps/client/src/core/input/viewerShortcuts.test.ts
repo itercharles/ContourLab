@@ -105,6 +105,24 @@ describe('installViewerShortcutHandler', () => {
     cleanup();
   });
 
+  it('activates matching Cornerstone tools for view shortcuts', async () => {
+    const cleanup = installViewerShortcutHandler();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 's' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+
+    await vi.waitFor(() => {
+      expect(mocks.setActiveToolSpy).toHaveBeenCalledWith('Zoom');
+      expect(mocks.setActiveToolSpy).toHaveBeenCalledWith('Pan');
+      expect(mocks.setActiveToolSpy).toHaveBeenCalledWith('StackScroll');
+      expect(mocks.setActiveToolSpy).toHaveBeenCalledWith('WindowLevel');
+    });
+
+    cleanup();
+  });
+
   it('does not activate freehand from a selected structure set that belongs to another series', () => {
     mocks.volumeStore.activeSeriesUID = 'series-2';
     mocks.structureStore.structureSets = [

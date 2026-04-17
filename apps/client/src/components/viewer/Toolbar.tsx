@@ -10,13 +10,14 @@ import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
+import WorkspaceContextBar from '../layout/WorkspaceContextBar';
 
 // Map our ViewerTool names to Cornerstone tool names
 const TOOL_NAME_MAP: Partial<Record<ViewerTool, string>> = {
-  windowLevel: 'WindowLevelTool',
-  zoom: 'ZoomTool',
-  pan: 'PanTool',
-  scroll: 'StackScrollTool',
+  windowLevel: 'WindowLevel',
+  zoom: 'Zoom',
+  pan: 'Pan',
+  scroll: 'StackScroll',
 };
 
 const PRESET_OPTIONS: WLPreset[] = ['lung', 'bone', 'softTissue', 'brain', 'abdomen'];
@@ -94,20 +95,20 @@ function ToolButton({ label, description, tool, activeTool, onClick, shortcut }:
     <div className="relative group">
       <button
         onClick={() => onClick(tool)}
-        aria-label={`${label}${shortcut ? ` (${shortcut})` : ''}: ${description}`}
+        aria-label={`${TOOL_META[tool].name}${shortcut ? ` (${shortcut})` : ''}: ${description}`}
         className={`
-          w-7 h-7 rounded text-[11px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none
+          w-7 h-7 flex items-center justify-center rounded text-[11px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none
           ${isActive
             ? 'bg-blue-600 text-white'
             : 'bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5]'
           }
         `}
       >
-        {label}
+        <ToolIcon tool={tool} fallback={label} />
       </button>
       <div className="pointer-events-none absolute left-0 top-[calc(100%+6px)] z-20 hidden min-w-40 rounded border border-[#3a3a3a] bg-[#111] px-2 py-1.5 text-left shadow-none group-hover:block">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-medium text-[#e5e5e5]">{label}</span>
+          <span className="text-[11px] font-medium text-[#e5e5e5]">{TOOL_META[tool].name}</span>
           {shortcut && (
             <span className="rounded border border-[#3a3a3a] px-1 text-[10px] font-mono text-[#a0a0a0]">
               {shortcut}
@@ -118,6 +119,48 @@ function ToolButton({ label, description, tool, activeTool, onClick, shortcut }:
       </div>
     </div>
   );
+}
+
+function ToolIcon({ tool, fallback }: { tool: ViewerTool; fallback: string }) {
+  switch (tool) {
+    case 'windowLevel':
+      return <span className="font-semibold">WL</span>;
+    case 'zoom':
+      return (
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <circle cx="6" cy="6" r="4" />
+          <path d="M9.2 9.2 12.5 12.5" />
+          <path d="M6 4.2v3.6M4.2 6h3.6" />
+        </svg>
+      );
+    case 'pan':
+      return (
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4.5 7.2V3.4a1 1 0 0 1 2 0V7" />
+          <path d="M6.5 6V2.6a1 1 0 0 1 2 0V7" />
+          <path d="M8.5 6.2V3.4a1 1 0 0 1 2 0v4.8" />
+          <path d="M4.5 7.2 3.7 6.4a1 1 0 0 0-1.4 1.4l2.6 2.8A3.4 3.4 0 0 0 7.4 12h.9a2.2 2.2 0 0 0 2.2-2.2V8.2" />
+        </svg>
+      );
+    case 'scroll':
+      return (
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="4" y="2" width="6" height="10" rx="1.4" />
+          <path d="M7 4.2v2.2" />
+          <path d="M2.2 4.2 1 5.4l1.2 1.2" />
+          <path d="M11.8 7.4 13 8.6l-1.2 1.2" />
+        </svg>
+      );
+    case 'freehand':
+      return (
+        <svg aria-hidden="true" width="15" height="14" viewBox="0 0 15 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 10.8c2.4-6.4 3.8 1.8 6.2-4.5 1.2-3.2 2.5-2.5 4.8-1" />
+          <path d="M10.6 3.3 12.7 1.2l1.1 1.1-2.1 2.1" />
+        </svg>
+      );
+    default:
+      return <span>{fallback}</span>;
+  }
 }
 
 interface AxialViewportLike {
@@ -138,6 +181,7 @@ export default function Toolbar() {
   const setWindowLevelPreset = useUIStore((s) => s.setWindowLevelPreset);
   const crosshairsEnabled = useUIStore((s) => s.crosshairsEnabled);
   const setCrosshairsEnabled = useUIStore((s) => s.setCrosshairsEnabled);
+  const toggleLeftSidebar = useUIStore((s) => s.toggleLeftSidebar);
   const toggleRightSidebar = useUIStore((s) => s.toggleRightSidebar);
   const setRightSidebarOpen = useUIStore((s) => s.setRightSidebarOpen);
   const setActiveViewport = useUIStore((s) => s.setActiveViewport);
@@ -146,7 +190,6 @@ export default function Toolbar() {
   const structureSets = useStructureStore((s) => s.structureSets);
   const activeStructureSetId = useStructureStore((s) => s.activeStructureSetId);
   const activeStructureId = useStructureStore((s) => s.activeStructureId);
-  const activeToolMeta = TOOL_META[activeTool];
   const activeStructureSetById = structureSets.find(
     (structureSet) => structureSet.id === activeStructureSetId
   );
@@ -231,10 +274,6 @@ export default function Toolbar() {
       : activeStructure.isLocked
         ? 'Unlock the selected structure before drawing.'
         : null;
-  const activeToolDescription =
-    activeTool === 'freehand' && freehandBlockedReason
-      ? freehandBlockedReason
-      : activeToolMeta.description;
   const canDeleteContour =
     !!activeStructureSet &&
     !!activeStructure &&
@@ -319,154 +358,166 @@ export default function Toolbar() {
   };
 
   return (
-    <div className="h-9 flex items-center gap-1 px-2 bg-[#1a1a1a] border-b border-[#2a2a2a] flex-none">
-      {/* Tool buttons */}
-      <div className="flex items-center gap-1">
-        {(['windowLevel', 'zoom', 'pan', 'scroll', 'freehand'] as ViewerTool[]).map((tool) => (
-          <ToolButton
-            key={tool}
-            label={TOOL_META[tool].shortLabel}
-            description={
-              tool === 'freehand' && freehandBlockedReason
-                ? `${TOOL_META[tool].description} ${freehandBlockedReason}`
-                : TOOL_META[tool].description
-            }
-            tool={tool}
-            activeTool={activeTool}
-            onClick={handleToolClick}
-            shortcut={TOOL_META[tool].shortcut}
-          />
-        ))}
-      </div>
+    <div className="flex flex-none flex-col border-b border-[#2a2a2a] bg-[#111]">
+      <WorkspaceContextBar />
+      <div className="flex h-9 items-center gap-1 px-2 bg-[#1a1a1a]">
+        <button
+          onClick={toggleLeftSidebar}
+          title="Toggle workspace navigator"
+          className="w-7 h-7 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] transition-colors hover:bg-[#3a3a3a] hover:text-[#e5e5e5]"
+        >
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="1" y="1" width="11" height="11" rx="1" />
+            <line x1="4.5" y1="1" x2="4.5" y2="12" />
+          </svg>
+        </button>
+        <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
+        <span className="mr-1 rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+          View
+        </span>
+        <div className="flex items-center gap-1">
+          {(['zoom', 'pan', 'scroll'] as ViewerTool[]).map((tool) => (
+            <ToolButton
+              key={tool}
+              label={TOOL_META[tool].shortLabel}
+              description={TOOL_META[tool].description}
+              tool={tool}
+              activeTool={activeTool}
+              onClick={handleToolClick}
+              shortcut={TOOL_META[tool].shortcut}
+            />
+          ))}
+        </div>
 
-      {/* Separator */}
-      <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
+        {/* Separator */}
+        <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
 
-      <div className="min-w-0 max-w-56 text-[10px] leading-none">
-        <p className="truncate text-[#e5e5e5]">
-          {activeToolMeta.name}
-          {activeToolMeta.shortcut ? (
-            <span className="ml-1 font-mono text-[#6b6b6b]">[{activeToolMeta.shortcut}]</span>
-          ) : null}
-        </p>
-        <p className={`mt-0.5 truncate ${activeTool === 'freehand' && freehandBlockedReason ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'}`}>
-          {activeToolDescription}
-        </p>
-      </div>
+        <span className="mr-1 rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+          Window
+        </span>
+        <ToolButton
+          label={TOOL_META.windowLevel.shortLabel}
+          description={TOOL_META.windowLevel.description}
+          tool="windowLevel"
+          activeTool={activeTool}
+          onClick={handleToolClick}
+          shortcut={TOOL_META.windowLevel.shortcut}
+        />
 
-      {/* Separator */}
-      <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
+        {/* Window level preset */}
+        <select
+          value={windowLevelPreset}
+          onChange={(e) => handlePresetChange(e.target.value as WLPreset)}
+          className="bg-[#2e2e2e] border border-[#3a3a3a] text-[11px] text-[#e5e5e5] rounded h-6 px-1 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+          title="Window/Level Preset"
+        >
+          {PRESET_OPTIONS.map((preset) => (
+            <option key={preset} value={preset}>
+              {WINDOW_LEVEL_PRESETS[preset].label}
+            </option>
+          ))}
+        </select>
 
-      {/* Window level preset */}
-      <select
-        value={windowLevelPreset}
-        onChange={(e) => handlePresetChange(e.target.value as WLPreset)}
-        className="bg-[#2e2e2e] border border-[#3a3a3a] text-[11px] text-[#e5e5e5] rounded h-6 px-1 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-        title="Window/Level Preset"
-      >
-        {PRESET_OPTIONS.map((preset) => (
-          <option key={preset} value={preset}>
-            {WINDOW_LEVEL_PRESETS[preset].label}
-          </option>
-        ))}
-      </select>
+        {/* Separator */}
+        <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
 
-      {/* Separator */}
-      <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
-
-      {/* Crosshairs toggle */}
-      <button
-        onClick={handleCrosshairsToggle}
-        title="Crosshairs"
-        className={`
-          w-7 h-7 flex items-center justify-center rounded transition-colors
+        <button
+          onClick={handleCrosshairsToggle}
+          title="Crosshair sync: link slice position across axial, sagittal, and coronal views"
+          aria-label="Crosshair sync: link slice position across axial, sagittal, and coronal views"
+          className={`
+          h-7 flex items-center gap-1 rounded px-2 text-[10px] font-medium transition-colors
           ${crosshairsEnabled
             ? 'bg-blue-600 text-white'
             : 'bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5]'
           }
         `}
-      >
-        {/* Crosshair icon */}
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-          <line x1="6.5" y1="0" x2="6.5" y2="4" />
-          <line x1="6.5" y1="9" x2="6.5" y2="13" />
-          <line x1="0" y1="6.5" x2="4" y2="6.5" />
-          <line x1="9" y1="6.5" x2="13" y2="6.5" />
-          <circle cx="6.5" cy="6.5" r="2" />
-        </svg>
-      </button>
-
-      {/* Separator */}
-      <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
-
-      {/* Undo / Redo */}
-      <div className="flex items-center gap-1">
-        <button
-          onClick={handleUndo}
-          disabled={!canUndo}
-          title={canUndo ? `Undo: ${UndoRedoManager.getUndoDescription()} [Ctrl+Z]` : 'Undo [Ctrl+Z]'}
-          className="w-7 h-7 flex items-center justify-center rounded text-[11px] font-medium bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M1 4h6a4 4 0 0 1 0 8H3" />
-            <polyline points="4 1 1 4 4 7" />
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <line x1="6.5" y1="0" x2="6.5" y2="4" />
+            <line x1="6.5" y1="9" x2="6.5" y2="13" />
+            <line x1="0" y1="6.5" x2="4" y2="6.5" />
+            <line x1="9" y1="6.5" x2="13" y2="6.5" />
+            <circle cx="6.5" cy="6.5" r="2" />
           </svg>
+          Sync
         </button>
-        <button
-          onClick={handleRedo}
-          disabled={!canRedo}
-          title={canRedo ? `Redo: ${UndoRedoManager.getRedoDescription()} [Ctrl+Shift+Z]` : 'Redo [Ctrl+Shift+Z]'}
-          className="w-7 h-7 flex items-center justify-center rounded text-[11px] font-medium bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M11 4H5a4 4 0 0 0 0 8h4" />
-            <polyline points="8 1 11 4 8 7" />
-          </svg>
-        </button>
-        <button
-          onClick={handleDeleteContour}
-          disabled={!canDeleteContour}
-          title={
-            canDeleteContour
-              ? `Delete contour on z=${activeContourOnSlice.slicePosition.toFixed(1)} [Delete]`
-              : 'No active contour on current slice'
+
+        {/* Separator */}
+        <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
+
+        <span className="mr-1 rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+          Contour
+        </span>
+        <ToolButton
+          label={TOOL_META.freehand.shortLabel}
+          description={
+            freehandBlockedReason
+              ? `${TOOL_META.freehand.description} ${freehandBlockedReason}`
+              : TOOL_META.freehand.description
           }
-          className="w-7 h-7 flex items-center justify-center rounded text-[11px] font-medium bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#ef4444] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          tool="freehand"
+          activeTool={activeTool}
+          onClick={handleToolClick}
+          shortcut={TOOL_META.freehand.shortcut}
+        />
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleUndo}
+            disabled={!canUndo}
+            title={canUndo ? `Undo: ${UndoRedoManager.getUndoDescription()} [Ctrl+Z]` : 'Undo [Ctrl+Z]'}
+            className="h-7 rounded bg-[#2e2e2e] px-2 text-[10px] font-medium text-[#a0a0a0] transition-colors hover:bg-[#3a3a3a] hover:text-[#e5e5e5] disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            Undo
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={!canRedo}
+            title={canRedo ? `Redo: ${UndoRedoManager.getRedoDescription()} [Ctrl+Shift+Z]` : 'Redo [Ctrl+Shift+Z]'}
+            className="h-7 rounded bg-[#2e2e2e] px-2 text-[10px] font-medium text-[#a0a0a0] transition-colors hover:bg-[#3a3a3a] hover:text-[#e5e5e5] disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            Redo
+          </button>
+          <button
+            onClick={handleDeleteContour}
+            disabled={!canDeleteContour}
+            title={
+              canDeleteContour
+                ? `Delete contour on z=${activeContourOnSlice.slicePosition.toFixed(1)} [Delete]`
+                : 'No active contour on current slice'
+            }
+            className="h-7 rounded bg-[#2e2e2e] px-2 text-[10px] font-medium text-[#a0a0a0] transition-colors hover:bg-[#3a3a3a] hover:text-[#ef4444] disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            Delete Slice
+          </button>
+        </div>
+
+        {activeTool === 'freehand' && activeStructure && (
+          <div className="ml-1 min-w-0 max-w-44 text-[10px] leading-none">
+            <p className="truncate text-[#a0a0a0]" title={activeStructure.name}>
+              ROI: {activeStructure.name}
+            </p>
+            <p className={activeContourOnSlice ? 'mt-0.5 text-[#22c55e]' : 'mt-0.5 text-[#6b6b6b]'}>
+              {activeContourOnSlice ? 'Current slice has contour' : 'No contour on current slice'}
+            </p>
+          </div>
+        )}
+
+        {/* Spacer - pushes panel toggle to the right */}
+        <div className="ml-auto" />
+
+        {/* Sidebar toggle */}
+        <button
+          onClick={toggleRightSidebar}
+          title="Toggle structure panel"
+          className="w-7 h-7 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] transition-colors"
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="2 3 3 3 10 3" />
-            <path d="M9.5 3l-.5 6H4L3.5 3" />
-            <path d="M5 5v3M7 5v3" />
-            <path d="M4.5 3V2h3v1" />
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="1" y="1" width="11" height="11" rx="1" />
+            <line x1="8.5" y1="1" x2="8.5" y2="12" />
           </svg>
         </button>
       </div>
-
-      {activeTool === 'freehand' && activeStructure && (
-        <div className="ml-1 min-w-0 max-w-44 text-[10px] leading-none">
-          <p className="truncate text-[#a0a0a0]" title={activeStructure.name}>
-            ROI: {activeStructure.name}
-          </p>
-          <p className={activeContourOnSlice ? 'mt-0.5 text-[#22c55e]' : 'mt-0.5 text-[#6b6b6b]'}>
-            {activeContourOnSlice ? 'Current slice has contour' : 'No contour on current slice'}
-          </p>
-        </div>
-      )}
-
-      {/* Spacer — pushes panel toggle to the right */}
-      <div className="ml-auto" />
-
-      {/* Sidebar toggle */}
-      <button
-        onClick={toggleRightSidebar}
-        title="Toggle structure panel"
-        className="w-7 h-7 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5] transition-colors"
-      >
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="1" y="1" width="11" height="11" rx="1" />
-          <line x1="8.5" y1="1" x2="8.5" y2="12" />
-        </svg>
-      </button>
     </div>
   );
 }

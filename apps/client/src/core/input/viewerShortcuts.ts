@@ -5,10 +5,10 @@ import { useVolumeStore } from '../store/volumeStore';
 import { logClientDebug } from '../debug/clientDebugLog';
 
 const TOOL_NAME_MAP: Partial<Record<ViewerTool, string>> = {
-  windowLevel: 'WindowLevelTool',
-  zoom: 'ZoomTool',
-  pan: 'PanTool',
-  scroll: 'StackScrollTool',
+  windowLevel: 'WindowLevel',
+  zoom: 'Zoom',
+  pan: 'Pan',
+  scroll: 'StackScroll',
 };
 
 function isEditableTarget(target: EventTarget | null): boolean {
