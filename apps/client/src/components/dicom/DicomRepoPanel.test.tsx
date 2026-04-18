@@ -237,6 +237,66 @@ describe('DicomRepoPanel', () => {
     expect(screen.getByText('Structure Sets / RTSS')).toBeTruthy();
   });
 
+  it('shows RTSTRUCT rows only under the referenced image set when a study has multiple image sets', async () => {
+    mocks.queryDicomWebSeries.mockResolvedValue([
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'series-1',
+        patientName: 'DOE^JANE',
+        patientId: 'MRN-1',
+        studyDate: '20260411',
+        studyDescription: 'Chest CT',
+        seriesDescription: 'Axial',
+        modality: 'CT',
+        instanceCount: 128,
+      },
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'series-2',
+        patientName: 'DOE^JANE',
+        patientId: 'MRN-1',
+        studyDate: '20260411',
+        studyDescription: 'Chest CT',
+        seriesDescription: 'Boost CT',
+        modality: 'CT',
+        instanceCount: 72,
+      },
+    ]);
+    mocks.queryRtstructInstancesForStudy.mockResolvedValue([
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-series-1',
+        sopInstanceUID: 'rtss-1',
+        seriesDescription: 'RTSTRUCT Axial',
+        seriesDate: '20260412',
+        seriesTime: '090000',
+        roiCount: 2,
+        referencedSeriesInstanceUIDs: ['series-1'],
+      },
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-series-2',
+        sopInstanceUID: 'rtss-2',
+        seriesDescription: 'RTSTRUCT Boost',
+        seriesDate: '20260412',
+        seriesTime: '100000',
+        roiCount: 1,
+        referencedSeriesInstanceUIDs: ['series-2'],
+      },
+    ]);
+
+    render(<DicomRepoPanel />);
+
+    await waitFor(() => expect(mocks.queryRtstructInstancesForStudy).toHaveBeenCalledWith('study-1'));
+
+    fireEvent.click(screen.getByRole('button', { name: /Show structure sets for Axial/i }));
+    expect(await screen.findByText('RTSTRUCT Axial')).toBeTruthy();
+    expect(screen.queryByText('RTSTRUCT Boost')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Show structure sets for Boost CT/i }));
+    expect(await screen.findByText('RTSTRUCT Boost')).toBeTruthy();
+  });
+
   it('keeps the active image set when unsynced changes are not confirmed', async () => {
     mocks.queryDicomWebSeries.mockResolvedValue([
       {
@@ -312,6 +372,7 @@ describe('DicomRepoPanel', () => {
         seriesDate: '20260412',
         seriesTime: '120000',
         roiCount: 3,
+        referencedSeriesInstanceUIDs: ['series-1'],
       },
       {
         studyInstanceUID: 'study-1',
@@ -321,6 +382,7 @@ describe('DicomRepoPanel', () => {
         seriesDate: '20260411',
         seriesTime: '120000',
         roiCount: 2,
+        referencedSeriesInstanceUIDs: ['series-1'],
       },
     ]);
     mocks.retrieveDicomWebInstance.mockResolvedValue(dicomBuffer);
@@ -379,6 +441,7 @@ describe('DicomRepoPanel', () => {
         seriesDate: '20260411',
         seriesTime: '120000',
         roiCount: 2,
+        referencedSeriesInstanceUIDs: ['series-1'],
       },
     ]);
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);

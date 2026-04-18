@@ -111,4 +111,42 @@ describe('dicomWebClient summary parsing', () => {
 
     expect(Array.from(new Uint8Array(extracted))).toEqual([1, 2, 3, 4]);
   });
+
+  it('extracts referenced image series from RTSTRUCT metadata', () => {
+    const metadata = {
+      '30060010': {
+        Value: [
+          {
+            '30060012': {
+              Value: [
+                {
+                  '30060014': {
+                    Value: [
+                      {
+                        '0020000E': { Value: ['series-a'] },
+                        '30060016': {
+                          Value: [
+                            { '00081155': { Value: ['image-1'] } },
+                          ],
+                        },
+                      },
+                      {
+                        '0020000E': { Value: ['series-b'] },
+                        '30060016': { Value: [] },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    expect(__testables__.getRtstructReferencedSeriesInstanceUIDs(metadata)).toEqual([
+      'series-a',
+      'series-b',
+    ]);
+  });
 });

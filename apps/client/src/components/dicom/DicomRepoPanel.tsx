@@ -686,9 +686,14 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                     const isExpanded = isActive || expandedImageSetUIDs.includes(entry.seriesInstanceUID);
                     const studyRtstructs = [...(rtstructByStudy[study.studyInstanceUID] ?? [])]
                       .sort(compareRtstructInstances);
+                    const rtstructsForImageSet = studyRtstructs.filter((instance) => (
+                      instance.referencedSeriesInstanceUIDs.length > 0
+                        ? instance.referencedSeriesInstanceUIDs.includes(entry.seriesInstanceUID)
+                        : study.series.length === 1
+                    ));
                     const rtstructMeta = loadingRtstructStudyUIDs.includes(study.studyInstanceUID)
                       ? 'loading RTSS'
-                      : `${studyRtstructs.length} RTSS in study`;
+                      : `${rtstructsForImageSet.length} RTSS`;
 
                     return (
                       <div key={entry.seriesInstanceUID} className="border-t border-[#2a2a2a]">
@@ -756,11 +761,11 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                             />
                             {loadingRtstructStudyUIDs.includes(study.studyInstanceUID) ? (
                               <p className="px-3 py-2 text-[10px] text-blue-400">Loading RTSTRUCT objects...</p>
-                            ) : studyRtstructs.length === 0 ? (
+                            ) : rtstructsForImageSet.length === 0 ? (
                               <p className="px-3 py-2 text-[10px] text-[#6b6b6b]">No RTSTRUCT for this image set context.</p>
                             ) : (
                               <div>
-                                {studyRtstructs.map((instance, index) => {
+                                {rtstructsForImageSet.map((instance, index) => {
                                   const isActiveRtstruct =
                                     activeSeriesStructureSet?.source?.type === 'rtstruct' &&
                                     activeSeriesStructureSet.source.sopInstanceUID === instance.sopInstanceUID;

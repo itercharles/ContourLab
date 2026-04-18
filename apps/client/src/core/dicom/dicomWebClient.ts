@@ -9,7 +9,8 @@ import {
 } from './DicomMetadataStore';
 import type { ParsedInstance, ParsedSeries } from './DicomLoader';
 
-type DicomWebValue = string[] | number[] | boolean[] | Array<{ Alphabetic?: string }>;
+type DicomWebSequenceItem = Record<string, DicomWebElement>;
+type DicomWebValue = Array<string | number | boolean | { Alphabetic?: string } | DicomWebSequenceItem>;
 type DicomWebElement = { Value?: DicomWebValue };
 type DicomWebDataset = Record<string, DicomWebElement>;
 
@@ -33,6 +34,7 @@ export interface DicomWebRtstructInstance {
   seriesDate: string;
   seriesTime: string;
   roiCount?: number;
+  referencedSeriesInstanceUIDs: string[];
 }
 
 const DICOMWEB_BASE_URL_STORAGE_KEY = 'webtps.dicomweb.baseUrl';
@@ -264,6 +266,7 @@ export async function queryRtstructInstancesForStudy(
             getStringValue(dataset, '00080033', getStringValue(dataset, '00080013'))
           ),
           roiCount: getSequenceLength(dataset, '30060020'),
+          referencedSeriesInstanceUIDs: getRtstructReferencedSeriesInstanceUIDs(dataset),
         }];
       });
     })
@@ -277,6 +280,35 @@ export async function queryRtstructInstancesForStudy(
 function getSequenceLength(dataset: DicomWebDataset, tag: string): number | undefined {
   const value = dataset[tag]?.Value;
   return Array.isArray(value) ? value.length : undefined;
+}
+
+function getSequenceItems(dataset: DicomWebDataset, tag: string): DicomWebSequenceItem[] {
+  const value = dataset[tag]?.Value;
+  if (!Array.isArray(value)) return [];
+
+  return value.filter((item): item is DicomWebSequenceItem => (
+    typeof item === 'object' &&
+    item !== null &&
+    !Array.isArray(item) &&
+    !('Alphabetic' in item)
+  ));
+}
+
+function getRtstructReferencedSeriesInstanceUIDs(dataset: DicomWebDataset): string[] {
+  const referencedSeriesUIDs = new Set<string>();
+
+  for (const frameReference of getSequenceItems(dataset, '30060010')) {
+    for (const studyReference of getSequenceItems(frameReference, '30060012')) {
+      for (const seriesReference of getSequenceItems(studyReference, '30060014')) {
+        const seriesUID = getStringValue(seriesReference, '0020000E');
+        if (seriesUID) {
+          referencedSeriesUIDs.add(seriesUID);
+        }
+      }
+    }
+  }
+
+  return Array.from(referencedSeriesUIDs);
 }
 
 export async function retrieveDicomWebInstance(instance: DicomWebRtstructInstance): Promise<ArrayBuffer> {
@@ -353,6 +385,7 @@ export async function loadSeriesFromDicomWeb(
 export const __testables__ = {
   buildSeriesSummaries,
   extractDicomPart,
+  getRtstructReferencedSeriesInstanceUIDs,
   isPlanningCtSeries,
 };
 

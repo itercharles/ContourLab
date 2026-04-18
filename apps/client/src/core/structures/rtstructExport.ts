@@ -76,6 +76,10 @@ export async function exportRtstructObject(
   const imageMetadata = DicomMetadataStore.getFirstImageMetadataForSeries(loadedSeries.seriesUID);
   const referencedFrameOfReferenceUID = imageMetadata?.frameOfReferenceUID ?? DicomMetaDictionary.uid();
   const referencedSOPClassUID = getImageStorageSOPClassUID(loadedSeries.series.modality);
+  const referencedImages = loadedSeries.series.instances.map((instance) => ({
+    ReferencedSOPClassUID: referencedSOPClassUID,
+    ReferencedSOPInstanceUID: instance.sopInstanceUID,
+  }));
 
   const structureSetROISequence = structureSet.structures.map((structure, index) => ({
     ROINumber: index + 1,
@@ -136,6 +140,18 @@ export async function exportRtstructObject(
     ReferencedFrameOfReferenceSequence: [
       {
         FrameOfReferenceUID: referencedFrameOfReferenceUID,
+        RTReferencedStudySequence: [
+          {
+            ReferencedSOPClassUID: '1.2.840.10008.3.1.2.3.2',
+            ReferencedSOPInstanceUID: loadedSeries.study.studyInstanceUID,
+            RTReferencedSeriesSequence: [
+              {
+                SeriesInstanceUID: loadedSeries.seriesUID,
+                ContourImageSequence: referencedImages,
+              },
+            ],
+          },
+        ],
       },
     ],
     StructureSetROISequence: structureSetROISequence,
