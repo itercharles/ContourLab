@@ -159,6 +159,21 @@ export default function DicomRepoPanel() {
       )
     : undefined;
   const isActiveSeriesRepositoryDirty = !!activeSeriesUID && repositoryDirtySeriesUIDs.includes(activeSeriesUID);
+  const confirmUnsyncedWorkspaceChange = useCallback((target: string) => {
+    if (!activeSeriesUID || !repositoryDirtySeriesUIDs.includes(activeSeriesUID)) return true;
+
+    const activeLabel =
+      activeSeriesStructureSet?.source?.label ||
+      activeSeriesStructureSet?.label ||
+      activeLoadedSeries?.series.seriesDescription ||
+      activeSeriesUID;
+
+    return window.confirm(
+      `The active structure set has local changes that have not been pushed to the DICOM repository.\n\n` +
+      `Active: ${activeLabel}\n` +
+      `Continue to ${target}?`
+    );
+  }, [activeLoadedSeries, activeSeriesStructureSet, activeSeriesUID, repositoryDirtySeriesUIDs]);
   const patientGroups = useMemo(() => groupSeriesByPatient(series), [series]);
   const filteredPatientGroups = useMemo(() => {
     const query = patientQuery.trim().toLowerCase();
@@ -343,7 +358,16 @@ export default function DicomRepoPanel() {
   );
 
   const onLoadSeries = useCallback(
-    async (seriesUID: string) => {
+    async (seriesUID: string, options?: { skipUnsyncedConfirm?: boolean }) => {
+      if (
+        !options?.skipUnsyncedConfirm &&
+        activeSeriesUID !== seriesUID &&
+        !confirmUnsyncedWorkspaceChange('load another image set')
+      ) {
+        setStatus({ tone: 'muted', message: 'Kept the current workspace active. Push changes before switching image sets.' });
+        return false;
+      }
+
       const target = series.find((entry) => entry.seriesInstanceUID === seriesUID);
       if (target) {
         setSelectedPatientKey(target.patientId || target.patientName || 'unknown-patient');
@@ -390,7 +414,16 @@ export default function DicomRepoPanel() {
         setLoadingSeriesUID(null);
       }
     },
-    [addSeries, loadedSeries, series, setActiveSeries, setError, setLoading]
+    [
+      activeSeriesUID,
+      addSeries,
+      confirmUnsyncedWorkspaceChange,
+      loadedSeries,
+      series,
+      setActiveSeries,
+      setError,
+      setLoading,
+    ]
   );
 
   const onPushChanges = useCallback(async () => {
@@ -477,10 +510,15 @@ export default function DicomRepoPanel() {
         return;
       }
 
+      if (!confirmUnsyncedWorkspaceChange('load another RTSTRUCT')) {
+        setStatus({ tone: 'muted', message: 'Kept the current structure set active. Push changes before loading another RTSTRUCT.' });
+        return;
+      }
+
       try {
         setImportingRtstructSop(instance.sopInstanceUID);
         setStatus({ tone: 'muted', message: `Loading image set and structures from RTSTRUCT ${instance.sopInstanceUID}...` });
-        const imageSetLoaded = await onLoadSeries(targetSeriesUID);
+        const imageSetLoaded = await onLoadSeries(targetSeriesUID, { skipUnsyncedConfirm: true });
         if (!imageSetLoaded) return;
 
         const buffer = await retrieveDicomWebInstance(instance);
@@ -520,6 +558,7 @@ export default function DicomRepoPanel() {
     },
     [
       activeSeriesUID,
+      confirmUnsyncedWorkspaceChange,
       markSeriesDraftDirty,
       onLoadSeries,
       replaceStructureSets,
@@ -659,6 +698,16 @@ export default function DicomRepoPanel() {
                     key={patient.patientKey}
                     type="button"
                     onClick={() => {
+                      if (
+                        patient.patientKey !== activePatientKey &&
+                        !confirmUnsyncedWorkspaceChange('select another patient')
+                      ) {
+                        setStatus({
+                          tone: 'muted',
+                          message: 'Kept the current patient active. Push changes before switching patients.',
+                        });
+                        return;
+                      }
                       setSelectedPatientKey(patient.patientKey);
                       setIsPatientSelectorOpen(false);
                     }}

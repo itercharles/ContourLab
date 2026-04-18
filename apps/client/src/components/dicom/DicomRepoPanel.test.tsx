@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import DicomRepoPanel from './DicomRepoPanel';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
@@ -143,6 +143,10 @@ beforeEach(() => {
   });
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('DicomRepoPanel', () => {
   it('queries repository series on mount', async () => {
     render(<DicomRepoPanel />);
@@ -220,6 +224,51 @@ describe('DicomRepoPanel', () => {
     await waitFor(() => expect(mocks.loadSeriesFromDicomWeb).toHaveBeenCalledTimes(1));
     expect(useVolumeStore.getState().activeSeriesUID).toBe('series-1');
     expect(screen.getAllByText('ACTIVE').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('keeps the active image set when unsynced changes are not confirmed', async () => {
+    mocks.queryDicomWebSeries.mockResolvedValue([
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'series-1',
+        patientName: 'DOE^JANE',
+        patientId: 'MRN-1',
+        studyDate: '20260411',
+        studyDescription: 'Chest CT',
+        seriesDescription: 'Axial',
+        modality: 'CT',
+        instanceCount: 128,
+      },
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'series-2',
+        patientName: 'DOE^JANE',
+        patientId: 'MRN-1',
+        studyDate: '20260411',
+        studyDescription: 'Chest CT',
+        seriesDescription: 'Boost CT',
+        modality: 'CT',
+        instanceCount: 72,
+      },
+    ]);
+    useVolumeStore.setState({
+      loadedSeries: [makeLoadedSeries()],
+      activeSeriesUID: 'series-1',
+      isLoading: false,
+      loadError: null,
+    });
+    useStructureStore.getState().markSeriesDirty('series-1');
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    render(<DicomRepoPanel />);
+
+    await screen.findByText('Boost CT');
+    fireEvent.click(screen.getByRole('button', { name: /Boost CT/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('local changes'));
+    expect(mocks.loadSeriesFromDicomWeb).not.toHaveBeenCalled();
+    expect(useVolumeStore.getState().activeSeriesUID).toBe('series-1');
+    expect(screen.getByText('Kept the current workspace active. Push changes before switching image sets.')).toBeTruthy();
   });
 
   it('pushes the active structure set as RTSTRUCT from the repository panel', async () => {
@@ -366,6 +415,39 @@ describe('DicomRepoPanel', () => {
     expect(screen.getAllByText('ACTIVE').length).toBeGreaterThanOrEqual(3);
     expect(screen.getAllByText('Plans').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('No plans yet').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('keeps the active RTSTRUCT when unsynced changes are not confirmed', async () => {
+    useVolumeStore.setState({
+      loadedSeries: [makeLoadedSeries()],
+      activeSeriesUID: 'series-1',
+      isLoading: false,
+      loadError: null,
+    });
+    useStructureStore.getState().markSeriesDirty('series-1');
+    mocks.queryRtstructInstancesForStudy.mockResolvedValue([
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-series-1',
+        sopInstanceUID: 'rtss-1',
+        seriesDescription: 'RTSTRUCT Thorax CT',
+        seriesDate: '20260411',
+        seriesTime: '120000',
+        roiCount: 2,
+      },
+    ]);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    render(<DicomRepoPanel />);
+
+    await screen.findByText('RTSTRUCT Thorax CT');
+    fireEvent.doubleClick(screen.getByRole('button', { name: /RTSTRUCT Thorax CT/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('local changes'));
+    expect(mocks.retrieveDicomWebInstance).not.toHaveBeenCalled();
+    expect(mocks.importRtstructArrayBuffer).not.toHaveBeenCalled();
+    expect(useStructureStore.getState().activeStructureSetId).toBe('ss-1');
+    expect(screen.getByText('Kept the current structure set active. Push changes before loading another RTSTRUCT.')).toBeTruthy();
   });
 
   it('round-trips a loaded RTSTRUCT through edit and push as a new active repository version', async () => {
