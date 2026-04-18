@@ -82,15 +82,15 @@ function clearStoredDicomWebBaseUrl(): void {
 
 export function getDicomWebBaseUrl(): string {
   const stored = getStoredDicomWebBaseUrl();
-  return (stored || DEFAULT_DICOMWEB_BASE_URL).replace(/\/$/, '');
+  return normalizeDicomWebBaseUrl(stored || DEFAULT_DICOMWEB_BASE_URL);
 }
 
 export function getDefaultDicomWebBaseUrl(): string {
-  return DEFAULT_DICOMWEB_BASE_URL.replace(/\/$/, '');
+  return normalizeDicomWebBaseUrl(DEFAULT_DICOMWEB_BASE_URL);
 }
 
 export function setDicomWebBaseUrl(baseUrl: string): void {
-  const normalized = baseUrl.trim().replace(/\/$/, '');
+  const normalized = normalizeDicomWebBaseUrl(baseUrl);
   if (!normalized) {
     throw new Error('DICOMweb endpoint is required.');
   }
@@ -100,6 +100,28 @@ export function setDicomWebBaseUrl(baseUrl: string): void {
 
 export function resetDicomWebBaseUrl(): void {
   clearStoredDicomWebBaseUrl();
+}
+
+function normalizeDicomWebBaseUrl(baseUrl: string): string {
+  const trimmed = baseUrl.trim().replace(/\/$/, '');
+  if (!trimmed) return '';
+
+  try {
+    const parsed = new URL(trimmed, window.location.origin);
+    const isLocalOrthanc =
+      ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname) &&
+      parsed.port === '8042' &&
+      parsed.pathname.replace(/\/$/, '') === '/dicom-web';
+    const currentPort = new URL(window.location.href).port;
+
+    if (isLocalOrthanc && currentPort !== '8042') {
+      return '/dicom-web';
+    }
+  } catch {
+    // Keep the original relative value when URL parsing is unavailable.
+  }
+
+  return trimmed;
 }
 
 export async function queryDicomWebSeries(): Promise<DicomWebSeriesSummary[]> {

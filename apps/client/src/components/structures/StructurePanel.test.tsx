@@ -213,6 +213,37 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByText('2 sl')).toBeTruthy();
   });
 
+  it('shows contour QA warnings for the active structure', () => {
+    const structureSet = makeStructureSet();
+    structureSet.structures[0].contours = [
+      {
+        referencedSOPInstanceUID: 'sop-1',
+        slicePosition: 0,
+        points: new Float32Array([0, 0, 0, 10, 0, 0, 10, 10, 0, 0, 10, 0]),
+        isClosed: true,
+      },
+      {
+        referencedSOPInstanceUID: 'sop-2',
+        slicePosition: 5,
+        points: new Float32Array([0, 0, 5, 40, 0, 5, 40, 40, 5, 0, 40, 5]),
+        isClosed: false,
+      },
+    ];
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    expect(screen.getByText('Contour QA')).toBeTruthy();
+    expect(screen.getByText(/warnings/)).toBeTruthy();
+    expect(screen.getByText('Open contour at z=5.0 mm.')).toBeTruthy();
+    expect(screen.getByText('Gap from z=0.0 to 5.0 mm.')).toBeTruthy();
+    expect(screen.getByText('Area jump near z=5.0 mm.')).toBeTruthy();
+  });
+
   it('marks structures that have contour data on the current axial slice', () => {
     const loadedSeries = makeLoadedSeries();
     loadedSeries.series.instances = [

@@ -24,6 +24,12 @@ describe('dicomWebClient summary parsing', () => {
     expect(getDicomWebBaseUrl()).toBe(getDefaultDicomWebBaseUrl());
   });
 
+  it('routes the local Orthanc development endpoint through the same-origin proxy', () => {
+    setDicomWebBaseUrl('http://localhost:8042/dicom-web/');
+
+    expect(getDicomWebBaseUrl()).toBe('/dicom-web');
+  });
+
   it('extracts patient, study, and series fields from DICOMweb QIDO rows', () => {
     const rows = [
       {

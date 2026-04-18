@@ -14,6 +14,7 @@ import {
   resolveContourReviewScrollDelta,
   type ContourReviewDirection,
 } from '../../core/structures/contourReview';
+import { analyzeContourQuality } from '../../core/structures/contourQuality';
 import { findContourOnFrame } from '../../core/contouring/contourOverlayUtils';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
@@ -376,6 +377,9 @@ export default function StructurePanel() {
   const activeStructureReviewSlices = activeStructure
     ? getReviewSlices(activeStructure.contours)
     : [];
+  const activeStructureQa = activeStructure
+    ? analyzeContourQuality(activeStructure, activeLoadedSeries?.volume.spacing[2] ?? 1)
+    : null;
   void axialRevision;
   const axialViewport = ViewportManager
     .getRenderingEngine()
@@ -789,6 +793,47 @@ export default function StructurePanel() {
                     </p>
                   </div>
                 </div>
+              </div>
+
+              <div className="mt-2 border-t border-[#2a2a2a] pt-2">
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+                    Contour QA
+                  </p>
+                  <span
+                    className={`rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
+                      (activeStructureQa?.warningCount ?? 0) > 0
+                        ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
+                        : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
+                    }`}
+                    title="Automatic contour quality checks for the active structure"
+                  >
+                    {(activeStructureQa?.warningCount ?? 0) > 0
+                      ? `${activeStructureQa?.warningCount} warning${activeStructureQa?.warningCount === 1 ? '' : 's'}`
+                      : 'OK'}
+                  </span>
+                </div>
+                {activeStructureQa && activeStructureQa.issues.length > 0 ? (
+                  <ul className="space-y-0.5">
+                    {activeStructureQa.issues.slice(0, 3).map((issue, index) => (
+                      <li
+                        key={`${issue.type}-${issue.slicePosition ?? 'structure'}-${index}`}
+                        className={issue.severity === 'warning' ? 'text-[10px] text-[#f59e0b]' : 'text-[10px] text-[#6b6b6b]'}
+                      >
+                        {issue.message}
+                      </li>
+                    ))}
+                    {activeStructureQa.issues.length > 3 && (
+                      <li className="text-[10px] text-[#6b6b6b]">
+                        +{activeStructureQa.issues.length - 3} more QA item{activeStructureQa.issues.length - 3 === 1 ? '' : 's'}
+                      </li>
+                    )}
+                  </ul>
+                ) : (
+                  <p className="text-[10px] text-[#6b6b6b]">
+                    No contour QA warnings for this structure.
+                  </p>
+                )}
               </div>
         </section>
       )}
