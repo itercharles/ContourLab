@@ -35,11 +35,69 @@ export interface DicomWebRtstructInstance {
   roiCount?: number;
 }
 
-const DICOMWEB_BASE_URL =
+const DICOMWEB_BASE_URL_STORAGE_KEY = 'webtps.dicomweb.baseUrl';
+
+const DEFAULT_DICOMWEB_BASE_URL =
   (import.meta.env.VITE_DICOMWEB_BASE_URL as string | undefined) ?? '/dicom-web';
+let fallbackDicomWebBaseUrl: string | null = null;
+
+function getStoredDicomWebBaseUrl(): string | null {
+  try {
+    const storage = window.localStorage;
+    if (typeof storage?.getItem !== 'function') {
+      return fallbackDicomWebBaseUrl;
+    }
+
+    return storage.getItem(DICOMWEB_BASE_URL_STORAGE_KEY) ?? fallbackDicomWebBaseUrl;
+  } catch {
+    return fallbackDicomWebBaseUrl;
+  }
+}
+
+function storeDicomWebBaseUrl(baseUrl: string): void {
+  fallbackDicomWebBaseUrl = baseUrl;
+  try {
+    const storage = window.localStorage;
+    if (typeof storage?.setItem === 'function') {
+      storage.setItem(DICOMWEB_BASE_URL_STORAGE_KEY, baseUrl);
+    }
+  } catch {
+    // Browser storage may be unavailable in restricted or test environments.
+  }
+}
+
+function clearStoredDicomWebBaseUrl(): void {
+  fallbackDicomWebBaseUrl = null;
+  try {
+    const storage = window.localStorage;
+    if (typeof storage?.removeItem === 'function') {
+      storage.removeItem(DICOMWEB_BASE_URL_STORAGE_KEY);
+    }
+  } catch {
+    // Browser storage may be unavailable in restricted or test environments.
+  }
+}
 
 export function getDicomWebBaseUrl(): string {
-  return DICOMWEB_BASE_URL.replace(/\/$/, '');
+  const stored = getStoredDicomWebBaseUrl();
+  return (stored || DEFAULT_DICOMWEB_BASE_URL).replace(/\/$/, '');
+}
+
+export function getDefaultDicomWebBaseUrl(): string {
+  return DEFAULT_DICOMWEB_BASE_URL.replace(/\/$/, '');
+}
+
+export function setDicomWebBaseUrl(baseUrl: string): void {
+  const normalized = baseUrl.trim().replace(/\/$/, '');
+  if (!normalized) {
+    throw new Error('DICOMweb endpoint is required.');
+  }
+
+  storeDicomWebBaseUrl(normalized);
+}
+
+export function resetDicomWebBaseUrl(): void {
+  clearStoredDicomWebBaseUrl();
 }
 
 export async function queryDicomWebSeries(): Promise<DicomWebSeriesSummary[]> {

@@ -19,6 +19,8 @@ const mocks = vi.hoisted(() => ({
   enableCrosshairs: vi.fn(),
   disableCrosshairs: vi.fn(),
   setWindowLevel: vi.fn(),
+  exportRtstructObject: vi.fn(),
+  uploadDicomBlobToRepository: vi.fn(),
 }));
 
 vi.mock('../../core/rendering/MPRController', () => ({
@@ -45,6 +47,14 @@ vi.mock('../../core/rendering/ViewportManager', () => ({
 
 vi.mock('../../core/debug/clientDebugLog', () => ({
   logClientDebug: vi.fn(),
+}));
+
+vi.mock('../../core/structures/rtstructExport', () => ({
+  exportRtstructObject: mocks.exportRtstructObject,
+}));
+
+vi.mock('../../core/dicom/dicomWebClient', () => ({
+  uploadDicomBlobToRepository: mocks.uploadDicomBlobToRepository,
 }));
 
 function makeLoadedSeries(): LoadedSeries {
@@ -127,6 +137,19 @@ beforeEach(() => {
     scroll: mocks.scroll,
     render: mocks.renderViewport,
   });
+  mocks.exportRtstructObject.mockResolvedValue({
+    blob: new Blob(['dicom'], { type: 'application/dicom' }),
+    identifiers: {
+      studyInstanceUID: 'study-1',
+      seriesInstanceUID: 'rtss-series-new',
+      sopInstanceUID: 'rtss-sop-new',
+      seriesDescription: 'RTSTRUCT Thorax CT Edited',
+      seriesDate: '20260418',
+      seriesTime: '071500',
+      roiCount: 1,
+    },
+  });
+  mocks.uploadDicomBlobToRepository.mockResolvedValue(undefined);
   useUIStore.setState({
     activeTool: 'windowLevel',
     windowLevelPreset: 'softTissue',
@@ -187,6 +210,29 @@ describe('Toolbar contour operations', () => {
     fireEvent.click(screen.getByTitle('Toggle workspace navigator'));
 
     expect(useUIStore.getState().leftSidebarOpen).toBe(false);
+  });
+
+  it('pushes active structure changes from the top operation bar', async () => {
+    useStructureStore.getState().markSeriesDirty('series-1');
+
+    render(<Toolbar />);
+
+    const pushButton = screen.getByRole('button', { name: 'Push Changes' }) as HTMLButtonElement;
+    expect(pushButton.disabled).toBe(false);
+
+    fireEvent.click(pushButton);
+
+    await waitFor(() => expect(mocks.exportRtstructObject).toHaveBeenCalledTimes(1));
+    expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledWith(expect.any(Blob));
+    await waitFor(() => expect(useStructureStore.getState().structureSets[0].source).toEqual(
+      expect.objectContaining({
+        type: 'rtstruct',
+        label: 'RTSTRUCT Thorax CT Edited',
+        sopInstanceUID: 'rtss-sop-new',
+        seriesInstanceUID: 'rtss-series-new',
+      })
+    ));
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
   });
 
   it('deletes the active structure contour on the current axial slice from the top operation bar', async () => {

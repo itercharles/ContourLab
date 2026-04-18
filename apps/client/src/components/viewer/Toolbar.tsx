@@ -14,6 +14,8 @@ import {
   type ContourReviewDirection,
 } from '../../core/structures/contourReview';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
+import { exportRtstructObject } from '../../core/structures/rtstructExport';
+import { uploadDicomBlobToRepository } from '../../core/dicom/dicomWebClient';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import WorkspaceContextBar from '../layout/WorkspaceContextBar';
 
@@ -182,6 +184,7 @@ interface SliceFrame {
 export default function Toolbar() {
   const [axialRevision, setAxialRevision] = useState(0);
   const [undoRedoRevision, setUndoRedoRevision] = useState(0);
+  const [isPushingChanges, setIsPushingChanges] = useState(false);
   const activeTool = useUIStore((s) => s.activeTool);
   const setActiveTool = useUIStore((s) => s.setActiveTool);
   const windowLevelPreset = useUIStore((s) => s.windowLevelPreset);
@@ -197,6 +200,12 @@ export default function Toolbar() {
   const structureSets = useStructureStore((s) => s.structureSets);
   const activeStructureSetId = useStructureStore((s) => s.activeStructureSetId);
   const activeStructureId = useStructureStore((s) => s.activeStructureId);
+  const replaceStructureSets = useStructureStore((s) => s.replaceStructureSets);
+  const setActiveStructureSet = useStructureStore((s) => s.setActiveStructureSet);
+  const setActiveStructure = useStructureStore((s) => s.setActiveStructure);
+  const markSeriesClean = useStructureStore((s) => s.markSeriesClean);
+  const markSeriesRepositoryClean = useStructureStore((s) => s.markSeriesRepositoryClean);
+  const repositoryDirtySeriesUIDs = useStructureStore((s) => s.repositoryDirtySeriesUIDs);
   const activeStructureSetById = structureSets.find(
     (structureSet) => structureSet.id === activeStructureSetId
   );
@@ -238,6 +247,13 @@ export default function Toolbar() {
 
   const axialSlicePosition = axialViewport?.getCamera?.()?.focalPoint?.[2] ?? 0;
   const activeLoadedSeries = loadedSeries.find((series) => series.seriesUID === activeSeriesUID);
+  const isActiveSeriesRepositoryDirty =
+    !!activeSeriesUID && repositoryDirtySeriesUIDs.includes(activeSeriesUID);
+  const canPushChanges =
+    !!activeLoadedSeries &&
+    !!activeStructureSet &&
+    isActiveSeriesRepositoryDirty &&
+    !isPushingChanges;
   const currentFrame = useMemo(() => {
     const instances: SliceFrame[] = (activeLoadedSeries?.series.instances ?? []).flatMap((instance) => (
       Number.isFinite(instance.sliceLocation)
@@ -371,6 +387,45 @@ export default function Toolbar() {
     );
   };
 
+  const handlePushChanges = async () => {
+    if (!activeLoadedSeries || !activeStructureSet || !activeSeriesUID || !isActiveSeriesRepositoryDirty) return;
+
+    try {
+      setIsPushingChanges(true);
+      const exported = await exportRtstructObject(activeLoadedSeries, activeStructureSet);
+      await uploadDicomBlobToRepository(exported.blob);
+      const pushedStructureSet = {
+        ...activeStructureSet,
+        source: {
+          type: 'rtstruct' as const,
+          label: exported.identifiers.seriesDescription,
+          sopInstanceUID: exported.identifiers.sopInstanceUID,
+          studyInstanceUID: exported.identifiers.studyInstanceUID,
+          seriesInstanceUID: exported.identifiers.seriesInstanceUID,
+          importedAt: new Date().toISOString(),
+        },
+      };
+      replaceStructureSets(
+        structureSets.map((structureSet) =>
+          structureSet.id === activeStructureSet.id ? pushedStructureSet : structureSet
+        )
+      );
+      setActiveStructureSet(pushedStructureSet.id);
+      setActiveStructure(pushedStructureSet.structures[0]?.id ?? null);
+      markSeriesClean(activeLoadedSeries.seriesUID);
+      markSeriesRepositoryClean(activeLoadedSeries.seriesUID);
+      logClientDebug(
+        'Toolbar',
+        `upload:rtstruct series=${activeLoadedSeries.seriesUID} set=${activeStructureSet.id} sop=${exported.identifiers.sopInstanceUID}`
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to push structure changes.';
+      logClientDebug('Toolbar', `upload:rtstruct:error ${message}`);
+    } finally {
+      setIsPushingChanges(false);
+    }
+  };
+
   const handleReviewNavigate = (direction: ContourReviewDirection) => {
     if (!activeStructure || !activeLoadedSeries) return;
 
@@ -419,6 +474,42 @@ export default function Toolbar() {
     <div className="flex flex-none flex-col border-b border-[#2a2a2a] bg-[#111]">
       <WorkspaceContextBar />
       <div className="flex h-9 items-center gap-1 px-2 bg-[#1a1a1a]">
+        <button
+          type="button"
+          onClick={() => void handlePushChanges()}
+          disabled={!canPushChanges}
+          title={
+            !activeLoadedSeries || !activeStructureSet
+              ? 'Select a structure set for the active series first'
+              : !isActiveSeriesRepositoryDirty
+                ? 'No local structure changes to push'
+                : 'Push active structure changes to the DICOM repository as RTSTRUCT'
+          }
+          aria-label="Push Changes"
+          className={`flex h-7 w-7 items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+            canPushChanges
+              ? 'bg-blue-700 text-white hover:bg-blue-600'
+              : 'bg-[#242424] text-[#6b6b6b] opacity-60'
+          }`}
+        >
+          <svg
+            className={isPushingChanges ? 'animate-pulse' : ''}
+            aria-hidden="true"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 3v12" />
+            <path d="m7 8 5-5 5 5" />
+            <path d="M5 16v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" />
+          </svg>
+        </button>
+        <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
         <button
           onClick={toggleLeftSidebar}
           title="Toggle workspace navigator"

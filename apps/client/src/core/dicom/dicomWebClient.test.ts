@@ -1,7 +1,29 @@
-import { describe, expect, it } from 'vitest';
-import { __testables__ } from './dicomWebClient';
+import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  __testables__,
+  getDefaultDicomWebBaseUrl,
+  getDicomWebBaseUrl,
+  resetDicomWebBaseUrl,
+  setDicomWebBaseUrl,
+} from './dicomWebClient';
+
+beforeEach(() => {
+  resetDicomWebBaseUrl();
+});
 
 describe('dicomWebClient summary parsing', () => {
+  it('uses a browser-local DICOMweb endpoint override when configured', () => {
+    expect(getDicomWebBaseUrl()).toBe(getDefaultDicomWebBaseUrl());
+
+    setDicomWebBaseUrl('/orthanc/dicom-web/');
+
+    expect(getDicomWebBaseUrl()).toBe('/orthanc/dicom-web');
+
+    resetDicomWebBaseUrl();
+
+    expect(getDicomWebBaseUrl()).toBe(getDefaultDicomWebBaseUrl());
+  });
+
   it('extracts patient, study, and series fields from DICOMweb QIDO rows', () => {
     const rows = [
       {

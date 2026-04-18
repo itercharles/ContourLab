@@ -209,7 +209,8 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     render(<StructurePanel />);
 
-    expect(screen.getByText('2 contour slices')).toBeTruthy();
+    expect(screen.getByText('2 slices')).toBeTruthy();
+    expect(screen.getByText('2 sl')).toBeTruthy();
   });
 
   it('marks structures that have contour data on the current axial slice', () => {
@@ -246,6 +247,36 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     render(<StructurePanel />);
 
     expect(screen.getByTitle('Contour on current axial slice')).toBeTruthy();
+  });
+
+  it('shows compact structure list quality indicators', () => {
+    const structureSet = makeStructureSet();
+    structureSet.structures[0].type = 'OAR';
+    structureSet.structures[0].isVisible = false;
+    structureSet.structures[0].isLocked = true;
+    structureSet.structures[0].volume_cc = 12.34;
+    structureSet.structures[0].contours = [
+      {
+        referencedSOPInstanceUID: 'sop-1',
+        slicePosition: 10,
+        points: new Float32Array([0, 0, 10, 1, 0, 10, 1, 1, 10]),
+        isClosed: true,
+      },
+    ];
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    expect(screen.getByText('Type · Vol · Slices')).toBeTruthy();
+    expect(screen.getAllByText('OAR').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('12.3 cc').length).toBeGreaterThan(0);
+    expect(screen.getByText('1 sl')).toBeTruthy();
+    expect(screen.getByText('hidden')).toBeTruthy();
+    expect(screen.getByText('locked')).toBeTruthy();
   });
 
   it('shows the active structure set source when it came from repository RTSTRUCT', () => {

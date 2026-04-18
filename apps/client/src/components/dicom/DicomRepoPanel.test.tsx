@@ -152,19 +152,17 @@ describe('DicomRepoPanel', () => {
     render(<DicomRepoPanel />);
 
     await waitFor(() => expect(mocks.queryDicomWebSeries).toHaveBeenCalledTimes(1));
-    expect(screen.getByLabelText('Refresh DICOM repository')).toBeTruthy();
-    expect(screen.getByText('Current Patient')).toBeTruthy();
     expect(screen.getByText('Image Sets')).toBeTruthy();
-    expect(screen.getAllByText('JANE DOE').length).toBeGreaterThan(0);
     expect(screen.getByText('Chest CT')).toBeTruthy();
     expect(screen.getByText('Axial')).toBeTruthy();
+    expect(screen.queryByText('Structure Sets / RTSS')).toBeNull();
   });
 
-  it('refreshes the repository from the title bar icon', async () => {
-    render(<DicomRepoPanel />);
+  it('refreshes the repository when the parent requests it', async () => {
+    const { rerender } = render(<DicomRepoPanel refreshRequestToken={0} />);
 
     await waitFor(() => expect(mocks.queryDicomWebSeries).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByLabelText('Refresh DICOM repository'));
+    rerender(<DicomRepoPanel refreshRequestToken={1} />);
 
     await waitFor(() => expect(mocks.queryDicomWebSeries).toHaveBeenCalledTimes(2));
   });
@@ -213,17 +211,30 @@ describe('DicomRepoPanel', () => {
     expect(screen.queryByText('Axial')).toBeNull();
   });
 
+  it('opens patient selection from the patient context command', async () => {
+    render(<DicomRepoPanel />);
+
+    await screen.findByText('Image Sets');
+    act(() => {
+      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+    });
+
+    expect(await screen.findByText('Select Patient')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Search patient, MRN, study, series')).toBeTruthy();
+  });
+
   it('loads a series into the volume store when clicked', async () => {
     mocks.loadSeriesFromDicomWeb.mockResolvedValue(makeLoadedSeries());
 
     render(<DicomRepoPanel />);
 
     await screen.findByText('Axial');
-    fireEvent.click(screen.getByRole('button', { name: /Axial/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Load image set Axial/i }));
 
     await waitFor(() => expect(mocks.loadSeriesFromDicomWeb).toHaveBeenCalledTimes(1));
     expect(useVolumeStore.getState().activeSeriesUID).toBe('series-1');
-    expect(screen.getAllByText('ACTIVE').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('ACTIVE').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Structure Sets / RTSS')).toBeTruthy();
   });
 
   it('keeps the active image set when unsynced changes are not confirmed', async () => {
@@ -263,58 +274,15 @@ describe('DicomRepoPanel', () => {
     render(<DicomRepoPanel />);
 
     await screen.findByText('Boost CT');
-    fireEvent.click(screen.getByRole('button', { name: /Boost CT/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Load image set Boost CT/i }));
 
     expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('local changes'));
     expect(mocks.loadSeriesFromDicomWeb).not.toHaveBeenCalled();
     expect(useVolumeStore.getState().activeSeriesUID).toBe('series-1');
-    expect(screen.getByText('Kept the current workspace active. Push changes before switching image sets.')).toBeTruthy();
+    expect(screen.queryByText('Boost CT ACTIVE')).toBeNull();
   });
 
-  it('pushes the active structure set as RTSTRUCT from the repository panel', async () => {
-    useVolumeStore.setState({
-      loadedSeries: [makeLoadedSeries()],
-      activeSeriesUID: 'series-1',
-      isLoading: false,
-      loadError: null,
-    });
-    useStructureStore.getState().markSeriesDirty('series-1');
-    const exportedRtstruct = {
-      blob: new Blob(['dicom'], { type: 'application/dicom' }),
-      identifiers: {
-        studyInstanceUID: 'study-1',
-        seriesInstanceUID: 'new-rtss-series',
-        sopInstanceUID: 'new-rtss-sop',
-        seriesDescription: 'RTSTRUCT Axial',
-        seriesDate: '20260412',
-        seriesTime: '101112',
-        roiCount: 1,
-      },
-    };
-    mocks.exportRtstructObject.mockResolvedValue(exportedRtstruct);
-
-    render(<DicomRepoPanel />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Push Changes' }));
-
-    await waitFor(() => expect(mocks.exportRtstructObject).toHaveBeenCalledTimes(1));
-    expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledWith(exportedRtstruct.blob);
-    await waitFor(() => expect(
-      useStructureStore.getState().structureSets[0].source
-    ).toEqual(expect.objectContaining({
-      type: 'rtstruct',
-      label: 'RTSTRUCT Axial',
-      sopInstanceUID: 'new-rtss-sop',
-      seriesInstanceUID: 'new-rtss-series',
-    })));
-    expect(useStructureStore.getState().dirtySeriesUIDs).not.toContain('series-1');
-    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
-    expect(await screen.findByText('Active in workspace')).toBeTruthy();
-    expect(screen.getByText(/SOP .*new-rtss-sop/)).toBeTruthy();
-    expect(screen.getByText(/1 ROI/)).toBeTruthy();
-  });
-
-  it('disables Push Changes when the active structure set has no local edits', async () => {
+  it('keeps push changes out of the repository navigator', async () => {
     useVolumeStore.setState({
       loadedSeries: [makeLoadedSeries()],
       activeSeriesUID: 'series-1',
@@ -326,32 +294,7 @@ describe('DicomRepoPanel', () => {
 
     await waitFor(() => expect(mocks.queryDicomWebSeries).toHaveBeenCalledTimes(1));
 
-    const pushButton = screen.getByRole('button', { name: 'Push Changes' }) as HTMLButtonElement;
-    expect(pushButton.disabled).toBe(true);
-    expect(pushButton.getAttribute('title')).toBe(
-      'No local structure changes to push'
-    );
-  });
-
-  it('keeps Push Changes enabled after local draft auto-save clears draft dirty state', async () => {
-    useVolumeStore.setState({
-      loadedSeries: [makeLoadedSeries()],
-      activeSeriesUID: 'series-1',
-      isLoading: false,
-      loadError: null,
-    });
-    const store = useStructureStore.getState();
-    store.markSeriesDirty('series-1');
-    store.markSeriesClean('series-1');
-
-    render(<DicomRepoPanel />);
-
-    await waitFor(() => expect(mocks.queryDicomWebSeries).toHaveBeenCalledTimes(1));
-
-    const pushButton = screen.getByRole('button', { name: 'Push Changes' }) as HTMLButtonElement;
-    expect(useStructureStore.getState().dirtySeriesUIDs).not.toContain('series-1');
-    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).toContain('series-1');
-    expect(pushButton.disabled).toBe(false);
+    expect(screen.queryByRole('button', { name: 'Push Changes' })).toBeNull();
   });
 
   it('loads RTSTRUCT structure sets from a double-clicked repository row', async () => {
@@ -386,7 +329,9 @@ describe('DicomRepoPanel', () => {
     render(<DicomRepoPanel />);
 
     await waitFor(() => expect(mocks.queryRtstructInstancesForStudy).toHaveBeenCalledWith('study-1'));
-    expect(await screen.findByText('Structure Sets')).toBeTruthy();
+    expect(screen.queryByText('Structure Sets / RTSS')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Show structure sets for Axial/i }));
+    expect(await screen.findByText('Structure Sets / RTSS')).toBeTruthy();
     expect(screen.getByText('LATEST')).toBeTruthy();
     expect(screen.getByText(/3 ROI/)).toBeTruthy();
     expect(screen.getByText('RTSTRUCT Thorax CT')).toBeTruthy();
@@ -412,7 +357,7 @@ describe('DicomRepoPanel', () => {
     }));
     expect(useStructureStore.getState().dirtySeriesUIDs).toContain('series-1');
     expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
-    expect(screen.getAllByText('ACTIVE').length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText('ACTIVE').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Plans').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('No plans yet').length).toBeGreaterThanOrEqual(1);
   });
@@ -447,104 +392,7 @@ describe('DicomRepoPanel', () => {
     expect(mocks.retrieveDicomWebInstance).not.toHaveBeenCalled();
     expect(mocks.importRtstructArrayBuffer).not.toHaveBeenCalled();
     expect(useStructureStore.getState().activeStructureSetId).toBe('ss-1');
-    expect(screen.getByText('Kept the current structure set active. Push changes before loading another RTSTRUCT.')).toBeTruthy();
+    expect(screen.getByText('Double-click to load')).toBeTruthy();
   });
 
-  it('round-trips a loaded RTSTRUCT through edit and push as a new active repository version', async () => {
-    const imported = makeStructureSet();
-    imported.id = 'ss-imported';
-    imported.structures[0].id = 'structure-imported';
-    imported.structures[0].name = 'PTV_Initial';
-    const sourceRtstruct = {
-      studyInstanceUID: 'study-1',
-      seriesInstanceUID: 'rtss-series-old',
-      sopInstanceUID: 'rtss-sop-old',
-      seriesDescription: 'RTSTRUCT Original',
-      seriesDate: '20260411',
-      seriesTime: '090000',
-      roiCount: 1,
-    };
-    const pushedRtstruct = {
-      blob: new Blob(['new-dicom'], { type: 'application/dicom' }),
-      identifiers: {
-        studyInstanceUID: 'study-1',
-        seriesInstanceUID: 'rtss-series-new',
-        sopInstanceUID: 'rtss-sop-new',
-        seriesDescription: 'RTSTRUCT Axial Edited',
-        seriesDate: '20260412',
-        seriesTime: '101112',
-        roiCount: 1,
-      },
-    };
-    mocks.queryRtstructInstancesForStudy
-      .mockResolvedValueOnce([sourceRtstruct])
-      .mockResolvedValue([{
-        studyInstanceUID: 'study-1',
-        seriesInstanceUID: 'rtss-series-new',
-        sopInstanceUID: 'rtss-sop-new',
-        seriesDescription: 'RTSTRUCT Axial Edited',
-        seriesDate: '20260412',
-        seriesTime: '101112',
-        roiCount: 1,
-      }, sourceRtstruct]);
-    mocks.importRtstructArrayBuffer.mockResolvedValue(imported);
-    mocks.exportRtstructObject.mockResolvedValue(pushedRtstruct);
-
-    render(<DicomRepoPanel />);
-
-    await screen.findByText('RTSTRUCT Original');
-    fireEvent.doubleClick(screen.getByRole('button', { name: /RTSTRUCT Original/i }));
-
-    await waitFor(() => expect(useStructureStore.getState().activeStructureSetId).toBe('ss-imported'));
-    expect(useStructureStore.getState().structureSets[0].source).toEqual(expect.objectContaining({
-      sopInstanceUID: 'rtss-sop-old',
-      seriesInstanceUID: 'rtss-series-old',
-    }));
-    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
-
-    act(() => {
-      useStructureStore
-        .getState()
-        .updateStructure('ss-imported', 'structure-imported', { name: 'PTV_Edited' });
-    });
-
-    await waitFor(() => {
-      const pushButton = screen.getByRole('button', { name: 'Push Changes' }) as HTMLButtonElement;
-      expect(pushButton.disabled).toBe(false);
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Push Changes' }));
-
-    await waitFor(() => expect(mocks.exportRtstructObject).toHaveBeenCalledTimes(1));
-    expect(mocks.exportRtstructObject).toHaveBeenCalledWith(
-      expect.objectContaining({ seriesUID: 'series-1' }),
-      expect.objectContaining({
-        id: 'ss-imported',
-        source: expect.objectContaining({ sopInstanceUID: 'rtss-sop-old' }),
-        structures: expect.arrayContaining([
-          expect.objectContaining({ id: 'structure-imported', name: 'PTV_Edited' }),
-        ]),
-      })
-    );
-    expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledWith(pushedRtstruct.blob);
-
-    await waitFor(() => expect(useStructureStore.getState().structureSets[0].source).toEqual(
-      expect.objectContaining({
-        type: 'rtstruct',
-        label: 'RTSTRUCT Axial Edited',
-        sopInstanceUID: 'rtss-sop-new',
-        seriesInstanceUID: 'rtss-series-new',
-      })
-    ));
-    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
-    expect(await screen.findByText('RTSTRUCT Axial Edited')).toBeTruthy();
-    expect(screen.getByText(/SOP .*rtss-sop-new/)).toBeTruthy();
-    expect(screen.getByText('Active in workspace')).toBeTruthy();
-
-    fireEvent.click(screen.getByLabelText('Refresh DICOM repository'));
-
-    await waitFor(() => expect(mocks.queryRtstructInstancesForStudy).toHaveBeenCalledTimes(2));
-    expect(screen.getByText('RTSTRUCT Axial Edited')).toBeTruthy();
-    expect(screen.getByText(/SOP .*rtss-sop-new/)).toBeTruthy();
-    expect(screen.getByText('Active in workspace')).toBeTruthy();
-  });
 });

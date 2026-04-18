@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   queryDicomWebSeries,
-  uploadDicomWebStudies,
   loadSeriesFromDicomWeb,
-  uploadDicomBlobToRepository,
   queryRtstructInstancesForStudy,
   retrieveDicomWebInstance,
   type DicomWebRtstructInstance,
@@ -11,7 +9,6 @@ import {
 } from '../../core/dicom/dicomWebClient';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useStructureStore } from '../../core/store/structureStore';
-import { exportRtstructObject } from '../../core/structures/rtstructExport';
 import { importRtstructArrayBuffer } from '../../core/structures/rtstructImport';
 import { replaceStructureSetsForSeries } from '../../core/structures/structurePersistence';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
@@ -37,6 +34,16 @@ interface PatientGroup {
   patientName: string;
   patientId: string;
   studies: StudyGroup[];
+}
+
+interface RepoRefreshState {
+  hasUpdates: boolean;
+  isRefreshing: boolean;
+}
+
+interface DicomRepoPanelProps {
+  refreshRequestToken?: number;
+  onRefreshStateChange?: (state: RepoRefreshState) => void;
 }
 
 function formatDicomDate(date: string): string {
@@ -113,8 +120,34 @@ function groupSeriesByPatient(series: DicomWebSeriesSummary[]): PatientGroup[] {
     .sort((a, b) => a.patientName.localeCompare(b.patientName));
 }
 
-export default function DicomRepoPanel() {
-  const inputRef = useRef<HTMLInputElement>(null);
+function getSeriesSignature(series: DicomWebSeriesSummary[]): string {
+  return series
+    .map((entry) => [
+      entry.studyInstanceUID,
+      entry.seriesInstanceUID,
+      entry.instanceCount,
+      entry.seriesDescription,
+    ].join('|'))
+    .sort()
+    .join('\n');
+}
+
+function RepoSectionHeader({ label, meta }: { label: string; meta?: string }) {
+  return (
+    <div className="flex items-center justify-between border-b border-[#2a2a2a] bg-[#111] px-3 py-1.5">
+      <span className="text-[10px] font-semibold uppercase tracking-widest text-[#8a8a8a]">
+        {label}
+      </span>
+      {meta ? (
+        <span className="text-[10px] text-[#5a5a5a]">{meta}</span>
+      ) : null}
+    </div>
+  );
+}
+
+export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshStateChange }: DicomRepoPanelProps) {
+  const lastRefreshRequestTokenRef = useRef(refreshRequestToken);
+  const lastSeriesSignatureRef = useRef('');
   const addSeries = useVolumeStore((s) => s.addSeries);
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
@@ -127,15 +160,12 @@ export default function DicomRepoPanel() {
   const setActiveStructureSet = useStructureStore((s) => s.setActiveStructureSet);
   const setActiveStructure = useStructureStore((s) => s.setActiveStructure);
   const markSeriesDraftDirty = useStructureStore((s) => s.markSeriesDraftDirty);
-  const markSeriesClean = useStructureStore((s) => s.markSeriesClean);
-  const markSeriesRepositoryClean = useStructureStore((s) => s.markSeriesRepositoryClean);
   const repositoryDirtySeriesUIDs = useStructureStore((s) => s.repositoryDirtySeriesUIDs);
 
   const [series, setSeries] = useState<DicomWebSeriesSummary[]>([]);
   const [rtstructByStudy, setRtstructByStudy] = useState<Record<string, DicomWebRtstructInstance[]>>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isImportingData, setIsImportingData] = useState(false);
-  const [isPushingChanges, setIsPushingChanges] = useState(false);
+  const [hasRepositoryUpdates, setHasRepositoryUpdates] = useState(false);
   const [loadingRtstructStudyUIDs, setLoadingRtstructStudyUIDs] = useState<string[]>([]);
   const [loadingSeriesUID, setLoadingSeriesUID] = useState<string | null>(null);
   const [importingRtstructSop, setImportingRtstructSop] = useState<string | null>(null);
@@ -143,6 +173,7 @@ export default function DicomRepoPanel() {
   const [patientQuery, setPatientQuery] = useState('');
   const [selectedPatientKey, setSelectedPatientKey] = useState<string | null>(null);
   const [isPatientSelectorOpen, setIsPatientSelectorOpen] = useState(false);
+  const [expandedImageSetUIDs, setExpandedImageSetUIDs] = useState<string[]>([]);
 
   const activeLoadedSeries = activeSeriesUID
     ? loadedSeries.find((entry) => entry.seriesUID === activeSeriesUID)
@@ -158,7 +189,6 @@ export default function DicomRepoPanel() {
           : structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID)
       )
     : undefined;
-  const isActiveSeriesRepositoryDirty = !!activeSeriesUID && repositoryDirtySeriesUIDs.includes(activeSeriesUID);
   const confirmUnsyncedWorkspaceChange = useCallback((target: string) => {
     if (!activeSeriesUID || !repositoryDirtySeriesUIDs.includes(activeSeriesUID)) return true;
 
@@ -210,11 +240,27 @@ export default function DicomRepoPanel() {
     () => selectedPatient?.studies.map((study) => study.studyInstanceUID) ?? [],
     [selectedPatient]
   );
+  const selectedPatientSeriesCount = selectedPatient?.studies.reduce(
+    (count, study) => count + study.series.length,
+    0
+  ) ?? 0;
+  const selectedPatientRtstructCount = selectedPatient?.studies.reduce(
+    (count, study) => count + (rtstructByStudy[study.studyInstanceUID]?.length ?? 0),
+    0
+  ) ?? 0;
   useEffect(() => {
     if (selectedPatientKey && !patientGroups.some((patient) => patient.patientKey === selectedPatientKey)) {
       setSelectedPatientKey(null);
     }
   }, [patientGroups, selectedPatientKey]);
+
+  useEffect(() => {
+    if (!activeSeriesUID) return;
+
+    setExpandedImageSetUIDs((current) =>
+      current.includes(activeSeriesUID) ? current : [...current, activeSeriesUID]
+    );
+  }, [activeSeriesUID]);
 
   const queryRtstructForStudies = useCallback(async (studyUIDs: string[], options?: { force?: boolean }) => {
     const targetStudyUIDs = options?.force
@@ -281,13 +327,20 @@ export default function DicomRepoPanel() {
 
     try {
       const next = await queryDicomWebSeries();
+      const nextSignature = getSeriesSignature(next);
+      const hasKnownSignature = lastSeriesSignatureRef.current.length > 0;
+      const hasChanged = hasKnownSignature && lastSeriesSignatureRef.current !== nextSignature;
       setSeries(next);
+      lastSeriesSignatureRef.current = nextSignature;
       if (!options?.silent) {
+        setHasRepositoryUpdates(false);
         setRtstructByStudy({});
         setStatus({
           tone: 'muted',
           message: next.length > 0 ? `${next.length} planning CT image series available in repository.` : 'No planning CT image series available.',
         });
+      } else if (hasChanged) {
+        setHasRepositoryUpdates(true);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to query repository.';
@@ -302,8 +355,24 @@ export default function DicomRepoPanel() {
   }, []);
 
   useEffect(() => {
+    onRefreshStateChange?.({ hasUpdates: hasRepositoryUpdates, isRefreshing });
+  }, [hasRepositoryUpdates, isRefreshing, onRefreshStateChange]);
+
+  useEffect(() => {
     void refreshRepository();
   }, [refreshRepository]);
+
+  useEffect(() => {
+    const openPatientSelector = () => setIsPatientSelectorOpen(true);
+    window.addEventListener('webtps:open-patient-selector', openPatientSelector);
+    return () => window.removeEventListener('webtps:open-patient-selector', openPatientSelector);
+  }, []);
+
+  useEffect(() => {
+    if (lastRefreshRequestTokenRef.current === refreshRequestToken) return;
+    lastRefreshRequestTokenRef.current = refreshRequestToken;
+    void refreshRepository();
+  }, [refreshRepository, refreshRequestToken]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -322,40 +391,6 @@ export default function DicomRepoPanel() {
 
     return () => window.clearInterval(intervalId);
   }, [refreshRepository, selectedPatient]);
-
-  const onImportDataClick = useCallback(() => {
-    if (!isImportingData) {
-      inputRef.current?.click();
-    }
-  }, [isImportingData]);
-
-  const onImportDataChange = useCallback(
-    async (event: ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(event.target.files ?? []);
-      event.target.value = '';
-
-      if (files.length === 0) {
-        return;
-      }
-
-      setIsImportingData(true);
-      setStatus({
-        tone: 'muted',
-        message: `Importing ${files.length} DICOM file${files.length === 1 ? '' : 's'} into the repository...`,
-      });
-
-      try {
-        await uploadDicomWebStudies(files);
-        await refreshRepository();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to import DICOM files.';
-        setStatus({ tone: 'error', message });
-      } finally {
-        setIsImportingData(false);
-      }
-    },
-    [refreshRepository]
-  );
 
   const onLoadSeries = useCallback(
     async (seriesUID: string, options?: { skipUnsyncedConfirm?: boolean }) => {
@@ -377,6 +412,9 @@ export default function DicomRepoPanel() {
 
       if (existing) {
         setActiveSeries(seriesUID);
+        setExpandedImageSetUIDs((current) =>
+          current.includes(seriesUID) ? current : [...current, seriesUID]
+        );
         setStatus({
           tone: 'muted',
           message: 'Series already loaded. Activated existing viewport volume.',
@@ -399,6 +437,9 @@ export default function DicomRepoPanel() {
       try {
         const loaded = await loadSeriesFromDicomWeb(target);
         addSeries(loaded);
+        setExpandedImageSetUIDs((current) =>
+          current.includes(seriesUID) ? current : [...current, seriesUID]
+        );
         setStatus({
           tone: 'muted',
           message: `Loaded ${target.seriesDescription || target.seriesInstanceUID}.`,
@@ -425,76 +466,6 @@ export default function DicomRepoPanel() {
       setLoading,
     ]
   );
-
-  const onPushChanges = useCallback(async () => {
-    if (!activeLoadedSeries || !activeSeriesStructureSet || !isActiveSeriesRepositoryDirty) return;
-
-    try {
-      setIsPushingChanges(true);
-      setStatus({ tone: 'muted', message: `Pushing ${activeSeriesStructureSet.label} changes as RTSTRUCT...` });
-      const exported = await exportRtstructObject(activeLoadedSeries, activeSeriesStructureSet);
-      await uploadDicomBlobToRepository(exported.blob);
-      const pushedStructureSet = {
-        ...activeSeriesStructureSet,
-        source: {
-          type: 'rtstruct' as const,
-          label: exported.identifiers.seriesDescription,
-          sopInstanceUID: exported.identifiers.sopInstanceUID,
-          studyInstanceUID: exported.identifiers.studyInstanceUID,
-          seriesInstanceUID: exported.identifiers.seriesInstanceUID,
-          importedAt: new Date().toISOString(),
-        },
-      };
-      replaceStructureSets(
-        structureSets.map((structureSet) =>
-          structureSet.id === activeSeriesStructureSet.id ? pushedStructureSet : structureSet
-        )
-      );
-      setActiveStructureSet(pushedStructureSet.id);
-      setActiveStructure(pushedStructureSet.structures[0]?.id ?? null);
-      markSeriesClean(activeLoadedSeries.seriesUID);
-      markSeriesRepositoryClean(activeLoadedSeries.seriesUID);
-      const pushedInstance: DicomWebRtstructInstance = {
-        studyInstanceUID: exported.identifiers.studyInstanceUID,
-        seriesInstanceUID: exported.identifiers.seriesInstanceUID,
-        sopInstanceUID: exported.identifiers.sopInstanceUID,
-        seriesDescription: exported.identifiers.seriesDescription,
-        seriesDate: exported.identifiers.seriesDate,
-        seriesTime: exported.identifiers.seriesTime,
-        roiCount: activeSeriesStructureSet.structures.length,
-      };
-      setRtstructByStudy((current) => ({
-        ...current,
-        [exported.identifiers.studyInstanceUID]: [
-          pushedInstance,
-          ...(current[exported.identifiers.studyInstanceUID] ?? []).filter(
-            (instance) => instance.sopInstanceUID !== pushedInstance.sopInstanceUID
-          ),
-        ].sort(compareRtstructInstances),
-      }));
-      setStatus({ tone: 'muted', message: `Pushed ${activeSeriesStructureSet.label} changes to the DICOM repository.` });
-      logClientDebug(
-        'DicomRepoPanel',
-        `upload:rtstruct series=${activeLoadedSeries.seriesUID} set=${activeSeriesStructureSet.id} sop=${exported.identifiers.sopInstanceUID}`
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to push structure changes.';
-      setStatus({ tone: 'error', message });
-      logClientDebug('DicomRepoPanel', `upload:rtstruct:error ${message}`);
-    } finally {
-      setIsPushingChanges(false);
-    }
-  }, [
-    activeLoadedSeries,
-    activeSeriesStructureSet,
-    isActiveSeriesRepositoryDirty,
-    markSeriesClean,
-    markSeriesRepositoryClean,
-    replaceStructureSets,
-    setActiveStructure,
-    setActiveStructureSet,
-    structureSets,
-  ]);
 
   const onLoadRtstruct = useCallback(
     async (instance: DicomWebRtstructInstance, imageSeries: DicomWebSeriesSummary[]) => {
@@ -570,97 +541,6 @@ export default function DicomRepoPanel() {
 
   return (
     <div className="relative flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-[#2a2a2a] px-3 py-1">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
-          DICOM Repository
-        </p>
-        <button
-          type="button"
-          onClick={() => void refreshRepository()}
-          disabled={isRefreshing || isImportingData}
-          className="flex h-5 w-5 items-center justify-center rounded text-[#6b6b6b] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-          title="Refresh DICOM repository"
-          aria-label="Refresh DICOM repository"
-        >
-          <svg
-            className={isRefreshing ? 'animate-spin' : ''}
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M21 12a9 9 0 0 1-15.5 6.2" />
-            <path d="M3 12A9 9 0 0 1 18.5 5.8" />
-            <polyline points="18 2 18.5 5.8 22 5" />
-            <polyline points="6 22 5.5 18.2 2 19" />
-          </svg>
-        </button>
-      </div>
-      <div className="border-b border-[#2a2a2a] px-2 py-2">
-        <div className="grid grid-cols-2 gap-1">
-          <button
-            type="button"
-            onClick={onImportDataClick}
-            disabled={isImportingData || isRefreshing}
-            className="h-7 rounded bg-[#242424] px-2 text-[11px] text-[#e5e5e5] hover:bg-[#2e2e2e] disabled:text-[#6b6b6b] disabled:hover:bg-[#242424] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-            title="Import external DICOM files into the DICOM repository"
-          >
-            {isImportingData ? 'Importing' : 'Import Data'}
-          </button>
-          <button
-            type="button"
-            onClick={() => void onPushChanges()}
-            disabled={!activeLoadedSeries || !activeSeriesStructureSet || !isActiveSeriesRepositoryDirty || isPushingChanges}
-            className="h-7 rounded bg-[#242424] px-2 text-[11px] text-[#e5e5e5] hover:bg-[#2e2e2e] disabled:text-[#6b6b6b] disabled:hover:bg-[#242424] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-            title={
-              !activeLoadedSeries || !activeSeriesStructureSet
-                ? 'Select a structure set for the active series first'
-                : !isActiveSeriesRepositoryDirty
-                  ? 'No local structure changes to push'
-                  : 'Push active structure changes to the DICOM repository as RTSTRUCT'
-            }
-          >
-            {isPushingChanges ? 'Pushing' : 'Push Changes'}
-          </button>
-        </div>
-
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          accept=".dcm,*"
-          className="sr-only"
-          onChange={onImportDataChange}
-        />
-
-        <div className="mt-2 flex items-center gap-2">
-          <a
-            href="http://localhost:8042/"
-            target="_blank"
-            rel="noreferrer"
-            className="text-[10px] uppercase tracking-widest text-[#6b6b6b] hover:text-[#a0a0a0]"
-            title="Open Orthanc repository UI"
-          >
-            Orthanc
-          </a>
-          {activeLoadedSeries && (
-            <span className="min-w-0 truncate text-[10px] text-[#6b6b6b]">
-              Active: {activeLoadedSeries.series.seriesDescription || activeLoadedSeries.seriesUID}
-            </span>
-          )}
-        </div>
-
-        {status && (
-          <p className={`mt-1 text-[11px] ${status.tone === 'error' ? 'text-red-400' : 'text-[#6b6b6b]'}`}>
-            {status.message}
-          </p>
-        )}
-      </div>
-
       {isPatientSelectorOpen && (
         <div className="absolute inset-0 z-20 flex flex-col bg-[#111]">
           <div className="flex items-center justify-between border-b border-[#2a2a2a] px-3 py-2">
@@ -747,65 +627,47 @@ export default function DicomRepoPanel() {
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
+        {status && status.tone === 'error' && (
+          <p className="border-b border-[#2a2a2a] px-3 py-1 text-[11px] text-red-400">
+            {status.message}
+          </p>
+        )}
         {patientGroups.length === 0 ? (
           <p className="px-3 py-2 text-[11px] text-[#6b6b6b]">No planning CT image series available.</p>
         ) : !selectedPatient ? (
-          <div className="px-3 py-4">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
-              Current Patient
+          <>
+            <div className="border-b border-[#2a2a2a] bg-[#181818] px-3 py-3">
+              <p className="text-[11px] text-[#a0a0a0]">Select a patient to begin.</p>
+              <button
+                type="button"
+                onClick={() => setIsPatientSelectorOpen(true)}
+                className="mt-3 h-7 rounded bg-blue-700 px-2 text-[11px] font-semibold text-white hover:bg-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+              >
+                Select Patient
+              </button>
+            </div>
+            <RepoSectionHeader label="Image Sets" meta="choose patient first" />
+            <p className="border-b border-[#2a2a2a] px-3 py-2 text-[11px] text-[#6b6b6b]">
+              Image sets appear after patient selection.
             </p>
-            <p className="mt-2 text-[11px] text-[#a0a0a0]">Select a patient to begin.</p>
-            <button
-              type="button"
-              onClick={() => setIsPatientSelectorOpen(true)}
-              className="mt-3 h-7 rounded bg-blue-700 px-2 text-[11px] font-semibold text-white hover:bg-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-            >
-              Select Patient
-            </button>
-          </div>
+            <p className="px-3 py-2 text-[11px] text-[#6b6b6b]">
+              Structure sets appear under an active or expanded image set.
+            </p>
+          </>
         ) : (
           <>
-            <div className="border-b border-[#2a2a2a] bg-[#181818] px-3 py-2">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
-                  Current Patient
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setIsPatientSelectorOpen(true)}
-                  className="h-5 rounded bg-[#242424] px-2 text-[10px] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-                >
-                  Change
-                </button>
-              </div>
-              <div className="mt-1 flex items-center gap-1.5">
-                <span className="rounded bg-[#2e2e2e] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[#a0a0a0]">
-                  PATIENT
-                </span>
-                <p className="min-w-0 flex-1 truncate text-[11px] font-semibold text-[#e5e5e5]" title={selectedPatient.patientName}>
-                  {selectedPatient.patientName}
-                </p>
-                {activePatientKey === selectedPatient.patientKey ? (
-                  <span className="rounded bg-blue-900 px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-blue-200">
-                    ACTIVE
-                  </span>
-                ) : null}
-              </div>
-              <p className="mt-0.5 truncate text-[10px] text-[#6b6b6b]">
-                MRN {selectedPatient.patientId || 'unknown'} · {selectedPatient.studies.length} studies
+            <div className="flex items-center justify-between border-b border-[#2a2a2a] bg-[#181818] px-3 py-1.5">
+              <p className="min-w-0 truncate text-[10px] text-[#6b6b6b]">
+                {selectedPatient.studies.length} studies · {selectedPatientSeriesCount} images · {selectedPatientRtstructCount} RTSS
               </p>
             </div>
 
             <div className="bg-[#151515]">
-              <div className="border-b border-[#2a2a2a] bg-[#181818] px-2 py-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
-                  Image Sets
-                </p>
-              </div>
+              <RepoSectionHeader label="Image Sets" meta={`${selectedPatientSeriesCount} CT series`} />
 
               {selectedPatient?.studies.map((study) => (
                 <div key={study.studyInstanceUID} className="border-b border-[#2a2a2a]">
-                  <div className="bg-[#202020] px-2 py-1">
+                  <div className="bg-[#202020] px-3 py-1">
                     <div className="flex items-center gap-1.5">
                       <span className="rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[#6b6b6b]">
                         STUDY
@@ -814,133 +676,167 @@ export default function DicomRepoPanel() {
                         {study.studyDescription || 'Study'}
                       </p>
                     </div>
-                    <p className="mt-0.5 pl-[46px] text-[10px] text-[#6b6b6b]">{formatDicomDate(study.studyDate)}</p>
+                    <p className="mt-0.5 pl-[46px] text-[10px] text-[#6b6b6b]">
+                      {formatDicomDate(study.studyDate)} · {study.series.length} image set{study.series.length === 1 ? '' : 's'}
+                    </p>
                   </div>
                   {study.series.map((entry) => {
                     const isLoaded = loadedSeries.some((item) => item.seriesUID === entry.seriesInstanceUID);
                     const isActive = activeSeriesUID === entry.seriesInstanceUID;
+                    const isExpanded = isActive || expandedImageSetUIDs.includes(entry.seriesInstanceUID);
+                    const studyRtstructs = [...(rtstructByStudy[study.studyInstanceUID] ?? [])]
+                      .sort(compareRtstructInstances);
+                    const rtstructMeta = loadingRtstructStudyUIDs.includes(study.studyInstanceUID)
+                      ? 'loading RTSS'
+                      : `${studyRtstructs.length} RTSS in study`;
 
                     return (
-                      <button
-                        key={entry.seriesInstanceUID}
-                        type="button"
-                        onClick={() => void onLoadSeries(entry.seriesInstanceUID)}
-                        disabled={loadingSeriesUID === entry.seriesInstanceUID}
-                        className={`block w-full border-t border-[#2a2a2a] px-2 py-1.5 text-left hover:bg-[#2e2e2e] disabled:hover:bg-transparent focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
-                          isActive ? 'bg-blue-900/30 border-l-2 border-l-blue-500' : 'border-l-2 border-l-transparent'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`inline-flex min-w-8 justify-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                              isActive ? 'bg-blue-950 text-blue-200' : 'bg-[#242424] text-[#a0a0a0]'
-                            }`}
+                      <div key={entry.seriesInstanceUID} className="border-t border-[#2a2a2a]">
+                        <div
+                          className={`flex items-stretch ${
+                            isActive ? 'bg-blue-900/30 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            aria-label={`Load image set ${entry.seriesDescription || entry.seriesInstanceUID}`}
+                            onClick={() => void onLoadSeries(entry.seriesInstanceUID)}
+                            disabled={loadingSeriesUID === entry.seriesInstanceUID}
+                            className="min-w-0 flex-1 py-1.5 pl-4 pr-2 text-left hover:bg-[#2e2e2e] disabled:hover:bg-transparent focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                           >
-                            {entry.modality}
-                          </span>
-                          <span className="min-w-0 flex-1 truncate text-xs text-[#e5e5e5]">
-                            {entry.seriesDescription || entry.seriesInstanceUID}
-                          </span>
-                          {isActive ? (
-                            <span className="rounded bg-blue-900 px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-blue-200">
-                              ACTIVE
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`inline-flex min-w-8 justify-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                                  isActive ? 'bg-blue-950 text-blue-200' : 'bg-[#242424] text-[#a0a0a0]'
+                                }`}
+                              >
+                                {entry.modality}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate text-xs text-[#e5e5e5]">
+                                {entry.seriesDescription || entry.seriesInstanceUID}
+                              </span>
+                              {isActive ? (
+                                <span className="rounded bg-blue-900 px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-blue-200">
+                                  ACTIVE
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="mt-0.5 flex items-center gap-2 text-[10px] text-[#6b6b6b]">
+                              <span>Image Set · {entry.instanceCount} inst</span>
+                              <span>{rtstructMeta}</span>
+                              {isLoaded && !isActive ? <span>loaded</span> : null}
+                              {loadingSeriesUID === entry.seriesInstanceUID && (
+                                <span className="text-blue-400">loading</span>
+                              )}
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExpandedImageSetUIDs((current) =>
+                                current.includes(entry.seriesInstanceUID)
+                                  ? current.filter((seriesUID) => seriesUID !== entry.seriesInstanceUID)
+                                  : [...current, entry.seriesInstanceUID]
+                              );
+                            }}
+                            className="flex w-8 items-center justify-center border-l border-[#2a2a2a] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                            title={isExpanded ? 'Hide structure sets for this image set' : 'Show structure sets for this image set'}
+                            aria-label={`${isExpanded ? 'Hide' : 'Show'} structure sets for ${entry.seriesDescription || entry.seriesInstanceUID}`}
+                          >
+                            <span className="text-[11px]" aria-hidden="true">
+                              {isExpanded ? '-' : '+'}
                             </span>
-                          ) : null}
+                          </button>
                         </div>
-                        <div className="mt-0.5 flex items-center gap-2 text-[10px] text-[#6b6b6b]">
-                          <span>{entry.instanceCount} inst</span>
-                          {loadingSeriesUID === entry.seriesInstanceUID && (
-                            <span className="text-blue-400">loading</span>
-                          )}
-                        </div>
-                      </button>
+                        {isExpanded ? (
+                          <div className="border-t border-[#2a2a2a] bg-[#171717]">
+                            <RepoSectionHeader
+                              label="Structure Sets / RTSS"
+                              meta={loadingRtstructStudyUIDs.includes(study.studyInstanceUID) ? 'loading' : `${studyRtstructs.length} objects`}
+                            />
+                            {loadingRtstructStudyUIDs.includes(study.studyInstanceUID) ? (
+                              <p className="px-3 py-2 text-[10px] text-blue-400">Loading RTSTRUCT objects...</p>
+                            ) : studyRtstructs.length === 0 ? (
+                              <p className="px-3 py-2 text-[10px] text-[#6b6b6b]">No RTSTRUCT for this image set context.</p>
+                            ) : (
+                              <div>
+                                {studyRtstructs.map((instance, index) => {
+                                  const isActiveRtstruct =
+                                    activeSeriesStructureSet?.source?.type === 'rtstruct' &&
+                                    activeSeriesStructureSet.source.sopInstanceUID === instance.sopInstanceUID;
+                                  const isLatestRtstruct = index === 0;
+
+                                  return (
+                                    <div
+                                      key={instance.sopInstanceUID}
+                                      role="button"
+                                      tabIndex={!importingRtstructSop ? 0 : -1}
+                                      onDoubleClick={() => void onLoadRtstruct(instance, [entry])}
+                                      onKeyDown={(event) => {
+                                        if ((event.key === 'Enter' || event.key === ' ') && !importingRtstructSop) {
+                                          event.preventDefault();
+                                          void onLoadRtstruct(instance, [entry]);
+                                        }
+                                      }}
+                                      aria-disabled={!!importingRtstructSop}
+                                      className={`border-t border-[#2a2a2a] py-1.5 pl-7 pr-2 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                                        isActiveRtstruct ? 'border-l-4 border-l-blue-500 bg-blue-950/20' : 'border-l-4 border-l-transparent bg-[#1a1a1a]'
+                                      } ${
+                                        !importingRtstructSop
+                                          ? 'cursor-pointer hover:bg-blue-950/20'
+                                          : 'cursor-not-allowed opacity-60'
+                                      }`}
+                                      title="Double-click to activate this image set and load RTSTRUCT"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="rounded bg-[#242424] px-1.5 py-0.5 text-[10px] font-semibold text-[#a0a0a0]">
+                                          RTSS
+                                        </span>
+                                        <p className="min-w-0 flex-1 truncate text-[11px] text-[#e5e5e5]" title={instance.seriesDescription}>
+                                          {instance.seriesDescription || 'RTSTRUCT'}
+                                        </p>
+                                        {isActiveRtstruct && (
+                                          <span className="rounded bg-blue-900 px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-blue-200">
+                                            ACTIVE
+                                          </span>
+                                        )}
+                                        {isLatestRtstruct && !isActiveRtstruct && (
+                                          <span className="rounded bg-[#2a2a2a] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[#c8c8c8]">
+                                            LATEST
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="mt-0.5 flex items-center gap-2">
+                                        <span className="min-w-0 flex-1 truncate text-[10px] text-[#6b6b6b]" title={instance.sopInstanceUID}>
+                                          {formatDicomDateTime(instance.seriesDate, instance.seriesTime)}
+                                          {' · '}
+                                          SOP …{formatSopTail(instance.sopInstanceUID)}
+                                          {typeof instance.roiCount === 'number' ? ` · ${instance.roiCount} ROI` : ''}
+                                        </span>
+                                        <span className="text-[10px] text-[#6b6b6b]">
+                                          {importingRtstructSop === instance.sopInstanceUID
+                                            ? 'Loading'
+                                            : isActiveRtstruct
+                                              ? 'Active in workspace'
+                                            : 'Double-click to load'}
+                                        </span>
+                                      </div>
+                                      <div className="mt-1 border-t border-[#2a2a2a] pt-1">
+                                        <div className="flex items-center gap-2 text-[10px] text-[#6b6b6b]">
+                                          <span className="font-semibold uppercase tracking-widest">Plans</span>
+                                          <span>No plans yet</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
                     );
                   })}
-                  <div className="border-t border-[#2a2a2a] bg-[#171717] px-2 py-1">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
-                      Structure Sets
-                    </p>
-                    {loadingRtstructStudyUIDs.includes(study.studyInstanceUID) ? (
-                      <p className="mt-1 text-[10px] text-blue-400">Loading RTSTRUCT objects...</p>
-                    ) : (rtstructByStudy[study.studyInstanceUID]?.length ?? 0) === 0 ? (
-                      <p className="mt-1 text-[10px] text-[#6b6b6b]">No RTSTRUCT in this study.</p>
-                    ) : (
-                      <div className="mt-1 space-y-1">
-                        {[...(rtstructByStudy[study.studyInstanceUID] ?? [])]
-                          .sort(compareRtstructInstances)
-                          .map((instance, index) => {
-                          const isActiveRtstruct =
-                            activeSeriesStructureSet?.source?.type === 'rtstruct' &&
-                            activeSeriesStructureSet.source.sopInstanceUID === instance.sopInstanceUID;
-                          const isLatestRtstruct = index === 0;
-
-                          return (
-                            <div
-                              key={instance.sopInstanceUID}
-                              role="button"
-                              tabIndex={!importingRtstructSop && study.series.length > 0 ? 0 : -1}
-                              onDoubleClick={() => void onLoadRtstruct(instance, study.series)}
-                              onKeyDown={(event) => {
-                                if ((event.key === 'Enter' || event.key === ' ') && !importingRtstructSop && study.series.length > 0) {
-                                  event.preventDefault();
-                                  void onLoadRtstruct(instance, study.series);
-                                }
-                              }}
-                              aria-disabled={study.series.length === 0 || !!importingRtstructSop}
-                              className={`border px-2 py-1 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
-                                isActiveRtstruct ? 'border-blue-700 bg-blue-950/20' : 'border-[#2a2a2a] bg-[#1a1a1a]'
-                              } ${
-                                study.series.length > 0 && !importingRtstructSop
-                                  ? 'cursor-pointer hover:border-blue-700 hover:bg-blue-950/20'
-                                  : 'cursor-not-allowed opacity-60'
-                              }`}
-                              title={study.series.length > 0 ? 'Double-click to activate this image set and load RTSTRUCT' : 'No planning CT image set is available for this RTSTRUCT'}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="rounded bg-[#242424] px-1.5 py-0.5 text-[10px] font-semibold text-[#a0a0a0]">
-                                  RTSS
-                                </span>
-                                <p className="min-w-0 flex-1 truncate text-[11px] text-[#e5e5e5]" title={instance.seriesDescription}>
-                                  {instance.seriesDescription || 'RTSTRUCT'}
-                                </p>
-                                {isActiveRtstruct && (
-                                  <span className="rounded bg-blue-900 px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-blue-200">
-                                    ACTIVE
-                                  </span>
-                                )}
-                                {isLatestRtstruct && !isActiveRtstruct && (
-                                  <span className="rounded bg-[#2a2a2a] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[#c8c8c8]">
-                                    LATEST
-                                  </span>
-                                )}
-                              </div>
-                              <div className="mt-0.5 flex items-center gap-2">
-                                <span className="min-w-0 flex-1 truncate text-[10px] text-[#6b6b6b]" title={instance.sopInstanceUID}>
-                                  {formatDicomDateTime(instance.seriesDate, instance.seriesTime)}
-                                  {' · '}
-                                  SOP …{formatSopTail(instance.sopInstanceUID)}
-                                  {typeof instance.roiCount === 'number' ? ` · ${instance.roiCount} ROI` : ''}
-                                </span>
-                                <span className="text-[10px] text-[#6b6b6b]">
-                                  {importingRtstructSop === instance.sopInstanceUID
-                                    ? 'Loading'
-                                    : isActiveRtstruct
-                                      ? 'Active in workspace'
-                                    : 'Double-click to load'}
-                                </span>
-                              </div>
-                              <div className="mt-1 border-t border-[#2a2a2a] pt-1">
-                                <div className="flex items-center gap-2 text-[10px] text-[#6b6b6b]">
-                                  <span className="font-semibold uppercase tracking-widest">Plans</span>
-                                  <span>No plans yet</span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
                 </div>
               ))}
             </div>

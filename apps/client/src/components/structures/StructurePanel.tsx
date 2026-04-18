@@ -85,6 +85,11 @@ function formatSopTail(sopInstanceUID: string): string {
   return sopInstanceUID.split('.').at(-1) || sopInstanceUID.slice(-8) || 'unknown';
 }
 
+function formatVolumeCc(volumeCc: number | undefined): string {
+  if (!Number.isFinite(volumeCc) || (volumeCc ?? 0) <= 0) return '0.0 cc';
+  return `${volumeCc!.toFixed(1)} cc`;
+}
+
 interface AxialViewportLike {
   getCamera?: () => { focalPoint?: [number, number, number] };
   scroll?: (delta: number) => void;
@@ -184,7 +189,7 @@ function StructureRow({
     <div
       onClick={onSelect}
       className={`
-        h-7 flex items-center gap-1.5 px-2 cursor-pointer group border-b border-[#2a2a2a]/50 transition-colors
+        h-8 flex items-center gap-1.5 px-2 cursor-pointer group border-b border-[#2a2a2a]/50 transition-colors
         ${isActive
           ? 'bg-blue-900/30 border-l-2 border-l-blue-500'
           : 'border-l-2 border-l-transparent hover:bg-[#2e2e2e]'
@@ -218,12 +223,32 @@ function StructureRow({
         </button>
       )}
 
-      {/* Volume */}
-      {(structure.volume_cc ?? 0) > 0 && (
-        <span className="text-[10px] text-[#6b6b6b] mr-1 flex-none">
-          {structure.volume_cc!.toFixed(1)} cc
+      <span
+        className="rounded bg-[#242424] px-1 text-[9px] font-semibold uppercase tracking-wider text-[#a0a0a0] flex-none"
+        title={`Structure type: ${structure.type}`}
+      >
+        {structure.type}
+      </span>
+
+      <span className="w-[42px] text-right text-[10px] text-[#6b6b6b] flex-none" title="Volume">
+        {formatVolumeCc(structure.volume_cc)}
+      </span>
+
+      <span
+        title={`${contourSliceCount} contour slice${contourSliceCount === 1 ? '' : 's'}`}
+        className="w-[28px] text-right text-[10px] text-[#6b6b6b] flex-none"
+      >
+        {contourSliceCount} sl
+      </span>
+
+      {!(structure.isVisible ?? true) ? (
+        <span
+          title="Hidden structure"
+          className="rounded border border-[#3a3a3a] bg-[#171717] px-1 text-[9px] font-semibold uppercase tracking-wider text-[#6b6b6b] flex-none"
+        >
+          hidden
         </span>
-      )}
+      ) : null}
 
       {hasContourOnCurrentSlice ? (
         <span
@@ -233,12 +258,7 @@ function StructureRow({
           slice
         </span>
       ) : contourSliceCount > 0 ? (
-        <span
-          title={`${contourSliceCount} contour slice${contourSliceCount === 1 ? '' : 's'}`}
-          className="mr-1 text-[10px] text-[#6b6b6b] flex-none"
-        >
-          {contourSliceCount} sl
-        </span>
+        null
       ) : null}
 
       {structure.isLocked ? (
@@ -255,6 +275,7 @@ function StructureRow({
         {/* Visibility toggle */}
         <button
           onClick={handleVisibilityToggle}
+          aria-label={structure.isVisible ? `Hide ${structure.name}` : `Show ${structure.name}`}
           title={structure.isVisible ? 'Hide' : 'Show'}
           className="w-4 h-4 flex items-center justify-center text-[#6b6b6b] hover:text-[#e5e5e5]"
         >
@@ -275,6 +296,7 @@ function StructureRow({
         {/* Lock toggle */}
         <button
           onClick={handleLockToggle}
+          aria-label={structure.isLocked ? `Unlock ${structure.name}` : `Lock ${structure.name}`}
           title={structure.isLocked ? 'Unlock' : 'Lock'}
           className="w-4 h-4 flex items-center justify-center text-[#6b6b6b] hover:text-[#e5e5e5]"
         >
@@ -294,6 +316,7 @@ function StructureRow({
         {/* Delete */}
         <button
           onClick={handleDelete}
+          aria-label={`Delete ${structure.name}`}
           title="Delete structure"
           className="w-4 h-4 flex items-center justify-center text-[#6b6b6b] hover:text-red-400"
         >
@@ -746,11 +769,26 @@ export default function StructurePanel() {
               </div>
 
               <div className="mt-2 border-t border-[#2a2a2a] pt-2">
-                <span className="text-[10px] text-[#6b6b6b]">
-                  {activeStructureReviewSlices.length === 1
-                    ? '1 contour slice'
-                    : `${activeStructureReviewSlices.length} contour slices`}
-                </span>
+                <div className="grid grid-cols-3 gap-2 text-[10px]">
+                  <div>
+                    <p className="uppercase tracking-widest text-[#6b6b6b]">Volume</p>
+                    <p className="mt-0.5 text-[#e5e5e5]">{formatVolumeCc(activeStructure.volume_cc)}</p>
+                  </div>
+                  <div>
+                    <p className="uppercase tracking-widest text-[#6b6b6b]">Contours</p>
+                    <p className="mt-0.5 text-[#e5e5e5]">
+                      {activeStructureReviewSlices.length === 1
+                        ? '1 slice'
+                        : `${activeStructureReviewSlices.length} slices`}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="uppercase tracking-widest text-[#6b6b6b]">Display</p>
+                    <p className="mt-0.5 text-[#e5e5e5]">
+                      {activeStructure.isVisible ?? true ? 'Visible' : 'Hidden'}
+                    </p>
+                  </div>
+                </div>
               </div>
         </section>
       )}
@@ -789,6 +827,9 @@ export default function StructurePanel() {
         <div className="flex items-center justify-between border-b border-[#2a2a2a] bg-[#171717] px-3 py-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
             Structures
+          </span>
+          <span className="ml-auto mr-2 text-[9px] uppercase tracking-widest text-[#4a4a4a]">
+            Type · Vol · Slices
           </span>
           <button
             onClick={handleAddClick}
