@@ -150,10 +150,10 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     );
   });
 
-  it('shows the active drawing target and edits its color', async () => {
+  it('shows active structure details under the structure set and edits its color', async () => {
     render(<StructurePanel />);
 
-    expect(screen.getByText('Drawing target')).toBeTruthy();
+    expect(screen.getByText('Structure Set')).toBeTruthy();
     expect(screen.getAllByText('PTV').length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByLabelText('Active structure color'), {
@@ -185,7 +185,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByText('Unsynced')).toBeTruthy();
   });
 
-  it('shows contour review navigation for the active structure', () => {
+  it('shows contour review count for the active structure', () => {
     const structureSet = makeStructureSet();
     structureSet.structures[0].contours = [
       {
@@ -210,8 +210,6 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     render(<StructurePanel />);
 
     expect(screen.getByText('2 contour slices')).toBeTruthy();
-    expect(screen.getByTitle('Jump to previous contour slice on the axial view ([)')).toBeTruthy();
-    expect(screen.getByTitle('Jump to next contour slice on the axial view (])')).toBeTruthy();
   });
 
   it('marks structures that have contour data on the current axial slice', () => {

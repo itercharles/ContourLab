@@ -3,6 +3,7 @@ import {
   findContourOnSlice,
   findContourOnFrame,
   flattenWorldPoints,
+  getViewportTransformSignature,
   isContourOnFrame,
   isContourOnSlice,
   projectContourToCanvasPath,
@@ -15,6 +16,50 @@ describe('flattenWorldPoints', () => {
       [1, 2, 3],
       [4, 5, 6],
     ])).toEqual(new Float32Array([1, 2, 3, 4, 5, 6]));
+  });
+});
+
+describe('getViewportTransformSignature', () => {
+  it('changes when pan, zoom, or canvas placement changes', () => {
+    const baseViewport = {
+      getCamera: () => ({
+        focalPoint: [0, 0, 10] as [number, number, number],
+        position: [0, 0, 100] as [number, number, number],
+        parallelScale: 120,
+      }),
+      getZoom: () => 1,
+      worldToCanvas: ([x, y]: [number, number, number]) => [x + 100, y + 100] as [number, number],
+    };
+    const baseRect = { left: 0, top: 0, width: 512, height: 512 };
+
+    const base = getViewportTransformSignature(baseViewport, baseRect);
+    const panned = getViewportTransformSignature({
+      ...baseViewport,
+      getCamera: () => ({
+        focalPoint: [5, 0, 10] as [number, number, number],
+        position: [5, 0, 100] as [number, number, number],
+        parallelScale: 120,
+      }),
+    }, baseRect);
+    const zoomed = getViewportTransformSignature({
+      ...baseViewport,
+      getZoom: () => 1.5,
+      worldToCanvas: ([x, y]: [number, number, number]) => [x * 1.5 + 100, y * 1.5 + 100] as [number, number],
+    }, baseRect);
+    const projectedDifferently = getViewportTransformSignature({
+      ...baseViewport,
+      worldToCanvas: ([x, y]: [number, number, number]) => [x + 140, y + 80] as [number, number],
+    }, baseRect);
+    const movedCanvas = getViewportTransformSignature(baseViewport, {
+      ...baseRect,
+      left: 12,
+      top: 8,
+    });
+
+    expect(panned).not.toBe(base);
+    expect(zoomed).not.toBe(base);
+    expect(projectedDifferently).not.toBe(base);
+    expect(movedCanvas).not.toBe(base);
   });
 });
 

@@ -2,8 +2,63 @@ import type { ContourSlice } from '@webtps/shared-types';
 
 export type WorldPoint = [number, number, number];
 
+export interface ContourViewportTransformLike {
+  getCamera?: () => {
+    focalPoint?: [number, number, number];
+    position?: [number, number, number];
+    parallelScale?: number;
+  };
+  getZoom?: () => number;
+  worldToCanvas?: (point: WorldPoint) => [number, number];
+}
+
 export function flattenWorldPoints(points: WorldPoint[]): Float32Array {
   return new Float32Array(points.flatMap(([x, y, z]) => [x, y, z]));
+}
+
+function formatSignatureNumber(value: number | undefined): string {
+  return Number.isFinite(value) ? value!.toFixed(3) : 'n/a';
+}
+
+export function getViewportTransformSignature(
+  viewport: ContourViewportTransformLike | undefined,
+  canvasRect: Pick<DOMRect, 'left' | 'top' | 'width' | 'height'> | undefined
+): string {
+  const camera = viewport?.getCamera?.();
+  const focalPoint = camera?.focalPoint ?? [undefined, undefined, undefined];
+  const position = camera?.position ?? [undefined, undefined, undefined];
+  const focalWorldPoint: WorldPoint = [
+    focalPoint[0] ?? 0,
+    focalPoint[1] ?? 0,
+    focalPoint[2] ?? 0,
+  ];
+  let focalCanvasPoint: [number | undefined, number | undefined] = [undefined, undefined];
+  let horizontalProbeCanvasPoint: [number | undefined, number | undefined] = [undefined, undefined];
+
+  try {
+    focalCanvasPoint = viewport?.worldToCanvas?.(focalWorldPoint) ?? focalCanvasPoint;
+    horizontalProbeCanvasPoint = viewport?.worldToCanvas?.([
+      focalWorldPoint[0] + 10,
+      focalWorldPoint[1],
+      focalWorldPoint[2],
+    ]) ?? horizontalProbeCanvasPoint;
+  } catch {
+    focalCanvasPoint = [undefined, undefined];
+    horizontalProbeCanvasPoint = [undefined, undefined];
+  }
+
+  return [
+    ...focalPoint.map(formatSignatureNumber),
+    ...position.map(formatSignatureNumber),
+    formatSignatureNumber(camera?.parallelScale),
+    formatSignatureNumber(viewport?.getZoom?.()),
+    ...focalCanvasPoint.map(formatSignatureNumber),
+    ...horizontalProbeCanvasPoint.map(formatSignatureNumber),
+    formatSignatureNumber(canvasRect?.left),
+    formatSignatureNumber(canvasRect?.top),
+    formatSignatureNumber(canvasRect?.width),
+    formatSignatureNumber(canvasRect?.height),
+  ].join('|');
 }
 
 export function isContourOnSlice(

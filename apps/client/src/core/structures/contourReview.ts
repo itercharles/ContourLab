@@ -7,6 +7,11 @@ export interface ReviewSlice {
   referencedSOPInstanceUID: string;
 }
 
+export interface ReviewImageFrame {
+  index: number;
+  sliceLocation: number;
+}
+
 export function getReviewSlices(contours: ContourSlice[]): ReviewSlice[] {
   const bySlice = new Map<string, ReviewSlice>();
 
@@ -36,4 +41,26 @@ export function findAdjacentReviewSlice(
   }
 
   return [...slices].reverse().find((slice) => slice.slicePosition < currentSlicePosition) ?? slices[slices.length - 1];
+}
+
+export function resolveContourReviewScrollDelta(
+  contours: ContourSlice[],
+  frames: ReviewImageFrame[],
+  currentSlicePosition: number,
+  direction: ContourReviewDirection
+): { targetSlice: ReviewSlice; scrollDelta: number } | null {
+  const targetSlice = findAdjacentReviewSlice(contours, currentSlicePosition, direction);
+  if (!targetSlice || frames.length === 0) return null;
+
+  const closestFrameIndexTo = (slicePosition: number) =>
+    frames.reduce((closest, frame) => {
+      const closestDistance = Math.abs(closest.sliceLocation - slicePosition);
+      const frameDistance = Math.abs(frame.sliceLocation - slicePosition);
+      return frameDistance < closestDistance ? frame : closest;
+    }).index;
+
+  return {
+    targetSlice,
+    scrollDelta: closestFrameIndexTo(targetSlice.slicePosition) - closestFrameIndexTo(currentSlicePosition),
+  };
 }

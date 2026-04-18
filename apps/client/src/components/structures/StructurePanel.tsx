@@ -10,8 +10,8 @@ import {
 } from '../../core/structures/structureDraftStore';
 import { replaceStructureSetsForSeries } from '../../core/structures/structurePersistence';
 import {
-  findAdjacentReviewSlice,
   getReviewSlices,
+  resolveContourReviewScrollDelta,
   type ContourReviewDirection,
 } from '../../core/structures/contourReview';
 import { findContourOnFrame } from '../../core/contouring/contourOverlayUtils';
@@ -608,17 +608,6 @@ export default function StructurePanel() {
     const currentSlicePosition = viewport.getCamera?.().focalPoint?.[2]
       ?? activeStructure.contours[0]?.slicePosition
       ?? 0;
-    const targetSlice = findAdjacentReviewSlice(
-      activeStructure.contours,
-      currentSlicePosition,
-      direction
-    );
-
-    if (!targetSlice) {
-      setStatusMessage(`No contour slices to review for ${activeStructure.name}.`);
-      return;
-    }
-
     const frames = activeLoadedSeries.series.instances
       .map((instance, index) => ({
         index,
@@ -627,6 +616,17 @@ export default function StructurePanel() {
       .filter((frame): frame is { index: number; sliceLocation: number } =>
         Number.isFinite(frame.sliceLocation)
       );
+    const reviewTarget = resolveContourReviewScrollDelta(
+      activeStructure.contours,
+      frames,
+      currentSlicePosition,
+      direction
+    );
+
+    if (!reviewTarget) {
+      setStatusMessage(`No contour slices to review for ${activeStructure.name}.`);
+      return;
+    }
 
     if (frames.length === 0) {
       setStatusMessage('Image slice metadata is unavailable for contour review navigation.');
@@ -634,28 +634,17 @@ export default function StructurePanel() {
       return;
     }
 
-    const closestFrameIndexTo = (slicePosition: number) =>
-      frames.reduce((closest, frame) => {
-        const closestDistance = Math.abs(closest.sliceLocation - slicePosition);
-        const frameDistance = Math.abs(frame.sliceLocation - slicePosition);
-        return frameDistance < closestDistance ? frame : closest;
-      }).index;
-
-    const currentIndex = closestFrameIndexTo(currentSlicePosition);
-    const targetIndex = closestFrameIndexTo(targetSlice.slicePosition);
-    const scrollDelta = targetIndex - currentIndex;
-
-    if (scrollDelta !== 0) {
-      viewport.scroll(scrollDelta);
+    if (reviewTarget.scrollDelta !== 0) {
+      viewport.scroll(reviewTarget.scrollDelta);
     }
     viewport.render?.();
     setActiveViewport('AXIAL');
     setStatusMessage(
-      `Reviewing ${activeStructure.name}: z=${targetSlice.slicePosition.toFixed(1)} mm.`
+      `Reviewing ${activeStructure.name}: z=${reviewTarget.targetSlice.slicePosition.toFixed(1)} mm.`
     );
     logClientDebug(
       'StructurePanel',
-      `review:navigate ${direction} structure=${activeStructure.id} z=${targetSlice.slicePosition}`
+      `review:navigate ${direction} structure=${activeStructure.id} z=${reviewTarget.targetSlice.slicePosition}`
     );
   };
 
@@ -681,180 +670,94 @@ export default function StructurePanel() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Panel header */}
-      <div className="px-3 py-1.5 flex items-center justify-between border-b border-[#2a2a2a] flex-none">
-        <span className="text-[10px] font-semibold tracking-widest uppercase text-[#6b6b6b]">Structures</span>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={handleAddClick}
-            title={activeSeriesUID ? 'Add new structure' : 'Load a series first'}
-            disabled={!activeSeriesUID}
-            className="w-5 h-5 flex items-center justify-center rounded bg-[#2e2e2e] text-[#a0a0a0] hover:bg-blue-600 hover:text-white text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#2e2e2e] disabled:hover:text-[#a0a0a0]"
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="6" y1="1" x2="6" y2="11" />
-              <line x1="1" y1="6" x2="11" y2="6" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
       {statusMessage && (
-        <div className="px-3 py-1 border-b border-[#2a2a2a] bg-[#242424] text-[10px] text-[#a0a0a0]">
+        <div className="border-b border-[#2a2a2a] bg-[#242424] px-3 py-1 text-[10px] text-[#a0a0a0]">
           {statusMessage}
         </div>
       )}
 
       {isActiveSeriesDirty && (
-        <div className="px-3 py-1 border-b border-[#2a2a2a] bg-[#2a2112] text-[10px] text-[#f59e0b]">
+        <div className="border-b border-[#2a2a2a] bg-[#2a2112] px-3 py-1 text-[10px] text-[#f59e0b]">
           Local draft pending auto-save.
         </div>
       )}
 
-      {activeSeriesStructureSet && (
-        <div className="border-b border-[#2a2a2a] bg-[#171717] px-3 py-2">
-          <div className="flex items-center gap-2">
-            <span className="rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[#a0a0a0]">
-              {activeSeriesStructureSet.source?.type === 'rtstruct' ? 'RTSS' : 'SET'}
-            </span>
-            <p
-              className="min-w-0 flex-1 truncate text-[11px] font-semibold text-[#e5e5e5]"
-              title={activeSeriesStructureSet.label}
-            >
-              {activeSeriesStructureSet.label}
-            </p>
-          </div>
-          <p
-            className="mt-1 truncate text-[10px] text-[#6b6b6b]"
-            title={formatSourceLabel(activeSeriesStructureSet)}
-          >
-            Source: {formatSourceLabel(activeSeriesStructureSet)}
-          </p>
-          {activeSeriesStructureSet.source?.sopInstanceUID && (
-            <p
-              className="mt-0.5 truncate font-mono text-[10px] text-[#6b6b6b]"
-              title={activeSeriesStructureSet.source.sopInstanceUID}
-            >
-              SOP: …{formatSopTail(activeSeriesStructureSet.source.sopInstanceUID)}
-            </p>
-          )}
-          {activeSeriesStructureSet.source?.importedAt && (
-            <p className="mt-0.5 truncate text-[10px] text-[#6b6b6b]">
-              Source time: {formatSourceTimestamp(activeSeriesStructureSet.source.importedAt)}
-            </p>
-          )}
-        </div>
-      )}
-
       {activeSeriesStructureSet && activeStructure && (
-        <div className="px-3 py-2 border-b border-[#2a2a2a] bg-[#202020] flex-none">
-          <div className="flex items-center gap-2">
-            <span
-              className="w-2.5 h-2.5 rounded-sm flex-none"
-              style={{ backgroundColor: rgbToHex(activeStructure.color) }}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-widest text-[#6b6b6b]">
-                Drawing target
-              </p>
-              <p className="truncate text-[11px] text-[#e5e5e5]" title={activeStructure.name}>
-                {activeStructure.name}
-                {activeStructure.isLocked ? (
-                  <span className="ml-1 text-[#f59e0b]">(locked)</span>
-                ) : null}
-              </p>
-            </div>
-          </div>
+        <section className="border-b border-[#2a2a2a] bg-[#202020] px-3 py-2">
+              <div className="flex items-start gap-2">
+                <input
+                  id="active-structure-color"
+                  aria-label="Active structure color"
+                  type="color"
+                  value={rgbToHex(activeStructure.color)}
+                  onChange={handleActiveStructureColorChange}
+                  className="mt-0.5 h-5 w-5 flex-none cursor-pointer rounded border border-[#3a3a3a] bg-[#2e2e2e] p-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-[12px] font-semibold text-[#e5e5e5]" title={activeStructure.name}>
+                      {activeStructure.name}
+                    </p>
+                    <span
+                      className={`rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
+                        activeStructure.isLocked
+                          ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
+                          : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
+                      }`}
+                      title={activeStructure.isLocked ? 'Structure is locked and cannot be contoured' : 'Structure is editable'}
+                    >
+                      {activeStructure.isLocked ? 'Locked' : 'Editable'}
+                    </span>
+                  </div>
+                </div>
+                <span
+                  className={`flex-none rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
+                    isActiveSeriesRepositoryDirty
+                      ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
+                      : 'border-[#2a2a2a] bg-[#171717] text-[#6b6b6b]'
+                  }`}
+                  title={
+                    isActiveSeriesRepositoryDirty
+                      ? 'Active structure changes have not been pushed to the DICOM repository'
+                      : 'Active structure changes are synchronized with the DICOM repository'
+                  }
+                >
+                  {isActiveSeriesRepositoryDirty ? 'Unsynced' : 'Synced'}
+                </span>
+              </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span
-              className={`rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
-                activeStructure.isLocked
-                  ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
-                  : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
-              }`}
-              title={activeStructure.isLocked ? 'Structure is locked and cannot be contoured' : 'Structure is editable'}
-            >
-              {activeStructure.isLocked ? 'Locked' : 'Editable'}
-            </span>
-            <span
-              className={`rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
-                isActiveSeriesRepositoryDirty
-                  ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
-                  : 'border-[#2a2a2a] bg-[#171717] text-[#6b6b6b]'
-              }`}
-              title={
-                isActiveSeriesRepositoryDirty
-                  ? 'Active structure changes have not been pushed to the DICOM repository'
-                  : 'Active structure changes are synchronized with the DICOM repository'
-              }
-            >
-              {isActiveSeriesRepositoryDirty ? 'Unsynced' : 'Synced'}
-            </span>
-          </div>
+              <div className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-2">
+                <label htmlFor="active-structure-type" className="text-[10px] text-[#6b6b6b]">
+                  Type
+                </label>
+                <select
+                  id="active-structure-type"
+                  aria-label="Active structure type"
+                  value={activeStructure.type}
+                  onChange={handleActiveStructureTypeChange}
+                  className="h-6 rounded border border-[#3a3a3a] bg-[#2e2e2e] px-1 text-[11px] text-[#e5e5e5] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {STRUCTURE_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1">
-            <label htmlFor="active-structure-color" className="text-[10px] text-[#6b6b6b]">
-              Color
-            </label>
-            <input
-              id="active-structure-color"
-              aria-label="Active structure color"
-              type="color"
-              value={rgbToHex(activeStructure.color)}
-              onChange={handleActiveStructureColorChange}
-              className="h-6 w-full cursor-pointer rounded border border-[#3a3a3a] bg-[#2e2e2e]"
-            />
-
-            <label htmlFor="active-structure-type" className="text-[10px] text-[#6b6b6b]">
-              Type
-            </label>
-            <select
-              id="active-structure-type"
-              aria-label="Active structure type"
-              value={activeStructure.type}
-              onChange={handleActiveStructureTypeChange}
-              className="h-6 rounded border border-[#3a3a3a] bg-[#2e2e2e] px-1 text-[11px] text-[#e5e5e5] focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              {STRUCTURE_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mt-2 flex items-center gap-1.5 border-t border-[#2a2a2a] pt-2">
-            <span className="mr-auto text-[10px] text-[#6b6b6b]">
-              {activeStructureReviewSlices.length === 1
-                ? '1 contour slice'
-                : `${activeStructureReviewSlices.length} contour slices`}
-            </span>
-            <button
-              type="button"
-              onClick={() => handleReviewNavigate('previous')}
-              disabled={activeStructureReviewSlices.length === 0}
-              title="Jump to previous contour slice on the axial view ([)"
-              className="rounded border border-[#3a3a3a] bg-[#242424] px-2 py-1 text-[10px] text-[#c8c8c8] transition-colors hover:border-cyan-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#3a3a3a] disabled:hover:text-[#c8c8c8]"
-            >
-              Prev [
-            </button>
-            <button
-              type="button"
-              onClick={() => handleReviewNavigate('next')}
-              disabled={activeStructureReviewSlices.length === 0}
-              title="Jump to next contour slice on the axial view (])"
-              className="rounded border border-[#3a3a3a] bg-[#242424] px-2 py-1 text-[10px] text-[#c8c8c8] transition-colors hover:border-cyan-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#3a3a3a] disabled:hover:text-[#c8c8c8]"
-            >
-              Next ]
-            </button>
-          </div>
-        </div>
+              <div className="mt-2 border-t border-[#2a2a2a] pt-2">
+                <span className="text-[10px] text-[#6b6b6b]">
+                  {activeStructureReviewSlices.length === 1
+                    ? '1 contour slice'
+                    : `${activeStructureReviewSlices.length} contour slices`}
+                </span>
+              </div>
+        </section>
       )}
 
       {/* Inline add form */}
       {isAdding && (
-        <div className="px-2 py-1.5 border-b border-[#2a2a2a] bg-[#242424] flex-none">
+        <div className="border-b border-[#2a2a2a] bg-[#242424] px-2 py-1.5 flex-none">
           <input
             ref={inputRef}
             type="text"
@@ -883,6 +786,19 @@ export default function StructurePanel() {
 
       {/* Structure sets and structures */}
       <div className="flex-1 overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-[#2a2a2a] bg-[#171717] px-3 py-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+            Structures
+          </span>
+          <button
+            onClick={handleAddClick}
+            title={activeSeriesUID ? 'Add new structure' : 'Load a series first'}
+            disabled={!activeSeriesUID}
+            className="h-5 rounded bg-[#2e2e2e] px-1.5 text-[10px] font-semibold text-[#a0a0a0] transition-colors hover:bg-blue-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#2e2e2e] disabled:hover:text-[#a0a0a0]"
+          >
+            + Add
+          </button>
+        </div>
         {structureSets.length === 0 ? (
           <p className="text-[11px] text-[#6b6b6b] px-3 py-3">No structures yet. Click "+" to add one.</p>
         ) : (
@@ -921,6 +837,44 @@ export default function StructurePanel() {
           ))
         )}
       </div>
+
+      {activeSeriesStructureSet && (
+        <section className="border-t border-[#2a2a2a] bg-[#171717] px-3 py-2 flex-none">
+          <div className="mb-1 flex items-center gap-2">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+              Structure Set
+            </span>
+            <span className="rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[#a0a0a0]">
+              {activeSeriesStructureSet.source?.type === 'rtstruct' ? 'RTSS' : 'SET'}
+            </span>
+          </div>
+          <p
+            className="truncate text-[11px] font-semibold text-[#e5e5e5]"
+            title={activeSeriesStructureSet.label}
+          >
+            {activeSeriesStructureSet.label}
+          </p>
+          <p
+            className="mt-0.5 truncate text-[10px] text-[#6b6b6b]"
+            title={formatSourceLabel(activeSeriesStructureSet)}
+          >
+            Source: {formatSourceLabel(activeSeriesStructureSet)}
+          </p>
+          {activeSeriesStructureSet.source?.sopInstanceUID && (
+            <p
+              className="mt-0.5 truncate font-mono text-[10px] text-[#6b6b6b]"
+              title={activeSeriesStructureSet.source.sopInstanceUID}
+            >
+              SOP: …{formatSopTail(activeSeriesStructureSet.source.sopInstanceUID)}
+            </p>
+          )}
+          {activeSeriesStructureSet.source?.importedAt && (
+            <p className="mt-0.5 truncate text-[10px] text-[#6b6b6b]">
+              Source time: {formatSourceTimestamp(activeSeriesStructureSet.source.importedAt)}
+            </p>
+          )}
+        </section>
+      )}
     </div>
   );
 }

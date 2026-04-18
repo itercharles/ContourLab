@@ -3,6 +3,7 @@ import { ContourEngine } from '../../core/contouring/ContourEngine';
 import {
   findContourOnFrame,
   flattenWorldPoints,
+  getViewportTransformSignature,
   isContourOnFrame,
   projectContourToCanvasPath,
   type WorldPoint,
@@ -17,7 +18,12 @@ import { logClientDebug } from '../../core/debug/clientDebugLog';
 interface VolumeViewportLike {
   canvasToWorld: (canvasPoint: [number, number]) => [number, number, number];
   worldToCanvas: (worldPoint: [number, number, number]) => [number, number];
-  getCamera?: () => { focalPoint?: [number, number, number] };
+  getCamera?: () => {
+    focalPoint?: [number, number, number];
+    position?: [number, number, number];
+    parallelScale?: number;
+  };
+  getZoom?: () => number;
 }
 
 interface ContourOverlayProps {
@@ -105,6 +111,37 @@ export default function ContourOverlay({
       | VolumeViewportLike
       | undefined;
   }, [revision, viewportId]);
+
+  useEffect(() => {
+    if (!viewportElement) return;
+
+    let frameId: number | null = null;
+    let lastSignature = '';
+
+    const checkTransform = () => {
+      const currentViewport = ViewportManager.getRenderingEngine()?.getViewport(viewportId) as
+        | VolumeViewportLike
+        | undefined;
+      const canvas = viewportElement.querySelector('canvas');
+      const rect = canvas instanceof HTMLCanvasElement
+        ? canvas.getBoundingClientRect()
+        : viewportElement.getBoundingClientRect();
+      const nextSignature = getViewportTransformSignature(currentViewport, rect);
+      if (nextSignature !== lastSignature) {
+        lastSignature = nextSignature;
+        setRevision((value) => value + 1);
+      }
+      frameId = window.requestAnimationFrame(checkTransform);
+    };
+
+    frameId = window.requestAnimationFrame(checkTransform);
+
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [viewportElement, viewportId]);
 
   const canvasMetrics = useMemo<CanvasMetrics>(() => {
     if (!viewportElement) {
@@ -264,6 +301,7 @@ export default function ContourOverlay({
   ]);
 
   const renderableContours = useMemo(() => {
+    void revision;
     if (!viewport || !activeStructureSet) {
       return [] as RenderableContour[];
     }
@@ -305,11 +343,13 @@ export default function ContourOverlay({
     canvasMetrics.offsetY,
     currentFrame?.sopInstanceUID,
     currentSlicePosition,
+    revision,
     sliceTolerance,
     viewport,
   ]);
 
   const draftPath = useMemo(() => {
+    void revision;
     if (!viewport || draftPoints.length < 2) return '';
 
     try {
@@ -325,7 +365,7 @@ export default function ContourOverlay({
     } catch {
       return '';
     }
-  }, [canvasMetrics.offsetX, canvasMetrics.offsetY, draftPoints, viewport]);
+  }, [canvasMetrics.offsetX, canvasMetrics.offsetY, draftPoints, revision, viewport]);
 
   const isDrawable =
     activeTool === 'freehand' &&

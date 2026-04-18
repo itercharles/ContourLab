@@ -8,6 +8,11 @@ import { findContourOnFrame } from '../../core/contouring/contourOverlayUtils';
 import { WINDOW_LEVEL_PRESETS } from '../../core/rendering/WindowLevelPresets';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
+import {
+  getReviewSlices,
+  resolveContourReviewScrollDelta,
+  type ContourReviewDirection,
+} from '../../core/structures/contourReview';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import WorkspaceContextBar from '../layout/WorkspaceContextBar';
@@ -165,6 +170,8 @@ function ToolIcon({ tool, fallback }: { tool: ViewerTool; fallback: string }) {
 
 interface AxialViewportLike {
   getCamera?: () => { focalPoint?: [number, number, number] };
+  scroll?: (delta: number) => void;
+  render?: () => void;
 }
 
 interface SliceFrame {
@@ -262,6 +269,13 @@ export default function Toolbar() {
   void undoRedoRevision;
   const canUndo = UndoRedoManager.canUndo();
   const canRedo = UndoRedoManager.canRedo();
+  const activeStructureReviewSliceCount = activeStructure
+    ? getReviewSlices(activeStructure.contours).length
+    : 0;
+  const canReviewContourSlices =
+    !!activeStructure &&
+    !!activeLoadedSeries &&
+    activeStructureReviewSliceCount > 0;
   const canUseFreehand =
     !!activeSeriesUID &&
     !!activeStructureSet &&
@@ -357,6 +371,50 @@ export default function Toolbar() {
     );
   };
 
+  const handleReviewNavigate = (direction: ContourReviewDirection) => {
+    if (!activeStructure || !activeLoadedSeries) return;
+
+    const viewport = ViewportManager
+      .getRenderingEngine()
+      ?.getViewport(VIEWPORT_IDS.AXIAL) as AxialViewportLike | undefined;
+    if (!viewport?.scroll) {
+      logClientDebug('Toolbar', 'review:navigate:error axial viewport unavailable');
+      return;
+    }
+
+    const currentPosition = viewport.getCamera?.().focalPoint?.[2]
+      ?? activeStructure.contours[0]?.slicePosition
+      ?? 0;
+    const frames = activeLoadedSeries.series.instances
+      .map((instance, index) => ({
+        index,
+        sliceLocation: instance.sliceLocation,
+      }))
+      .filter((frame): frame is { index: number; sliceLocation: number } =>
+        Number.isFinite(frame.sliceLocation)
+      );
+    const reviewTarget = resolveContourReviewScrollDelta(
+      activeStructure.contours,
+      frames,
+      currentPosition,
+      direction
+    );
+    if (!reviewTarget) {
+      logClientDebug('Toolbar', 'review:navigate:error missing target');
+      return;
+    }
+
+    if (reviewTarget.scrollDelta !== 0) {
+      viewport.scroll(reviewTarget.scrollDelta);
+    }
+    viewport.render?.();
+    setActiveViewport('AXIAL');
+    logClientDebug(
+      'Toolbar',
+      `review:navigate ${direction} structure=${activeStructure.id} z=${reviewTarget.targetSlice.slicePosition}`
+    );
+  };
+
   return (
     <div className="flex flex-none flex-col border-b border-[#2a2a2a] bg-[#111]">
       <WorkspaceContextBar />
@@ -387,6 +445,27 @@ export default function Toolbar() {
               shortcut={TOOL_META[tool].shortcut}
             />
           ))}
+          <button
+            onClick={handleCrosshairsToggle}
+            title="Show or hide crosshair reference lines on the MPR views"
+            aria-label="Show or hide crosshair reference lines on the MPR views"
+            className={`
+            h-7 flex items-center gap-1 rounded px-2 text-[10px] font-medium transition-colors
+            ${crosshairsEnabled
+              ? 'bg-blue-600 text-white'
+              : 'bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5]'
+            }
+          `}
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <line x1="6.5" y1="0" x2="6.5" y2="4" />
+              <line x1="6.5" y1="9" x2="6.5" y2="13" />
+              <line x1="0" y1="6.5" x2="4" y2="6.5" />
+              <line x1="9" y1="6.5" x2="13" y2="6.5" />
+              <circle cx="6.5" cy="6.5" r="2" />
+            </svg>
+            Crosshair
+          </button>
         </div>
 
         {/* Separator */}
@@ -421,31 +500,6 @@ export default function Toolbar() {
         {/* Separator */}
         <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
 
-        <button
-          onClick={handleCrosshairsToggle}
-          title="Crosshair sync: link slice position across axial, sagittal, and coronal views"
-          aria-label="Crosshair sync: link slice position across axial, sagittal, and coronal views"
-          className={`
-          h-7 flex items-center gap-1 rounded px-2 text-[10px] font-medium transition-colors
-          ${crosshairsEnabled
-            ? 'bg-blue-600 text-white'
-            : 'bg-[#2e2e2e] text-[#a0a0a0] hover:bg-[#3a3a3a] hover:text-[#e5e5e5]'
-          }
-        `}
-        >
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <line x1="6.5" y1="0" x2="6.5" y2="4" />
-            <line x1="6.5" y1="9" x2="6.5" y2="13" />
-            <line x1="0" y1="6.5" x2="4" y2="6.5" />
-            <line x1="9" y1="6.5" x2="13" y2="6.5" />
-            <circle cx="6.5" cy="6.5" r="2" />
-          </svg>
-          Sync
-        </button>
-
-        {/* Separator */}
-        <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
-
         <span className="mr-1 rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
           Contour
         </span>
@@ -462,6 +516,24 @@ export default function Toolbar() {
           shortcut={TOOL_META.freehand.shortcut}
         />
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => handleReviewNavigate('previous')}
+            disabled={!canReviewContourSlices}
+            title="Jump to previous contour slice on the axial view ([)"
+            className="h-7 rounded bg-[#2e2e2e] px-2 text-[10px] font-medium text-[#a0a0a0] transition-colors hover:bg-[#3a3a3a] hover:text-[#e5e5e5] disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            Prev
+          </button>
+          <button
+            type="button"
+            onClick={() => handleReviewNavigate('next')}
+            disabled={!canReviewContourSlices}
+            title="Jump to next contour slice on the axial view (])"
+            className="h-7 rounded bg-[#2e2e2e] px-2 text-[10px] font-medium text-[#a0a0a0] transition-colors hover:bg-[#3a3a3a] hover:text-[#e5e5e5] disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            Next
+          </button>
           <button
             onClick={handleUndo}
             disabled={!canUndo}

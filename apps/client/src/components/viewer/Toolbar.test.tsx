@@ -8,8 +8,12 @@ import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore'
 import type { StructureSet } from '@webtps/shared-types';
 
 const mocks = vi.hoisted(() => ({
+  scroll: vi.fn(),
+  renderViewport: vi.fn(),
   getViewport: vi.fn(() => ({
     getCamera: () => ({ focalPoint: [0, 0, 10] as [number, number, number] }),
+    scroll: vi.fn(),
+    render: vi.fn(),
   })),
   setActiveTool: vi.fn(),
   enableCrosshairs: vi.fn(),
@@ -120,6 +124,8 @@ beforeEach(() => {
   UndoRedoManager.clear();
   mocks.getViewport.mockReturnValue({
     getCamera: () => ({ focalPoint: [0, 0, 10] as [number, number, number] }),
+    scroll: mocks.scroll,
+    render: mocks.renderViewport,
   });
   useUIStore.setState({
     activeTool: 'windowLevel',
@@ -153,7 +159,7 @@ describe('Toolbar contour operations', () => {
     expect(screen.getByTitle('Window/Level Preset')).toBeTruthy();
     expect(
       screen.getByRole('button', {
-        name: 'Crosshair sync: link slice position across axial, sagittal, and coronal views',
+        name: 'Show or hide crosshair reference lines on the MPR views',
       })
     ).toBeTruthy();
   });
@@ -198,6 +204,23 @@ describe('Toolbar contour operations', () => {
     expect(screen.getByRole('button', { name: 'Undo' }).getAttribute('title')).toContain(
       'Undo: Delete contour'
     );
+  });
+
+  it('navigates to adjacent contour slices from the top operation bar', () => {
+    render(<Toolbar />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(mocks.scroll).toHaveBeenCalledWith(1);
+    expect(mocks.renderViewport).toHaveBeenCalled();
+
+    mocks.scroll.mockClear();
+    mocks.getViewport.mockReturnValue({
+      getCamera: () => ({ focalPoint: [0, 0, 20] as [number, number, number] }),
+      scroll: mocks.scroll,
+      render: mocks.renderViewport,
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Prev' }));
+    expect(mocks.scroll).toHaveBeenCalledWith(-1);
   });
 
   it('restores a deleted current-slice contour through the top operation bar undo control', async () => {
