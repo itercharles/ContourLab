@@ -28,49 +28,87 @@ WebTPS/
 └── .github/workflows/       — CI/CD pipeline
 ```
 
-## Setup
+## Local Setup
 
 ### Prerequisites
 
-- Node.js ≥ 20
-- pnpm ≥ 9 (`npm install -g pnpm`)
+- Node.js 20 or newer
+- pnpm 9 or newer
+- .NET SDK 10
+- Docker Desktop or Docker Engine with Docker Compose support
+- macOS, Linux, or Windows 10/11 with PowerShell
 
-### Install
-
-```bash
-pnpm install
-```
-
-### Development
+If pnpm is not installed, enable it through Corepack:
 
 ```bash
-pnpm dev          # frontend at http://localhost:3000
-pnpm api          # API at http://localhost:4000
-pnpm repo:up      # local Orthanc DICOM repo at http://localhost:8042
+corepack enable
+corepack prepare pnpm@latest --activate
 ```
 
-The Vite dev server proxies `/api` to port `4000` and `/dicom-web` to the
-local Orthanc repository on port `8042`.
+On Windows, install Docker Desktop with the WSL2 backend enabled. Run the
+commands from PowerShell, Windows Terminal, or a WSL shell. Docker Desktop must
+be running before starting the local DICOM repository. Ports `3000`, `4000`, and
+`8042` must be available.
 
-### Local DICOM Repository
-
-WebTPS now loads imaging through a DICOMweb repository rather than directly
-opening local files in the viewer. For local development, start the bundled
-Orthanc service:
+### One-Time Setup
 
 ```bash
-pnpm repo:up
+pnpm local:setup
 ```
 
-Key endpoints:
+This installs JavaScript dependencies, restores the ASP.NET API, checks Docker,
+and starts the local Orthanc DICOM repository.
 
-- Web app: `http://localhost:3000`
-- API: `http://localhost:4000`
-- Orthanc UI: `http://localhost:8042/`
-- DICOMweb root: `http://localhost:8042/dicom-web`
+### Start The Full Local Environment
 
-Use the repository panel in the app to upload DICOM instances into Orthanc for
-development, then query and load series from the repository.
+```bash
+pnpm local:up
+```
+
+This starts or verifies the complete development stack:
+
+- Frontend: `http://127.0.0.1:3000/workspace`
+- API: `http://127.0.0.1:4000/api/health`
+- Orthanc: `http://127.0.0.1:8042`
+- DICOMweb through the frontend proxy: `http://127.0.0.1:3000/dicom-web`
+
+Press `Ctrl+C` to stop API/frontend processes started by `local:up`. Orthanc
+keeps running with persisted Docker volume data.
+
+### Check The Local Environment
+
+```bash
+pnpm local:doctor
+```
+
+This checks required commands, Docker daemon access, local ports, and HTTP
+health endpoints.
+
+### Stop The Local Repository
+
+```bash
+pnpm local:down
+```
+
+This stops Docker Compose services. Orthanc data remains in the Docker volume
+unless the volume is explicitly deleted.
+
+### Manual Development Commands
+
+```bash
+pnpm install      # install JS dependencies
+pnpm dev          # frontend only at http://localhost:3000
+pnpm api          # API only at http://localhost:4000
+pnpm repo:up      # Orthanc DICOM repo only at http://localhost:8042
+pnpm repo:down    # stop Orthanc
+```
+
+The Vite dev server proxies `/api` to port `4000` and `/dicom-web` to the local
+Orthanc repository on port `8042`. Use the repository panel in the app to import
+DICOM instances into Orthanc for development, then query and load series from
+the repository.
+
+More detail: [`docs/local_development.md`](docs/local_development.md).
 
 ## Testing
 
