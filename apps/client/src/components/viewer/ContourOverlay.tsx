@@ -421,7 +421,9 @@ export default function ContourOverlay({
 
   const editablePoints = useMemo(() => {
     void revision;
-    if (!viewport || activeTool !== 'edit' || !activeContourOnSlice) return [] as EditablePoint[];
+    if (orientation !== 'AXIAL' || !viewport || activeTool !== 'edit' || !activeContourOnSlice) {
+      return [] as EditablePoint[];
+    }
 
     const points: EditablePoint[] = [];
     for (let index = 0; index < activeContourOnSlice.points.length; index += 3) {
@@ -442,7 +444,7 @@ export default function ContourOverlay({
       }
     }
     return points;
-  }, [activeContourOnSlice, activeTool, revision, viewport]);
+  }, [activeContourOnSlice, activeTool, orientation, revision, viewport]);
 
   const isDrawable =
     orientation === 'AXIAL' &&
@@ -963,7 +965,7 @@ export default function ContourOverlay({
         />
       )}
 
-      {activeTool === 'edit' && editablePoints.map((point) => (
+      {orientation === 'AXIAL' && activeTool === 'edit' && editablePoints.map((point) => (
         <circle
           key={`edit-point-${point.index}-${point.canvas[0]}-${point.canvas[1]}`}
           cx={point.canvas[0] + canvasMetrics.offsetX}
