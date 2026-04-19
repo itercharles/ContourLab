@@ -12,9 +12,13 @@ import { replaceStructureSetsForSeries } from '../../core/structures/structurePe
 import {
   getReviewSlices,
   resolveContourReviewScrollDelta,
+  resolveScrollDeltaToSlice,
   type ContourReviewDirection,
 } from '../../core/structures/contourReview';
-import { analyzeContourQuality } from '../../core/structures/contourQuality';
+import {
+  analyzeContourQuality,
+  type ContourQualityIssue,
+} from '../../core/structures/contourQuality';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
@@ -94,6 +98,12 @@ interface AxialViewportLike {
   getCamera?: () => { focalPoint?: [number, number, number] };
   scroll?: (delta: number) => void;
   render?: () => void;
+}
+
+interface StructureSetQualityIssue {
+  structureId: string;
+  structureName: string;
+  issue: ContourQualityIssue;
 }
 
 interface StructureRowProps {
@@ -364,6 +374,19 @@ export default function StructurePanel() {
   const activeStructureQa = activeStructure
     ? analyzeContourQuality(activeStructure, activeLoadedSeries?.volume.spacing[2] ?? 1)
     : null;
+  const activeStructureSetQaIssues: StructureSetQualityIssue[] = activeSeriesStructureSet
+    ? activeSeriesStructureSet.structures.flatMap((structure) => {
+        const summary = analyzeContourQuality(structure, activeLoadedSeries?.volume.spacing[2] ?? 1);
+        return summary.issues.map((issue) => ({
+          structureId: structure.id,
+          structureName: structure.name,
+          issue,
+        }));
+      })
+    : [];
+  const activeStructureSetWarningCount = activeStructureSetQaIssues.filter(
+    ({ issue }) => issue.severity === 'warning'
+  ).length;
   void axialRevision;
   useEffect(() => {
     if (isAdding && inputRef.current) {
@@ -637,6 +660,60 @@ export default function StructurePanel() {
     );
   };
 
+  const handleQaIssueSelect = (qualityIssue: StructureSetQualityIssue) => {
+    if (!activeSeriesStructureSet) return;
+
+    setActiveStructureSet(activeSeriesStructureSet.id);
+    setActiveStructure(qualityIssue.structureId);
+
+    if (!Number.isFinite(qualityIssue.issue.slicePosition)) {
+      setStatusMessage(`Selected ${qualityIssue.structureName}: ${qualityIssue.issue.message}`);
+      return;
+    }
+
+    const viewport = ViewportManager
+      .getRenderingEngine()
+      ?.getViewport(VIEWPORT_IDS.AXIAL) as AxialViewportLike | undefined;
+    if (!viewport?.scroll) {
+      setStatusMessage('Axial viewport is not ready for QA navigation.');
+      logClientDebug('StructurePanel', 'qa:navigate:error axial viewport unavailable');
+      return;
+    }
+
+    const frames = activeLoadedSeries?.series.instances
+      .map((instance, index) => ({
+        index,
+        sliceLocation: instance.sliceLocation,
+      }))
+      .filter((frame): frame is { index: number; sliceLocation: number } =>
+        Number.isFinite(frame.sliceLocation)
+      ) ?? [];
+    if (frames.length === 0) {
+      setStatusMessage('Image slice metadata is unavailable for QA navigation.');
+      logClientDebug('StructurePanel', 'qa:navigate:error missing sliceLocation');
+      return;
+    }
+
+    const currentSlicePosition = viewport.getCamera?.().focalPoint?.[2]
+      ?? qualityIssue.issue.slicePosition
+      ?? 0;
+    const scrollDelta = resolveScrollDeltaToSlice(
+      frames,
+      currentSlicePosition,
+      qualityIssue.issue.slicePosition!
+    );
+    if (scrollDelta !== 0) {
+      viewport.scroll(scrollDelta);
+    }
+    viewport.render?.();
+    setActiveViewport('AXIAL');
+    setStatusMessage(`${qualityIssue.structureName}: ${qualityIssue.issue.message}`);
+    logClientDebug(
+      'StructurePanel',
+      `qa:navigate structure=${qualityIssue.structureId} z=${qualityIssue.issue.slicePosition}`
+    );
+  };
+
   useEffect(() => {
     const handleReviewKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
@@ -797,6 +874,59 @@ export default function StructurePanel() {
                   </p>
                 )}
               </div>
+        </section>
+      )}
+
+      {activeSeriesStructureSet && (
+        <section className="border-b border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+              RTSS QA
+            </p>
+            <span
+              className={`rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
+                activeStructureSetWarningCount > 0
+                  ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
+                  : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
+              }`}
+              title="Automatic quality checks across the active structure set"
+            >
+              {activeStructureSetWarningCount > 0
+                ? `${activeStructureSetWarningCount} warning${activeStructureSetWarningCount === 1 ? '' : 's'}`
+                : 'OK'}
+            </span>
+          </div>
+          {activeStructureSetQaIssues.length > 0 ? (
+            <div className="max-h-28 overflow-y-auto border border-[#2a2a2a] bg-[#171717]">
+              {activeStructureSetQaIssues.slice(0, 8).map((qualityIssue, index) => (
+                <button
+                  key={`${qualityIssue.structureId}-${qualityIssue.issue.type}-${qualityIssue.issue.slicePosition ?? 'structure'}-${index}`}
+                  type="button"
+                  onClick={() => handleQaIssueSelect(qualityIssue)}
+                  className={`flex w-full items-start gap-1.5 border-b border-[#2a2a2a] px-2 py-1 text-left text-[10px] last:border-b-0 hover:bg-[#2e2e2e] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                    qualityIssue.issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
+                  }`}
+                  title={`Select ${qualityIssue.structureName}${Number.isFinite(qualityIssue.issue.slicePosition) ? ` and jump to z=${qualityIssue.issue.slicePosition!.toFixed(1)} mm` : ''}`}
+                >
+                  <span className="max-w-[64px] flex-none truncate font-semibold text-[#a0a0a0]">
+                    {qualityIssue.structureName}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    {qualityIssue.issue.message}
+                  </span>
+                </button>
+              ))}
+              {activeStructureSetQaIssues.length > 8 ? (
+                <div className="px-2 py-1 text-[10px] text-[#6b6b6b]">
+                  +{activeStructureSetQaIssues.length - 8} more QA item{activeStructureSetQaIssues.length - 8 === 1 ? '' : 's'}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-[10px] text-[#6b6b6b]">
+              No contour QA warnings for this structure set.
+            </p>
+          )}
         </section>
       )}
 

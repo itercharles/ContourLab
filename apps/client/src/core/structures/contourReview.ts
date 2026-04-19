@@ -52,6 +52,17 @@ export function resolveContourReviewScrollDelta(
   const targetSlice = findAdjacentReviewSlice(contours, currentSlicePosition, direction);
   if (!targetSlice || frames.length === 0) return null;
 
+  return {
+    targetSlice,
+    scrollDelta: resolveScrollDeltaToSlice(frames, currentSlicePosition, targetSlice.slicePosition),
+  };
+}
+
+export function resolveScrollDeltaToSlice(
+  frames: ReviewImageFrame[],
+  currentSlicePosition: number,
+  targetSlicePosition: number
+): number {
   const closestFrameIndexTo = (slicePosition: number) =>
     frames.reduce((closest, frame) => {
       const closestDistance = Math.abs(closest.sliceLocation - slicePosition);
@@ -59,8 +70,5 @@ export function resolveContourReviewScrollDelta(
       return frameDistance < closestDistance ? frame : closest;
     }).index;
 
-  return {
-    targetSlice,
-    scrollDelta: closestFrameIndexTo(targetSlice.slicePosition) - closestFrameIndexTo(currentSlicePosition),
-  };
+  return closestFrameIndexTo(targetSlicePosition) - closestFrameIndexTo(currentSlicePosition);
 }

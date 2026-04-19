@@ -8,8 +8,12 @@ import type { StructureSet } from '@webtps/shared-types';
 const mocks = vi.hoisted(() => ({
   loadStructureDraftForSeries: vi.fn(),
   saveStructureDraftForSeries: vi.fn(),
+  scroll: vi.fn(),
+  renderViewport: vi.fn(),
   getViewport: vi.fn(() => ({
     getCamera: () => ({ focalPoint: [0, 0, 10] as [number, number, number] }),
+    scroll: vi.fn(),
+    render: vi.fn(),
   })),
 }));
 
@@ -131,6 +135,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.getViewport.mockReturnValue({
     getCamera: () => ({ focalPoint: [0, 0, 10] as [number, number, number] }),
+    scroll: mocks.scroll,
+    render: mocks.renderViewport,
   });
   mocks.loadStructureDraftForSeries.mockResolvedValue(null);
   mocks.saveStructureDraftForSeries.mockResolvedValue(undefined);
@@ -367,10 +373,95 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     render(<StructurePanel />);
 
     expect(screen.getByText('Contour QA')).toBeTruthy();
-    expect(screen.getByText(/warnings/)).toBeTruthy();
-    expect(screen.getByText('Open contour at z=5.0 mm.')).toBeTruthy();
-    expect(screen.getByText('Gap from z=0.0 to 5.0 mm.')).toBeTruthy();
-    expect(screen.getByText('Area jump near z=5.0 mm.')).toBeTruthy();
+    expect(screen.getAllByText(/warnings/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Open contour at z=5.0 mm.').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Gap from z=0.0 to 5.0 mm.').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Area jump near z=5.0 mm.').length).toBeGreaterThan(0);
+  });
+
+  it('summarizes contour QA across the active structure set', () => {
+    const structureSet = makeStructureSet();
+    structureSet.structures[0].contours = [
+      {
+        referencedSOPInstanceUID: 'sop-1',
+        slicePosition: 0,
+        points: new Float32Array([0, 0, 0, 10, 0, 0, 10, 10, 0, 0, 10, 0]),
+        isClosed: true,
+      },
+      {
+        referencedSOPInstanceUID: 'sop-2',
+        slicePosition: 5,
+        points: new Float32Array([0, 0, 5, 40, 0, 5, 40, 40, 5, 0, 40, 5]),
+        isClosed: false,
+      },
+    ];
+    structureSet.structures.push({
+      id: 'structure-2',
+      name: 'Cord',
+      type: 'OAR',
+      color: [0, 255, 0],
+      contours: [],
+      isVisible: true,
+      isLocked: false,
+      volume_cc: 0,
+    });
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    expect(screen.getByText('RTSS QA')).toBeTruthy();
+    expect(screen.getAllByText(/warnings/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('PTV').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Cord').length).toBeGreaterThan(0);
+    expect(screen.getByText('No contours in this structure.')).toBeTruthy();
+  });
+
+  it('activates a structure and jumps to the QA issue slice when a structure-set QA item is clicked', async () => {
+    const loadedSeries = makeLoadedSeries();
+    loadedSeries.series.instances = [
+      { sopInstanceUID: 'sop-0', instanceNumber: 1, sliceLocation: 0 },
+      { sopInstanceUID: 'sop-10', instanceNumber: 2, sliceLocation: 10 },
+      { sopInstanceUID: 'sop-20', instanceNumber: 3, sliceLocation: 20 },
+    ];
+    const structureSet = makeStructureSet();
+    structureSet.structures.push({
+      id: 'structure-2',
+      name: 'Cord',
+      type: 'OAR',
+      color: [0, 255, 0],
+      contours: [
+        {
+          referencedSOPInstanceUID: 'sop-20',
+          slicePosition: 20,
+          points: new Float32Array([0, 0, 20, 10, 0, 20, 10, 10, 20, 0, 10, 20]),
+          isClosed: false,
+        },
+      ],
+      isVisible: true,
+      isLocked: false,
+      volume_cc: 1,
+    });
+    useVolumeStore.setState({
+      loadedSeries: [loadedSeries],
+      activeSeriesUID: loadedSeries.seriesUID,
+    });
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Cord.*Open contour at z=20.0 mm./ }));
+
+    await waitFor(() => expect(useStructureStore.getState().activeStructureId).toBe('structure-2'));
+    expect(mocks.scroll).toHaveBeenCalledWith(1);
+    expect(mocks.renderViewport).toHaveBeenCalled();
   });
 
   it('does not show a current-slice marker in the structure list', () => {

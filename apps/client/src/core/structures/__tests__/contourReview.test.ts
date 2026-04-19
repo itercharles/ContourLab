@@ -4,6 +4,7 @@ import {
   findAdjacentReviewSlice,
   getReviewSlices,
   resolveContourReviewScrollDelta,
+  resolveScrollDeltaToSlice,
 } from '../contourReview';
 
 function makeContour(slicePosition: number, sopInstanceUID = `sop-${slicePosition}`): ContourSlice {
@@ -53,5 +54,16 @@ describe('contour review navigation', () => {
       targetSlice: { referencedSOPInstanceUID: 'sop-10', slicePosition: 10 },
       scrollDelta: 1,
     });
+  });
+
+  it('resolves direct scroll delta to a requested slice position', () => {
+    const frames = [
+      { index: 0, sliceLocation: 0 },
+      { index: 1, sliceLocation: 10 },
+      { index: 2, sliceLocation: 20 },
+    ];
+
+    expect(resolveScrollDeltaToSlice(frames, 0, 20)).toBe(2);
+    expect(resolveScrollDeltaToSlice(frames, 20, 10)).toBe(-1);
   });
 });
