@@ -424,6 +424,58 @@ describe('DicomRepoPanel', () => {
     expect(screen.getAllByText('No plans yet').length).toBeGreaterThanOrEqual(1);
   });
 
+  it('compares a repository RTSTRUCT with the active workspace structure set without loading it', async () => {
+    const repositoryRtstruct = makeStructureSet();
+    repositoryRtstruct.id = 'repo-ss';
+    repositoryRtstruct.label = 'Repository Set';
+    repositoryRtstruct.structures[0].volume_cc = 0.4;
+    repositoryRtstruct.structures.push({
+      id: 'old-oar',
+      name: 'Old_OAR',
+      type: 'OAR',
+      color: [255, 0, 0],
+      contours: [],
+      isVisible: true,
+      isLocked: false,
+      volume_cc: 5,
+    });
+    useVolumeStore.setState({
+      loadedSeries: [makeLoadedSeries()],
+      activeSeriesUID: 'series-1',
+      isLoading: false,
+      loadError: null,
+    });
+    mocks.queryRtstructInstancesForStudy.mockResolvedValue([
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-series-1',
+        sopInstanceUID: 'rtss-1',
+        seriesDescription: 'RTSTRUCT Baseline',
+        seriesDate: '20260411',
+        seriesTime: '120000',
+        roiCount: 2,
+        referencedSeriesInstanceUIDs: ['series-1'],
+      },
+    ]);
+    const dicomBuffer = new ArrayBuffer(12);
+    mocks.retrieveDicomWebInstance.mockResolvedValue(dicomBuffer);
+    mocks.importRtstructArrayBuffer.mockResolvedValue(repositoryRtstruct);
+
+    render(<DicomRepoPanel />);
+
+    expect(await screen.findByText('RTSTRUCT Baseline')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Compare' }));
+
+    await waitFor(() => expect(mocks.retrieveDicomWebInstance).toHaveBeenCalledWith(expect.objectContaining({
+      sopInstanceUID: 'rtss-1',
+    })));
+    expect(mocks.importRtstructArrayBuffer).toHaveBeenCalledWith(dicomBuffer, 'series-1');
+    expect(screen.getByText('RTSS Compare')).toBeTruthy();
+    expect(screen.getByText('RTSTRUCT Baseline vs active workspace')).toBeTruthy();
+    expect(screen.getByText('+0 / -1 / Δ1')).toBeTruthy();
+    expect(useStructureStore.getState().activeStructureSetId).toBe('ss-1');
+  });
+
   it('keeps the active RTSTRUCT when unsynced changes are not confirmed', async () => {
     useVolumeStore.setState({
       loadedSeries: [makeLoadedSeries()],

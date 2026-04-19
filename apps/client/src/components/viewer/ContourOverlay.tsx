@@ -8,6 +8,7 @@ import {
   projectContourToCanvasPath,
   type WorldPoint,
 } from '../../core/contouring/contourOverlayUtils';
+import { buildMprMaskBoundaryPath } from '../../core/contouring/contourMaskReslice';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useUIStore } from '../../core/store/uiStore';
@@ -29,6 +30,7 @@ interface VolumeViewportLike {
 interface ContourOverlayProps {
   viewportId: string;
   viewportElement: HTMLDivElement | null;
+  orientation: 'AXIAL' | 'SAGITTAL' | 'CORONAL';
 }
 
 interface RenderableContour {
@@ -66,6 +68,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
 export default function ContourOverlay({
   viewportId,
   viewportElement,
+  orientation,
 }: ContourOverlayProps) {
   const activeTool = useUIStore((state) => state.activeTool);
   const activeSeriesUID = useVolumeStore((state) => state.activeSeriesUID);
@@ -73,6 +76,7 @@ export default function ContourOverlay({
   const structureSets = useStructureStore((state) => state.structureSets);
   const activeStructureSetId = useStructureStore((state) => state.activeStructureSetId);
   const activeStructureId = useStructureStore((state) => state.activeStructureId);
+  const brushRadius = useUIStore((state) => state.brushRadius);
 
   const [revision, setRevision] = useState(0);
   const [draftPoints, setDraftPoints] = useState<WorldPoint[]>([]);
@@ -185,13 +189,10 @@ export default function ContourOverlay({
     : undefined;
 
   const activeStructureSet = useMemo(() => {
-    const seriesStructureSets = structureSets.filter(
-      (structureSet) => structureSet.referencedSeriesUID === activeSeriesUID
-    );
-
-    return (
-      seriesStructureSets.find((structureSet) => structureSet.id === activeStructureSetId) ??
-      seriesStructureSets[0]
+    return structureSets.find(
+      (structureSet) =>
+        structureSet.id === activeStructureSetId &&
+        structureSet.referencedSeriesUID === activeSeriesUID
     );
   }, [activeSeriesUID, activeStructureSetId, structureSets]);
 
@@ -199,13 +200,14 @@ export default function ContourOverlay({
     (structure) => structure.id === activeStructureId
   );
 
-  const focalPointZ = useMemo(() => {
+  const focalPoint = useMemo<[number, number, number]>(() => {
     try {
-      return viewport?.getCamera?.()?.focalPoint?.[2] ?? 0;
+      return viewport?.getCamera?.()?.focalPoint ?? [0, 0, 0];
     } catch {
-      return 0;
+      return [0, 0, 0];
     }
   }, [viewport, revision]);
+  const focalPointZ = focalPoint[2];
 
   const currentFrame = useMemo(() => {
     const sourceInstances = activeSeries?.series.instances ?? [];
@@ -240,9 +242,10 @@ export default function ContourOverlay({
       : undefined,
     [activeStructure, currentFrame?.sopInstanceUID, currentSlicePosition, sliceTolerance]
   );
+  const isContourEditTool = ['freehand', 'polygon', 'brush', 'eraser'].includes(activeTool);
 
   useEffect(() => {
-    if (activeTool !== 'freehand') {
+    if (!isContourEditTool) {
       clearDraft();
       return;
     }
@@ -250,10 +253,16 @@ export default function ContourOverlay({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return;
 
-      if (event.key === 'Escape' && drawingRef.current) {
+      if (event.key === 'Escape' && (drawingRef.current || draftPointsRef.current.length > 0)) {
         event.preventDefault();
         logClientDebug('ContourOverlay', `pointercancel:escape viewport=${viewportId}`);
         clearDraft('Contour cancelled.');
+        return;
+      }
+
+      if (event.key === 'Enter' && activeTool === 'polygon' && draftPointsRef.current.length >= 3) {
+        event.preventDefault();
+        finishDrawing();
         return;
       }
 
@@ -297,6 +306,7 @@ export default function ContourOverlay({
     activeStructure,
     activeStructureSet,
     activeTool,
+    isContourEditTool,
     viewportId,
   ]);
 
@@ -310,6 +320,34 @@ export default function ContourOverlay({
       const [x, y] = viewport.worldToCanvas(worldPoint);
       return [x + canvasMetrics.offsetX, y + canvasMetrics.offsetY] as [number, number];
     };
+
+    if (orientation === 'SAGITTAL' || orientation === 'CORONAL') {
+      if (!activeSeries) return [] as RenderableContour[];
+      const planePosition = focalPoint[orientation === 'SAGITTAL' ? 0 : 1];
+
+      return activeStructureSet.structures
+        .filter((structure) => structure.isVisible ?? true)
+        .flatMap((structure) => {
+          const color = `rgb(${structure.color.join(', ')})`;
+          try {
+            const path = buildMprMaskBoundaryPath(
+              activeSeries.volume,
+              structure.contours,
+              orientation,
+              planePosition,
+              worldToOverlayCanvas
+            );
+            if (!path) return [];
+            return [{
+              path,
+              color,
+              strokeWidth: structure.id === activeStructureId ? 2 : 1.25,
+            }];
+          } catch {
+            return [];
+          }
+        });
+    }
 
     return activeStructureSet.structures
       .filter((structure) => structure.isVisible ?? true)
@@ -337,12 +375,15 @@ export default function ContourOverlay({
           });
       });
   }, [
+    activeSeries,
     activeStructureId,
     activeStructureSet,
     canvasMetrics.offsetX,
     canvasMetrics.offsetY,
     currentFrame?.sopInstanceUID,
     currentSlicePosition,
+    focalPoint,
+    orientation,
     revision,
     sliceTolerance,
     viewport,
@@ -368,7 +409,8 @@ export default function ContourOverlay({
   }, [canvasMetrics.offsetX, canvasMetrics.offsetY, draftPoints, revision, viewport]);
 
   const isDrawable =
-    activeTool === 'freehand' &&
+    orientation === 'AXIAL' &&
+    isContourEditTool &&
     !!viewport &&
     !!activeSeries &&
     !!currentFrame &&
@@ -413,7 +455,7 @@ export default function ContourOverlay({
   ]);
 
   useEffect(() => {
-    if (activeTool !== 'freehand') {
+    if (orientation !== 'AXIAL' || !isContourEditTool) {
       setStatusMessage(null);
       return;
     }
@@ -427,9 +469,15 @@ export default function ContourOverlay({
     } else if (activeStructure.isLocked ?? false) {
       setStatusMessage('Unlock the selected structure to draw.');
     } else {
-      setStatusMessage('Drag on the axial view to draw a contour.');
+      const messageByTool: Partial<Record<typeof activeTool, string>> = {
+        freehand: 'Drag on the axial view to draw a contour.',
+        polygon: 'Click vertices on the axial view. Enter or double-click saves.',
+        brush: 'Click to stamp a circular contour on this slice.',
+        eraser: 'Click to delete this structure contour on the current slice.',
+      };
+      setStatusMessage(messageByTool[activeTool] ?? 'Edit contour on the axial view.');
     }
-  }, [activeSeries, activeStructure, activeStructureSet, activeTool, currentFrame]);
+  }, [activeSeries, activeStructure, activeStructureSet, activeTool, currentFrame, isContourEditTool, orientation]);
 
   const getCanvasPoint = (event: React.PointerEvent<SVGSVGElement>): [number, number] | null => {
     const svg = svgRef.current;
@@ -488,8 +536,29 @@ export default function ContourOverlay({
 
     logClientDebug(
       'ContourOverlay',
-      `pointerdown:start viewport=${viewportId} x=${canvasPoint[0].toFixed(1)} y=${canvasPoint[1].toFixed(1)}`
+      `pointerdown:start viewport=${viewportId} tool=${activeTool} x=${canvasPoint[0].toFixed(1)} y=${canvasPoint[1].toFixed(1)}`
     );
+
+    if (activeTool === 'eraser') {
+      eraseCurrentSliceContour();
+      return;
+    }
+
+    if (activeTool === 'brush') {
+      stampBrushContour(canvasPoint);
+      return;
+    }
+
+    if (activeTool === 'polygon') {
+      if (draftPointsRef.current.length >= 3 && event.detail >= 2) {
+        finishDrawing(canvasPoint);
+        return;
+      }
+      appendPoint(canvasPoint);
+      setStatusMessage(`${draftPointsRef.current.length} polygon vertices. Enter or double-click saves.`);
+      return;
+    }
+
     drawingRef.current = true;
     lastCanvasPointRef.current = canvasPoint;
     draftPointsRef.current = [];
@@ -555,6 +624,54 @@ export default function ContourOverlay({
     clearDraft(`Saved contour on ${activeStructure.name}.`);
   };
 
+  const stampBrushContour = (canvasPoint: [number, number]) => {
+    if (!viewport) return;
+
+    const samples = 48;
+    const radius = Math.max(3, brushRadius);
+    const points: WorldPoint[] = [];
+    for (let index = 0; index < samples; index += 1) {
+      const angle = (Math.PI * 2 * index) / samples;
+      const samplePoint: [number, number] = [
+        canvasPoint[0] + Math.cos(angle) * radius,
+        canvasPoint[1] + Math.sin(angle) * radius,
+      ];
+      try {
+        const worldPoint = viewport.canvasToWorld(samplePoint);
+        points.push([worldPoint[0], worldPoint[1], currentSlicePosition]);
+      } catch {
+        // Ignore samples outside the drawable canvas.
+      }
+    }
+
+    draftPointsRef.current = points;
+    setDraftPoints(points);
+    finishDrawing();
+  };
+
+  const eraseCurrentSliceContour = () => {
+    if (!activeStructureSet || !activeStructure || !activeSeries || !activeContourOnSlice) {
+      setStatusMessage('No contour on this slice to erase.');
+      return;
+    }
+
+    const deleted = ContourEngine.deleteContourOnSlice(
+      activeStructureSet.id,
+      activeStructure.id,
+      activeContourOnSlice.slicePosition
+    );
+    if (!deleted) {
+      setStatusMessage('Unlock the selected structure before erasing contours.');
+      return;
+    }
+    StructureSetManager.refreshVolume(
+      activeStructureSet.id,
+      activeStructure.id,
+      activeSeries.volume.spacing[2] || 1
+    );
+    clearDraft(`Erased contour on ${activeStructure.name}.`);
+  };
+
   const handlePointerUp = (event: React.PointerEvent<SVGSVGElement>) => {
     if (!drawingRef.current) return;
     const canvasPoint = getCanvasPoint(event);
@@ -578,7 +695,7 @@ export default function ContourOverlay({
           : undefined
       }
       preserveAspectRatio="none"
-      style={{ pointerEvents: activeTool === 'freehand' ? 'auto' : 'none', touchAction: 'none' }}
+      style={{ pointerEvents: orientation === 'AXIAL' && isContourEditTool ? 'auto' : 'none', touchAction: 'none' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -608,7 +725,7 @@ export default function ContourOverlay({
         />
       )}
 
-      {activeTool === 'freehand' && statusMessage && (
+      {isContourEditTool && statusMessage && (
         <g>
           <rect
             x="8"

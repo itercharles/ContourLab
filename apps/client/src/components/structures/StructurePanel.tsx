@@ -15,7 +15,6 @@ import {
   type ContourReviewDirection,
 } from '../../core/structures/contourReview';
 import { analyzeContourQuality } from '../../core/structures/contourQuality';
-import { findContourOnFrame } from '../../core/contouring/contourOverlayUtils';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
@@ -97,17 +96,11 @@ interface AxialViewportLike {
   render?: () => void;
 }
 
-interface SliceFrame {
-  sopInstanceUID: string;
-  sliceLocation: number;
-}
-
 interface StructureRowProps {
   structure: Structure;
   setId: string;
   isActive: boolean;
   contourSliceCount: number;
-  hasContourOnCurrentSlice: boolean;
   onSelect: () => void;
   onStatus: (message: string) => void;
 }
@@ -117,7 +110,6 @@ function StructureRow({
   setId,
   isActive,
   contourSliceCount,
-  hasContourOnCurrentSlice,
   onSelect,
   onStatus,
 }: StructureRowProps) {
@@ -251,17 +243,6 @@ function StructureRow({
         </span>
       ) : null}
 
-      {hasContourOnCurrentSlice ? (
-        <span
-          title="Contour on current axial slice"
-          className="mr-1 rounded border border-[#15803d] bg-[#12301f] px-1 text-[9px] font-semibold uppercase tracking-wider text-[#22c55e] flex-none"
-        >
-          slice
-        </span>
-      ) : contourSliceCount > 0 ? (
-        null
-      ) : null}
-
       {structure.isLocked ? (
         <span
           title="Locked structure"
@@ -361,11 +342,14 @@ export default function StructurePanel() {
   const activeStructureSetById = structureSets.find(
     (structureSet) => structureSet.id === activeStructureSetId
   );
+  const activeSeriesStructureSets = activeSeriesUID
+    ? structureSets.filter((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID)
+    : [];
   const activeSeriesStructureSet = activeSeriesUID
     ? (
         activeStructureSetById?.referencedSeriesUID === activeSeriesUID
           ? activeStructureSetById
-          : structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID)
+          : undefined
       )
     : undefined;
   const activeStructure = activeSeriesStructureSet?.structures.find(
@@ -381,29 +365,6 @@ export default function StructurePanel() {
     ? analyzeContourQuality(activeStructure, activeLoadedSeries?.volume.spacing[2] ?? 1)
     : null;
   void axialRevision;
-  const axialViewport = ViewportManager
-    .getRenderingEngine()
-    ?.getViewport(VIEWPORT_IDS.AXIAL) as AxialViewportLike | undefined;
-  const axialSlicePosition = axialViewport?.getCamera?.().focalPoint?.[2] ?? 0;
-  const activeSeriesFrames: SliceFrame[] = (activeLoadedSeries?.series.instances ?? []).flatMap(
-    (instance) => Number.isFinite(instance.sliceLocation)
-      ? [{
-          sopInstanceUID: instance.sopInstanceUID,
-          sliceLocation: instance.sliceLocation as number,
-        }]
-      : []
-  );
-  const [firstFrame, ...restFrames] = activeSeriesFrames;
-  const currentFrame = firstFrame
-    ? restFrames.reduce((closest, frame) => (
-        Math.abs(frame.sliceLocation - axialSlicePosition) < Math.abs(closest.sliceLocation - axialSlicePosition)
-          ? frame
-          : closest
-      ), firstFrame)
-    : undefined;
-  const currentSlicePosition = currentFrame?.sliceLocation ?? axialSlicePosition;
-  const sliceTolerance = Math.max(activeLoadedSeries?.volume.spacing[2] ?? 1, 1) / 2;
-
   useEffect(() => {
     if (isAdding && inputRef.current) {
       inputRef.current.focus();
@@ -572,12 +533,13 @@ export default function StructurePanel() {
       return;
     }
 
-    let setId = activeStructureSetId;
+    let setId = activeSeriesStructureSet?.id ?? null;
 
     // Create a structure set if none exists
     if (!setId) {
       const ss = StructureSetManager.createStructureSet(activeSeriesUID ?? 'default');
       setId = ss.id;
+      setActiveStructureSet(ss.id);
     }
 
     try {
@@ -873,27 +835,48 @@ export default function StructurePanel() {
           <span className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
             Structures
           </span>
-          <span className="ml-auto mr-2 text-[9px] uppercase tracking-widest text-[#4a4a4a]">
-            Type · Vol · Slices
-          </span>
           <button
             onClick={handleAddClick}
-            title={activeSeriesUID ? 'Add new structure' : 'Load a series first'}
+            aria-label="Add structure"
+            title={activeSeriesUID ? 'Add structure' : 'Load a series first'}
             disabled={!activeSeriesUID}
-            className="h-5 rounded bg-[#2e2e2e] px-1.5 text-[10px] font-semibold text-[#a0a0a0] transition-colors hover:bg-blue-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#2e2e2e] disabled:hover:text-[#a0a0a0]"
+            className="ml-auto flex h-5 w-5 items-center justify-center rounded bg-[#2e2e2e] text-[13px] font-semibold leading-none text-[#a0a0a0] transition-colors hover:bg-blue-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#2e2e2e] disabled:hover:text-[#a0a0a0] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
           >
-            + Add
+            +
           </button>
         </div>
-        {structureSets.length === 0 ? (
-          <p className="text-[11px] text-[#6b6b6b] px-3 py-3">No structures yet. Click "+" to add one.</p>
+        {!activeSeriesUID ? (
+          <p className="text-[11px] text-[#6b6b6b] px-3 py-3">Load an image set to review structures.</p>
+        ) : activeSeriesStructureSets.length === 0 ? (
+          <p className="text-[11px] text-[#6b6b6b] px-3 py-3">No structures for this image set. Click "+" to add one.</p>
         ) : (
-          structureSets.map((ss) => (
-            <div key={ss.id}>
+          activeSeriesStructureSets.map((ss) => {
+            const isActiveStructureSet = ss.id === activeStructureSetId;
+
+            return (
+              <div key={ss.id}>
               {/* Structure set label */}
-              <div className="px-3 py-1 text-[10px] uppercase tracking-widest text-[#6b6b6b] bg-[#242424] border-b border-[#2a2a2a] truncate" title={ss.label}>
-                {ss.label}
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveStructureSet(ss.id);
+                  setActiveStructure(ss.structures[0]?.id ?? null);
+                }}
+                className={`flex w-full items-center gap-2 border-b border-[#2a2a2a] px-3 py-1 text-left text-[10px] uppercase tracking-widest focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                  isActiveStructureSet
+                    ? 'border-l-2 border-l-blue-500 bg-blue-950/30 text-blue-200'
+                    : 'border-l-2 border-l-transparent bg-[#242424] text-[#6b6b6b] hover:bg-[#2e2e2e] hover:text-[#a0a0a0]'
+                }`}
+                title={`Activate structure set ${ss.label}`}
+                aria-label={`Activate structure set ${ss.label}`}
+              >
+                <span className="min-w-0 flex-1 truncate">{ss.label}</span>
+                {isActiveStructureSet ? (
+                  <span className="rounded bg-blue-900 px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-blue-200">
+                    ACTIVE
+                  </span>
+                ) : null}
+              </button>
 
               {/* Structures list */}
               <div>
@@ -905,22 +888,20 @@ export default function StructurePanel() {
                       key={structure.id}
                       structure={structure}
                       setId={ss.id}
-                      isActive={structure.id === activeStructureId}
+	                      isActive={isActiveStructureSet && structure.id === activeStructureId}
                       contourSliceCount={getReviewSlices(structure.contours).length}
-                      hasContourOnCurrentSlice={!!findContourOnFrame(
-                        structure.contours,
-                        currentFrame?.sopInstanceUID,
-                        currentSlicePosition,
-                        sliceTolerance
-                      )}
-                      onSelect={() => setActiveStructure(structure.id)}
-                      onStatus={setStatusMessage}
-                    />
-                  ))
-                )}
+	                      onSelect={() => {
+	                        setActiveStructureSet(ss.id);
+	                        setActiveStructure(structure.id);
+	                      }}
+	                      onStatus={setStatusMessage}
+		                    />
+	                  ))
+	                )}
+	              </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 

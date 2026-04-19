@@ -252,6 +252,41 @@ describe('Toolbar contour operations', () => {
     );
   });
 
+  it('adds an interpolated contour on an empty slice between adjacent contour slices', async () => {
+    mocks.getViewport.mockReturnValue({
+      getCamera: () => ({ focalPoint: [0, 0, 15] as [number, number, number] }),
+      scroll: mocks.scroll,
+      render: mocks.renderViewport,
+    });
+    const loaded = makeLoadedSeries();
+    loaded.series.instances = [
+      { sopInstanceUID: 'sop-1', instanceNumber: 1, sliceLocation: 10 },
+      { sopInstanceUID: 'sop-mid', instanceNumber: 2, sliceLocation: 15 },
+      { sopInstanceUID: 'sop-2', instanceNumber: 3, sliceLocation: 20 },
+    ];
+    useVolumeStore.setState({
+      loadedSeries: [loaded],
+      activeSeriesUID: 'series-1',
+    });
+
+    render(<Toolbar />);
+
+    const interpolateButton = screen.getByRole('button', { name: 'Interp' }) as HTMLButtonElement;
+    expect(interpolateButton.disabled).toBe(false);
+
+    fireEvent.click(interpolateButton);
+
+    await waitFor(() =>
+      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(3)
+    );
+    const interpolated = useStructureStore
+      .getState()
+      .structureSets[0]
+      .structures[0]
+      .contours.find((contour) => contour.slicePosition === 15);
+    expect(interpolated?.referencedSOPInstanceUID).toBe('sop-mid');
+  });
+
   it('navigates to adjacent contour slices from the top operation bar', () => {
     render(<Toolbar />);
 

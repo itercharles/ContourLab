@@ -35,26 +35,22 @@ export const StructureSetManager = {
         structureSet.id === store.activeStructureSetId &&
         structureSet.referencedSeriesUID === referencedSeriesUID
     );
-    const targetSet = activeSet ?? store.structureSets.find(
-      (structureSet) => structureSet.referencedSeriesUID === referencedSeriesUID
-    );
 
-    if (!targetSet) {
+    if (!activeSet) {
       store.setActiveStructureSet(null);
       store.setActiveStructure(null);
       return;
     }
 
     const activeStructureStillValid =
-      store.activeStructureSetId === targetSet.id &&
-      !!targetSet.structures.find((structure) => structure.id === store.activeStructureId);
+      !!activeSet.structures.find((structure) => structure.id === store.activeStructureId);
 
-    store.setActiveStructureSet(targetSet.id);
+    store.setActiveStructureSet(activeSet.id);
     if (activeStructureStillValid) {
       return;
     }
 
-    store.setActiveStructure(targetSet.structures[0]?.id ?? null);
+    store.setActiveStructure(activeSet.structures[0]?.id ?? null);
   },
 
   createStructure(

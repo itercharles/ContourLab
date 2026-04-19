@@ -11,6 +11,8 @@ const TOOL_NAME_MAP: Partial<Record<ViewerTool, string>> = {
   scroll: 'StackScroll',
 };
 
+const CONTOUR_TOOLS = new Set<ViewerTool>(['freehand', 'polygon', 'brush', 'eraser']);
+
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
 
@@ -24,7 +26,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 async function activateTool(tool: ViewerTool): Promise<void> {
-  if (tool === 'freehand') {
+  if (CONTOUR_TOOLS.has(tool)) {
     const uiStore = useUIStore.getState();
     const volumeStore = useVolumeStore.getState();
     const structureStore = useStructureStore.getState();
@@ -35,27 +37,25 @@ async function activateTool(tool: ViewerTool): Promise<void> {
     const activeStructureSet =
       activeStructureSetById?.referencedSeriesUID === volumeStore.activeSeriesUID
         ? activeStructureSetById
-        : structureStore.structureSets.find(
-            (structureSet) => structureSet.referencedSeriesUID === volumeStore.activeSeriesUID
-          );
+        : undefined;
 
     const activeStructure = activeStructureSet?.structures.find(
       (structure) => structure.id === structureStore.activeStructureId
     );
 
-    const canUseFreehand =
+    const canUseContourTool =
       !!volumeStore.activeSeriesUID &&
       !!activeStructureSet &&
       !!activeStructure &&
       !(activeStructure.isLocked ?? false);
 
-    if (!canUseFreehand) {
+    if (!canUseContourTool) {
       uiStore.setRightSidebarOpen(true);
       uiStore.setActiveViewport('AXIAL');
       logClientDebug(
         'ViewerShortcut',
         [
-          'freehand:blocked',
+          `${tool}:blocked`,
           `series=${volumeStore.activeSeriesUID ?? 'none'}`,
           `set=${activeStructureSet?.id ?? 'none'}`,
           `structure=${activeStructure?.id ?? 'none'}`,
@@ -102,6 +102,15 @@ export function installViewerShortcutHandler(): () => void {
     } else if (key === 'f') {
       event.preventDefault();
       void activateTool('freehand');
+    } else if (key === 'g') {
+      event.preventDefault();
+      void activateTool('polygon');
+    } else if (key === 'b') {
+      event.preventDefault();
+      void activateTool('brush');
+    } else if (key === 'e') {
+      event.preventDefault();
+      void activateTool('eraser');
     }
   };
 

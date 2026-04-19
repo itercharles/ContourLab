@@ -86,6 +86,47 @@ function makeStructureSet(): StructureSet {
   };
 }
 
+function makeOtherSeriesStructureSet(): StructureSet {
+  return {
+    id: 'ss-old',
+    label: 'Old Study Set',
+    referencedSeriesUID: 'series-old',
+    version: 1,
+    structures: [
+      {
+        id: 'old-ptv-1',
+        name: 'ptv1',
+        type: 'PTV',
+        color: [255, 0, 0],
+        contours: [],
+        isVisible: true,
+        isLocked: false,
+        volume_cc: 2.1,
+      },
+      {
+        id: 'old-ptv-2',
+        name: 'ptv2',
+        type: 'PTV',
+        color: [255, 128, 0],
+        contours: [],
+        isVisible: true,
+        isLocked: false,
+        volume_cc: 3.2,
+      },
+      {
+        id: 'old-oar-1',
+        name: 'oar1',
+        type: 'OAR',
+        color: [0, 255, 0],
+        contours: [],
+        isVisible: true,
+        isLocked: false,
+        volume_cc: 4.3,
+      },
+    ],
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.getViewport.mockReturnValue({
@@ -169,6 +210,94 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     );
   });
 
+  it('hides structure sets from non-active image series', () => {
+    useStructureStore.setState({
+      structureSets: [makeOtherSeriesStructureSet(), makeStructureSet()],
+      activeStructureSetId: 'ss-1',
+      activeStructureId: 'structure-1',
+    });
+
+    render(<StructurePanel />);
+
+    expect(screen.getAllByText('Test Set').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Old Study Set')).toBeNull();
+    expect(screen.queryByText('ptv1')).toBeNull();
+    expect(screen.queryByText('ptv2')).toBeNull();
+    expect(screen.queryByText('oar1')).toBeNull();
+  });
+
+  it('deactivates a stale structure set when the active image set changes', async () => {
+    useVolumeStore.setState({
+      loadedSeries: [makeLoadedSeries()],
+      activeSeriesUID: 'series-1',
+    });
+    useStructureStore.setState({
+      structureSets: [makeOtherSeriesStructureSet(), makeStructureSet()],
+      activeStructureSetId: 'ss-old',
+      activeStructureId: 'old-ptv-1',
+    });
+
+    render(<StructurePanel />);
+
+    await waitFor(() => expect(useStructureStore.getState().activeStructureSetId).toBeNull());
+    expect(useStructureStore.getState().activeStructureId).toBeNull();
+    expect(screen.queryByLabelText('Active structure color')).toBeNull();
+    expect(screen.getAllByText('Test Set').length).toBeGreaterThan(0);
+  });
+
+  it('activates a visible structure set from its header after stale selection is cleared', async () => {
+    useStructureStore.setState({
+      structureSets: [makeOtherSeriesStructureSet(), makeStructureSet()],
+      activeStructureSetId: 'ss-old',
+      activeStructureId: 'old-ptv-1',
+    });
+
+    render(<StructurePanel />);
+
+    await waitFor(() => expect(useStructureStore.getState().activeStructureSetId).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'Activate structure set Test Set' }));
+
+    expect(useStructureStore.getState().activeStructureSetId).toBe('ss-1');
+    expect(useStructureStore.getState().activeStructureId).toBe('structure-1');
+    expect(screen.getByLabelText('Active structure color')).toBeTruthy();
+    expect(screen.getByText('ACTIVE')).toBeTruthy();
+  });
+
+  it('adds new structures to the active image-set structure set', async () => {
+    useStructureStore.setState({
+      structureSets: [makeOtherSeriesStructureSet(), makeStructureSet()],
+      activeStructureSetId: 'ss-1',
+      activeStructureId: 'structure-1',
+    });
+
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add structure' }));
+    fireEvent.change(screen.getByPlaceholderText('e.g. PTV, Brainstem…'), {
+      target: { value: 'Brainstem' },
+    });
+    fireEvent.click(screen.getByText('Add'));
+
+    await waitFor(() =>
+      expect(
+        useStructureStore
+          .getState()
+          .structureSets
+          .find((structureSet) => structureSet.id === 'ss-1')
+          ?.structures
+          .some((structure) => structure.name === 'Brainstem')
+      ).toBe(true)
+    );
+    expect(
+      useStructureStore
+        .getState()
+        .structureSets
+        .find((structureSet) => structureSet.id === 'ss-old')
+        ?.structures
+        .some((structure) => structure.name === 'Brainstem')
+    ).toBe(false);
+  });
+
   it('shows active structure editability and repository sync state', () => {
     const structureSet = makeStructureSet();
     structureSet.structures[0].isLocked = true;
@@ -244,7 +373,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByText('Area jump near z=5.0 mm.')).toBeTruthy();
   });
 
-  it('marks structures that have contour data on the current axial slice', () => {
+  it('does not show a current-slice marker in the structure list', () => {
     const loadedSeries = makeLoadedSeries();
     loadedSeries.series.instances = [
       { sopInstanceUID: 'sop-1', instanceNumber: 1, sliceLocation: 10 },
@@ -277,7 +406,8 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     render(<StructurePanel />);
 
-    expect(screen.getByTitle('Contour on current axial slice')).toBeTruthy();
+    expect(screen.queryByTitle('Contour on current axial slice')).toBeNull();
+    expect(screen.getByText('2 sl')).toBeTruthy();
   });
 
   it('shows compact structure list quality indicators', () => {
@@ -302,7 +432,8 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     render(<StructurePanel />);
 
-    expect(screen.getByText('Type · Vol · Slices')).toBeTruthy();
+    expect(screen.queryByText('Type · Vol · Slices')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Add structure' })).toBeTruthy();
     expect(screen.getAllByText('OAR').length).toBeGreaterThan(0);
     expect(screen.getAllByText('12.3 cc').length).toBeGreaterThan(0);
     expect(screen.getByText('1 sl')).toBeTruthy();
@@ -351,7 +482,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
   it('shows a validation message when adding a duplicate structure name', async () => {
     render(<StructurePanel />);
 
-    fireEvent.click(screen.getByTitle('Add new structure'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add structure' }));
     fireEvent.change(screen.getByPlaceholderText('e.g. PTV, Brainstem…'), {
       target: { value: 'ptv' },
     });

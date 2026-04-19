@@ -3,6 +3,7 @@ import { useUIStore, type ViewerTool, type WLPreset } from '../../core/store/uiS
 import { MPRController, VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { ContourEngine } from '../../core/contouring/ContourEngine';
+import { interpolateContourForSlice } from '../../core/contouring/InterpolationEngine';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import { findContourOnFrame } from '../../core/contouring/contourOverlayUtils';
 import { WINDOW_LEVEL_PRESETS } from '../../core/rendering/WindowLevelPresets';
@@ -73,17 +74,20 @@ const TOOL_META: Record<ViewerTool, {
   polygon: {
     shortLabel: 'PG',
     name: 'Polygon',
-    description: 'Place point-by-point contour vertices.',
+    shortcut: 'G',
+    description: 'Click vertices on the axial slice. Enter or double-click saves the contour.',
   },
   brush: {
     shortLabel: 'B',
     name: 'Brush',
-    description: 'Paint a contour region voxel by voxel.',
+    shortcut: 'B',
+    description: 'Click to stamp a circular contour on the current axial slice.',
   },
   eraser: {
     shortLabel: 'E',
     name: 'Eraser',
-    description: 'Erase contour content on the current slice.',
+    shortcut: 'E',
+    description: 'Click to delete the active structure contour on the current slice.',
   },
 };
 
@@ -165,6 +169,30 @@ function ToolIcon({ tool, fallback }: { tool: ViewerTool; fallback: string }) {
           <path d="M10.6 3.3 12.7 1.2l1.1 1.1-2.1 2.1" />
         </svg>
       );
+    case 'polygon':
+      return (
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
+          <path d="M3 3.5 10.5 2.5 12 9 5 12 2 7Z" />
+          <circle cx="3" cy="3.5" r=".8" fill="currentColor" />
+          <circle cx="10.5" cy="2.5" r=".8" fill="currentColor" />
+          <circle cx="12" cy="9" r=".8" fill="currentColor" />
+          <circle cx="5" cy="12" r=".8" fill="currentColor" />
+        </svg>
+      );
+    case 'brush':
+      return (
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9.5 1.8 12.2 4.5 6.2 10.5 3.5 7.8Z" />
+          <path d="M2.5 8.8c-.9.8-1 2.2-.7 3.4 1.2.3 2.6.2 3.4-.7" />
+        </svg>
+      );
+    case 'eraser':
+      return (
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8.8 2.2 12 5.4 6.2 11.2H3.1L1.8 9.9Z" />
+          <path d="M5.5 5.5 8.7 8.7" />
+        </svg>
+      );
     default:
       return <span>{fallback}</span>;
   }
@@ -212,7 +240,7 @@ export default function Toolbar() {
   const activeStructureSet =
     activeStructureSetById?.referencedSeriesUID === activeSeriesUID
       ? activeStructureSetById
-      : structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID);
+      : undefined;
   const activeStructure = activeStructureSet?.structures.find(
     (structure) => structure.id === activeStructureId
   );
@@ -292,12 +320,12 @@ export default function Toolbar() {
     !!activeStructure &&
     !!activeLoadedSeries &&
     activeStructureReviewSliceCount > 0;
-  const canUseFreehand =
+  const canUseContourTool =
     !!activeSeriesUID &&
     !!activeStructureSet &&
     !!activeStructure &&
     !(activeStructure.isLocked ?? false);
-  const freehandBlockedReason = !activeSeriesUID
+  const contourToolBlockedReason = !activeSeriesUID
     ? 'Load a series before drawing.'
     : !activeStructureSet || !activeStructure
       ? 'Create or select a structure in the right panel before drawing.'
@@ -309,16 +337,30 @@ export default function Toolbar() {
     !!activeStructure &&
     !(activeStructure.isLocked ?? false) &&
     !!activeContourOnSlice;
+  const interpolatedContour =
+    activeStructure && currentFrame && !activeContourOnSlice
+      ? interpolateContourForSlice(
+          activeStructure.contours,
+          currentSlicePosition,
+          currentFrame.sopInstanceUID
+        )
+      : null;
+  const canInterpolateContour =
+    !!activeStructureSet &&
+    !!activeStructure &&
+    !(activeStructure.isLocked ?? false) &&
+    !!activeLoadedSeries &&
+    !!interpolatedContour;
 
   const handleToolClick = async (tool: ViewerTool) => {
-    if (tool === 'freehand' && !canUseFreehand) {
+    if (['freehand', 'polygon', 'brush', 'eraser'].includes(tool) && !canUseContourTool) {
       setRightSidebarOpen(true);
       setActiveViewport('AXIAL');
       return;
     }
 
     setActiveTool(tool);
-    if (tool === 'freehand') {
+    if (['freehand', 'polygon', 'brush', 'eraser'].includes(tool)) {
       setActiveViewport('AXIAL');
     }
     const csToolName = TOOL_NAME_MAP[tool];
@@ -384,6 +426,28 @@ export default function Toolbar() {
     logClientDebug(
       'Toolbar',
       `delete:slice slice=${activeContourOnSlice.slicePosition.toFixed(2)} structure=${activeStructure.id}`
+    );
+  };
+
+  const handleInterpolateContour = () => {
+    if (!activeStructureSet || !activeStructure || !activeLoadedSeries || !interpolatedContour) return;
+
+    const added = ContourEngine.addContour(activeStructureSet.id, activeStructure.id, {
+      points: interpolatedContour.points,
+      slicePosition: interpolatedContour.slicePosition,
+      sopInstanceUID: interpolatedContour.referencedSOPInstanceUID,
+    });
+    if (!added) return;
+
+    StructureSetManager.refreshVolume(
+      activeStructureSet.id,
+      activeStructure.id,
+      activeLoadedSeries.volume.spacing[2] || 1
+    );
+    setUndoRedoRevision((value) => value + 1);
+    logClientDebug(
+      'Toolbar',
+      `interpolate:contour structure=${activeStructure.id} z=${interpolatedContour.slicePosition.toFixed(2)}`
     );
   };
 
@@ -597,8 +661,8 @@ export default function Toolbar() {
         <ToolButton
           label={TOOL_META.freehand.shortLabel}
           description={
-            freehandBlockedReason
-              ? `${TOOL_META.freehand.description} ${freehandBlockedReason}`
+            contourToolBlockedReason
+              ? `${TOOL_META.freehand.description} ${contourToolBlockedReason}`
               : TOOL_META.freehand.description
           }
           tool="freehand"
@@ -606,7 +670,35 @@ export default function Toolbar() {
           onClick={handleToolClick}
           shortcut={TOOL_META.freehand.shortcut}
         />
+        {(['polygon', 'brush', 'eraser'] as ViewerTool[]).map((tool) => (
+          <ToolButton
+            key={tool}
+            label={TOOL_META[tool].shortLabel}
+            description={
+              contourToolBlockedReason
+                ? `${TOOL_META[tool].description} ${contourToolBlockedReason}`
+                : TOOL_META[tool].description
+            }
+            tool={tool}
+            activeTool={activeTool}
+            onClick={handleToolClick}
+            shortcut={TOOL_META[tool].shortcut}
+          />
+        ))}
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleInterpolateContour}
+            disabled={!canInterpolateContour}
+            title={
+              canInterpolateContour
+                ? 'Interpolate a contour on the current slice from adjacent contours'
+                : 'Requires adjacent contour slices and no current-slice contour'
+            }
+            className="h-7 rounded bg-[#2e2e2e] px-2 text-[10px] font-medium text-[#a0a0a0] transition-colors hover:bg-[#3a3a3a] hover:text-[#e5e5e5] disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            Interp
+          </button>
           <button
             type="button"
             onClick={() => handleReviewNavigate('previous')}

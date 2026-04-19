@@ -72,15 +72,15 @@ describe('StructureSetManager.syncSelectionToSeries', () => {
     expect(mockStore.setActiveStructure).toHaveBeenCalledWith(null);
   });
 
-  it('selects the first structure in the matching structure set', () => {
+  it('does not implicitly activate the first matching structure set', () => {
     mockStore.structureSets = [
       makeStructureSet('ss-1', 'series-a', [makeStructure('heart'), makeStructure('lung')]),
     ];
 
     StructureSetManager.syncSelectionToSeries('series-a');
 
-    expect(mockStore.setActiveStructureSet).toHaveBeenCalledWith('ss-1');
-    expect(mockStore.setActiveStructure).toHaveBeenCalledWith('heart');
+    expect(mockStore.setActiveStructureSet).toHaveBeenCalledWith(null);
+    expect(mockStore.setActiveStructure).toHaveBeenCalledWith(null);
   });
 
   it('preserves the active structure when it still belongs to the active series', () => {
@@ -115,6 +115,20 @@ describe('StructureSetManager.syncSelectionToSeries', () => {
       makeStructureSet('ss-1', 'series-a', [makeStructure('heart')]),
     ];
     mockStore.activeStructureSetId = 'ss-1';
+    mockStore.activeStructureId = 'heart';
+
+    StructureSetManager.syncSelectionToSeries('series-b');
+
+    expect(mockStore.setActiveStructureSet).toHaveBeenCalledWith(null);
+    expect(mockStore.setActiveStructure).toHaveBeenCalledWith(null);
+  });
+
+  it('clears active selection when a different image series becomes active', () => {
+    mockStore.structureSets = [
+      makeStructureSet('ss-a', 'series-a', [makeStructure('heart')]),
+      makeStructureSet('ss-b', 'series-b', [makeStructure('brain')]),
+    ];
+    mockStore.activeStructureSetId = 'ss-a';
     mockStore.activeStructureId = 'heart';
 
     StructureSetManager.syncSelectionToSeries('series-b');

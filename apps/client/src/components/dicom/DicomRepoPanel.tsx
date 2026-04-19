@@ -11,6 +11,10 @@ import { useVolumeStore } from '../../core/store/volumeStore';
 import { useStructureStore } from '../../core/store/structureStore';
 import { importRtstructArrayBuffer } from '../../core/structures/rtstructImport';
 import { replaceStructureSetsForSeries } from '../../core/structures/structurePersistence';
+import {
+  compareStructureSets,
+  type StructureSetComparison,
+} from '../../core/structures/structureSetCompare';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 
 const WORKLIST_POLL_INTERVAL_MS = 60_000;
@@ -39,6 +43,11 @@ interface PatientGroup {
 interface RepoRefreshState {
   hasUpdates: boolean;
   isRefreshing: boolean;
+}
+
+interface RtstructComparisonState {
+  label: string;
+  summary: StructureSetComparison;
 }
 
 interface DicomRepoPanelProps {
@@ -145,6 +154,45 @@ function RepoSectionHeader({ label, meta }: { label: string; meta?: string }) {
   );
 }
 
+function RtstructCompareSummary({ comparison }: { comparison: RtstructComparisonState }) {
+  const changedRows = comparison.summary.rows
+    .filter((row) => row.status !== 'unchanged')
+    .slice(0, 3);
+
+  return (
+    <div className="border-b border-[#2a2a2a] bg-[#181818] px-3 py-2">
+      <div className="flex items-center gap-2">
+        <span className="rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-[#a0a0a0]">
+          RTSS Compare
+        </span>
+        <p className="min-w-0 flex-1 truncate text-[11px] text-[#e5e5e5]" title={comparison.label}>
+          {comparison.label}
+        </p>
+      </div>
+      <p className="mt-1 text-[10px] text-[#a0a0a0]">
+        +{comparison.summary.addedCount} / -{comparison.summary.removedCount} / Δ{comparison.summary.changedCount}
+      </p>
+      {changedRows.length === 0 ? (
+        <p className="mt-1 text-[10px] text-[#6b6b6b]">No ROI volume or slice-count differences detected.</p>
+      ) : (
+        <div className="mt-1 space-y-0.5">
+          {changedRows.map((row) => (
+            <p key={row.name} className="truncate text-[10px] text-[#a0a0a0]" title={row.name}>
+              <span className="font-semibold text-[#e5e5e5]">{row.name}</span>
+              {' '}
+              {row.status}
+              {' · '}
+              Δvol {row.volumeDeltaCc.toFixed(1)} cc
+              {' · '}
+              Δslices {row.sliceDelta >= 0 ? '+' : ''}{row.sliceDelta}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshStateChange }: DicomRepoPanelProps) {
   const lastRefreshRequestTokenRef = useRef(refreshRequestToken);
   const lastSeriesSignatureRef = useRef('');
@@ -174,6 +222,8 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
   const [selectedPatientKey, setSelectedPatientKey] = useState<string | null>(null);
   const [isPatientSelectorOpen, setIsPatientSelectorOpen] = useState(false);
   const [expandedImageSetUIDs, setExpandedImageSetUIDs] = useState<string[]>([]);
+  const [comparingRtstructSop, setComparingRtstructSop] = useState<string | null>(null);
+  const [rtstructComparison, setRtstructComparison] = useState<RtstructComparisonState | null>(null);
 
   const activeLoadedSeries = activeSeriesUID
     ? loadedSeries.find((entry) => entry.seriesUID === activeSeriesUID)
@@ -186,7 +236,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
     ? (
         activeStructureSetById?.referencedSeriesUID === activeSeriesUID
           ? activeStructureSetById
-          : structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID)
+          : undefined
       )
     : undefined;
   const confirmUnsyncedWorkspaceChange = useCallback((target: string) => {
@@ -539,6 +589,41 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
     ]
   );
 
+  const onCompareRtstruct = useCallback(
+    async (instance: DicomWebRtstructInstance, targetSeriesUID: string) => {
+      if (!activeSeriesStructureSet || activeSeriesStructureSet.referencedSeriesUID !== targetSeriesUID) {
+        setStatus({ tone: 'error', message: 'Load an active RTSTRUCT for this image set before comparing versions.' });
+        return;
+      }
+
+      try {
+        setComparingRtstructSop(instance.sopInstanceUID);
+        const buffer = await retrieveDicomWebInstance(instance);
+        const repositoryStructureSet = await importRtstructArrayBuffer(buffer, targetSeriesUID);
+        const summary = compareStructureSets(repositoryStructureSet, activeSeriesStructureSet);
+        setRtstructComparison({
+          label: `${instance.seriesDescription || 'RTSTRUCT'} vs active workspace`,
+          summary,
+        });
+        setStatus({
+          tone: 'muted',
+          message: `Compared ${instance.seriesDescription || 'RTSTRUCT'} with active workspace structures.`,
+        });
+        logClientDebug(
+          'DicomRepoPanel',
+          `compare:rtstruct series=${targetSeriesUID} sop=${instance.sopInstanceUID} added=${summary.addedCount} removed=${summary.removedCount} changed=${summary.changedCount}`
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to compare RTSTRUCT.';
+        setStatus({ tone: 'error', message });
+        logClientDebug('DicomRepoPanel', `compare:rtstruct:error ${message}`);
+      } finally {
+        setComparingRtstructSop(null);
+      }
+    },
+    [activeSeriesStructureSet]
+  );
+
   return (
     <div className="relative flex h-full flex-col">
       {isPatientSelectorOpen && (
@@ -632,6 +717,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
             {status.message}
           </p>
         )}
+        {rtstructComparison ? <RtstructCompareSummary comparison={rtstructComparison} /> : null}
         {patientGroups.length === 0 ? (
           <p className="px-3 py-2 text-[11px] text-[#6b6b6b]">No planning CT image series available.</p>
         ) : !selectedPatient ? (
@@ -811,9 +897,9 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                           </span>
                                         )}
                                       </div>
-                                      <div className="mt-0.5 flex items-center gap-2">
-                                        <span className="min-w-0 flex-1 truncate text-[10px] text-[#6b6b6b]" title={instance.sopInstanceUID}>
-                                          {formatDicomDateTime(instance.seriesDate, instance.seriesTime)}
+	                                      <div className="mt-0.5 flex items-center gap-2">
+	                                        <span className="min-w-0 flex-1 truncate text-[10px] text-[#6b6b6b]" title={instance.sopInstanceUID}>
+	                                          {formatDicomDateTime(instance.seriesDate, instance.seriesTime)}
                                           {' · '}
                                           SOP …{formatSopTail(instance.sopInstanceUID)}
                                           {typeof instance.roiCount === 'number' ? ` · ${instance.roiCount} ROI` : ''}
@@ -823,9 +909,21 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                             ? 'Loading'
                                             : isActiveRtstruct
                                               ? 'Active in workspace'
-                                            : 'Double-click to load'}
-                                        </span>
-                                      </div>
+	                                            : 'Double-click to load'}
+	                                        </span>
+                                          <button
+                                            type="button"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              void onCompareRtstruct(instance, entry.seriesInstanceUID);
+                                            }}
+                                            disabled={!!comparingRtstructSop}
+                                            className="h-5 rounded border border-[#3a3a3a] px-1.5 text-[10px] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                                            title="Compare this repository RTSTRUCT with the active workspace RTSTRUCT"
+                                          >
+                                            {comparingRtstructSop === instance.sopInstanceUID ? 'Comparing' : 'Compare'}
+                                          </button>
+	                                      </div>
                                       <div className="mt-1 border-t border-[#2a2a2a] pt-1">
                                         <div className="flex items-center gap-2 text-[10px] text-[#6b6b6b]">
                                           <span className="font-semibold uppercase tracking-widest">Plans</span>

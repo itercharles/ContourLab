@@ -138,3 +138,151 @@ export function projectContourToCanvasPath(
 
   return projected.join(' ');
 }
+
+export function intersectContourWithPlane(
+  points: Float32Array,
+  axis: 0 | 1,
+  planePosition: number,
+  tolerance = 0.01
+): WorldPoint[] {
+  const intersections: WorldPoint[] = [];
+  const pointCount = Math.floor(points.length / 3);
+  if (pointCount < 2) return intersections;
+
+  const addPoint = (point: WorldPoint) => {
+    const previous = intersections.at(-1);
+    if (
+      previous &&
+      Math.abs(previous[0] - point[0]) <= tolerance &&
+      Math.abs(previous[1] - point[1]) <= tolerance &&
+      Math.abs(previous[2] - point[2]) <= tolerance
+    ) {
+      return;
+    }
+    intersections.push(point);
+  };
+
+  for (let index = 0; index < pointCount; index += 1) {
+    const nextIndex = (index + 1) % pointCount;
+    const a: WorldPoint = [
+      points[index * 3],
+      points[index * 3 + 1],
+      points[index * 3 + 2],
+    ];
+    const b: WorldPoint = [
+      points[nextIndex * 3],
+      points[nextIndex * 3 + 1],
+      points[nextIndex * 3 + 2],
+    ];
+    const av = a[axis];
+    const bv = b[axis];
+    const da = av - planePosition;
+    const db = bv - planePosition;
+
+    if (Math.abs(da) <= tolerance && Math.abs(db) <= tolerance) {
+      addPoint(a);
+      addPoint(b);
+      continue;
+    }
+
+    if (Math.abs(da) <= tolerance) {
+      addPoint(a);
+      continue;
+    }
+
+    if (da * db > 0 || av === bv) {
+      continue;
+    }
+
+    const t = (planePosition - av) / (bv - av);
+    if (t < 0 || t > 1) continue;
+    addPoint([
+      a[0] + (b[0] - a[0]) * t,
+      a[1] + (b[1] - a[1]) * t,
+      a[2] + (b[2] - a[2]) * t,
+    ]);
+  }
+
+  return intersections;
+}
+
+export function projectPolylineToCanvasPath(
+  points: WorldPoint[],
+  worldToCanvas: (point: WorldPoint) => [number, number]
+): string {
+  return points
+    .map((point, index) => {
+      const [x, y] = worldToCanvas(point);
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    })
+    .join(' ');
+}
+
+export function buildCrossPlaneBoundaryPath(
+  contourPointSets: Float32Array[],
+  axis: 0 | 1,
+  planePosition: number,
+  worldToCanvas: (point: WorldPoint) => [number, number]
+): string {
+  const inPlaneAxis = axis === 0 ? 1 : 0;
+  const zTolerance = 0.01;
+  const segments = contourPointSets
+    .flatMap((points) => {
+      const intersections = intersectContourWithPlane(points, axis, planePosition);
+      if (intersections.length < 2) return [];
+
+      const sorted = [...intersections].sort((a, b) => a[inPlaneAxis] - b[inPlaneAxis]);
+      const pairedSegments = [];
+      for (let index = 0; index + 1 < sorted.length; index += 2) {
+        const low = sorted[index];
+        const high = sorted[index + 1];
+        pairedSegments.push({ z: (low[2] + high[2]) / 2, low, high });
+      }
+      return pairedSegments;
+    })
+    .sort((a, b) => a.z - b.z);
+
+  if (segments.length === 0) return '';
+
+  const sliceGroups = segments.reduce<Array<typeof segments>>((groups, segment) => {
+    const current = groups.at(-1);
+    if (current && Math.abs(current[0].z - segment.z) <= zTolerance) {
+      current.push(segment);
+    } else {
+      groups.push([segment]);
+    }
+    return groups;
+  }, []);
+
+  const paths: string[] = [];
+  let lowBoundary: WorldPoint[] = [];
+  let highBoundary: WorldPoint[] = [];
+
+  const flushBoundary = () => {
+    if (lowBoundary.length === 1 && highBoundary.length === 1) {
+      paths.push(projectPolylineToCanvasPath([lowBoundary[0], highBoundary[0]], worldToCanvas));
+    } else {
+      if (lowBoundary.length >= 2) {
+        paths.push(projectPolylineToCanvasPath(lowBoundary, worldToCanvas));
+      }
+      if (highBoundary.length >= 2) {
+        paths.push(projectPolylineToCanvasPath(highBoundary, worldToCanvas));
+      }
+    }
+    lowBoundary = [];
+    highBoundary = [];
+  };
+
+  for (const group of sliceGroups) {
+    const representativeSegment = group.reduce((longest, segment) => {
+      const currentLength = Math.abs(segment.high[inPlaneAxis] - segment.low[inPlaneAxis]);
+      const longestLength = Math.abs(longest.high[inPlaneAxis] - longest.low[inPlaneAxis]);
+      return currentLength > longestLength ? segment : longest;
+    });
+    lowBoundary.push(representativeSegment.low);
+    highBoundary.push(representativeSegment.high);
+  }
+
+  flushBoundary();
+  return paths.join(' ');
+}

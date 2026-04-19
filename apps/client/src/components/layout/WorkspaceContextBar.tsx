@@ -32,7 +32,7 @@ export default function WorkspaceContextBar() {
     ? (
         activeStructureSetById?.referencedSeriesUID === activeSeriesUID
           ? activeStructureSetById
-          : structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID)
+          : undefined
       )
     : undefined;
   const isRepositoryDirty = !!activeSeriesUID && repositoryDirtySeriesUIDs.includes(activeSeriesUID);

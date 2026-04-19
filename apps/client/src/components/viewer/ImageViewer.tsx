@@ -85,14 +85,13 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
         data-viewport-id={id}
         className="w-full h-full"
       />
-      {orientation === 'AXIAL' && (
-        <ContourErrorBoundary>
-          <ContourOverlay
-            viewportId={id}
-            viewportElement={viewportElement}
-          />
-        </ContourErrorBoundary>
-      )}
+      <ContourErrorBoundary>
+        <ContourOverlay
+          viewportId={id}
+          viewportElement={viewportElement}
+          orientation={orientation}
+        />
+      </ContourErrorBoundary>
       <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
         {label}
       </span>

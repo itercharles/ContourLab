@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildCrossPlaneBoundaryPath,
   findContourOnSlice,
   findContourOnFrame,
   flattenWorldPoints,
   getViewportTransformSignature,
+  intersectContourWithPlane,
   isContourOnFrame,
   isContourOnSlice,
   projectContourToCanvasPath,
+  projectPolylineToCanvasPath,
 } from '../contourOverlayUtils';
 import type { ContourSlice } from '@webtps/shared-types';
 
@@ -81,6 +84,115 @@ describe('projectContourToCanvasPath', () => {
     );
 
     expect(path).toBe('M 10 20 L 30 40');
+  });
+});
+
+describe('intersectContourWithPlane', () => {
+  it('returns intersection points for a sagittal x-plane through an axial contour', () => {
+    const points = new Float32Array([
+      0, 0, 5,
+      10, 0, 5,
+      10, 10, 5,
+      0, 10, 5,
+    ]);
+
+    const intersections = intersectContourWithPlane(points, 0, 5);
+
+    expect(intersections).toHaveLength(2);
+    expect(intersections[0]).toEqual([5, 0, 5]);
+    expect(intersections[1]).toEqual([5, 10, 5]);
+  });
+
+  it('returns intersection points for a coronal y-plane through an axial contour', () => {
+    const points = new Float32Array([
+      0, 0, 5,
+      10, 0, 5,
+      10, 10, 5,
+      0, 10, 5,
+    ]);
+
+    const intersections = intersectContourWithPlane(points, 1, 5);
+
+    expect(intersections).toHaveLength(2);
+    expect(intersections[0]).toEqual([10, 5, 5]);
+    expect(intersections[1]).toEqual([0, 5, 5]);
+  });
+});
+
+describe('projectPolylineToCanvasPath', () => {
+  it('projects world polyline points into an SVG path string', () => {
+    const path = projectPolylineToCanvasPath(
+      [
+        [1, 2, 3],
+        [4, 5, 6],
+      ],
+      ([x, y]) => [x * 2, y * 3]
+    );
+
+    expect(path).toBe('M 2 6 L 8 15');
+  });
+});
+
+describe('buildCrossPlaneBoundaryPath', () => {
+  it('connects cross-plane segment endpoints into two open boundary lines', () => {
+    const lowerSlice = new Float32Array([
+      0, 0, 0,
+      10, 0, 0,
+      10, 10, 0,
+      0, 10, 0,
+    ]);
+    const upperSlice = new Float32Array([
+      0, 0, 10,
+      10, 0, 10,
+      10, 10, 10,
+      0, 10, 10,
+    ]);
+
+    const path = buildCrossPlaneBoundaryPath(
+      [upperSlice, lowerSlice],
+      0,
+      5,
+      ([, y, z]) => [y, z]
+    );
+
+    expect(path).toBe('M 0 0 L 0 10 M 10 0 L 10 10');
+  });
+
+  it('keeps a single slice as one display segment', () => {
+    const slice = new Float32Array([
+      0, 0, 5,
+      10, 0, 5,
+      10, 10, 5,
+      0, 10, 5,
+    ]);
+
+    const path = buildCrossPlaneBoundaryPath([slice], 1, 5, ([x, , z]) => [x, z]);
+
+    expect(path).toBe('M 0 5 L 10 5');
+  });
+
+  it('uses the longest same-slice segment as the MPR boundary representative', () => {
+    const shorterContour = new Float32Array([
+      0, 0, 0,
+      4, 0, 0,
+      4, 4, 0,
+      0, 4, 0,
+    ]);
+    const longerContour = new Float32Array([
+      6, 0, 0,
+      12, 0, 0,
+      12, 4, 0,
+      6, 4, 0,
+    ]);
+
+    const path = buildCrossPlaneBoundaryPath(
+      [shorterContour, longerContour],
+      1,
+      2,
+      ([x, , z]) => [x, z]
+    );
+
+    expect(path).toBe('M 6 0 L 12 0');
   });
 });
 

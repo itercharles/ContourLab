@@ -65,10 +65,13 @@ describe('installViewerShortcutHandler', () => {
     document.body.innerHTML = '';
   });
 
-  it('blocks freehand shortcut when no drawable structure is selected', () => {
+  it('blocks contour tool shortcuts when no drawable structure is selected', () => {
     const cleanup = installViewerShortcutHandler();
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'g' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
 
     expect(mocks.uiStore.setActiveTool).not.toHaveBeenCalled();
     expect(mocks.uiStore.setRightSidebarOpen).toHaveBeenCalledWith(true);
@@ -82,7 +85,7 @@ describe('installViewerShortcutHandler', () => {
     cleanup();
   });
 
-  it('activates freehand shortcut when a drawable structure is selected', () => {
+  it('activates contour tool shortcuts when a drawable structure is selected', () => {
     mocks.volumeStore.activeSeriesUID = 'series-1';
     mocks.structureStore.structureSets = [
       {
@@ -97,9 +100,15 @@ describe('installViewerShortcutHandler', () => {
     const cleanup = installViewerShortcutHandler();
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'g' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
 
     expect(mocks.uiStore.setActiveViewport).toHaveBeenCalledWith('AXIAL');
     expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('freehand');
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('polygon');
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('brush');
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('eraser');
     expect(mocks.setActiveToolSpy).not.toHaveBeenCalled();
 
     cleanup();
