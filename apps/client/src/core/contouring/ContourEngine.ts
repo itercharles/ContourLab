@@ -58,6 +58,45 @@ export const ContourEngine = {
     return true;
   },
 
+  addContours(
+    structureSetId: string,
+    structureId: string,
+    slices: ContourSlice[],
+    description = 'Add contours'
+  ): boolean {
+    if (slices.length === 0) return false;
+
+    const store = useStructureStore.getState();
+    const ss = store.structureSets.find((s) => s.id === structureSetId);
+    const structure = ss?.structures.find((s) => s.id === structureId);
+    if (!structure || (structure.isLocked ?? false)) return false;
+
+    const oldContours = structure.contours.map((contour) => ({
+      ...contour,
+      points: new Float32Array(contour.points),
+    }));
+    const nextContours = [
+      ...oldContours.filter(
+        (contour) => !slices.some((slice) => slice.slicePosition === contour.slicePosition)
+      ),
+      ...slices.map((slice) => ({ ...slice, points: new Float32Array(slice.points) })),
+    ].sort((a, b) => a.slicePosition - b.slicePosition);
+
+    UndoRedoManager.push({
+      description,
+      execute: () =>
+        store.updateStructure(structureSetId, structureId, {
+          contours: nextContours,
+        }),
+      undo: () =>
+        store.updateStructure(structureSetId, structureId, {
+          contours: oldContours,
+        }),
+    });
+
+    return true;
+  },
+
   /**
    * Delete all contours for a structure on a given slice.
    */

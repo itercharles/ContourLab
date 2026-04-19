@@ -624,6 +624,28 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
     [activeSeriesStructureSet]
   );
 
+  const isRepositoryRtstructActive = useCallback(
+    (
+      instance: DicomWebRtstructInstance,
+      imageSeriesUID: string
+    ) => {
+      if (!activeSeriesStructureSet || activeSeriesStructureSet.referencedSeriesUID !== imageSeriesUID) {
+        return false;
+      }
+
+      const source = activeSeriesStructureSet.source;
+      if (source?.type === 'rtstruct') {
+        return (
+          source.sopInstanceUID === instance.sopInstanceUID ||
+          source.seriesInstanceUID === instance.seriesInstanceUID
+        );
+      }
+
+      return false;
+    },
+    [activeSeriesStructureSet]
+  );
+
   return (
     <div className="relative flex h-full flex-col">
       {isPatientSelectorOpen && (
@@ -852,9 +874,10 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                             ) : (
                               <div>
                                 {rtstructsForImageSet.map((instance, index) => {
-                                  const isActiveRtstruct =
-                                    activeSeriesStructureSet?.source?.type === 'rtstruct' &&
-                                    activeSeriesStructureSet.source.sopInstanceUID === instance.sopInstanceUID;
+                                  const isActiveRtstruct = isRepositoryRtstructActive(
+                                    instance,
+                                    entry.seriesInstanceUID
+                                  );
                                   const isLatestRtstruct = index === 0;
 
                                   return (
@@ -862,7 +885,11 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                       key={instance.sopInstanceUID}
                                       role="button"
                                       tabIndex={!importingRtstructSop ? 0 : -1}
-                                      onDoubleClick={() => void onLoadRtstruct(instance, [entry])}
+                                      onDoubleClick={() => {
+                                        if (!importingRtstructSop) {
+                                          void onLoadRtstruct(instance, [entry]);
+                                        }
+                                      }}
                                       onKeyDown={(event) => {
                                         if ((event.key === 'Enter' || event.key === ' ') && !importingRtstructSop) {
                                           event.preventDefault();
@@ -877,7 +904,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                           ? 'cursor-pointer hover:bg-blue-950/20'
                                           : 'cursor-not-allowed opacity-60'
                                       }`}
-                                      title="Double-click to activate this image set and load RTSTRUCT"
+                                      title="Double-click or use Load to activate this image set and load RTSTRUCT"
                                     >
                                       <div className="flex items-center gap-2">
                                         <span className="rounded bg-[#242424] px-1.5 py-0.5 text-[10px] font-semibold text-[#a0a0a0]">
@@ -897,9 +924,9 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                           </span>
                                         )}
                                       </div>
-	                                      <div className="mt-0.5 flex items-center gap-2">
-	                                        <span className="min-w-0 flex-1 truncate text-[10px] text-[#6b6b6b]" title={instance.sopInstanceUID}>
-	                                          {formatDicomDateTime(instance.seriesDate, instance.seriesTime)}
+                                      <div className="mt-0.5 flex items-center gap-2">
+                                        <span className="min-w-0 flex-1 truncate text-[10px] text-[#6b6b6b]" title={instance.sopInstanceUID}>
+                                          {formatDicomDateTime(instance.seriesDate, instance.seriesTime)}
                                           {' · '}
                                           SOP …{formatSopTail(instance.sopInstanceUID)}
                                           {typeof instance.roiCount === 'number' ? ` · ${instance.roiCount} ROI` : ''}
@@ -909,21 +936,33 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                             ? 'Loading'
                                             : isActiveRtstruct
                                               ? 'Active in workspace'
-	                                            : 'Double-click to load'}
-	                                        </span>
-                                          <button
-                                            type="button"
-                                            onClick={(event) => {
-                                              event.stopPropagation();
-                                              void onCompareRtstruct(instance, entry.seriesInstanceUID);
-                                            }}
-                                            disabled={!!comparingRtstructSop}
-                                            className="h-5 rounded border border-[#3a3a3a] px-1.5 text-[10px] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-                                            title="Compare this repository RTSTRUCT with the active workspace RTSTRUCT"
-                                          >
-                                            {comparingRtstructSop === instance.sopInstanceUID ? 'Comparing' : 'Compare'}
-                                          </button>
-	                                      </div>
+                                              : 'Ready'}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            void onLoadRtstruct(instance, [entry]);
+                                          }}
+                                          disabled={!!importingRtstructSop}
+                                          className="h-5 rounded border border-blue-700 bg-blue-950/30 px-1.5 text-[10px] font-medium text-blue-200 hover:bg-blue-900/60 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                                          title="Load this RTSTRUCT into the active workspace"
+                                        >
+                                          {importingRtstructSop === instance.sopInstanceUID ? 'Loading' : 'Load'}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            void onCompareRtstruct(instance, entry.seriesInstanceUID);
+                                          }}
+                                          disabled={!!comparingRtstructSop}
+                                          className="h-5 rounded border border-[#3a3a3a] px-1.5 text-[10px] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                                          title="Compare this repository RTSTRUCT with the active workspace RTSTRUCT"
+                                        >
+                                          {comparingRtstructSop === instance.sopInstanceUID ? 'Comparing' : 'Compare'}
+                                        </button>
+                                      </div>
                                       <div className="mt-1 border-t border-[#2a2a2a] pt-1">
                                         <div className="flex items-center gap-2 text-[10px] text-[#6b6b6b]">
                                           <span className="font-semibold uppercase tracking-widest">Plans</span>

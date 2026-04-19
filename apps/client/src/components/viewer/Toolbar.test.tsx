@@ -201,6 +201,9 @@ describe('Toolbar contour operations', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Window \/ Level \(W\)/ }));
     await waitFor(() => expect(mocks.setActiveTool).toHaveBeenCalledWith('WindowLevel'));
+
+    fireEvent.click(screen.getByRole('button', { name: /Edit Contour \(D\)/ }));
+    expect(useUIStore.getState().activeTool).toBe('edit');
   });
 
   it('toggles the workspace navigator from the top operation bar', () => {
@@ -285,6 +288,37 @@ describe('Toolbar contour operations', () => {
       .structures[0]
       .contours.find((contour) => contour.slicePosition === 15);
     expect(interpolated?.referencedSOPInstanceUID).toBe('sop-mid');
+  });
+
+  it('fills all missing contour slices between existing contour slices', async () => {
+    const loaded = makeLoadedSeries();
+    loaded.series.instances = [
+      { sopInstanceUID: 'sop-1', instanceNumber: 1, sliceLocation: 10 },
+      { sopInstanceUID: 'sop-mid-1', instanceNumber: 2, sliceLocation: 13 },
+      { sopInstanceUID: 'sop-mid-2', instanceNumber: 3, sliceLocation: 16 },
+      { sopInstanceUID: 'sop-2', instanceNumber: 4, sliceLocation: 20 },
+    ];
+    useVolumeStore.setState({
+      loadedSeries: [loaded],
+      activeSeriesUID: 'series-1',
+    });
+
+    render(<Toolbar />);
+
+    const fillGapsButton = screen.getByRole('button', { name: 'Fill Gaps' }) as HTMLButtonElement;
+    expect(fillGapsButton.disabled).toBe(false);
+
+    fireEvent.click(fillGapsButton);
+
+    await waitFor(() =>
+      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(4)
+    );
+    expect(
+      useStructureStore.getState().structureSets[0].structures[0].contours.map((contour) => contour.slicePosition)
+    ).toEqual([10, 13, 16, 20]);
+    expect(screen.getByRole('button', { name: 'Undo' }).getAttribute('title')).toContain(
+      'Undo: Interpolate 2 contours'
+    );
   });
 
   it('navigates to adjacent contour slices from the top operation bar', () => {

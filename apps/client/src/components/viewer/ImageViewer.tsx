@@ -103,6 +103,7 @@ export default function ImageViewer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
+  const windowLevelPreset = useUIStore((s) => s.windowLevelPreset);
   const [viewportsReady, setViewportsReady] = useState(false);
 
   // Track whether we've set up the tool group yet
@@ -180,6 +181,9 @@ export default function ImageViewer() {
           ViewportManager.setVolume(VIEWPORT_IDS.SAGITTAL, volumeId),
           ViewportManager.setVolume(VIEWPORT_IDS.CORONAL, volumeId),
         ]);
+        ViewportManager.setWindowLevel(VIEWPORT_IDS.AXIAL, windowLevelPreset);
+        ViewportManager.setWindowLevel(VIEWPORT_IDS.SAGITTAL, windowLevelPreset);
+        ViewportManager.setWindowLevel(VIEWPORT_IDS.CORONAL, windowLevelPreset);
         pushDebugEvent(`volume:done ${volumeId}`);
       } catch (err) {
         const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
@@ -189,7 +193,7 @@ export default function ImageViewer() {
     };
 
     void applyVolume();
-  }, [activeSeriesUID, loadedSeries, viewportsReady]);
+  }, [activeSeriesUID, loadedSeries, viewportsReady, windowLevelPreset]);
 
   // ResizeObserver on the container
   useEffect(() => {

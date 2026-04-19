@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { ContourSlice } from '@webtps/shared-types';
-import { findInterpolationBounds, interpolateContourForSlice } from '../InterpolationEngine';
+import {
+  findInterpolationBounds,
+  interpolateContourForSlice,
+  interpolateMissingContoursForFrames,
+} from '../InterpolationEngine';
 
 function squareContour(z: number, size: number): ContourSlice {
   return {
@@ -38,5 +42,21 @@ describe('InterpolationEngine', () => {
     expect(contour?.isClosed).toBe(true);
     expect(contour?.points).toHaveLength(24);
     expect(Array.from(contour!.points).every((_, index) => index % 3 !== 2 || contour!.points[index] === 5)).toBe(true);
+  });
+
+  it('creates contours for missing image frames between drawn slices', () => {
+    const contours = [
+      squareContour(0, 10),
+      squareContour(30, 20),
+    ];
+    const interpolated = interpolateMissingContoursForFrames(contours, [
+      { sopInstanceUID: 'sop-0', sliceLocation: 0 },
+      { sopInstanceUID: 'sop-10', sliceLocation: 10 },
+      { sopInstanceUID: 'sop-20', sliceLocation: 20 },
+      { sopInstanceUID: 'sop-30', sliceLocation: 30 },
+    ], 8);
+
+    expect(interpolated.map((contour) => contour.slicePosition)).toEqual([10, 20]);
+    expect(interpolated.map((contour) => contour.referencedSOPInstanceUID)).toEqual(['sop-10', 'sop-20']);
   });
 });

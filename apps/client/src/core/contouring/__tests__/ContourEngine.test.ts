@@ -184,6 +184,69 @@ describe('ContourEngine.addContour', () => {
   });
 });
 
+describe('ContourEngine.addContours', () => {
+  it('adds multiple interpolated contours as one undoable structure update', () => {
+    const existingSlice: ContourSlice = {
+      referencedSOPInstanceUID: 'sop-0',
+      slicePosition: 0,
+      points: new Float32Array([0,0,0, 1,0,0, 1,1,0]),
+      isClosed: true,
+    };
+    const structure = makeStructure([existingSlice]);
+    const ss = makeStructureSet([structure]);
+    mockStore.structureSets = [ss];
+
+    const added = ContourEngine.addContours('ss-1', 'struct-1', [
+      {
+        referencedSOPInstanceUID: 'sop-5',
+        slicePosition: 5,
+        points: new Float32Array([0,0,5, 1,0,5, 1,1,5]),
+        isClosed: true,
+      },
+      {
+        referencedSOPInstanceUID: 'sop-10',
+        slicePosition: 10,
+        points: new Float32Array([0,0,10, 1,0,10, 1,1,10]),
+        isClosed: true,
+      },
+    ], 'Interpolate 2 contours');
+
+    expect(added).toBe(true);
+    expect(capturedCommands).toHaveLength(1);
+    expect(capturedCommands[0].description).toBe('Interpolate 2 contours');
+    expect(mockStore.updateStructure).toHaveBeenCalledOnce();
+    const [, , patch] = mockStore.updateStructure.mock.calls[0] as [
+      string, string, Partial<Structure>
+    ];
+    expect(patch.contours?.map((contour) => contour.slicePosition)).toEqual([0, 5, 10]);
+
+    mockStore.updateStructure.mockClear();
+    capturedCommands[0].undo();
+    expect(mockStore.updateStructure).toHaveBeenCalledWith('ss-1', 'struct-1', {
+      contours: [expect.objectContaining({ slicePosition: 0 })],
+    });
+  });
+
+  it('does not add multiple contours on a locked structure', () => {
+    const structure = makeStructure([], { isLocked: true });
+    const ss = makeStructureSet([structure]);
+    mockStore.structureSets = [ss];
+
+    const added = ContourEngine.addContours('ss-1', 'struct-1', [
+      {
+        referencedSOPInstanceUID: 'sop-5',
+        slicePosition: 5,
+        points: new Float32Array([0,0,5, 1,0,5, 1,1,5]),
+        isClosed: true,
+      },
+    ]);
+
+    expect(added).toBe(false);
+    expect(UndoRedoManager.push).not.toHaveBeenCalled();
+    expect(mockStore.updateStructure).not.toHaveBeenCalled();
+  });
+});
+
 // ---------------------------------------------------------------------------
 // deleteContourOnSlice
 // ---------------------------------------------------------------------------

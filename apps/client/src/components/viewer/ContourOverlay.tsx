@@ -39,6 +39,12 @@ interface RenderableContour {
   strokeWidth: number;
 }
 
+interface EditablePoint {
+  index: number;
+  canvas: [number, number];
+  world: WorldPoint;
+}
+
 interface SliceFrame {
   sopInstanceUID: string;
   sliceLocation: number;
@@ -82,12 +88,16 @@ export default function ContourOverlay({
   const [draftPoints, setDraftPoints] = useState<WorldPoint[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const drawingRef = useRef(false);
+  const editingPointIndexRef = useRef<number | null>(null);
+  const editPointsRef = useRef<WorldPoint[]>([]);
   const draftPointsRef = useRef<WorldPoint[]>([]);
   const lastCanvasPointRef = useRef<[number, number] | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const clearDraft = (message?: string) => {
     drawingRef.current = false;
+    editingPointIndexRef.current = null;
+    editPointsRef.current = [];
     lastCanvasPointRef.current = null;
     draftPointsRef.current = [];
     setDraftPoints([]);
@@ -242,7 +252,7 @@ export default function ContourOverlay({
       : undefined,
     [activeStructure, currentFrame?.sopInstanceUID, currentSlicePosition, sliceTolerance]
   );
-  const isContourEditTool = ['freehand', 'polygon', 'brush', 'eraser'].includes(activeTool);
+  const isContourEditTool = ['edit', 'freehand', 'polygon', 'brush', 'eraser'].includes(activeTool);
 
   useEffect(() => {
     if (!isContourEditTool) {
@@ -273,7 +283,8 @@ export default function ContourOverlay({
         activeStructure &&
         !(activeStructure.isLocked ?? false) &&
         activeSeries &&
-        activeContourOnSlice
+          activeTool !== 'edit' &&
+          activeContourOnSlice
       ) {
         event.preventDefault();
         const deleted = ContourEngine.deleteContourOnSlice(
@@ -408,6 +419,31 @@ export default function ContourOverlay({
     }
   }, [canvasMetrics.offsetX, canvasMetrics.offsetY, draftPoints, revision, viewport]);
 
+  const editablePoints = useMemo(() => {
+    void revision;
+    if (!viewport || activeTool !== 'edit' || !activeContourOnSlice) return [] as EditablePoint[];
+
+    const points: EditablePoint[] = [];
+    for (let index = 0; index < activeContourOnSlice.points.length; index += 3) {
+      const world: WorldPoint = [
+        activeContourOnSlice.points[index],
+        activeContourOnSlice.points[index + 1],
+        activeContourOnSlice.points[index + 2],
+      ];
+      try {
+        const [x, y] = viewport.worldToCanvas(world);
+        points.push({
+          index: index / 3,
+          canvas: [x, y],
+          world,
+        });
+      } catch {
+        // Ignore points that cannot be projected by the active viewport.
+      }
+    }
+    return points;
+  }, [activeContourOnSlice, activeTool, revision, viewport]);
+
   const isDrawable =
     orientation === 'AXIAL' &&
     isContourEditTool &&
@@ -471,26 +507,32 @@ export default function ContourOverlay({
     } else {
       const messageByTool: Partial<Record<typeof activeTool, string>> = {
         freehand: 'Drag on the axial view to draw a contour.',
+        edit: activeContourOnSlice
+          ? 'Drag vertices. Double-click edge inserts. Shift-click vertex deletes.'
+          : 'No active contour on this slice to edit.',
         polygon: 'Click vertices on the axial view. Enter or double-click saves.',
         brush: 'Click to stamp a circular contour on this slice.',
         eraser: 'Click to delete this structure contour on the current slice.',
       };
       setStatusMessage(messageByTool[activeTool] ?? 'Edit contour on the axial view.');
     }
-  }, [activeSeries, activeStructure, activeStructureSet, activeTool, currentFrame, isContourEditTool, orientation]);
+  }, [activeContourOnSlice, activeSeries, activeStructure, activeStructureSet, activeTool, currentFrame, isContourEditTool, orientation]);
 
-  const getCanvasPoint = (event: React.PointerEvent<SVGSVGElement>): [number, number] | null => {
+  const getCanvasPointFromClient = (clientX: number, clientY: number): [number, number] | null => {
     const svg = svgRef.current;
     if (!svg) return null;
 
     const rect = svg.getBoundingClientRect();
-    const rawX = event.clientX - rect.left - canvasMetrics.offsetX;
-    const rawY = event.clientY - rect.top - canvasMetrics.offsetY;
+    const rawX = clientX - rect.left - canvasMetrics.offsetX;
+    const rawY = clientY - rect.top - canvasMetrics.offsetY;
     const clampedX = Math.min(Math.max(rawX, 0), canvasMetrics.width);
     const clampedY = Math.min(Math.max(rawY, 0), canvasMetrics.height);
 
     return [clampedX, clampedY];
   };
+
+  const getCanvasPoint = (event: React.PointerEvent<SVGSVGElement>): [number, number] | null =>
+    getCanvasPointFromClient(event.clientX, event.clientY);
 
   const appendPoint = (canvasPoint: [number, number]) => {
     if (!viewport) return;
@@ -525,6 +567,171 @@ export default function ContourOverlay({
     }
   };
 
+  const distanceToSegment = (
+    point: [number, number],
+    start: [number, number],
+    end: [number, number]
+  ): number => {
+    const dx = end[0] - start[0];
+    const dy = end[1] - start[1];
+    const lengthSquared = dx * dx + dy * dy;
+    if (lengthSquared === 0) return Math.hypot(point[0] - start[0], point[1] - start[1]);
+    const t = Math.max(0, Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / lengthSquared));
+    return Math.hypot(point[0] - (start[0] + t * dx), point[1] - (start[1] + t * dy));
+  };
+
+  const findNearestEditablePoint = (canvasPoint: [number, number], radius = 8): EditablePoint | null => {
+    let nearest: EditablePoint | null = null;
+    let nearestDistance = radius;
+    for (const point of editablePoints) {
+      const distance = Math.hypot(point.canvas[0] - canvasPoint[0], point.canvas[1] - canvasPoint[1]);
+      if (distance <= nearestDistance) {
+        nearest = point;
+        nearestDistance = distance;
+      }
+    }
+    return nearest;
+  };
+
+  const findNearestEditableSegment = (canvasPoint: [number, number], radius = 8): number | null => {
+    if (editablePoints.length < 3) return null;
+
+    let nearestIndex: number | null = null;
+    let nearestDistance = radius;
+    for (let index = 0; index < editablePoints.length; index += 1) {
+      const start = editablePoints[index].canvas;
+      const end = editablePoints[(index + 1) % editablePoints.length].canvas;
+      const distance = distanceToSegment(canvasPoint, start, end);
+      if (distance <= nearestDistance) {
+        nearestIndex = index + 1;
+        nearestDistance = distance;
+      }
+    }
+    return nearestIndex;
+  };
+
+  const canvasPointToWorld = (canvasPoint: [number, number]): WorldPoint | null => {
+    if (!viewport) return null;
+    try {
+      const worldPoint = viewport.canvasToWorld(canvasPoint);
+      return [worldPoint[0], worldPoint[1], currentSlicePosition];
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logClientDebug(
+        'ContourOverlay',
+        `edit:point:error viewport=${viewportId} x=${canvasPoint[0].toFixed(1)} y=${canvasPoint[1].toFixed(1)} ${message}`
+      );
+      return null;
+    }
+  };
+
+  const getActiveContourPoints = (): WorldPoint[] => {
+    if (!activeContourOnSlice) return [];
+
+    const contourPoints: WorldPoint[] = [];
+    for (let index = 0; index < activeContourOnSlice.points.length; index += 3) {
+      contourPoints.push([
+        activeContourOnSlice.points[index],
+        activeContourOnSlice.points[index + 1],
+        activeContourOnSlice.points[index + 2],
+      ]);
+    }
+    return contourPoints;
+  };
+
+  const commitEditedContour = (message: string) => {
+    if (!activeStructureSet || !activeStructure || !activeSeries || !currentFrame || editPointsRef.current.length < 3) {
+      setStatusMessage('Edited contour needs at least 3 points.');
+      return;
+    }
+
+    const saved = ContourEngine.addContour(activeStructureSet.id, activeStructure.id, {
+      points: flattenWorldPoints(editPointsRef.current),
+      slicePosition: activeContourOnSlice?.slicePosition ?? currentSlicePosition,
+      sopInstanceUID: activeContourOnSlice?.referencedSOPInstanceUID ?? currentFrame.sopInstanceUID,
+    });
+    if (!saved) {
+      setStatusMessage('Unlock the selected structure before editing contours.');
+      return;
+    }
+    StructureSetManager.refreshVolume(
+      activeStructureSet.id,
+      activeStructure.id,
+      activeSeries.volume.spacing[2] || 1
+    );
+    setStatusMessage(message);
+  };
+
+  const handleEditPointerDown = (event: React.PointerEvent<SVGSVGElement>, canvasPoint: [number, number]) => {
+    if (!activeContourOnSlice) {
+      setStatusMessage('No active contour on this slice to edit.');
+      return;
+    }
+
+    const nearestPoint = findNearestEditablePoint(canvasPoint);
+    const contourPoints = getActiveContourPoints();
+
+    if (event.shiftKey && nearestPoint) {
+      if (contourPoints.length <= 3) {
+        setStatusMessage('Contour needs at least 3 vertices.');
+        return;
+      }
+      editPointsRef.current = contourPoints.filter((_, index) => index !== nearestPoint.index);
+      commitEditedContour(`Deleted vertex ${nearestPoint.index + 1}.`);
+      return;
+    }
+
+    const worldPoint = canvasPointToWorld(canvasPoint);
+    if (!worldPoint) return;
+
+    if (nearestPoint) {
+      editingPointIndexRef.current = nearestPoint.index;
+      editPointsRef.current = contourPoints;
+      drawingRef.current = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setStatusMessage(`Editing vertex ${nearestPoint.index + 1}. Release to save.`);
+      return;
+    }
+
+    const insertIndex = event.detail >= 2 ? findNearestEditableSegment(canvasPoint) : null;
+    if (insertIndex !== null) {
+      editPointsRef.current = [
+        ...contourPoints.slice(0, insertIndex),
+        worldPoint,
+        ...contourPoints.slice(insertIndex),
+      ];
+      commitEditedContour(`Inserted vertex ${insertIndex + 1}.`);
+      return;
+    }
+
+    setStatusMessage('Drag a vertex, double-click an edge to insert, or Shift-click a vertex to delete.');
+  };
+
+  const handleDoubleClick = (event: React.MouseEvent<SVGSVGElement>) => {
+    if (!isDrawable || activeTool !== 'edit' || !activeContourOnSlice) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const canvasPoint = getCanvasPointFromClient(event.clientX, event.clientY);
+    if (!canvasPoint) return;
+
+    const worldPoint = canvasPointToWorld(canvasPoint);
+    const insertIndex = findNearestEditableSegment(canvasPoint, 18);
+    const contourPoints = getActiveContourPoints();
+    if (!worldPoint || insertIndex === null || contourPoints.length < 3) {
+      setStatusMessage('Double-click closer to a contour edge to insert a vertex.');
+      return;
+    }
+
+    editPointsRef.current = [
+      ...contourPoints.slice(0, insertIndex),
+      worldPoint,
+      ...contourPoints.slice(insertIndex),
+    ];
+    commitEditedContour(`Inserted vertex ${insertIndex + 1}.`);
+  };
+
   const handlePointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
     if (!isDrawable) {
       logClientDebug('ContourOverlay', `pointerdown:blocked viewport=${viewportId}`);
@@ -538,6 +745,11 @@ export default function ContourOverlay({
       'ContourOverlay',
       `pointerdown:start viewport=${viewportId} tool=${activeTool} x=${canvasPoint[0].toFixed(1)} y=${canvasPoint[1].toFixed(1)}`
     );
+
+    if (activeTool === 'edit') {
+      handleEditPointerDown(event, canvasPoint);
+      return;
+    }
 
     if (activeTool === 'eraser') {
       eraseCurrentSliceContour();
@@ -572,8 +784,21 @@ export default function ContourOverlay({
     if (!drawingRef.current || !isDrawable) return;
 
     const canvasPoint = getCanvasPoint(event);
+    if (!canvasPoint) return;
+
+    if (activeTool === 'edit') {
+      const editIndex = editingPointIndexRef.current;
+      const worldPoint = canvasPointToWorld(canvasPoint);
+      if (editIndex === null || !worldPoint) return;
+      editPointsRef.current = editPointsRef.current.map((point, index) =>
+        index === editIndex ? worldPoint : point
+      );
+      setDraftPoints(editPointsRef.current);
+      return;
+    }
+
     const lastPoint = lastCanvasPointRef.current;
-    if (!canvasPoint || !lastPoint) return;
+    if (!lastPoint) return;
 
     const dx = canvasPoint[0] - lastPoint[0];
     const dy = canvasPoint[1] - lastPoint[1];
@@ -584,6 +809,18 @@ export default function ContourOverlay({
   };
 
   const finishDrawing = (canvasPoint?: [number, number]) => {
+    if (activeTool === 'edit') {
+      drawingRef.current = false;
+      lastCanvasPointRef.current = null;
+      const editedIndex = editingPointIndexRef.current;
+      editingPointIndexRef.current = null;
+      setDraftPoints([]);
+      if (editedIndex !== null) {
+        commitEditedContour(`Moved vertex ${editedIndex + 1}.`);
+      }
+      return;
+    }
+
     drawingRef.current = false;
     lastCanvasPointRef.current = null;
 
@@ -700,6 +937,7 @@ export default function ContourOverlay({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
+      onDoubleClick={handleDoubleClick}
     >
       {renderableContours.map((contour, index) => (
         <path
@@ -724,6 +962,19 @@ export default function ContourOverlay({
           strokeLinejoin="round"
         />
       )}
+
+      {activeTool === 'edit' && editablePoints.map((point) => (
+        <circle
+          key={`edit-point-${point.index}-${point.canvas[0]}-${point.canvas[1]}`}
+          cx={point.canvas[0] + canvasMetrics.offsetX}
+          cy={point.canvas[1] + canvasMetrics.offsetY}
+          r="4"
+          fill={activeStructure ? `rgb(${activeStructure.color.join(', ')})` : '#3b82f6'}
+          stroke="#000"
+          strokeWidth="1.5"
+          vectorEffect="non-scaling-stroke"
+        />
+      ))}
 
       {isContourEditTool && statusMessage && (
         <g>

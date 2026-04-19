@@ -69,6 +69,7 @@ describe('installViewerShortcutHandler', () => {
     const cleanup = installViewerShortcutHandler();
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd' }));
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'g' }));
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b' }));
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
@@ -100,12 +101,14 @@ describe('installViewerShortcutHandler', () => {
     const cleanup = installViewerShortcutHandler();
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd' }));
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'g' }));
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b' }));
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
 
     expect(mocks.uiStore.setActiveViewport).toHaveBeenCalledWith('AXIAL');
     expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('freehand');
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('edit');
     expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('polygon');
     expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('brush');
     expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('eraser');

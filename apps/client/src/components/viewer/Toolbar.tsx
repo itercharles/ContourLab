@@ -3,7 +3,10 @@ import { useUIStore, type ViewerTool, type WLPreset } from '../../core/store/uiS
 import { MPRController, VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { ContourEngine } from '../../core/contouring/ContourEngine';
-import { interpolateContourForSlice } from '../../core/contouring/InterpolationEngine';
+import {
+  interpolateContourForSlice,
+  interpolateMissingContoursForFrames,
+} from '../../core/contouring/InterpolationEngine';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import { findContourOnFrame } from '../../core/contouring/contourOverlayUtils';
 import { WINDOW_LEVEL_PRESETS } from '../../core/rendering/WindowLevelPresets';
@@ -64,6 +67,12 @@ const TOOL_META: Record<ViewerTool, {
     shortLabel: 'CH',
     name: 'Crosshairs',
     description: 'Synchronize slice position across viewports.',
+  },
+  edit: {
+    shortLabel: 'ED',
+    name: 'Edit Contour',
+    shortcut: 'D',
+    description: 'Drag contour vertices. Double-click an edge to insert. Shift-click a vertex to delete.',
   },
   freehand: {
     shortLabel: 'F',
@@ -167,6 +176,16 @@ function ToolIcon({ tool, fallback }: { tool: ViewerTool; fallback: string }) {
         <svg aria-hidden="true" width="15" height="14" viewBox="0 0 15 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2 10.8c2.4-6.4 3.8 1.8 6.2-4.5 1.2-3.2 2.5-2.5 4.8-1" />
           <path d="M10.6 3.3 12.7 1.2l1.1 1.1-2.1 2.1" />
+        </svg>
+      );
+    case 'edit':
+      return (
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 4.2 7.4 2.4 11 5.8 8.8 11 3.8 9.8Z" />
+          <circle cx="3" cy="4.2" r="1" fill="currentColor" />
+          <circle cx="7.4" cy="2.4" r="1" fill="currentColor" />
+          <circle cx="11" cy="5.8" r="1" fill="currentColor" />
+          <path d="M2 12 5.8 8.2" />
         </svg>
       );
     case 'polygon':
@@ -353,14 +372,14 @@ export default function Toolbar() {
     !!interpolatedContour;
 
   const handleToolClick = async (tool: ViewerTool) => {
-    if (['freehand', 'polygon', 'brush', 'eraser'].includes(tool) && !canUseContourTool) {
+    if (['edit', 'freehand', 'polygon', 'brush', 'eraser'].includes(tool) && !canUseContourTool) {
       setRightSidebarOpen(true);
       setActiveViewport('AXIAL');
       return;
     }
 
     setActiveTool(tool);
-    if (['freehand', 'polygon', 'brush', 'eraser'].includes(tool)) {
+    if (['edit', 'freehand', 'polygon', 'brush', 'eraser'].includes(tool)) {
       setActiveViewport('AXIAL');
     }
     const csToolName = TOOL_NAME_MAP[tool];
@@ -448,6 +467,41 @@ export default function Toolbar() {
     logClientDebug(
       'Toolbar',
       `interpolate:contour structure=${activeStructure.id} z=${interpolatedContour.slicePosition.toFixed(2)}`
+    );
+  };
+
+  const handleInterpolateMissingContours = () => {
+    if (!activeStructureSet || !activeStructure || !activeLoadedSeries) return;
+
+    const frames = activeLoadedSeries.series.instances
+      .flatMap((instance) =>
+        Number.isFinite(instance.sliceLocation)
+          ? [{
+              sopInstanceUID: instance.sopInstanceUID,
+              sliceLocation: instance.sliceLocation as number,
+            }]
+          : []
+      );
+    const interpolatedContours = interpolateMissingContoursForFrames(activeStructure.contours, frames);
+    if (interpolatedContours.length === 0) return;
+
+    const added = ContourEngine.addContours(
+      activeStructureSet.id,
+      activeStructure.id,
+      interpolatedContours,
+      `Interpolate ${interpolatedContours.length} contours`
+    );
+    if (!added) return;
+
+    StructureSetManager.refreshVolume(
+      activeStructureSet.id,
+      activeStructure.id,
+      activeLoadedSeries.volume.spacing[2] || 1
+    );
+    setUndoRedoRevision((value) => value + 1);
+    logClientDebug(
+      'Toolbar',
+      `interpolate:missing structure=${activeStructure.id} count=${interpolatedContours.length}`
     );
   };
 
@@ -659,6 +713,18 @@ export default function Toolbar() {
           Contour
         </span>
         <ToolButton
+          label={TOOL_META.edit.shortLabel}
+          description={
+            contourToolBlockedReason
+              ? `${TOOL_META.edit.description} ${contourToolBlockedReason}`
+              : TOOL_META.edit.description
+          }
+          tool="edit"
+          activeTool={activeTool}
+          onClick={handleToolClick}
+          shortcut={TOOL_META.edit.shortcut}
+        />
+        <ToolButton
           label={TOOL_META.freehand.shortLabel}
           description={
             contourToolBlockedReason
@@ -686,6 +752,19 @@ export default function Toolbar() {
           />
         ))}
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleInterpolateMissingContours}
+            disabled={!activeStructureSet || !activeStructure || !!activeStructure?.isLocked || activeStructureReviewSliceCount < 2}
+            title={
+              activeStructureReviewSliceCount >= 2
+                ? 'Interpolate all missing image slices between existing contours'
+                : 'Requires at least two contour slices'
+            }
+            className="h-7 rounded bg-[#2e2e2e] px-2 text-[10px] font-medium text-[#a0a0a0] transition-colors hover:bg-[#3a3a3a] hover:text-[#e5e5e5] disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            Fill Gaps
+          </button>
           <button
             type="button"
             onClick={handleInterpolateContour}

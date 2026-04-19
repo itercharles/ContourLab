@@ -115,3 +115,50 @@ export function interpolateContourForSlice(
     sampleCount
   );
 }
+
+export interface InterpolationFrame {
+  sopInstanceUID: string;
+  sliceLocation: number;
+}
+
+export function interpolateMissingContoursForFrames(
+  contours: ContourSlice[],
+  frames: InterpolationFrame[],
+  sampleCount = DEFAULT_SAMPLE_COUNT
+): ContourSlice[] {
+  const sortedFrames = [...frames]
+    .filter((frame) => Number.isFinite(frame.sliceLocation))
+    .sort((a, b) => a.sliceLocation - b.sliceLocation);
+  const sortedContours = [...contours]
+    .filter((contour) => contour.isClosed && contour.points.length >= 9)
+    .sort((a, b) => a.slicePosition - b.slicePosition);
+  const existingPositions = new Set(sortedContours.map((contour) => contour.slicePosition));
+  const interpolated: ContourSlice[] = [];
+
+  for (let index = 0; index < sortedContours.length - 1; index += 1) {
+    const lower = sortedContours[index];
+    const upper = sortedContours[index + 1];
+    const gapFrames = sortedFrames.filter(
+      (frame) =>
+        frame.sliceLocation > lower.slicePosition &&
+        frame.sliceLocation < upper.slicePosition &&
+        !existingPositions.has(frame.sliceLocation)
+    );
+
+    for (const frame of gapFrames) {
+      const contour = interpolateContourSlice(
+        lower,
+        upper,
+        frame.sliceLocation,
+        frame.sopInstanceUID,
+        sampleCount
+      );
+      if (contour) {
+        interpolated.push(contour);
+        existingPositions.add(frame.sliceLocation);
+      }
+    }
+  }
+
+  return interpolated;
+}

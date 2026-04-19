@@ -7,6 +7,7 @@ export type ViewerTool =
   | 'pan'
   | 'scroll'
   | 'crosshairs'
+  | 'edit'
   | 'freehand'
   | 'polygon'
   | 'brush'

@@ -398,7 +398,7 @@ describe('DicomRepoPanel', () => {
     expect(screen.getByText(/3 ROI/)).toBeTruthy();
     expect(screen.getByText('RTSTRUCT Thorax CT')).toBeTruthy();
 
-    fireEvent.doubleClick(screen.getByRole('button', { name: /RTSTRUCT Thorax CT/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Load' }).at(-1)!);
 
     await waitFor(() => expect(mocks.loadSeriesFromDicomWeb).toHaveBeenCalledTimes(1));
     expect(useVolumeStore.getState().activeSeriesUID).toBe('series-1');
@@ -422,6 +422,51 @@ describe('DicomRepoPanel', () => {
     expect(screen.getAllByText('ACTIVE').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Plans').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('No plans yet').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('marks the repository RTSTRUCT active when the active structure set matches the RTSTRUCT series', async () => {
+    useVolumeStore.setState({
+      loadedSeries: [makeLoadedSeries()],
+      activeSeriesUID: 'series-1',
+      isLoading: false,
+      loadError: null,
+    });
+    useStructureStore.setState({
+      structureSets: [{
+        ...makeStructureSet(),
+        source: {
+          type: 'rtstruct',
+          label: 'RTSTRUCT Thorax CT',
+          sopInstanceUID: 'older-sop-reference',
+          studyInstanceUID: 'study-1',
+          seriesInstanceUID: 'rtss-series-1',
+          importedAt: '2026-04-19T00:00:00.000Z',
+        },
+      }],
+      activeStructureSetId: 'ss-1',
+      activeStructureId: 'structure-1',
+      dirtySeriesUIDs: [],
+      repositoryDirtySeriesUIDs: [],
+    });
+    mocks.queryRtstructInstancesForStudy.mockResolvedValue([
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-series-1',
+        sopInstanceUID: 'current-query-sop',
+        seriesDescription: 'RTSTRUCT Thorax CT',
+        seriesDate: '20260411',
+        seriesTime: '120000',
+        roiCount: 2,
+        referencedSeriesInstanceUIDs: ['series-1'],
+      },
+    ]);
+
+    render(<DicomRepoPanel />);
+
+    await screen.findByText('RTSTRUCT Thorax CT');
+
+    expect(screen.getByText('Active in workspace')).toBeTruthy();
+    expect(screen.getAllByText('ACTIVE').length).toBeGreaterThanOrEqual(2);
   });
 
   it('compares a repository RTSTRUCT with the active workspace structure set without loading it', async () => {
@@ -507,7 +552,8 @@ describe('DicomRepoPanel', () => {
     expect(mocks.retrieveDicomWebInstance).not.toHaveBeenCalled();
     expect(mocks.importRtstructArrayBuffer).not.toHaveBeenCalled();
     expect(useStructureStore.getState().activeStructureSetId).toBe('ss-1');
-    expect(screen.getByText('Double-click to load')).toBeTruthy();
+    expect(screen.getByText('Ready')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Load' })).toBeTruthy();
   });
 
 });

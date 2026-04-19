@@ -11,7 +11,7 @@ const TOOL_NAME_MAP: Partial<Record<ViewerTool, string>> = {
   scroll: 'StackScroll',
 };
 
-const CONTOUR_TOOLS = new Set<ViewerTool>(['freehand', 'polygon', 'brush', 'eraser']);
+const CONTOUR_TOOLS = new Set<ViewerTool>(['edit', 'freehand', 'polygon', 'brush', 'eraser']);
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -102,6 +102,9 @@ export function installViewerShortcutHandler(): () => void {
     } else if (key === 'f') {
       event.preventDefault();
       void activateTool('freehand');
+    } else if (key === 'd') {
+      event.preventDefault();
+      void activateTool('edit');
     } else if (key === 'g') {
       event.preventDefault();
       void activateTool('polygon');
