@@ -379,7 +379,11 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getAllByText('Area jump near z=5.0 mm.').length).toBeGreaterThan(0);
   });
 
-  it('summarizes contour QA across the active structure set', () => {
+  it('summarizes RTSS QA separately from contour geometry QA', () => {
+    const loadedSeries = makeLoadedSeries();
+    loadedSeries.series.instances = [
+      { sopInstanceUID: 'sop-1', instanceNumber: 1, sliceLocation: 0 },
+    ];
     const structureSet = makeStructureSet();
     structureSet.structures[0].contours = [
       {
@@ -397,13 +401,17 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     ];
     structureSet.structures.push({
       id: 'structure-2',
-      name: 'Cord',
+      name: 'ptv',
       type: 'OAR',
       color: [0, 255, 0],
       contours: [],
       isVisible: true,
       isLocked: false,
       volume_cc: 0,
+    });
+    useVolumeStore.setState({
+      loadedSeries: [loadedSeries],
+      activeSeriesUID: loadedSeries.seriesUID,
     });
     useStructureStore.setState({
       structureSets: [structureSet],
@@ -415,12 +423,13 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     expect(screen.getByText('RTSS QA')).toBeTruthy();
     expect(screen.getAllByText(/warnings/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('PTV').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Cord').length).toBeGreaterThan(0);
-    expect(screen.getByText('No contours in this structure.')).toBeTruthy();
+    expect(screen.getByText('Duplicate ROI name "PTV".')).toBeTruthy();
+    expect(screen.getByText('ptv: ROI has no contour sequence.')).toBeTruthy();
+    expect(screen.getByText('PTV: contour at z=5.0 mm references an image outside the active image set.')).toBeTruthy();
+    expect(screen.getAllByText('Open contour at z=5.0 mm.')).toHaveLength(1);
   });
 
-  it('activates a structure and jumps to the QA issue slice when a structure-set QA item is clicked', async () => {
+  it('activates a structure and jumps to the RTSS QA issue slice when a structure-set QA item is clicked', async () => {
     const loadedSeries = makeLoadedSeries();
     loadedSeries.series.instances = [
       { sopInstanceUID: 'sop-0', instanceNumber: 1, sliceLocation: 0 },
@@ -435,10 +444,10 @@ describe('StructurePanel local draft and structure editing interactions', () => 
       color: [0, 255, 0],
       contours: [
         {
-          referencedSOPInstanceUID: 'sop-20',
+          referencedSOPInstanceUID: 'sop-outside',
           slicePosition: 20,
           points: new Float32Array([0, 0, 20, 10, 0, 20, 10, 10, 20, 0, 10, 20]),
-          isClosed: false,
+          isClosed: true,
         },
       ],
       isVisible: true,
@@ -457,7 +466,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     render(<StructurePanel />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Cord.*Open contour at z=20.0 mm./ }));
+    fireEvent.click(screen.getByRole('button', { name: /Cord.*references an image outside the active image set./ }));
 
     await waitFor(() => expect(useStructureStore.getState().activeStructureId).toBe('structure-2'));
     expect(mocks.scroll).toHaveBeenCalledWith(1);

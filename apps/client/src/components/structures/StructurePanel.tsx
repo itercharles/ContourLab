@@ -17,8 +17,11 @@ import {
 } from '../../core/structures/contourReview';
 import {
   analyzeContourQuality,
-  type ContourQualityIssue,
 } from '../../core/structures/contourQuality';
+import {
+  analyzeRtssQuality,
+  type RtssQualityIssue,
+} from '../../core/structures/rtssQuality';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
@@ -101,9 +104,9 @@ interface AxialViewportLike {
 }
 
 interface StructureSetQualityIssue {
-  structureId: string;
-  structureName: string;
-  issue: ContourQualityIssue;
+  structureId?: string;
+  structureName?: string;
+  issue: RtssQualityIssue;
 }
 
 interface StructureRowProps {
@@ -374,16 +377,17 @@ export default function StructurePanel() {
   const activeStructureQa = activeStructure
     ? analyzeContourQuality(activeStructure, activeLoadedSeries?.volume.spacing[2] ?? 1)
     : null;
-  const activeStructureSetQaIssues: StructureSetQualityIssue[] = activeSeriesStructureSet
-    ? activeSeriesStructureSet.structures.flatMap((structure) => {
-        const summary = analyzeContourQuality(structure, activeLoadedSeries?.volume.spacing[2] ?? 1);
-        return summary.issues.map((issue) => ({
-          structureId: structure.id,
-          structureName: structure.name,
-          issue,
-        }));
+  const activeStructureSetQa = activeSeriesStructureSet
+    ? analyzeRtssQuality(activeSeriesStructureSet, {
+        activeSeriesUID,
+        imageSopInstanceUIDs: activeLoadedSeries?.series.instances.map((instance) => instance.sopInstanceUID),
       })
-    : [];
+    : null;
+  const activeStructureSetQaIssues: StructureSetQualityIssue[] = activeStructureSetQa?.issues.map((issue) => ({
+    structureId: issue.structureId,
+    structureName: issue.structureName,
+    issue,
+  })) ?? [];
   const activeStructureSetWarningCount = activeStructureSetQaIssues.filter(
     ({ issue }) => issue.severity === 'warning'
   ).length;
@@ -664,10 +668,12 @@ export default function StructurePanel() {
     if (!activeSeriesStructureSet) return;
 
     setActiveStructureSet(activeSeriesStructureSet.id);
-    setActiveStructure(qualityIssue.structureId);
+    if (qualityIssue.structureId) {
+      setActiveStructure(qualityIssue.structureId);
+    }
 
     if (!Number.isFinite(qualityIssue.issue.slicePosition)) {
-      setStatusMessage(`Selected ${qualityIssue.structureName}: ${qualityIssue.issue.message}`);
+      setStatusMessage(qualityIssue.issue.message);
       return;
     }
 
@@ -707,10 +713,10 @@ export default function StructurePanel() {
     }
     viewport.render?.();
     setActiveViewport('AXIAL');
-    setStatusMessage(`${qualityIssue.structureName}: ${qualityIssue.issue.message}`);
+    setStatusMessage(qualityIssue.issue.message);
     logClientDebug(
       'StructurePanel',
-      `qa:navigate structure=${qualityIssue.structureId} z=${qualityIssue.issue.slicePosition}`
+      `qa:navigate structure=${qualityIssue.structureId ?? 'rtss'} z=${qualityIssue.issue.slicePosition}`
     );
   };
 
@@ -906,11 +912,13 @@ export default function StructurePanel() {
                   className={`flex w-full items-start gap-1.5 border-b border-[#2a2a2a] px-2 py-1 text-left text-[10px] last:border-b-0 hover:bg-[#2e2e2e] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
                     qualityIssue.issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
                   }`}
-                  title={`Select ${qualityIssue.structureName}${Number.isFinite(qualityIssue.issue.slicePosition) ? ` and jump to z=${qualityIssue.issue.slicePosition!.toFixed(1)} mm` : ''}`}
+                  title={Number.isFinite(qualityIssue.issue.slicePosition) ? `Jump to z=${qualityIssue.issue.slicePosition!.toFixed(1)} mm` : 'Select RTSS QA item'}
                 >
-                  <span className="max-w-[64px] flex-none truncate font-semibold text-[#a0a0a0]">
-                    {qualityIssue.structureName}
-                  </span>
+                  {qualityIssue.structureName && (
+                    <span className="max-w-[64px] flex-none truncate font-semibold text-[#a0a0a0]">
+                      {qualityIssue.structureName}
+                    </span>
+                  )}
                   <span className="min-w-0 flex-1">
                     {qualityIssue.issue.message}
                   </span>
@@ -924,7 +932,7 @@ export default function StructurePanel() {
             </div>
           ) : (
             <p className="text-[10px] text-[#6b6b6b]">
-              No contour QA warnings for this structure set.
+              No RTSS QA warnings for this structure set.
             </p>
           )}
         </section>
