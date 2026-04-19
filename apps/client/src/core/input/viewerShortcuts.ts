@@ -12,6 +12,12 @@ const TOOL_NAME_MAP: Partial<Record<ViewerTool, string>> = {
 };
 
 const CONTOUR_TOOLS = new Set<ViewerTool>(['edit', 'freehand', 'polygon', 'brush', 'eraser']);
+const MEASUREMENT_TOOLS = new Set<ViewerTool>([
+  'measureDistance',
+  'measureAngle',
+  'measureArea',
+  'huProbe',
+]);
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -69,6 +75,9 @@ async function activateTool(tool: ViewerTool): Promise<void> {
   }
 
   useUIStore.getState().setActiveTool(tool);
+  if (MEASUREMENT_TOOLS.has(tool)) {
+    return;
+  }
 
   const cornerstoneTool = TOOL_NAME_MAP[tool];
   if (!cornerstoneTool) return;
@@ -114,6 +123,18 @@ export function installViewerShortcutHandler(): () => void {
     } else if (key === 'e') {
       event.preventDefault();
       void activateTool('eraser');
+    } else if (key === 'm') {
+      event.preventDefault();
+      void activateTool('measureDistance');
+    } else if (key === 'a') {
+      event.preventDefault();
+      void activateTool('measureAngle');
+    } else if (key === 'r') {
+      event.preventDefault();
+      void activateTool('measureArea');
+    } else if (key === 'h') {
+      event.preventDefault();
+      void activateTool('huProbe');
     }
   };
 

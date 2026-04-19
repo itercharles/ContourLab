@@ -15,10 +15,18 @@ import { useUIStore } from '../../core/store/uiStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
+import {
+  calculateAngleDeg,
+  calculateDistanceMm,
+  calculatePolygonAreaMm2,
+  sampleNearestVoxelValue,
+  type WorldPoint as MeasurementWorldPoint,
+} from '../../core/measurement/measurementUtils';
 
 interface VolumeViewportLike {
   canvasToWorld: (canvasPoint: [number, number]) => [number, number, number];
   worldToCanvas: (worldPoint: [number, number, number]) => [number, number];
+  getIntensityFromWorld?: (worldPoint: [number, number, number]) => number | undefined;
   getCamera?: () => {
     focalPoint?: [number, number, number];
     position?: [number, number, number];
@@ -59,6 +67,15 @@ interface CanvasMetrics {
   height: number;
 }
 
+type MeasurementKind = 'distance' | 'angle' | 'area' | 'hu';
+
+interface MeasurementAnnotation {
+  id: string;
+  kind: MeasurementKind;
+  points: MeasurementWorldPoint[];
+  label: string;
+}
+
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
 
@@ -86,6 +103,8 @@ export default function ContourOverlay({
 
   const [revision, setRevision] = useState(0);
   const [draftPoints, setDraftPoints] = useState<WorldPoint[]>([]);
+  const [measurementDraftPoints, setMeasurementDraftPoints] = useState<MeasurementWorldPoint[]>([]);
+  const [measurements, setMeasurements] = useState<MeasurementAnnotation[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const drawingRef = useRef(false);
   const editingPointIndexRef = useRef<number | null>(null);
@@ -93,6 +112,12 @@ export default function ContourOverlay({
   const draftPointsRef = useRef<WorldPoint[]>([]);
   const lastCanvasPointRef = useRef<[number, number] | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const isMeasurementTool = [
+    'measureDistance',
+    'measureAngle',
+    'measureArea',
+    'huProbe',
+  ].includes(activeTool);
 
   const clearDraft = (message?: string) => {
     drawingRef.current = false;
@@ -101,6 +126,7 @@ export default function ContourOverlay({
     lastCanvasPointRef.current = null;
     draftPointsRef.current = [];
     setDraftPoints([]);
+    setMeasurementDraftPoints([]);
     if (message) {
       setStatusMessage(message);
     }
@@ -253,9 +279,10 @@ export default function ContourOverlay({
     [activeStructure, currentFrame?.sopInstanceUID, currentSlicePosition, sliceTolerance]
   );
   const isContourEditTool = ['edit', 'freehand', 'polygon', 'brush', 'eraser'].includes(activeTool);
+  const canMeasure = isMeasurementTool && !!viewport && !!activeSeries;
 
   useEffect(() => {
-    if (!isContourEditTool) {
+    if (!isContourEditTool && !isMeasurementTool) {
       clearDraft();
       return;
     }
@@ -270,9 +297,23 @@ export default function ContourOverlay({
         return;
       }
 
+      if (event.key === 'Escape' && measurementDraftPoints.length > 0) {
+        event.preventDefault();
+        setMeasurementDraftPoints([]);
+        setStatusMessage('Measurement cancelled.');
+        return;
+      }
+
       if (event.key === 'Enter' && activeTool === 'polygon' && draftPointsRef.current.length >= 3) {
         event.preventDefault();
         finishDrawing();
+        return;
+      }
+
+      if (event.key === 'Enter' && activeTool === 'measureArea' && measurementDraftPoints.length >= 3) {
+        event.preventDefault();
+        commitMeasurement('area', measurementDraftPoints);
+        setMeasurementDraftPoints([]);
         return;
       }
 
@@ -318,6 +359,8 @@ export default function ContourOverlay({
     activeStructureSet,
     activeTool,
     isContourEditTool,
+    isMeasurementTool,
+    measurementDraftPoints,
     viewportId,
   ]);
 
@@ -419,6 +462,34 @@ export default function ContourOverlay({
     }
   }, [canvasMetrics.offsetX, canvasMetrics.offsetY, draftPoints, revision, viewport]);
 
+  const projectMeasurementPoint = (worldPoint: MeasurementWorldPoint): [number, number] | null => {
+    if (!viewport) return null;
+    try {
+      const [x, y] = viewport.worldToCanvas(worldPoint);
+      return [x + canvasMetrics.offsetX, y + canvasMetrics.offsetY];
+    } catch {
+      return null;
+    }
+  };
+
+  const renderableMeasurements = useMemo(() => {
+    void revision;
+    return measurements.flatMap((measurement) => {
+      const canvasPoints = measurement.points
+        .map(projectMeasurementPoint)
+        .filter((point): point is [number, number] => Boolean(point));
+      if (canvasPoints.length === 0) return [];
+      return [{ ...measurement, canvasPoints }];
+    });
+  }, [canvasMetrics.offsetX, canvasMetrics.offsetY, measurements, revision, viewport]);
+
+  const measurementDraftCanvasPoints = useMemo(() => {
+    void revision;
+    return measurementDraftPoints
+      .map(projectMeasurementPoint)
+      .filter((point): point is [number, number] => Boolean(point));
+  }, [canvasMetrics.offsetX, canvasMetrics.offsetY, measurementDraftPoints, revision, viewport]);
+
   const editablePoints = useMemo(() => {
     void revision;
     if (orientation !== 'AXIAL' || !viewport || activeTool !== 'edit' || !activeContourOnSlice) {
@@ -494,6 +565,16 @@ export default function ContourOverlay({
 
   useEffect(() => {
     if (orientation !== 'AXIAL' || !isContourEditTool) {
+      if (isMeasurementTool) {
+        const messageByTool: Partial<Record<typeof activeTool, string>> = {
+          measureDistance: 'Measure distance: click two points.',
+          measureAngle: 'Measure angle: click three points.',
+          measureArea: 'Measure area: click vertices. Enter or double-click closes.',
+          huProbe: 'HU probe: click one image point.',
+        };
+        setStatusMessage(activeSeries ? messageByTool[activeTool] ?? null : 'Load a series to measure.');
+        return;
+      }
       setStatusMessage(null);
       return;
     }
@@ -518,7 +599,7 @@ export default function ContourOverlay({
       };
       setStatusMessage(messageByTool[activeTool] ?? 'Edit contour on the axial view.');
     }
-  }, [activeContourOnSlice, activeSeries, activeStructure, activeStructureSet, activeTool, currentFrame, isContourEditTool, orientation]);
+  }, [activeContourOnSlice, activeSeries, activeStructure, activeStructureSet, activeTool, currentFrame, isContourEditTool, isMeasurementTool, orientation]);
 
   const getCanvasPointFromClient = (clientX: number, clientY: number): [number, number] | null => {
     const svg = svgRef.current;
@@ -627,6 +708,111 @@ export default function ContourOverlay({
     }
   };
 
+  const canvasPointToMeasurementWorld = (canvasPoint: [number, number]): MeasurementWorldPoint | null => {
+    if (!viewport) return null;
+    try {
+      const worldPoint = viewport.canvasToWorld(canvasPoint);
+      return [worldPoint[0], worldPoint[1], worldPoint[2]];
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logClientDebug(
+        'ContourOverlay',
+        `measurement:point:error viewport=${viewportId} x=${canvasPoint[0].toFixed(1)} y=${canvasPoint[1].toFixed(1)} ${message}`
+      );
+      return null;
+    }
+  };
+
+  const formatMeasurementLabel = (kind: MeasurementKind, points: MeasurementWorldPoint[]): string => {
+    if (kind === 'distance' && points.length >= 2) {
+      return `${calculateDistanceMm(points[0], points[1]).toFixed(1)} mm`;
+    }
+    if (kind === 'angle' && points.length >= 3) {
+      return `${calculateAngleDeg(points[0], points[1], points[2]).toFixed(1)} deg`;
+    }
+    if (kind === 'area' && points.length >= 3) {
+      return `${calculatePolygonAreaMm2(points).toFixed(1)} mm2`;
+    }
+    if (kind === 'hu' && points.length >= 1 && activeSeries) {
+      let value: number | null | undefined;
+      try {
+        value = viewport?.getIntensityFromWorld?.(points[0]);
+      } catch {
+        value = null;
+      }
+      if (!Number.isFinite(value)) {
+        value = sampleNearestVoxelValue(activeSeries.volume, points[0]);
+      }
+      return Number.isFinite(value) ? `${Math.round(value as number)} HU` : 'HU n/a';
+    }
+    return '';
+  };
+
+  const commitMeasurement = (kind: MeasurementKind, points: MeasurementWorldPoint[]) => {
+    const label = formatMeasurementLabel(kind, points);
+    if (!label) return;
+
+    setMeasurements((current) => [
+      ...current,
+      {
+        id: `${kind}-${Date.now()}-${current.length}`,
+        kind,
+        points,
+        label,
+      },
+    ]);
+    setStatusMessage(label);
+    logClientDebug('ContourOverlay', `measurement:${kind} viewport=${viewportId} ${label}`);
+  };
+
+  const handleMeasurementPointerDown = (
+    event: React.PointerEvent<SVGSVGElement>,
+    canvasPoint: [number, number]
+  ) => {
+    const worldPoint = canvasPointToMeasurementWorld(canvasPoint);
+    if (!worldPoint) return;
+
+    if (activeTool === 'huProbe') {
+      commitMeasurement('hu', [worldPoint]);
+      setMeasurementDraftPoints([]);
+      return;
+    }
+
+    if (activeTool === 'measureDistance') {
+      const nextPoints = [...measurementDraftPoints, worldPoint];
+      if (nextPoints.length >= 2) {
+        commitMeasurement('distance', nextPoints.slice(0, 2));
+        setMeasurementDraftPoints([]);
+      } else {
+        setMeasurementDraftPoints(nextPoints);
+        setStatusMessage('Distance: click the second point.');
+      }
+      return;
+    }
+
+    if (activeTool === 'measureAngle') {
+      const nextPoints = [...measurementDraftPoints, worldPoint];
+      if (nextPoints.length >= 3) {
+        commitMeasurement('angle', nextPoints.slice(0, 3));
+        setMeasurementDraftPoints([]);
+      } else {
+        setMeasurementDraftPoints(nextPoints);
+        setStatusMessage(`Angle: click point ${nextPoints.length + 1} of 3.`);
+      }
+      return;
+    }
+
+    if (activeTool === 'measureArea') {
+      const nextPoints = [...measurementDraftPoints, worldPoint];
+      setMeasurementDraftPoints(nextPoints);
+      setStatusMessage(`${nextPoints.length} area vertices. Enter or double-click closes.`);
+      if (event.detail >= 2 && nextPoints.length >= 3) {
+        commitMeasurement('area', nextPoints);
+        setMeasurementDraftPoints([]);
+      }
+    }
+  };
+
   const getActiveContourPoints = (): WorldPoint[] => {
     if (!activeContourOnSlice) return [];
 
@@ -710,6 +896,14 @@ export default function ContourOverlay({
   };
 
   const handleDoubleClick = (event: React.MouseEvent<SVGSVGElement>) => {
+    if (activeTool === 'measureArea' && measurementDraftPoints.length >= 3) {
+      event.preventDefault();
+      event.stopPropagation();
+      commitMeasurement('area', measurementDraftPoints);
+      setMeasurementDraftPoints([]);
+      return;
+    }
+
     if (!isDrawable || activeTool !== 'edit' || !activeContourOnSlice) return;
 
     event.preventDefault();
@@ -735,6 +929,17 @@ export default function ContourOverlay({
   };
 
   const handlePointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (isMeasurementTool) {
+      if (!canMeasure) {
+        setStatusMessage('Load a series to measure.');
+        return;
+      }
+      const canvasPoint = getCanvasPoint(event);
+      if (!canvasPoint) return;
+      handleMeasurementPointerDown(event, canvasPoint);
+      return;
+    }
+
     if (!isDrawable) {
       logClientDebug('ContourOverlay', `pointerdown:blocked viewport=${viewportId}`);
       return;
@@ -934,7 +1139,7 @@ export default function ContourOverlay({
           : undefined
       }
       preserveAspectRatio="none"
-      style={{ pointerEvents: orientation === 'AXIAL' && isContourEditTool ? 'auto' : 'none', touchAction: 'none' }}
+      style={{ pointerEvents: (orientation === 'AXIAL' && isContourEditTool) || isMeasurementTool ? 'auto' : 'none', touchAction: 'none' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -978,7 +1183,79 @@ export default function ContourOverlay({
         />
       ))}
 
-      {isContourEditTool && statusMessage && (
+      {renderableMeasurements.map((measurement) => (
+        <g key={measurement.id}>
+          {measurement.kind === 'area' && measurement.canvasPoints.length >= 3 ? (
+            <polygon
+              points={measurement.canvasPoints.map((point) => point.join(',')).join(' ')}
+              fill="rgba(234, 179, 8, 0.08)"
+              stroke="#eab308"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
+          {measurement.kind !== 'area' && measurement.canvasPoints.length >= 2 ? (
+            <polyline
+              points={measurement.canvasPoints.map((point) => point.join(',')).join(' ')}
+              fill="none"
+              stroke="#eab308"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
+          {measurement.canvasPoints.map((point, index) => (
+            <circle
+              key={`${measurement.id}-${index}`}
+              cx={point[0]}
+              cy={point[1]}
+              r="2.5"
+              fill="#eab308"
+              stroke="#000"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          <text
+            x={measurement.canvasPoints.at(-1)![0] + 6}
+            y={measurement.canvasPoints.at(-1)![1] - 6}
+            fill="#eab308"
+            fontSize="10"
+            fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+            paintOrder="stroke"
+            stroke="rgba(0,0,0,0.75)"
+            strokeWidth="3"
+          >
+            {measurement.label}
+          </text>
+        </g>
+      ))}
+
+      {measurementDraftCanvasPoints.length > 0 && (
+        <g>
+          <polyline
+            points={measurementDraftCanvasPoints.map((point) => point.join(',')).join(' ')}
+            fill="none"
+            stroke="#eab308"
+            strokeWidth="1.5"
+            strokeDasharray="4 2"
+            vectorEffect="non-scaling-stroke"
+          />
+          {measurementDraftCanvasPoints.map((point, index) => (
+            <circle
+              key={`measurement-draft-${index}`}
+              cx={point[0]}
+              cy={point[1]}
+              r="2.5"
+              fill="#eab308"
+              stroke="#000"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+        </g>
+      )}
+
+      {(isContourEditTool || isMeasurementTool) && statusMessage && (
         <g>
           <rect
             x="8"

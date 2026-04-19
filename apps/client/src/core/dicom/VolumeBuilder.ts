@@ -23,9 +23,6 @@ export async function buildVolume(parsedSeries: ParsedSeries): Promise<LoadedSer
 
   const volume = await volumeLoader.createAndCacheVolume(volumeId, { imageIds });
 
-  // Fire-and-forget: streaming loads frames in the background
-  (volume as { load: () => void }).load();
-
   const csVolume = volume as {
     dimensions: [number, number, number];
     spacing: [number, number, number];
@@ -33,6 +30,17 @@ export async function buildVolume(parsedSeries: ParsedSeries): Promise<LoadedSer
     direction: number[];
     windowCenter?: number;
     windowWidth?: number;
+    getScalarData?: () => Volume['pixelData'];
+    voxelManager?: {
+      getScalarData?: () => Volume['pixelData'];
+    };
+  };
+  const getPixelData = (): Volume['pixelData'] => {
+    try {
+      return csVolume.getScalarData?.() ?? csVolume.voxelManager?.getScalarData?.() ?? new Float32Array(0);
+    } catch {
+      return new Float32Array(0);
+    }
   };
 
   const sharedVolume: Volume = {
@@ -45,6 +53,12 @@ export async function buildVolume(parsedSeries: ParsedSeries): Promise<LoadedSer
     windowCenter: csVolume.windowCenter ?? 40,
     windowWidth: csVolume.windowWidth ?? 400,
   };
+
+  // Fire-and-forget: streaming loads frames in the background. Keep the shared
+  // pixelData reference current so tools such as HU probe can read loaded voxels.
+  (volume as { load: (callback?: () => void) => void }).load(() => {
+    sharedVolume.pixelData = getPixelData();
+  });
 
   return {
     seriesUID,

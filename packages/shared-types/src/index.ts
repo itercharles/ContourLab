@@ -43,7 +43,7 @@ export interface Volume {
   spacing: [number, number, number];          // mm
   origin: [number, number, number];           // mm (DICOM patient coords)
   directionCosines: number[];                 // 9-element matrix
-  pixelData: Float32Array | Int16Array;       // HU values for CT
+  pixelData: Float32Array | Int16Array | Uint16Array | Uint8Array; // HU/stored values for CT
   windowCenter: number;
   windowWidth: number;
 }

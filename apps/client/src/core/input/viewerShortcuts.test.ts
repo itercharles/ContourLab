@@ -135,6 +135,23 @@ describe('installViewerShortcutHandler', () => {
     cleanup();
   });
 
+  it('activates measurement shortcuts without Cornerstone tool binding', async () => {
+    const cleanup = installViewerShortcutHandler();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'r' }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'h' }));
+
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('measureDistance');
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('measureAngle');
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('measureArea');
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('huProbe');
+    expect(mocks.setActiveToolSpy).not.toHaveBeenCalled();
+
+    cleanup();
+  });
+
   it('does not activate freehand from a selected structure set that belongs to another series', () => {
     mocks.volumeStore.activeSeriesUID = 'series-2';
     mocks.structureStore.structureSets = [

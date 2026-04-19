@@ -68,6 +68,30 @@ const TOOL_META: Record<ViewerTool, {
     name: 'Crosshairs',
     description: 'Synchronize slice position across viewports.',
   },
+  measureDistance: {
+    shortLabel: 'DI',
+    name: 'Distance',
+    shortcut: 'M',
+    description: 'Click two points on any image view to measure 3D distance.',
+  },
+  measureAngle: {
+    shortLabel: 'AN',
+    name: 'Angle',
+    shortcut: 'A',
+    description: 'Click three points on any image view to measure an angle.',
+  },
+  measureArea: {
+    shortLabel: 'AR',
+    name: 'Area',
+    shortcut: 'R',
+    description: 'Click polygon vertices on any image view. Enter or double-click closes the area.',
+  },
+  huProbe: {
+    shortLabel: 'HU',
+    name: 'HU Probe',
+    shortcut: 'H',
+    description: 'Click one point on the image to read the nearest voxel value.',
+  },
   edit: {
     shortLabel: 'ED',
     name: 'Edit Contour',
@@ -169,6 +193,36 @@ function ToolIcon({ tool, fallback }: { tool: ViewerTool; fallback: string }) {
           <path d="M7 4.2v2.2" />
           <path d="M2.2 4.2 1 5.4l1.2 1.2" />
           <path d="M11.8 7.4 13 8.6l-1.2 1.2" />
+        </svg>
+      );
+    case 'measureDistance':
+      return (
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+          <path d="M2.5 10.5 11.5 3.5" />
+          <path d="M2 8.5v2.5h2.5" />
+          <path d="M9.5 3h2.5v2.5" />
+        </svg>
+      );
+    case 'measureAngle':
+      return (
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2.5 11.5 6.5 6.5 12 9" />
+          <path d="M5.2 8.2c.9.7 1.7 1 2.9 1.1" />
+          <circle cx="6.5" cy="6.5" r=".8" fill="currentColor" />
+        </svg>
+      );
+    case 'measureArea':
+      return (
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
+          <path d="M3 4 8 2.5 12 6.5 9.5 11.5 3.5 10.5 2 6.5Z" />
+          <path d="M3 4 9.5 11.5" opacity=".45" />
+        </svg>
+      );
+    case 'huProbe':
+      return (
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="7" cy="7" r="2.2" />
+          <path d="M7 1.5v2M7 10.5v2M1.5 7h2M10.5 7h2" />
         </svg>
       );
     case 'freehand':
@@ -707,6 +761,25 @@ export default function Toolbar() {
         </select>
 
         {/* Separator */}
+        <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
+
+        <span className="mr-1 rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+          Measure
+        </span>
+        <div className="flex items-center gap-1">
+          {(['measureDistance', 'measureAngle', 'measureArea', 'huProbe'] as ViewerTool[]).map((tool) => (
+            <ToolButton
+              key={tool}
+              label={TOOL_META[tool].shortLabel}
+              description={TOOL_META[tool].description}
+              tool={tool}
+              activeTool={activeTool}
+              onClick={handleToolClick}
+              shortcut={TOOL_META[tool].shortcut}
+            />
+          ))}
+        </div>
+
         <div className="w-px h-4 bg-[#3a3a3a] mx-1" />
 
         <span className="mr-1 rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-[#6b6b6b]">

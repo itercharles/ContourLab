@@ -206,6 +206,23 @@ describe('Toolbar contour operations', () => {
     expect(useUIStore.getState().activeTool).toBe('edit');
   });
 
+  it('shows and activates measurement tools without Cornerstone tool binding', () => {
+    render(<Toolbar />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Distance \(M\)/ }));
+    expect(useUIStore.getState().activeTool).toBe('measureDistance');
+
+    fireEvent.click(screen.getByRole('button', { name: /Angle \(A\)/ }));
+    expect(useUIStore.getState().activeTool).toBe('measureAngle');
+
+    fireEvent.click(screen.getByRole('button', { name: /Area \(R\)/ }));
+    expect(useUIStore.getState().activeTool).toBe('measureArea');
+
+    fireEvent.click(screen.getByRole('button', { name: /HU Probe \(H\)/ }));
+    expect(useUIStore.getState().activeTool).toBe('huProbe');
+    expect(mocks.setActiveTool).not.toHaveBeenCalledWith('measureDistance');
+  });
+
   it('toggles the workspace navigator from the top operation bar', () => {
     render(<Toolbar />);
 
