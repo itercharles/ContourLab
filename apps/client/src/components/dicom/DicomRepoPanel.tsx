@@ -87,6 +87,11 @@ function formatPatientName(name: string, patientId: string): string {
   return displayName || name.replaceAll('^', ' ').trim() || patientId || 'Unknown patient';
 }
 
+function getPatientInitials(patientName: string): string {
+  const words = patientName.trim().split(/\s+/);
+  return ((words[0]?.[0] ?? '') + (words[1]?.[0] ?? '')).toUpperCase() || '?';
+}
+
 function groupSeriesByPatient(series: DicomWebSeriesSummary[]): PatientGroup[] {
   const patientMap = new Map<string, PatientGroup>();
 
@@ -421,6 +426,15 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
   }, []);
 
   useEffect(() => {
+    if (!isPatientSelectorOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsPatientSelectorOpen(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isPatientSelectorOpen]);
+
+  useEffect(() => {
     if (lastRefreshRequestTokenRef.current === refreshRequestToken) return;
     lastRefreshRequestTokenRef.current = refreshRequestToken;
     void refreshRepository();
@@ -663,87 +677,157 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
   return (
     <div className="relative flex h-full flex-col">
       {isPatientSelectorOpen && (
-        <div className="absolute inset-0 z-20 flex flex-col bg-[#111]">
-          <div className="flex items-center justify-between border-b border-[#2a2a2a] px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#a0a0a0]">
-              Select Patient
-            </p>
-            <button
-              type="button"
-              onClick={() => setIsPatientSelectorOpen(false)}
-              className="h-6 rounded bg-[#242424] px-2 text-[11px] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-            >
-              Close
-            </button>
-          </div>
-          <div className="border-b border-[#2a2a2a] px-2 py-2">
-            <input
-              type="search"
-              value={patientQuery}
-              onChange={(event) => setPatientQuery(event.target.value)}
-              placeholder="Search patient, MRN, study, series"
-              className="h-7 w-full rounded border border-[#3a3a3a] bg-[#111] px-2 text-[11px] text-[#e5e5e5] placeholder:text-[#6b6b6b] focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {shownPatients.length === 0 ? (
-              <p className="px-3 py-2 text-[11px] text-[#6b6b6b]">No matching patients.</p>
-            ) : (
-              shownPatients.map((patient) => {
-                const isSelected = selectedPatient?.patientKey === patient.patientKey;
-                const isActivePatient = activePatientKey === patient.patientKey;
-                const seriesCount = patient.studies.reduce((count, study) => count + study.series.length, 0);
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65"
+          onClick={(e) => { if (e.target === e.currentTarget) setIsPatientSelectorOpen(false); }}
+        >
+          <div className="flex h-full max-h-[720px] w-full max-w-[1100px] flex-col overflow-hidden rounded border border-[#24292f] bg-[#13161a]">
+            {/* Modal header */}
+            <div className="flex h-10 flex-none items-center gap-2 border-b border-[#24292f] px-4">
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+              <span className="text-[13px] font-semibold text-[#e6e9ed]">Patient browser</span>
+              <span className="text-[11px] text-[#6b7280]">·  Orthanc · local repository</span>
+              <div className="ml-auto" />
+              <button
+                type="button"
+                onClick={() => setIsPatientSelectorOpen(false)}
+                aria-label="Close patient browser"
+                className="flex h-6 w-6 items-center justify-center rounded text-[#6b7280] hover:bg-[#242424] hover:text-[#e6e9ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
 
-                return (
+            {/* Search toolbar */}
+            <div className="flex flex-none items-center gap-2 border-b border-[#24292f] px-4 py-2">
+              <div className="flex h-7 flex-1 items-center gap-1.5 rounded border border-[#3a3a3a] bg-[#0b0d10] px-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+                <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  type="search"
+                  value={patientQuery}
+                  onChange={(event) => setPatientQuery(event.target.value)}
+                  placeholder="Search patient, MRN, study, series…"
+                  className="min-w-0 flex-1 bg-transparent text-[11px] text-[#e5e5e5] placeholder:text-[#6b6b6b] focus:outline-none"
+                />
+                {patientQuery && (
                   <button
-                    key={patient.patientKey}
                     type="button"
-                    onClick={() => {
-                      if (
-                        patient.patientKey !== activePatientKey &&
-                        !confirmUnsyncedWorkspaceChange('select another patient')
-                      ) {
-                        setStatus({
-                          tone: 'muted',
-                          message: 'Kept the current patient active. Push changes before switching patients.',
-                        });
-                        return;
-                      }
-                      setSelectedPatientKey(patient.patientKey);
-                      setIsPatientSelectorOpen(false);
-                    }}
-                    className={`block w-full border-b border-[#2a2a2a] px-3 py-2 text-left last:border-b-0 hover:bg-[#2e2e2e] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
-                      isSelected ? 'bg-blue-900/30 border-l-2 border-l-blue-500' : 'border-l-2 border-l-transparent'
-                    }`}
+                    onClick={() => setPatientQuery('')}
+                    aria-label="Clear search"
+                    className="flex h-4 w-4 items-center justify-center rounded text-[#6b7280] hover:text-[#e6e9ed]"
                   >
-                    <div className="flex items-center gap-1.5">
-                      <span className="rounded bg-[#2e2e2e] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[#a0a0a0]">
-                        PATIENT
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-[#e5e5e5]">
-                        {patient.patientName}
-                      </span>
-                      {isActivePatient ? (
-                        <span className="rounded bg-blue-900 px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-blue-200">
-                          ACTIVE
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-2 text-[10px] text-[#6b6b6b]">
-                      <span className="truncate">MRN {patient.patientId || 'unknown'}</span>
-                      <span>{patient.studies.length} studies</span>
-                      <span>{seriesCount} image sets</span>
-                    </div>
+                    <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
                   </button>
-                );
-              })
-            )}
+                )}
+              </div>
+            </div>
+
+            {/* Column headers */}
+            <div className="grid flex-none grid-cols-[2fr_1fr_3fr_28px] gap-4 border-b border-[#24292f] px-4 py-1.5">
+              {['Patient', 'MRN', 'Studies'].map((col) => (
+                <span key={col} className="text-[10px] font-semibold uppercase tracking-widest text-[#4b5563]">{col}</span>
+              ))}
+              <span />
+            </div>
+
+            {/* Patient rows */}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {shownPatients.length === 0 ? (
+                <p className="px-4 py-4 text-[11px] text-[#6b6b6b]">No matching patients.</p>
+              ) : (
+                shownPatients.map((patient) => {
+                  const isActivePatient = activePatientKey === patient.patientKey;
+                  const initials = getPatientInitials(patient.patientName);
+
+                  return (
+                    <button
+                      key={patient.patientKey}
+                      type="button"
+                      onClick={() => {
+                        if (
+                          patient.patientKey !== activePatientKey &&
+                          !confirmUnsyncedWorkspaceChange('select another patient')
+                        ) {
+                          setStatus({
+                            tone: 'muted',
+                            message: 'Kept the current patient active. Push changes before switching patients.',
+                          });
+                          return;
+                        }
+                        setSelectedPatientKey(patient.patientKey);
+                        setIsPatientSelectorOpen(false);
+                      }}
+                      className={`grid w-full grid-cols-[2fr_1fr_3fr_28px] items-center gap-4 border-b px-4 py-2 text-left last:border-b-0 hover:bg-[#1e2329] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${
+                        isActivePatient
+                          ? 'border-[#24292f] border-l-2 border-l-blue-500 bg-blue-900/10'
+                          : 'border-[#1e2329] border-l-2 border-l-transparent'
+                      }`}
+                    >
+                      {/* Patient name + avatar */}
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <div
+                          className="grid h-7 w-7 flex-none place-items-center rounded-full text-[10px] font-bold text-white"
+                          style={{ background: isActivePatient ? '#3b82f6' : '#374151' }}
+                        >
+                          {initials}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate text-[12px] font-semibold text-[#e6e9ed]">{patient.patientName}</span>
+                            {isActivePatient && (
+                              <span className="rounded bg-blue-900/60 px-1 py-0.5 text-[9px] font-semibold tracking-widest text-blue-300">open</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-[#6b7280]">MRN {patient.patientId || 'unknown'}</div>
+                        </div>
+                      </div>
+
+                      {/* MRN */}
+                      <span className="truncate font-mono text-[11px] text-[#6b7280]">{patient.patientId || '—'}</span>
+
+                      {/* Studies */}
+                      <div className="flex flex-wrap gap-1">
+                        {patient.studies.map((study) => {
+                          const modalities = [...new Set(study.series.map((s) => s.modality))];
+                          return modalities.map((mod) => (
+                            <span
+                              key={`${study.studyInstanceUID}-${mod}`}
+                              className="rounded bg-[#1e2329] px-1.5 py-0.5 text-[10px] text-[#a0a7b0]"
+                            >
+                              {mod} {formatDicomDate(study.studyDate)}
+                            </span>
+                          ));
+                        })}
+                      </div>
+
+                      {/* Arrow */}
+                      <svg aria-hidden="true" className="text-[#4b5563]" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex h-7 flex-none items-center justify-between border-t border-[#24292f] px-4">
+              <span className="text-[10px] text-[#4b5563]">
+                {filteredPatientGroups.length > shownPatients.length
+                  ? `${shownPatients.length} of ${filteredPatientGroups.length} patients shown — narrow search to see more`
+                  : `${filteredPatientGroups.length} patient${filteredPatientGroups.length !== 1 ? 's' : ''}`}
+              </span>
+              <span className="text-[10px] text-[#4b5563]">↵ open · esc close</span>
+            </div>
           </div>
-          {filteredPatientGroups.length > shownPatients.length && (
-            <p className="border-t border-[#2a2a2a] px-3 py-1 text-[10px] text-[#6b6b6b]">
-              Showing first {shownPatients.length} of {filteredPatientGroups.length}; narrow the search.
-            </p>
-          )}
         </div>
       )}
 

@@ -199,7 +199,7 @@ describe('DicomRepoPanel', () => {
     expect(screen.queryByText('Axial')).toBeNull();
 
     fireEvent.click(screen.getByText('Select Patient'));
-    fireEvent.change(screen.getByPlaceholderText('Search patient, MRN, study, series'), {
+    fireEvent.change(screen.getByPlaceholderText('Search patient, MRN, study, series…'), {
       target: { value: 'smith' },
     });
     fireEvent.click(screen.getByText('JOHN SMITH'));
@@ -219,8 +219,8 @@ describe('DicomRepoPanel', () => {
       window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
     });
 
-    expect(await screen.findByText('Select Patient')).toBeTruthy();
-    expect(screen.getByPlaceholderText('Search patient, MRN, study, series')).toBeTruthy();
+    expect(await screen.findByText('Patient browser')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Search patient, MRN, study, series…')).toBeTruthy();
   });
 
   it('loads a series into the volume store when clicked', async () => {

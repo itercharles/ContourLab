@@ -36,7 +36,7 @@ export default function WorkspaceLayout() {
         <div
           className="flex-none bg-[#1a1a1a] border-l border-[#2a2a2a] transition-all duration-150"
           style={{
-            width: rightSidebarOpen ? '260px' : '0px',
+            width: rightSidebarOpen ? '320px' : '0px',
             overflow: rightSidebarOpen ? 'auto' : 'hidden',
           }}
         >

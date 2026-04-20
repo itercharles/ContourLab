@@ -33,6 +33,7 @@ interface ToolRailItem {
   name: string;
   icon: ToolIconName;
   shortcut: string;
+  desc: string;
   implemented: boolean;
 }
 
@@ -49,47 +50,41 @@ const TOOL_GROUPS: Array<{ id: string; items: ToolRailItem[] }> = [
   {
     id: 'nav',
     items: [
-      { id: 'pointer', name: 'Select', icon: 'pointer', shortcut: 'V', implemented: false },
-      { id: 'pan', name: 'Pan', icon: 'pan', shortcut: 'P', implemented: true },
-      { id: 'zoom', name: 'Zoom', icon: 'zoom', shortcut: 'Z', implemented: true },
-      { id: 'scroll', name: 'Scroll', icon: 'scroll', shortcut: 'S', implemented: true },
-      { id: 'windowLevel', name: 'Window/Level', icon: 'windowlevel', shortcut: 'W', implemented: true },
-      { id: 'crosshairs', name: 'Crosshair', icon: 'crosshair', shortcut: 'C', implemented: true },
+      { id: 'pointer', name: 'Select', icon: 'pointer', shortcut: 'V', desc: 'Pick structures & annotation handles', implemented: false },
+      { id: 'pan', name: 'Pan', icon: 'pan', shortcut: 'P', desc: 'Drag the image around the viewport', implemented: true },
+      { id: 'zoom', name: 'Zoom', icon: 'zoom', shortcut: 'Z', desc: 'Zoom in / out on cursor position', implemented: true },
+      { id: 'scroll', name: 'Scroll', icon: 'scroll', shortcut: 'S', desc: 'Scroll through image slices', implemented: true },
+      { id: 'windowLevel', name: 'Window / Level', icon: 'windowlevel', shortcut: 'W', desc: 'Adjust CT gray-scale mapping', implemented: true },
+      { id: 'crosshairs', name: 'Crosshairs', icon: 'crosshair', shortcut: 'C', desc: 'Toggle crosshair reference lines', implemented: true },
     ],
   },
   {
     id: 'measure',
     items: [
-      { id: 'measureDistance', name: 'Distance', icon: 'measure', shortcut: 'M', implemented: true },
-      { id: 'measureAngle', name: 'Angle', icon: 'angle', shortcut: 'A', implemented: true },
-      { id: 'measureArea', name: 'Area', icon: 'area', shortcut: 'R', implemented: true },
-      { id: 'huProbe', name: 'HU Probe', icon: 'hu', shortcut: 'H', implemented: true },
+      { id: 'measureDistance', name: 'Distance', icon: 'measure', shortcut: 'M', desc: 'Measure a linear distance in mm', implemented: true },
+      { id: 'measureAngle', name: 'Angle', icon: 'angle', shortcut: 'A', desc: 'Measure an angle between two lines', implemented: true },
+      { id: 'measureArea', name: 'Area', icon: 'area', shortcut: 'R', desc: 'Measure a region area in cm²', implemented: true },
+      { id: 'huProbe', name: 'HU Probe', icon: 'hu', shortcut: 'H', desc: 'Sample Hounsfield unit at a point', implemented: true },
     ],
   },
   {
     id: 'contour',
     items: [
-      { id: 'edit', name: 'Edit contour', icon: 'edit', shortcut: 'D', implemented: true },
-      { id: 'freehand', name: 'Freehand', icon: 'pen', shortcut: 'F', implemented: true },
-      { id: 'polygon', name: 'Polygon', icon: 'polygon', shortcut: 'G', implemented: true },
-      { id: 'brush', name: 'Brush', icon: 'brush', shortcut: 'B', implemented: true },
-      { id: 'eraser', name: 'Eraser', icon: 'eraser', shortcut: 'E', implemented: true },
-      { id: 'livewire', name: 'Smart Edge', icon: 'livewire', shortcut: 'S', implemented: false },
-      { id: 'threshold', name: 'Threshold', icon: 'threshold', shortcut: 'T', implemented: false },
+      { id: 'edit', name: 'Edit contour', icon: 'edit', shortcut: 'D', desc: 'Move and delete existing contour points', implemented: true },
+      { id: 'freehand', name: 'Freehand', icon: 'pen', shortcut: 'F', desc: 'Draw a closed contour freehand', implemented: true },
+      { id: 'polygon', name: 'Polygon', icon: 'polygon', shortcut: 'G', desc: 'Click vertices to form a polygon contour', implemented: true },
+      { id: 'brush', name: 'Brush', icon: 'brush', shortcut: 'B', desc: 'Paint contour with a circular brush', implemented: true },
+      { id: 'eraser', name: 'Eraser', icon: 'eraser', shortcut: 'E', desc: 'Erase parts of an existing contour', implemented: true },
+      { id: 'livewire', name: 'Smart Edge', icon: 'livewire', shortcut: 'S', desc: 'Snap curve to image intensity gradients', implemented: false },
+      { id: 'threshold', name: 'Threshold', icon: 'threshold', shortcut: 'T', desc: 'Fill by Hounsfield unit threshold range', implemented: false },
     ],
   },
   {
     id: 'structure',
     items: [
-      { id: 'interpolate', name: 'Interpolation controls', icon: 'interpolate', shortcut: 'I', implemented: false },
-      { id: 'margin', name: 'Margin', icon: 'margin', shortcut: 'G', implemented: false },
-      { id: 'boolean', name: 'Boolean ops', icon: 'boolean', shortcut: 'O', implemented: false },
-    ],
-  },
-  {
-    id: 'ai',
-    items: [
-      { id: 'ai', name: 'AI auto-contour', icon: 'ai', shortcut: 'A', implemented: false },
+      { id: 'interpolate', name: 'Interpolate slices', icon: 'interpolate', shortcut: 'I', desc: 'Fill missing slices between key contours', implemented: false },
+      { id: 'margin', name: 'Margin', icon: 'margin', shortcut: 'G', desc: 'Grow or shrink structure by N mm', implemented: false },
+      { id: 'boolean', name: 'Boolean ops', icon: 'boolean', shortcut: 'O', desc: 'Union, intersect, or subtract structures', implemented: false },
     ],
   },
 ];
@@ -226,26 +221,40 @@ export default function ToolRail() {
           {group.items.map((tool) => {
             const isActive =
               tool.id === 'crosshairs' ? crosshairsEnabled : tool.id === activeTool;
-            const title = tool.implemented ? `${tool.name} (${tool.shortcut})` : 'Not implemented';
             return (
               <button
                 key={tool.id}
                 type="button"
-                title={title}
-                aria-label={title}
+                aria-label={`${tool.name} (${tool.shortcut})`}
                 disabled={!tool.implemented}
                 data-active={isActive}
                 onClick={() => tool.implemented && void activateTool(tool.id as ViewerTool)}
-                className={`relative flex h-7 w-7 items-center justify-center rounded text-[#a0a7b0] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                className={`tool-btn relative flex h-7 w-7 items-center justify-center rounded text-[#a0a7b0] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                   isActive
                     ? 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6] ring-1 ring-[rgba(59,130,246,0.35)]'
                     : 'hover:bg-[#1f242b] hover:text-[#e6e9ed]'
                 } disabled:cursor-not-allowed disabled:text-[#404040] disabled:hover:bg-transparent`}
               >
-                {isActive && <span className="absolute -left-[7px] top-1.5 bottom-1.5 w-0.5 rounded bg-[#3b82f6]" />}
+                {isActive && <span className="absolute -left-[7px] bottom-1.5 top-1.5 w-0.5 rounded bg-[#3b82f6]" />}
                 <ToolIcon name={tool.icon} />
                 <span className="pointer-events-none absolute bottom-0 right-0.5 font-mono text-[8px] leading-none text-[#6b7280]">
                   {tool.shortcut[0]}
+                </span>
+                {/* Rich tooltip */}
+                <span
+                  className="tool-tooltip absolute left-full top-1/2 z-50 ml-2.5 w-max max-w-[220px] rounded border border-white/[0.08] bg-[#1f2328] px-2.5 py-1.5 text-left shadow-[0_8px_28px_rgba(0,0,0,0.45)]"
+                  role="tooltip"
+                >
+                  {/* Arrow */}
+                  <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-l border-white/[0.08] bg-[#1f2328]" />
+                  <span className="flex items-start justify-between gap-2">
+                    <span className="text-[12px] font-semibold leading-tight text-white">{tool.name}</span>
+                    <span className="mt-px rounded bg-white/10 px-1.5 py-px font-mono text-[10px] text-[#d4d4d8]">{tool.shortcut}</span>
+                  </span>
+                  <span className="mt-1 block text-[11px] leading-snug text-[#a1a1aa]">{tool.desc}</span>
+                  {!tool.implemented && (
+                    <span className="mt-1 block text-[10px] text-[#6b7280]">Not yet implemented</span>
+                  )}
                 </span>
               </button>
             );
@@ -253,15 +262,16 @@ export default function ToolRail() {
         </div>
       ))}
       <div className="flex-1" />
-      <button
-        type="button"
-        title="Not implemented"
-        aria-label="Not implemented"
-        disabled
-        className="flex h-7 w-7 cursor-not-allowed items-center justify-center rounded text-[#404040]"
-      >
-        <ToolIcon name="info" />
-      </button>
+      <div className="tool-btn relative">
+        <button
+          type="button"
+          aria-label="Help"
+          disabled
+          className="flex h-7 w-7 cursor-not-allowed items-center justify-center rounded text-[#404040]"
+        >
+          <ToolIcon name="info" />
+        </button>
+      </div>
     </nav>
   );
 }

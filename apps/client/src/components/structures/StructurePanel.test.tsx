@@ -345,7 +345,6 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     render(<StructurePanel />);
 
     expect(screen.getByText('2 slices')).toBeTruthy();
-    expect(screen.queryByText('2 sl')).toBeNull();
   });
 
   it('shows contour QA warnings for the active structure', () => {
@@ -512,7 +511,6 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     render(<StructurePanel />);
 
     expect(screen.queryByTitle('Contour on current axial slice')).toBeNull();
-    expect(screen.queryByText('2 sl')).toBeNull();
   });
 
   it('shows compact structure list quality indicators', () => {
@@ -541,7 +539,6 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByRole('button', { name: 'Add structure' })).toBeTruthy();
     expect(screen.getAllByText('OAR').length).toBeGreaterThan(0);
     expect(screen.getAllByText('12.3 cc').length).toBeGreaterThan(0);
-    expect(screen.queryByText('1 sl')).toBeNull();
     expect(screen.queryByText('Display')).toBeNull();
     expect(screen.queryByText('Hidden')).toBeNull();
     expect(screen.getByRole('button', { name: 'Show PTV' })).toBeTruthy();

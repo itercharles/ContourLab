@@ -193,7 +193,7 @@ describe('Toolbar contour operations', () => {
     expect((screen.getByRole('button', { name: /02 Review soon/ }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: /03 Plan soon/ }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByTitle('Window/Level Preset')).toBeNull();
-    expect(screen.queryByRole('button', { name: /Window\/Level/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Window \/ Level/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /Crosshair/ })).toBeNull();
     expect(screen.queryByText('New contour')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Delete Slice' })).toBeNull();
@@ -211,10 +211,10 @@ describe('Toolbar contour operations', () => {
     fireEvent.click(screen.getByRole('button', { name: /Scroll \(S\)/ }));
     await waitFor(() => expect(mocks.setActiveTool).toHaveBeenCalledWith('StackScroll'));
 
-    fireEvent.click(screen.getByRole('button', { name: /Window\/Level \(W\)/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Window \/ Level \(W\)/ }));
     await waitFor(() => expect(mocks.setActiveTool).toHaveBeenCalledWith('WindowLevel'));
 
-    fireEvent.click(screen.getByRole('button', { name: /Crosshair \(C\)/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Crosshairs \(C\)/ }));
     expect(useUIStore.getState().crosshairsEnabled).toBe(false);
     await waitFor(() => expect(mocks.disableCrosshairs).toHaveBeenCalledTimes(1));
 
@@ -242,7 +242,9 @@ describe('Toolbar contour operations', () => {
   it('shows unimplemented roadmap tools as disabled tool rail items', () => {
     render(<ToolRail />);
 
-    const disabledTools = screen.getAllByTitle('Not implemented');
+    // Unimplemented tools are rendered as disabled buttons
+    const allButtons = screen.getAllByRole('button');
+    const disabledTools = allButtons.filter((btn) => (btn as HTMLButtonElement).disabled);
     expect(disabledTools.length).toBeGreaterThanOrEqual(5);
     expect((disabledTools[0] as HTMLButtonElement).disabled).toBe(true);
   });

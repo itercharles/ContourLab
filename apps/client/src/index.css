@@ -13,3 +13,27 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Tool rail tooltip — hover delay on show, immediate hide */
+.tool-btn .tool-tooltip {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) translateX(-4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  transition-delay: 0ms;
+}
+.tool-btn:hover .tool-tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+  transition-delay: 400ms;
+}
+
+/* AI CTA shimmer animation */
+@keyframes ai-shimmer {
+  to { background-position: 200% 0; }
+}
+.ai-cta-shimmer {
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #3b82f6);
+  background-size: 200% 100%;
+  animation: ai-shimmer 2s linear infinite;
+}

@@ -192,20 +192,46 @@ function StructureRow({
     }
   };
 
+  const isVisible = structure.isVisible ?? true;
+  const isLocked = structure.isLocked ?? false;
+
   return (
     <div
       onClick={onSelect}
       className={`
-        h-7 flex items-center gap-1.5 px-2 cursor-pointer group border-b border-[#2a2a2a]/50 transition-colors
+        h-7 flex items-center gap-1.5 px-2 cursor-pointer group border-b border-[#24292f]/60 transition-colors
         ${isActive
-          ? 'bg-blue-900/30 border-l-2 border-l-blue-500'
-          : 'border-l-2 border-l-transparent hover:bg-[#2e2e2e]'
+          ? 'bg-[rgba(59,130,246,0.1)] border-l-2 border-l-[#3b82f6]'
+          : 'border-l-2 border-l-transparent hover:bg-[#1f242b]'
         }
       `}
     >
+      {/* Visibility toggle — leftmost per design */}
+      <button
+        onClick={handleVisibilityToggle}
+        aria-label={isVisible ? `Hide ${structure.name}` : `Show ${structure.name}`}
+        title={isVisible ? 'Hide' : 'Show'}
+        className={`flex-none flex h-4 w-4 items-center justify-center transition-opacity hover:text-[#e6e9ed] ${
+          isVisible ? 'text-[#6b7280]' : 'text-[#3a3f46]'
+        }`}
+      >
+        {isVisible ? (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        ) : (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+            <line x1="1" y1="1" x2="23" y2="23" />
+          </svg>
+        )}
+      </button>
+
       {/* Color swatch */}
       <span
-        className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+        className="h-2.5 w-2.5 flex-none rounded-sm shadow-[inset_0_0_0_1px_rgba(0,0,0,0.25)]"
         style={{ backgroundColor: colorStyle }}
       />
 
@@ -217,91 +243,69 @@ function StructureRow({
           onKeyDown={handleRenameKeyDown}
           onClick={(event) => event.stopPropagation()}
           autoFocus
-          className="min-w-0 flex-1 bg-[#111] border border-blue-500 text-[11px] text-[#e5e5e5] rounded px-1 py-0.5 focus:outline-none"
+          className="min-w-0 flex-1 rounded border border-blue-500 bg-[#0b0d10] px-1 py-0.5 text-[11px] text-[#e6e9ed] focus:outline-none"
         />
       ) : (
-        <button
-          type="button"
+        <span
           onDoubleClick={beginRename}
           title="Double-click to rename"
-          className="min-w-0 flex-1 text-left text-[11px] text-[#e5e5e5] truncate focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+          className={`min-w-0 flex-1 truncate text-[12px] font-medium transition-colors ${
+            isVisible ? 'text-[#e6e9ed]' : 'text-[#6b7280]'
+          }`}
         >
           {structure.name}
-        </button>
+        </span>
       )}
 
+      {/* Type badge */}
       <span
-        className="w-[30px] text-right text-[9px] font-semibold uppercase tracking-wider text-[#6b6b6b] flex-none"
+        className="flex-none rounded border border-[#24292f] bg-[#0b0d10] px-1 py-px font-mono text-[9px] uppercase tracking-wider text-[#6b7280]"
         title={`Structure type: ${structure.type}`}
       >
         {structure.type}
       </span>
 
-      <span className="w-[42px] text-right text-[10px] text-[#6b6b6b] flex-none" title="Volume">
+      {/* Volume */}
+      <span className="w-[46px] flex-none text-right font-mono text-[10px] text-[#a0a7b0]" title="Volume">
         {formatVolumeCc(structure.volume_cc)}
       </span>
 
-      <div className="flex items-center gap-0.5 flex-none">
-        {/* Visibility toggle */}
-        <button
-          onClick={handleVisibilityToggle}
-          aria-label={structure.isVisible ? `Hide ${structure.name}` : `Show ${structure.name}`}
-          title={structure.isVisible ? 'Hide' : 'Show'}
-          className={`w-5 h-5 flex items-center justify-center hover:text-[#e5e5e5] ${
-            structure.isVisible ?? true ? 'text-[#6b6b6b]' : 'text-[#404040]'
-          }`}
-        >
-          {(structure.isVisible ?? true) ? (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          ) : (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-              <line x1="1" y1="1" x2="23" y2="23" />
-            </svg>
-          )}
-        </button>
-
-        {/* Lock toggle */}
-        <button
-          onClick={handleLockToggle}
-          aria-label={structure.isLocked ? `Unlock ${structure.name}` : `Lock ${structure.name}`}
-          title={structure.isLocked ? 'Unlock' : 'Lock'}
-          className={`w-5 h-5 flex items-center justify-center hover:text-[#e5e5e5] ${
-            structure.isLocked ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
-          }`}
-        >
-          {(structure.isLocked ?? false) ? (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-          ) : (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-            </svg>
-          )}
-        </button>
-
-        {/* Delete */}
-        <button
-          onClick={handleDelete}
-          aria-label={`Delete ${structure.name}`}
-          title="Delete structure"
-          className="w-5 h-5 flex items-center justify-center text-[#6b6b6b] opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6l-1 14H6L5 6" />
-            <path d="M10 11v6M14 11v6" />
-            <path d="M9 6V4h6v2" />
+      {/* Lock — always shown when locked, hover-only when unlocked */}
+      <button
+        onClick={handleLockToggle}
+        aria-label={isLocked ? `Unlock ${structure.name}` : `Lock ${structure.name}`}
+        title={isLocked ? 'Unlock' : 'Lock'}
+        className={`flex-none flex h-4 w-4 items-center justify-center transition-opacity hover:text-[#e6e9ed] ${
+          isLocked ? 'text-[#f59e0b]' : 'text-[#3a3f46] opacity-0 group-hover:opacity-100'
+        }`}
+      >
+        {isLocked ? (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
-        </button>
-      </div>
+        ) : (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+          </svg>
+        )}
+      </button>
+
+      {/* Delete — hover only */}
+      <button
+        onClick={handleDelete}
+        aria-label={`Delete ${structure.name}`}
+        title="Delete structure"
+        className="flex-none flex h-4 w-4 items-center justify-center text-[#3a3f46] opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="3 6 5 6 21 6" />
+          <path d="M19 6l-1 14H6L5 6" />
+          <path d="M10 11v6M14 11v6" />
+          <path d="M9 6V4h6v2" />
+        </svg>
+      </button>
     </div>
   );
 }
@@ -326,6 +330,12 @@ export default function StructurePanel() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [panelTab, setPanelTab] = useState<PanelTab>('structures');
   const [axialRevision, setAxialRevision] = useState(0);
+  const [activePop, setActivePop] = useState<'margin' | 'interpolate' | 'boolean' | null>(null);
+  const [marginValue, setMarginValue] = useState(5);
+  const [interpMethod, setInterpMethod] = useState<'linear' | 'shape' | 'morph'>('linear');
+  const [interpGaps, setInterpGaps] = useState(3);
+  const [boolOp, setBoolOp] = useState<'union' | 'intersect' | 'subtract'>('subtract');
+  const [boolTarget, setBoolTarget] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const attemptedAutoLoadSeriesRef = useRef(new Set<string>());
   const draftSaveTimerRef = useRef<number | null>(null);
@@ -720,6 +730,10 @@ export default function StructurePanel() {
     return () => window.removeEventListener('keydown', handleReviewKeyDown);
   }, [activeStructureReviewSlices.length, handleReviewNavigate]);
 
+  useEffect(() => {
+    setActivePop(null);
+  }, [activeStructureId]);
+
   const structureGroups = activeSeriesStructureSet
     ? [
         {
@@ -911,38 +925,208 @@ export default function StructurePanel() {
 
           {activeSeriesStructureSet && activeStructure && (
             <section className="flex-none border-t border-[#2a2a2a] bg-[#171717]">
+              {/* a) Header: color swatch + name + type */}
               <div className="flex items-center gap-2 border-b border-[#2a2a2a] px-3 py-1.5">
-                <input
-                  id="active-structure-color"
-                  aria-label="Active structure color"
-                  type="color"
-                  value={rgbToHex(activeStructure.color)}
-                  onChange={handleActiveStructureColorChange}
-                  className="h-5 w-5 flex-none cursor-pointer border border-[#3a3a3a] bg-[#2e2e2e] p-0"
-                />
-                <p className="min-w-0 flex-1 truncate text-[12px] font-semibold text-[#e5e5e5]" title={activeStructure.name}>
+                <label className="flex-none cursor-pointer" title="Change structure color">
+                  <span
+                    className="block h-2.5 w-2.5 rounded-sm shadow-[inset_0_0_0_1px_rgba(0,0,0,0.3)]"
+                    style={{ background: rgbToHex(activeStructure.color) }}
+                  />
+                  <input
+                    id="active-structure-color"
+                    aria-label="Active structure color"
+                    type="color"
+                    value={rgbToHex(activeStructure.color)}
+                    onChange={handleActiveStructureColorChange}
+                    className="sr-only"
+                  />
+                </label>
+                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#e6e9ed]">
                   {activeStructure.name}
-                </p>
-                <span
-                  className={`flex-none border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
-                    activeStructure.isLocked
-                      ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
-                      : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
-                  }`}
-                  title={activeStructure.isLocked ? 'Structure is locked and cannot be contoured' : 'Structure is editable'}
-                >
-                  {activeStructure.isLocked ? 'Locked' : 'Editable'}
                 </span>
-                <span
-                  className={`flex-none border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
-                    isActiveSeriesRepositoryDirty
-                      ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
-                      : 'border-[#2a2a2a] bg-[#111] text-[#6b6b6b]'
-                  }`}
-                >
-                  {isActiveSeriesRepositoryDirty ? 'Unsynced' : 'Synced'}
+                <span className="text-[10px] uppercase tracking-widest text-[#6b7280]">
+                  {activeStructure.type}
                 </span>
               </div>
+
+              {/* b) Stats: volume + slices + Manual */}
+              <div className="flex items-baseline gap-3.5 border-b border-[#2a2a2a] px-3 py-1.5 font-mono text-[11px] text-[#6b7280]">
+                <span>
+                  <span className="text-[13px] text-[#e6e9ed]">{(activeStructure.volume_cc ?? 0).toFixed(1)}</span>
+                  {' '}cm³
+                </span>
+                <span>
+                  <span className="text-[13px] text-[#e6e9ed]">{activeStructureReviewSlices.length}</span>
+                  {' '}sl
+                </span>
+                <span className="ml-auto text-[10px]">Manual</span>
+              </div>
+
+              {/* c) Operation buttons */}
+              <div className="flex flex-wrap gap-1.5 border-b border-[#2a2a2a] px-3 py-2">
+                {(['margin', 'interpolate', 'boolean'] as const).map((op) => (
+                  <button
+                    key={op}
+                    type="button"
+                    onClick={() => setActivePop(activePop === op ? null : op)}
+                    className={`h-6 rounded border px-2 text-[10px] capitalize transition-colors ${
+                      activePop === op
+                        ? 'border-blue-500/50 bg-blue-900/30 text-blue-300'
+                        : 'border-[#2a2a2a] bg-[#202020] text-[#a0a0a0] hover:border-[#3a3a3a] hover:text-[#e6e9ed]'
+                    }`}
+                  >
+                    {op.charAt(0).toUpperCase() + op.slice(1)}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled
+                  title="More operations (not yet implemented)"
+                  className="h-6 cursor-not-allowed rounded border border-[#2a2a2a] bg-[#202020] px-1.5 text-[10px] text-[#404040]"
+                >
+                  ⋯
+                </button>
+              </div>
+
+              {/* d) Inline operation popover */}
+              {activePop && (
+                <div className="border-b border-[#2a2a2a] bg-[#131619] px-3 py-2.5">
+                  {activePop === 'margin' && (
+                    <>
+                      <p className="mb-2 text-[10px] uppercase tracking-widest text-[#6b7280]">Expand / contract</p>
+                      <div className="mb-2 flex items-center gap-2">
+                        <input
+                          type="range"
+                          min={-10}
+                          max={20}
+                          step={0.5}
+                          value={marginValue}
+                          onChange={(e) => setMarginValue(parseFloat(e.target.value))}
+                          className="flex-1 accent-blue-500"
+                          aria-label="Margin value"
+                        />
+                        <span className="min-w-[52px] text-right font-mono text-[11px] text-[#e6e9ed]">
+                          {marginValue > 0 ? '+' : ''}{marginValue} mm
+                        </span>
+                      </div>
+                      <div className="mb-2 flex gap-1">
+                        {([-5, -2, 3, 5, 7, 10] as const).map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setMarginValue(m)}
+                            className={`flex-1 rounded border py-0.5 text-[10px] transition-colors ${
+                              marginValue === m
+                                ? 'border-blue-500/50 bg-blue-900/30 text-blue-300'
+                                : 'border-[#2a2a2a] bg-[#202020] text-[#a0a0a0] hover:text-[#e6e9ed]'
+                            }`}
+                          >
+                            {m > 0 ? '+' : ''}{m}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mb-2.5 flex justify-between font-mono text-[11px] text-[#6b7280]">
+                        <span>{'→ '}{activeStructure.name}{marginValue !== 0 ? ` ${marginValue > 0 ? '+' : ''}${marginValue}mm` : ''}</span>
+                        <span>{((activeStructure.volume_cc ?? 0) * Math.pow(1 + marginValue / 30, 3)).toFixed(1)} cm³</span>
+                      </div>
+                    </>
+                  )}
+                  {activePop === 'interpolate' && (
+                    <>
+                      <p className="mb-2 text-[10px] uppercase tracking-widest text-[#6b7280]">Fill missing slices</p>
+                      <div className="mb-2 flex gap-1">
+                        {(['linear', 'shape', 'morph'] as const).map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setInterpMethod(m)}
+                            className={`flex-1 rounded border py-0.5 text-[10px] capitalize transition-colors ${
+                              interpMethod === m
+                                ? 'border-blue-500/50 bg-blue-900/30 text-blue-300'
+                                : 'border-[#2a2a2a] bg-[#202020] text-[#a0a0a0] hover:text-[#e6e9ed]'
+                            }`}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="text-[11px] text-[#6b7280]">Max gap</span>
+                        <input
+                          type="range"
+                          min={1}
+                          max={10}
+                          value={interpGaps}
+                          onChange={(e) => setInterpGaps(parseInt(e.target.value))}
+                          className="flex-1 accent-blue-500"
+                          aria-label="Interpolation gap"
+                        />
+                        <span className="min-w-[36px] text-right font-mono text-[11px] text-[#e6e9ed]">{interpGaps} sl</span>
+                      </div>
+                      <p className="mb-2.5 text-[11px] text-[#6b7280]">
+                        {activeStructureReviewSlices.length > 1
+                          ? `${activeStructureReviewSlices.length} contour slices available.`
+                          : 'No contour slices available.'}
+                      </p>
+                    </>
+                  )}
+                  {activePop === 'boolean' && (
+                    <>
+                      <p className="mb-2 text-[10px] uppercase tracking-widest text-[#6b7280]">Combine with</p>
+                      <div className="mb-2 flex gap-1">
+                        {([['union', '∪'], ['intersect', '∩'], ['subtract', '−']] as const).map(([op, sym]) => (
+                          <button
+                            key={op}
+                            type="button"
+                            onClick={() => setBoolOp(op)}
+                            className={`flex-1 rounded border py-0.5 text-[10px] capitalize transition-colors ${
+                              boolOp === op
+                                ? 'border-blue-500/50 bg-blue-900/30 text-blue-300'
+                                : 'border-[#2a2a2a] bg-[#202020] text-[#a0a0a0] hover:text-[#e6e9ed]'
+                            }`}
+                          >
+                            <span className="mr-1 font-mono">{sym}</span>{op}
+                          </button>
+                        ))}
+                      </div>
+                      <select
+                        value={boolTarget}
+                        onChange={(e) => setBoolTarget(e.target.value)}
+                        aria-label="Boolean target structure"
+                        className="mb-2 h-6 w-full border border-[#3a3a3a] bg-[#202020] px-1 text-[11px] text-[#e5e5e5] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">— select structure —</option>
+                        {activeSeriesStructureSet.structures
+                          .filter((s) => s.id !== activeStructure.id)
+                          .map((s) => (
+                            <option key={s.id} value={s.id}>{s.name} ({s.type})</option>
+                          ))}
+                      </select>
+                      <p className="mb-2.5 font-mono text-[11px] text-[#6b7280]">
+                        {'→ '}{activeStructure.name}{' '}{boolOp === 'union' ? '∪' : boolOp === 'intersect' ? '∩' : '−'}{' '}{activeSeriesStructureSet.structures.find((s) => s.id === boolTarget)?.name ?? '—'}
+                      </p>
+                    </>
+                  )}
+                  <div className="flex justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setActivePop(null)}
+                      className="h-6 rounded border border-[#2a2a2a] bg-[#202020] px-2.5 text-[10px] text-[#a0a0a0] hover:text-[#e6e9ed]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setStatusMessage('Not yet implemented.'); setActivePop(null); }}
+                      className="h-6 rounded bg-blue-600 px-2.5 text-[10px] text-white hover:bg-blue-500"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* e) Type selector + stats pills + lock/sync status */}
               <div className="flex items-center gap-1.5 border-b border-[#2a2a2a] px-3 py-2 text-[10px]">
                 <select
                   id="active-structure-type"
@@ -964,19 +1148,21 @@ export default function StructurePanel() {
                 <span className="border border-[#2a2a2a] bg-[#111] px-2 py-1 font-mono text-[#a0a0a0]" title="Contour slices">
                   {activeStructureReviewSlices.length === 1 ? '1 slice' : `${activeStructureReviewSlices.length} slices`}
                 </span>
-              </div>
-              <div className="flex gap-1 border-t border-[#2a2a2a] px-3 py-2">
-                {['Margin', 'Interpolate', 'Boolean'].map((label) => (
-                  <button
-                    key={label}
-                    type="button"
-                    disabled
-                    title="Not implemented"
-                    className="h-6 flex-1 cursor-not-allowed border border-[#2a2a2a] bg-[#202020] text-[10px] text-[#404040]"
-                  >
-                    {label}
-                  </button>
-                ))}
+                <span
+                  className={`ml-auto flex-none border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
+                    activeStructure.isLocked
+                      ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
+                      : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
+                  }`}
+                  title={activeStructure.isLocked ? 'Structure is locked and cannot be contoured' : 'Structure is editable'}
+                >
+                  {activeStructure.isLocked ? 'Locked' : 'Editable'}
+                </span>
+                {isActiveSeriesRepositoryDirty && (
+                  <span className="flex-none border border-[#854d0e] bg-[#2a2112] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-[#f59e0b]">
+                    Unsynced
+                  </span>
+                )}
               </div>
             </section>
           )}
