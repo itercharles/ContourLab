@@ -109,6 +109,8 @@ interface StructureSetQualityIssue {
   issue: RtssQualityIssue;
 }
 
+type PanelTab = 'structures' | 'qa' | 'dicom';
+
 interface StructureRowProps {
   structure: Structure;
   setId: string;
@@ -146,9 +148,8 @@ function StructureRow({
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm(`Delete structure "${structure.name}"?`)) {
-      deleteStructure(setId, structure.id);
-    }
+    deleteStructure(setId, structure.id);
+    onStatus(`Deleted structure ${structure.name}.`);
   };
 
   const beginRename = (event: React.MouseEvent) => {
@@ -195,7 +196,7 @@ function StructureRow({
     <div
       onClick={onSelect}
       className={`
-        h-8 flex items-center gap-1.5 px-2 cursor-pointer group border-b border-[#2a2a2a]/50 transition-colors
+        h-7 flex items-center gap-1.5 px-2 cursor-pointer group border-b border-[#2a2a2a]/50 transition-colors
         ${isActive
           ? 'bg-blue-900/30 border-l-2 border-l-blue-500'
           : 'border-l-2 border-l-transparent hover:bg-[#2e2e2e]'
@@ -230,7 +231,7 @@ function StructureRow({
       )}
 
       <span
-        className="rounded bg-[#242424] px-1 text-[9px] font-semibold uppercase tracking-wider text-[#a0a0a0] flex-none"
+        className="w-[30px] text-right text-[9px] font-semibold uppercase tracking-wider text-[#6b6b6b] flex-none"
         title={`Structure type: ${structure.type}`}
       >
         {structure.type}
@@ -240,39 +241,15 @@ function StructureRow({
         {formatVolumeCc(structure.volume_cc)}
       </span>
 
-      <span
-        title={`${contourSliceCount} contour slice${contourSliceCount === 1 ? '' : 's'}`}
-        className="w-[28px] text-right text-[10px] text-[#6b6b6b] flex-none"
-      >
-        {contourSliceCount} sl
-      </span>
-
-      {!(structure.isVisible ?? true) ? (
-        <span
-          title="Hidden structure"
-          className="rounded border border-[#3a3a3a] bg-[#171717] px-1 text-[9px] font-semibold uppercase tracking-wider text-[#6b6b6b] flex-none"
-        >
-          hidden
-        </span>
-      ) : null}
-
-      {structure.isLocked ? (
-        <span
-          title="Locked structure"
-          className="mr-1 rounded border border-[#854d0e] bg-[#2a2112] px-1 text-[9px] font-semibold uppercase tracking-wider text-[#f59e0b] flex-none"
-        >
-          locked
-        </span>
-      ) : null}
-
-      {/* Action buttons — visible on row hover or when active */}
-      <div className={`flex items-center gap-0.5 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+      <div className="flex items-center gap-0.5 flex-none">
         {/* Visibility toggle */}
         <button
           onClick={handleVisibilityToggle}
           aria-label={structure.isVisible ? `Hide ${structure.name}` : `Show ${structure.name}`}
           title={structure.isVisible ? 'Hide' : 'Show'}
-          className="w-4 h-4 flex items-center justify-center text-[#6b6b6b] hover:text-[#e5e5e5]"
+          className={`w-5 h-5 flex items-center justify-center hover:text-[#e5e5e5] ${
+            structure.isVisible ?? true ? 'text-[#6b6b6b]' : 'text-[#404040]'
+          }`}
         >
           {(structure.isVisible ?? true) ? (
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -293,7 +270,9 @@ function StructureRow({
           onClick={handleLockToggle}
           aria-label={structure.isLocked ? `Unlock ${structure.name}` : `Lock ${structure.name}`}
           title={structure.isLocked ? 'Unlock' : 'Lock'}
-          className="w-4 h-4 flex items-center justify-center text-[#6b6b6b] hover:text-[#e5e5e5]"
+          className={`w-5 h-5 flex items-center justify-center hover:text-[#e5e5e5] ${
+            structure.isLocked ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
+          }`}
         >
           {(structure.isLocked ?? false) ? (
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -313,7 +292,7 @@ function StructureRow({
           onClick={handleDelete}
           aria-label={`Delete ${structure.name}`}
           title="Delete structure"
-          className="w-4 h-4 flex items-center justify-center text-[#6b6b6b] hover:text-red-400"
+          className="w-5 h-5 flex items-center justify-center text-[#6b6b6b] opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="3 6 5 6 21 6" />
@@ -345,6 +324,7 @@ export default function StructurePanel() {
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [panelTab, setPanelTab] = useState<PanelTab>('structures');
   const [axialRevision, setAxialRevision] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const attemptedAutoLoadSeriesRef = useRef(new Set<string>());
@@ -740,8 +720,74 @@ export default function StructurePanel() {
     return () => window.removeEventListener('keydown', handleReviewKeyDown);
   }, [activeStructureReviewSlices.length, handleReviewNavigate]);
 
+  const structureGroups = activeSeriesStructureSet
+    ? [
+        {
+          id: 'targets',
+          label: 'Targets',
+          structures: activeSeriesStructureSet.structures.filter((structure) =>
+            ['GTV', 'CTV', 'PTV'].includes(structure.type)
+          ),
+        },
+        {
+          id: 'oars',
+          label: 'Organs at Risk',
+          structures: activeSeriesStructureSet.structures.filter((structure) =>
+            structure.type === 'OAR' || structure.type === 'AVOIDANCE'
+          ),
+        },
+        {
+          id: 'external',
+          label: 'External / Support',
+          structures: activeSeriesStructureSet.structures.filter((structure) =>
+            structure.type === 'EXTERNAL' || structure.type === 'SUPPORT'
+          ),
+        },
+      ].filter((group) => group.structures.length > 0)
+    : [];
+
+  const tabButtonClass = (isActive: boolean) =>
+    `h-8 border-b-2 px-3 text-[10px] font-semibold uppercase tracking-widest transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+      isActive
+        ? 'border-blue-500 bg-[#202020] text-[#e5e5e5]'
+        : 'border-transparent text-[#6b6b6b] hover:bg-[#242424] hover:text-[#a0a0a0]'
+    }`;
+
+  const disabledTabClass =
+    'h-8 cursor-not-allowed border-b-2 border-transparent px-3 text-[10px] font-semibold uppercase tracking-widest text-[#404040]';
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col bg-[#1a1a1a]">
+      <div className="flex flex-none border-b border-[#2a2a2a] bg-[#111]">
+        <button
+          type="button"
+          className={tabButtonClass(panelTab === 'structures')}
+          onClick={() => setPanelTab('structures')}
+        >
+          Structures
+        </button>
+        <button
+          type="button"
+          className={tabButtonClass(panelTab === 'qa')}
+          onClick={() => setPanelTab('qa')}
+        >
+          QA
+        </button>
+        <button type="button" className={disabledTabClass} disabled title="Not implemented">
+          AI
+        </button>
+        <button type="button" className={disabledTabClass} disabled title="Not implemented">
+          History
+        </button>
+        <button
+          type="button"
+          className={tabButtonClass(panelTab === 'dicom')}
+          onClick={() => setPanelTab('dicom')}
+        >
+          DICOM
+        </button>
+      </div>
+
       {statusMessage && (
         <div className="border-b border-[#2a2a2a] bg-[#242424] px-3 py-1 text-[10px] text-[#a0a0a0]">
           {statusMessage}
@@ -754,60 +800,157 @@ export default function StructurePanel() {
         </div>
       )}
 
-      {activeSeriesStructureSet && activeStructure && (
-        <section className="border-b border-[#2a2a2a] bg-[#202020] px-3 py-2">
-              <div className="flex items-start gap-2">
+      {panelTab === 'structures' && (
+        <>
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <div className="flex items-center gap-2 border-b border-[#2a2a2a] bg-[#171717] px-3 py-1.5">
+              <span className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+                Structure Set
+              </span>
+              <button
+                onClick={handleAddClick}
+                aria-label="Add structure"
+                title={activeSeriesUID ? 'Add structure [N]' : 'Load a series first'}
+                disabled={!activeSeriesUID}
+                className="flex h-5 w-5 items-center justify-center bg-[#2e2e2e] text-[13px] font-semibold leading-none text-[#a0a0a0] transition-colors hover:bg-blue-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#2e2e2e] disabled:hover:text-[#a0a0a0] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+              >
+                +
+              </button>
+            </div>
+
+            {isAdding && (
+              <div className="border-b border-[#2a2a2a] bg-[#242424] px-2 py-1.5 flex-none">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="e.g. PTV, Brainstem…"
+                  className="w-full border border-[#3a3a3a] bg-[#1a1a1a] px-2 py-1 text-[11px] text-[#e5e5e5] placeholder-[#6b6b6b] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <div className="mt-1.5 flex gap-1.5">
+                  <button onClick={handleConfirmAdd} className="flex-1 py-0.5 text-[11px] text-blue-400 hover:text-blue-300">
+                    Add
+                  </button>
+                  <button onClick={handleCancelAdd} className="flex-1 py-0.5 text-[11px] text-[#6b6b6b] hover:text-[#a0a0a0]">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!activeSeriesUID ? (
+              <p className="px-3 py-3 text-[11px] text-[#6b6b6b]">Load an image set to review structures.</p>
+            ) : activeSeriesStructureSets.length === 0 ? (
+              <p className="px-3 py-3 text-[11px] text-[#6b6b6b]">No structures for this image set. Click "+" to add one.</p>
+            ) : (
+              <>
+                {activeSeriesStructureSets.map((ss) => {
+                  const isActiveStructureSet = ss.id === activeStructureSetId;
+
+                  return (
+                    <div key={ss.id} className="border-b border-[#2a2a2a]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveStructureSet(ss.id);
+                          setActiveStructure(ss.structures[0]?.id ?? null);
+                        }}
+                        className={`flex w-full items-center gap-2 border-b border-[#2a2a2a] px-3 py-1.5 text-left text-[10px] uppercase tracking-widest focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                          isActiveStructureSet
+                            ? 'border-l-2 border-l-blue-500 bg-blue-950/30 text-blue-200'
+                            : 'border-l-2 border-l-transparent bg-[#202020] text-[#6b6b6b] hover:bg-[#2e2e2e] hover:text-[#a0a0a0]'
+                        }`}
+                        title={`Activate structure set ${ss.label}`}
+                        aria-label={`Activate structure set ${ss.label}`}
+                      >
+                        <span className="min-w-0 flex-1 truncate">{ss.label}</span>
+                        <span className="text-[9px] text-[#6b6b6b]">{ss.structures.length}</span>
+                        {isActiveStructureSet ? (
+                          <span className="bg-blue-900 px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-blue-200">
+                            ACTIVE
+                          </span>
+                        ) : null}
+                      </button>
+
+                      {isActiveStructureSet ? (
+                        ss.structures.length === 0 ? (
+                          <p className="px-3 py-3 text-[11px] text-[#6b6b6b]">No structures in this set</p>
+                        ) : (
+                          structureGroups.map((group) => (
+                            <section key={group.id}>
+                              <div className="flex h-6 items-center border-b border-[#2a2a2a] bg-[#171717] px-3 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+                                <span className="min-w-0 flex-1 truncate">{group.label}</span>
+                                <span>{group.structures.length}</span>
+                              </div>
+                              {group.structures.map((structure) => (
+                                <StructureRow
+                                  key={structure.id}
+                                  structure={structure}
+                                  setId={ss.id}
+                                  isActive={structure.id === activeStructureId}
+                                  contourSliceCount={getReviewSlices(structure.contours).length}
+                                  onSelect={() => {
+                                    setActiveStructureSet(ss.id);
+                                    setActiveStructure(structure.id);
+                                  }}
+                                  onStatus={setStatusMessage}
+                                />
+                              ))}
+                            </section>
+                          ))
+                        )
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+
+          {activeSeriesStructureSet && activeStructure && (
+            <section className="flex-none border-t border-[#2a2a2a] bg-[#171717]">
+              <div className="flex items-center gap-2 border-b border-[#2a2a2a] px-3 py-1.5">
                 <input
                   id="active-structure-color"
                   aria-label="Active structure color"
                   type="color"
                   value={rgbToHex(activeStructure.color)}
                   onChange={handleActiveStructureColorChange}
-                  className="mt-0.5 h-5 w-5 flex-none cursor-pointer rounded border border-[#3a3a3a] bg-[#2e2e2e] p-0"
+                  className="h-5 w-5 flex-none cursor-pointer border border-[#3a3a3a] bg-[#2e2e2e] p-0"
                 />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <p className="truncate text-[12px] font-semibold text-[#e5e5e5]" title={activeStructure.name}>
-                      {activeStructure.name}
-                    </p>
-                    <span
-                      className={`rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
-                        activeStructure.isLocked
-                          ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
-                          : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
-                      }`}
-                      title={activeStructure.isLocked ? 'Structure is locked and cannot be contoured' : 'Structure is editable'}
-                    >
-                      {activeStructure.isLocked ? 'Locked' : 'Editable'}
-                    </span>
-                  </div>
-                </div>
+                <p className="min-w-0 flex-1 truncate text-[12px] font-semibold text-[#e5e5e5]" title={activeStructure.name}>
+                  {activeStructure.name}
+                </p>
                 <span
-                  className={`flex-none rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
+                  className={`flex-none border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
+                    activeStructure.isLocked
+                      ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
+                      : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
+                  }`}
+                  title={activeStructure.isLocked ? 'Structure is locked and cannot be contoured' : 'Structure is editable'}
+                >
+                  {activeStructure.isLocked ? 'Locked' : 'Editable'}
+                </span>
+                <span
+                  className={`flex-none border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
                     isActiveSeriesRepositoryDirty
                       ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
-                      : 'border-[#2a2a2a] bg-[#171717] text-[#6b6b6b]'
+                      : 'border-[#2a2a2a] bg-[#111] text-[#6b6b6b]'
                   }`}
-                  title={
-                    isActiveSeriesRepositoryDirty
-                      ? 'Active structure changes have not been pushed to the DICOM repository'
-                      : 'Active structure changes are synchronized with the DICOM repository'
-                  }
                 >
                   {isActiveSeriesRepositoryDirty ? 'Unsynced' : 'Synced'}
                 </span>
               </div>
-
-              <div className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-2">
-                <label htmlFor="active-structure-type" className="text-[10px] text-[#6b6b6b]">
-                  Type
-                </label>
+              <div className="flex items-center gap-1.5 border-b border-[#2a2a2a] px-3 py-2 text-[10px]">
                 <select
                   id="active-structure-type"
                   aria-label="Active structure type"
                   value={activeStructure.type}
                   onChange={handleActiveStructureTypeChange}
-                  className="h-6 rounded border border-[#3a3a3a] bg-[#2e2e2e] px-1 text-[11px] text-[#e5e5e5] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  title="Structure type"
+                  className="h-6 w-24 border border-[#3a3a3a] bg-[#2e2e2e] px-1 text-[11px] font-semibold text-[#e5e5e5] focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   {STRUCTURE_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -815,270 +958,130 @@ export default function StructurePanel() {
                     </option>
                   ))}
                 </select>
+                <span className="border border-[#2a2a2a] bg-[#111] px-2 py-1 font-mono text-[#e5e5e5]" title="Structure volume">
+                  {formatVolumeCc(activeStructure.volume_cc)}
+                </span>
+                <span className="border border-[#2a2a2a] bg-[#111] px-2 py-1 font-mono text-[#a0a0a0]" title="Contour slices">
+                  {activeStructureReviewSlices.length === 1 ? '1 slice' : `${activeStructureReviewSlices.length} slices`}
+                </span>
               </div>
-
-              <div className="mt-2 border-t border-[#2a2a2a] pt-2">
-                <div className="grid grid-cols-3 gap-2 text-[10px]">
-                  <div>
-                    <p className="uppercase tracking-widest text-[#6b6b6b]">Volume</p>
-                    <p className="mt-0.5 text-[#e5e5e5]">{formatVolumeCc(activeStructure.volume_cc)}</p>
-                  </div>
-                  <div>
-                    <p className="uppercase tracking-widest text-[#6b6b6b]">Contours</p>
-                    <p className="mt-0.5 text-[#e5e5e5]">
-                      {activeStructureReviewSlices.length === 1
-                        ? '1 slice'
-                        : `${activeStructureReviewSlices.length} slices`}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="uppercase tracking-widest text-[#6b6b6b]">Display</p>
-                    <p className="mt-0.5 text-[#e5e5e5]">
-                      {activeStructure.isVisible ?? true ? 'Visible' : 'Hidden'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-2 border-t border-[#2a2a2a] pt-2">
-                <div className="mb-1 flex items-center justify-between">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
-                    Contour QA
-                  </p>
-                  <span
-                    className={`rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
-                      (activeStructureQa?.warningCount ?? 0) > 0
-                        ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
-                        : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
-                    }`}
-                    title="Automatic contour quality checks for the active structure"
+              <div className="flex gap-1 border-t border-[#2a2a2a] px-3 py-2">
+                {['Margin', 'Interpolate', 'Boolean'].map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled
+                    title="Not implemented"
+                    className="h-6 flex-1 cursor-not-allowed border border-[#2a2a2a] bg-[#202020] text-[10px] text-[#404040]"
                   >
-                    {(activeStructureQa?.warningCount ?? 0) > 0
-                      ? `${activeStructureQa?.warningCount} warning${activeStructureQa?.warningCount === 1 ? '' : 's'}`
-                      : 'OK'}
-                  </span>
-                </div>
-                {activeStructureQa && activeStructureQa.issues.length > 0 ? (
-                  <ul className="space-y-0.5">
-                    {activeStructureQa.issues.slice(0, 3).map((issue, index) => (
-                      <li
-                        key={`${issue.type}-${issue.slicePosition ?? 'structure'}-${index}`}
-                        className={issue.severity === 'warning' ? 'text-[10px] text-[#f59e0b]' : 'text-[10px] text-[#6b6b6b]'}
-                      >
-                        {issue.message}
-                      </li>
-                    ))}
-                    {activeStructureQa.issues.length > 3 && (
-                      <li className="text-[10px] text-[#6b6b6b]">
-                        +{activeStructureQa.issues.length - 3} more QA item{activeStructureQa.issues.length - 3 === 1 ? '' : 's'}
-                      </li>
-                    )}
-                  </ul>
-                ) : (
-                  <p className="text-[10px] text-[#6b6b6b]">
-                    No contour QA warnings for this structure.
-                  </p>
-                )}
+                    {label}
+                  </button>
+                ))}
               </div>
-        </section>
-      )}
-
-      {activeSeriesStructureSet && (
-        <section className="border-b border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2">
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
-              RTSS QA
-            </p>
-            <span
-              className={`rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
-                activeStructureSetWarningCount > 0
-                  ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
-                  : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
-              }`}
-              title="Automatic quality checks across the active structure set"
-            >
-              {activeStructureSetWarningCount > 0
-                ? `${activeStructureSetWarningCount} warning${activeStructureSetWarningCount === 1 ? '' : 's'}`
-                : 'OK'}
-            </span>
-          </div>
-          {activeStructureSetQaIssues.length > 0 ? (
-            <div className="max-h-28 overflow-y-auto border border-[#2a2a2a] bg-[#171717]">
-              {activeStructureSetQaIssues.slice(0, 8).map((qualityIssue, index) => (
-                <button
-                  key={`${qualityIssue.structureId}-${qualityIssue.issue.type}-${qualityIssue.issue.slicePosition ?? 'structure'}-${index}`}
-                  type="button"
-                  onClick={() => handleQaIssueSelect(qualityIssue)}
-                  className={`flex w-full items-start gap-1.5 border-b border-[#2a2a2a] px-2 py-1 text-left text-[10px] last:border-b-0 hover:bg-[#2e2e2e] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
-                    qualityIssue.issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
-                  }`}
-                  title={Number.isFinite(qualityIssue.issue.slicePosition) ? `Jump to z=${qualityIssue.issue.slicePosition!.toFixed(1)} mm` : 'Select RTSS QA item'}
-                >
-                  {qualityIssue.structureName && (
-                    <span className="max-w-[64px] flex-none truncate font-semibold text-[#a0a0a0]">
-                      {qualityIssue.structureName}
-                    </span>
-                  )}
-                  <span className="min-w-0 flex-1">
-                    {qualityIssue.issue.message}
-                  </span>
-                </button>
-              ))}
-              {activeStructureSetQaIssues.length > 8 ? (
-                <div className="px-2 py-1 text-[10px] text-[#6b6b6b]">
-                  +{activeStructureSetQaIssues.length - 8} more QA item{activeStructureSetQaIssues.length - 8 === 1 ? '' : 's'}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <p className="text-[10px] text-[#6b6b6b]">
-              No RTSS QA warnings for this structure set.
-            </p>
+            </section>
           )}
-        </section>
+        </>
       )}
 
-      {/* Inline add form */}
-      {isAdding && (
-        <div className="border-b border-[#2a2a2a] bg-[#242424] px-2 py-1.5 flex-none">
-          <input
-            ref={inputRef}
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="e.g. PTV, Brainstem…"
-            className="bg-[#1a1a1a] border border-[#3a3a3a] text-[11px] text-[#e5e5e5] rounded px-2 py-1 w-full placeholder-[#6b6b6b] focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-          <div className="flex gap-1.5 mt-1.5">
-            <button
-              onClick={handleConfirmAdd}
-              className="flex-1 text-[11px] text-blue-400 hover:text-blue-300 py-0.5 transition-colors"
-            >
-              Add
-            </button>
-            <button
-              onClick={handleCancelAdd}
-              className="flex-1 text-[11px] text-[#6b6b6b] hover:text-[#a0a0a0] py-0.5 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Structure sets and structures */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="flex items-center justify-between border-b border-[#2a2a2a] bg-[#171717] px-3 py-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
-            Structures
-          </span>
-          <button
-            onClick={handleAddClick}
-            aria-label="Add structure"
-            title={activeSeriesUID ? 'Add structure' : 'Load a series first'}
-            disabled={!activeSeriesUID}
-            className="ml-auto flex h-5 w-5 items-center justify-center rounded bg-[#2e2e2e] text-[13px] font-semibold leading-none text-[#a0a0a0] transition-colors hover:bg-blue-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#2e2e2e] disabled:hover:text-[#a0a0a0] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-          >
-            +
-          </button>
-        </div>
-        {!activeSeriesUID ? (
-          <p className="text-[11px] text-[#6b6b6b] px-3 py-3">Load an image set to review structures.</p>
-        ) : activeSeriesStructureSets.length === 0 ? (
-          <p className="text-[11px] text-[#6b6b6b] px-3 py-3">No structures for this image set. Click "+" to add one.</p>
-        ) : (
-          activeSeriesStructureSets.map((ss) => {
-            const isActiveStructureSet = ss.id === activeStructureSetId;
-
-            return (
-              <div key={ss.id}>
-              {/* Structure set label */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveStructureSet(ss.id);
-                  setActiveStructure(ss.structures[0]?.id ?? null);
-                }}
-                className={`flex w-full items-center gap-2 border-b border-[#2a2a2a] px-3 py-1 text-left text-[10px] uppercase tracking-widest focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
-                  isActiveStructureSet
-                    ? 'border-l-2 border-l-blue-500 bg-blue-950/30 text-blue-200'
-                    : 'border-l-2 border-l-transparent bg-[#242424] text-[#6b6b6b] hover:bg-[#2e2e2e] hover:text-[#a0a0a0]'
+      {panelTab === 'qa' && (
+        <div className="flex-1 overflow-y-auto">
+          <section className="border-b border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">RTSS QA</p>
+              <span
+                className={`border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
+                  activeStructureSetWarningCount > 0
+                    ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
+                    : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
                 }`}
-                title={`Activate structure set ${ss.label}`}
-                aria-label={`Activate structure set ${ss.label}`}
               >
-                <span className="min-w-0 flex-1 truncate">{ss.label}</span>
-                {isActiveStructureSet ? (
-                  <span className="rounded bg-blue-900 px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-blue-200">
-                    ACTIVE
-                  </span>
-                ) : null}
-              </button>
-
-              {/* Structures list */}
-              <div>
-                {ss.structures.length === 0 ? (
-                  <p className="text-[11px] text-[#6b6b6b] px-3 py-3">No structures in this set</p>
-                ) : (
-                  ss.structures.map((structure) => (
-                    <StructureRow
-                      key={structure.id}
-                      structure={structure}
-                      setId={ss.id}
-	                      isActive={isActiveStructureSet && structure.id === activeStructureId}
-                      contourSliceCount={getReviewSlices(structure.contours).length}
-	                      onSelect={() => {
-	                        setActiveStructureSet(ss.id);
-	                        setActiveStructure(structure.id);
-	                      }}
-	                      onStatus={setStatusMessage}
-		                    />
-	                  ))
-	                )}
-	              </div>
+                {activeStructureSetWarningCount > 0
+                  ? `${activeStructureSetWarningCount} warning${activeStructureSetWarningCount === 1 ? '' : 's'}`
+                  : 'OK'}
+              </span>
+            </div>
+            {activeSeriesStructureSet && activeStructureSetQaIssues.length > 0 ? (
+              <div className="border border-[#2a2a2a] bg-[#171717]">
+                {activeStructureSetQaIssues.map((qualityIssue, index) => (
+                  <button
+                    key={`${qualityIssue.structureId}-${qualityIssue.issue.type}-${qualityIssue.issue.slicePosition ?? 'structure'}-${index}`}
+                    type="button"
+                    onClick={() => handleQaIssueSelect(qualityIssue)}
+                    className={`flex w-full items-start gap-1.5 border-b border-[#2a2a2a] px-2 py-1 text-left text-[10px] last:border-b-0 hover:bg-[#2e2e2e] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                      qualityIssue.issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
+                    }`}
+                    title={Number.isFinite(qualityIssue.issue.slicePosition) ? `Jump to z=${qualityIssue.issue.slicePosition!.toFixed(1)} mm` : 'Select RTSS QA item'}
+                    aria-label={`${qualityIssue.structureName ?? 'RTSS'} ${qualityIssue.issue.message}`}
+                  >
+                    {qualityIssue.structureName && (
+                      <span className="max-w-[64px] flex-none truncate font-semibold text-[#a0a0a0]">
+                        {qualityIssue.structureName}
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">{qualityIssue.issue.message}</span>
+                  </button>
+                ))}
               </div>
-            );
-          })
-        )}
-      </div>
+            ) : (
+              <p className="text-[10px] text-[#6b6b6b]">
+                {activeSeriesStructureSet ? 'No RTSS QA warnings for this structure set.' : 'No active structure set.'}
+              </p>
+            )}
+          </section>
 
-      {activeSeriesStructureSet && (
-        <section className="border-t border-[#2a2a2a] bg-[#171717] px-3 py-2 flex-none">
-          <div className="mb-1 flex items-center gap-2">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
-              Structure Set
-            </span>
-            <span className="rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[#a0a0a0]">
-              {activeSeriesStructureSet.source?.type === 'rtstruct' ? 'RTSS' : 'SET'}
-            </span>
-          </div>
-          <p
-            className="truncate text-[11px] font-semibold text-[#e5e5e5]"
-            title={activeSeriesStructureSet.label}
-          >
-            {activeSeriesStructureSet.label}
-          </p>
-          <p
-            className="mt-0.5 truncate text-[10px] text-[#6b6b6b]"
-            title={formatSourceLabel(activeSeriesStructureSet)}
-          >
-            Source: {formatSourceLabel(activeSeriesStructureSet)}
-          </p>
-          {activeSeriesStructureSet.source?.sopInstanceUID && (
-            <p
-              className="mt-0.5 truncate font-mono text-[10px] text-[#6b6b6b]"
-              title={activeSeriesStructureSet.source.sopInstanceUID}
-            >
-              SOP: …{formatSopTail(activeSeriesStructureSet.source.sopInstanceUID)}
-            </p>
-          )}
-          {activeSeriesStructureSet.source?.importedAt && (
-            <p className="mt-0.5 truncate text-[10px] text-[#6b6b6b]">
-              Source time: {formatSourceTimestamp(activeSeriesStructureSet.source.importedAt)}
-            </p>
-          )}
-        </section>
+          <section className="border-b border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">Contour QA</p>
+              <span
+                className={`border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
+                  (activeStructureQa?.warningCount ?? 0) > 0
+                    ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
+                    : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
+                }`}
+              >
+                {(activeStructureQa?.warningCount ?? 0) > 0
+                  ? `${activeStructureQa?.warningCount} warning${activeStructureQa?.warningCount === 1 ? '' : 's'}`
+                  : 'OK'}
+              </span>
+            </div>
+            {activeStructureQa && activeStructureQa.issues.length > 0 ? (
+              <ul className="space-y-0.5">
+                {activeStructureQa.issues.map((issue, index) => (
+                  <li
+                    key={`${issue.type}-${issue.slicePosition ?? 'structure'}-${index}`}
+                    className={issue.severity === 'warning' ? 'text-[10px] text-[#f59e0b]' : 'text-[10px] text-[#6b6b6b]'}
+                  >
+                    {issue.message}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[10px] text-[#6b6b6b]">
+                {activeStructure ? 'No contour QA warnings for this structure.' : 'No active structure.'}
+              </p>
+            )}
+          </section>
+        </div>
+      )}
+
+      {panelTab === 'dicom' && (
+        <div className="flex-1 overflow-y-auto px-3 py-2 text-[10px]">
+          <section className="border border-[#2a2a2a] bg-[#171717]">
+            {[
+              ['Structure Set', activeSeriesStructureSet?.label ?? 'n/a'],
+              ['Source', activeSeriesStructureSet ? formatSourceLabel(activeSeriesStructureSet) : 'n/a'],
+              ['Kind', activeSeriesStructureSet?.source?.type === 'rtstruct' ? 'RTSS' : 'SET'],
+              ['SOP', activeSeriesStructureSet?.source?.sopInstanceUID ? `…${formatSopTail(activeSeriesStructureSet.source.sopInstanceUID)}` : 'n/a'],
+              ['Imported', activeSeriesStructureSet?.source?.importedAt ? formatSourceTimestamp(activeSeriesStructureSet.source.importedAt) : 'n/a'],
+              ['Series UID', activeSeriesUID ?? 'n/a'],
+            ].map(([label, value]) => (
+              <div key={label} className="grid grid-cols-[72px_1fr] border-b border-[#2a2a2a] last:border-b-0">
+                <div className="bg-[#202020] px-2 py-1 font-semibold uppercase tracking-widest text-[#6b6b6b]">{label}</div>
+                <div className="min-w-0 truncate px-2 py-1 font-mono text-[#a0a0a0]" title={value}>{value}</div>
+              </div>
+            ))}
+          </section>
+        </div>
       )}
     </div>
   );

@@ -34,6 +34,7 @@ interface UIState {
   toggleRightSidebar: () => void;
   setRightSidebarOpen: (open: boolean) => void;
   toggleLeftSidebar: () => void;
+  setLeftSidebarOpen: (open: boolean) => void;
   setCrosshairsEnabled: (v: boolean) => void;
   setActiveViewport: (v: ViewportOrientation | null) => void;
 }
@@ -44,7 +45,7 @@ export const useUIStore = create<UIState>()(
     windowLevelPreset: 'softTissue',
     brushRadius: 10,
     rightSidebarOpen: true,
-    leftSidebarOpen: true,
+    leftSidebarOpen: false,
     crosshairsEnabled: true,
     activeViewport: null,
 
@@ -71,6 +72,10 @@ export const useUIStore = create<UIState>()(
     toggleLeftSidebar: () =>
       set((state) => {
         state.leftSidebarOpen = !state.leftSidebarOpen;
+      }),
+    setLeftSidebarOpen: (open) =>
+      set((state) => {
+        state.leftSidebarOpen = open;
       }),
     setCrosshairsEnabled: (v) =>
       set((state) => {

@@ -9,6 +9,7 @@ import {
 } from '../../core/dicom/dicomWebClient';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useStructureStore } from '../../core/store/structureStore';
+import { useUIStore } from '../../core/store/uiStore';
 import { importRtstructArrayBuffer } from '../../core/structures/rtstructImport';
 import { replaceStructureSetsForSeries } from '../../core/structures/structurePersistence';
 import {
@@ -209,6 +210,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
   const setActiveStructure = useStructureStore((s) => s.setActiveStructure);
   const markSeriesDraftDirty = useStructureStore((s) => s.markSeriesDraftDirty);
   const repositoryDirtySeriesUIDs = useStructureStore((s) => s.repositoryDirtySeriesUIDs);
+  const setLeftSidebarOpen = useUIStore((s) => s.setLeftSidebarOpen);
 
   const [series, setSeries] = useState<DicomWebSeriesSummary[]>([]);
   const [rtstructByStudy, setRtstructByStudy] = useState<Record<string, DicomWebRtstructInstance[]>>({});
@@ -443,7 +445,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
   }, [refreshRepository, selectedPatient]);
 
   const onLoadSeries = useCallback(
-    async (seriesUID: string, options?: { skipUnsyncedConfirm?: boolean }) => {
+    async (seriesUID: string, options?: { keepNavigatorOpen?: boolean; skipUnsyncedConfirm?: boolean }) => {
       if (
         !options?.skipUnsyncedConfirm &&
         activeSeriesUID !== seriesUID &&
@@ -469,6 +471,9 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
           tone: 'muted',
           message: 'Series already loaded. Activated existing viewport volume.',
         });
+        if (!options?.keepNavigatorOpen) {
+          setLeftSidebarOpen(false);
+        }
         return true;
       }
 
@@ -494,6 +499,9 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
           tone: 'muted',
           message: `Loaded ${target.seriesDescription || target.seriesInstanceUID}.`,
         });
+        if (!options?.keepNavigatorOpen) {
+          setLeftSidebarOpen(false);
+        }
         return true;
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load series from repository.';
@@ -513,6 +521,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
       series,
       setActiveSeries,
       setError,
+      setLeftSidebarOpen,
       setLoading,
     ]
   );
@@ -539,7 +548,10 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
       try {
         setImportingRtstructSop(instance.sopInstanceUID);
         setStatus({ tone: 'muted', message: `Loading image set and structures from RTSTRUCT ${instance.sopInstanceUID}...` });
-        const imageSetLoaded = await onLoadSeries(targetSeriesUID, { skipUnsyncedConfirm: true });
+        const imageSetLoaded = await onLoadSeries(targetSeriesUID, {
+          keepNavigatorOpen: true,
+          skipUnsyncedConfirm: true,
+        });
         if (!imageSetLoaded) return;
 
         const buffer = await retrieveDicomWebInstance(instance);
@@ -565,6 +577,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
           tone: 'muted',
           message: `Loaded ${sourcedStructureSet.label} into the active image set.`,
         });
+        setLeftSidebarOpen(false);
         logClientDebug(
           'DicomRepoPanel',
           `import:rtstruct mode=replace series=${targetSeriesUID} sop=${instance.sopInstanceUID} structures=${sourcedStructureSet.structures.length}`
@@ -583,6 +596,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
       markSeriesDraftDirty,
       onLoadSeries,
       replaceStructureSets,
+      setLeftSidebarOpen,
       setActiveStructure,
       setActiveStructureSet,
       structureSets,

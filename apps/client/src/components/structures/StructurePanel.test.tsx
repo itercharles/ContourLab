@@ -345,7 +345,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     render(<StructurePanel />);
 
     expect(screen.getByText('2 slices')).toBeTruthy();
-    expect(screen.getByText('2 sl')).toBeTruthy();
+    expect(screen.queryByText('2 sl')).toBeNull();
   });
 
   it('shows contour QA warnings for the active structure', () => {
@@ -371,6 +371,8 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     });
 
     render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'QA' }));
 
     expect(screen.getByText('Contour QA')).toBeTruthy();
     expect(screen.getAllByText(/warnings/).length).toBeGreaterThan(0);
@@ -421,6 +423,8 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     render(<StructurePanel />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'QA' }));
+
     expect(screen.getByText('RTSS QA')).toBeTruthy();
     expect(screen.getAllByText(/warnings/).length).toBeGreaterThan(0);
     expect(screen.getByText('Duplicate ROI name "PTV".')).toBeTruthy();
@@ -466,6 +470,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     render(<StructurePanel />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'QA' }));
     fireEvent.click(screen.getByRole('button', { name: /Cord.*references an image outside the active image set./ }));
 
     await waitFor(() => expect(useStructureStore.getState().activeStructureId).toBe('structure-2'));
@@ -507,7 +512,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     render(<StructurePanel />);
 
     expect(screen.queryByTitle('Contour on current axial slice')).toBeNull();
-    expect(screen.getByText('2 sl')).toBeTruthy();
+    expect(screen.queryByText('2 sl')).toBeNull();
   });
 
   it('shows compact structure list quality indicators', () => {
@@ -536,9 +541,11 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByRole('button', { name: 'Add structure' })).toBeTruthy();
     expect(screen.getAllByText('OAR').length).toBeGreaterThan(0);
     expect(screen.getAllByText('12.3 cc').length).toBeGreaterThan(0);
-    expect(screen.getByText('1 sl')).toBeTruthy();
-    expect(screen.getByText('hidden')).toBeTruthy();
-    expect(screen.getByText('locked')).toBeTruthy();
+    expect(screen.queryByText('1 sl')).toBeNull();
+    expect(screen.queryByText('Display')).toBeNull();
+    expect(screen.queryByText('Hidden')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Show PTV' })).toBeTruthy();
+    expect(screen.getByText('Locked')).toBeTruthy();
   });
 
   it('shows the active structure set source when it came from repository RTSTRUCT', () => {
@@ -561,10 +568,12 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     render(<StructurePanel />);
 
+    fireEvent.click(screen.getByRole('button', { name: 'DICOM' }));
+
     expect(screen.getByText('RTSS')).toBeTruthy();
-    expect(screen.getByText('Source: RTSTRUCT Thorax CT')).toBeTruthy();
-    expect(screen.getByText('SOP: …5')).toBeTruthy();
-    expect(screen.getByText(/Source time:/)).toBeTruthy();
+    expect(screen.getByText('RTSTRUCT Thorax CT')).toBeTruthy();
+    expect(screen.getByText('…5')).toBeTruthy();
+    expect(screen.getByText('Imported')).toBeTruthy();
   });
 
   it('edits the active structure type', async () => {

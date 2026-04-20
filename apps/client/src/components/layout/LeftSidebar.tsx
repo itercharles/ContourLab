@@ -1,14 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import DicomRepoPanel from '../dicom/DicomRepoPanel';
-import { useVolumeStore } from '../../core/store/volumeStore';
-
-function formatPatientName(patient?: { name?: { given?: string; family?: string }; mrn?: string; id?: string }): string {
-  if (!patient) return 'No active patient';
-
-  const displayName = [patient.name?.given, patient.name?.family].filter(Boolean).join(' ').trim();
-  return displayName || patient.mrn || patient.id || 'Unknown patient';
-}
+import { useUIStore } from '../../core/store/uiStore';
 
 export default function LeftSidebar() {
   const [refreshRequestToken, setRefreshRequestToken] = useState(0);
@@ -16,23 +9,18 @@ export default function LeftSidebar() {
     hasUpdates: false,
     isRefreshing: false,
   });
-  const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
-  const loadedSeries = useVolumeStore((s) => s.loadedSeries);
-  const activeLoadedSeries = activeSeriesUID
-    ? loadedSeries.find((entry) => entry.seriesUID === activeSeriesUID)
-    : undefined;
+  const setLeftSidebarOpen = useUIStore((s) => s.setLeftSidebarOpen);
 
   return (
     <div className="flex flex-col h-full bg-[#1a1a1a]">
-      {/* Patient context */}
       <div className="border-b border-[#2a2a2a] bg-[#111] px-3 py-2">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
-              Patient
+              Workspace Selector
             </p>
-            <p className="mt-0.5 truncate text-xs font-semibold text-[#e5e5e5]">
-              {formatPatientName(activeLoadedSeries?.patient)}
+            <p className="mt-0.5 truncate text-[10px] text-[#8a8a8a]">
+              Select patient, image, and RTSS
             </p>
           </div>
           <div className="flex items-center gap-1">
@@ -86,14 +74,20 @@ export default function LeftSidebar() {
                 <path d="M16 11h6" />
               </svg>
             </button>
+            <button
+              type="button"
+              onClick={() => setLeftSidebarOpen(false)}
+              className="flex h-6 w-6 items-center justify-center rounded bg-[#242424] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              title="Close selector"
+              aria-label="Close selector"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
+            </button>
           </div>
         </div>
-        <p className="mt-1 truncate text-[10px] text-[#6b6b6b]">
-          MRN {activeLoadedSeries?.patient.mrn || activeLoadedSeries?.patient.id || 'none'}
-        </p>
-        <p className="mt-0.5 truncate text-[10px] text-[#6b6b6b]">
-          {activeLoadedSeries?.series.seriesDescription || 'No active image set'}
-        </p>
       </div>
 
       {/* Repository worklist */}

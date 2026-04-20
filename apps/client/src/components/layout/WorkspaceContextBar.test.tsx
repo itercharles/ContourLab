@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import WorkspaceContextBar from './WorkspaceContextBar';
 import { useStructureStore } from '../../core/store/structureStore';
+import { useUIStore } from '../../core/store/uiStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
 import type { StructureSet } from '@webtps/shared-types';
 
@@ -60,6 +61,9 @@ function makeStructureSet(): StructureSet {
 }
 
 beforeEach(() => {
+  useUIStore.setState({
+    leftSidebarOpen: false,
+  });
   useVolumeStore.setState({
     loadedSeries: [],
     activeSeriesUID: null,
@@ -102,5 +106,18 @@ describe('WorkspaceContextBar', () => {
     expect(screen.getByText('Planning CT')).toBeTruthy();
     expect(screen.getByText('RTSTRUCT Planning CT')).toBeTruthy();
     expect(screen.getByText('Unsynced')).toBeTruthy();
+  });
+
+  it('opens the workspace selector from the active patient context', () => {
+    useVolumeStore.setState({
+      loadedSeries: [makeLoadedSeries()],
+      activeSeriesUID: 'series-1',
+    });
+
+    render(<WorkspaceContextBar />);
+
+    expect(useUIStore.getState().leftSidebarOpen).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Jane Doe' }));
+    expect(useUIStore.getState().leftSidebarOpen).toBe(true);
   });
 });

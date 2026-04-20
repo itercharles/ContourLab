@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import Toolbar from './Toolbar';
+import ToolRail from './ToolRail';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useUIStore } from '../../core/store/uiStore';
@@ -129,6 +131,14 @@ function makeStructureSet(isLocked = false): StructureSet {
   };
 }
 
+function renderToolbar() {
+  return render(
+    <MemoryRouter>
+      <Toolbar />
+    </MemoryRouter>
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   UndoRedoManager.clear();
@@ -155,7 +165,7 @@ beforeEach(() => {
     windowLevelPreset: 'softTissue',
     brushRadius: 10,
     rightSidebarOpen: true,
-    leftSidebarOpen: true,
+    leftSidebarOpen: false,
     crosshairsEnabled: true,
     activeViewport: null,
   });
@@ -175,20 +185,22 @@ beforeEach(() => {
 });
 
 describe('Toolbar contour operations', () => {
-  it('uses descriptive labels for window and crosshair controls', () => {
-    render(<Toolbar />);
+  it('keeps image and edit tools out of the top bar', () => {
+    renderToolbar();
 
-    expect(screen.getByRole('button', { name: /Window \/ Level \(W\)/ })).toBeTruthy();
-    expect(screen.getByTitle('Window/Level Preset')).toBeTruthy();
-    expect(
-      screen.getByRole('button', {
-        name: 'Show or hide crosshair reference lines on the MPR views',
-      })
-    ).toBeTruthy();
+    expect(screen.getByText('WebTPS')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '01 Contour' })).toBeTruthy();
+    expect((screen.getByRole('button', { name: /02 Review soon/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: /03 Plan soon/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByTitle('Window/Level Preset')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Window\/Level/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Crosshair/ })).toBeNull();
+    expect(screen.queryByText('New contour')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete Slice' })).toBeNull();
   });
 
-  it('activates the matching Cornerstone tool for each view button', async () => {
-    render(<Toolbar />);
+  it('activates the matching Cornerstone tool from the tool rail', async () => {
+    render(<ToolRail />);
 
     fireEvent.click(screen.getByRole('button', { name: /Zoom \(Z\)/ }));
     await waitFor(() => expect(mocks.setActiveTool).toHaveBeenCalledWith('Zoom'));
@@ -199,15 +211,19 @@ describe('Toolbar contour operations', () => {
     fireEvent.click(screen.getByRole('button', { name: /Scroll \(S\)/ }));
     await waitFor(() => expect(mocks.setActiveTool).toHaveBeenCalledWith('StackScroll'));
 
-    fireEvent.click(screen.getByRole('button', { name: /Window \/ Level \(W\)/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Window\/Level \(W\)/ }));
     await waitFor(() => expect(mocks.setActiveTool).toHaveBeenCalledWith('WindowLevel'));
 
-    fireEvent.click(screen.getByRole('button', { name: /Edit Contour \(D\)/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Crosshair \(C\)/ }));
+    expect(useUIStore.getState().crosshairsEnabled).toBe(false);
+    await waitFor(() => expect(mocks.disableCrosshairs).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole('button', { name: /Edit contour \(D\)/ }));
     expect(useUIStore.getState().activeTool).toBe('edit');
   });
 
-  it('shows and activates measurement tools without Cornerstone tool binding', () => {
-    render(<Toolbar />);
+  it('shows and activates measurement tools from the tool rail without Cornerstone binding', () => {
+    render(<ToolRail />);
 
     fireEvent.click(screen.getByRole('button', { name: /Distance \(M\)/ }));
     expect(useUIStore.getState().activeTool).toBe('measureDistance');
@@ -223,24 +239,30 @@ describe('Toolbar contour operations', () => {
     expect(mocks.setActiveTool).not.toHaveBeenCalledWith('measureDistance');
   });
 
-  it('toggles the workspace navigator from the top operation bar', () => {
-    render(<Toolbar />);
+  it('shows unimplemented roadmap tools as disabled tool rail items', () => {
+    render(<ToolRail />);
 
-    expect(useUIStore.getState().leftSidebarOpen).toBe(true);
-    fireEvent.click(screen.getByTitle('Toggle workspace navigator'));
-
-    expect(useUIStore.getState().leftSidebarOpen).toBe(false);
+    const disabledTools = screen.getAllByTitle('Not implemented');
+    expect(disabledTools.length).toBeGreaterThanOrEqual(5);
+    expect((disabledTools[0] as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('pushes active structure changes from the top operation bar', async () => {
+  it('keeps patient selection out of the global title bar', () => {
+    renderToolbar();
+
+    expect(screen.queryByRole('button', { name: 'Select patient' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Settings' })).toBeTruthy();
+  });
+
+  it('saves active structure changes from the global title bar', async () => {
     useStructureStore.getState().markSeriesDirty('series-1');
 
-    render(<Toolbar />);
+    renderToolbar();
 
-    const pushButton = screen.getByRole('button', { name: 'Push Changes' }) as HTMLButtonElement;
-    expect(pushButton.disabled).toBe(false);
+    const saveButton = screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement;
+    expect(saveButton.disabled).toBe(false);
 
-    fireEvent.click(pushButton);
+    fireEvent.click(saveButton);
 
     await waitFor(() => expect(mocks.exportRtstructObject).toHaveBeenCalledTimes(1));
     expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledWith(expect.any(Blob));
@@ -255,138 +277,4 @@ describe('Toolbar contour operations', () => {
     expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
   });
 
-  it('deletes the active structure contour on the current axial slice from the top operation bar', async () => {
-    render(<Toolbar />);
-
-    const deleteButton = screen.getByRole('button', { name: 'Delete Slice' }) as HTMLButtonElement;
-    expect(deleteButton.disabled).toBe(false);
-
-    fireEvent.click(deleteButton);
-
-    await waitFor(() =>
-      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(1)
-    );
-    expect(useStructureStore.getState().structureSets[0].structures[0].contours[0].slicePosition).toBe(20);
-    expect(screen.getByRole('button', { name: 'Undo' }).getAttribute('title')).toContain(
-      'Undo: Delete contour'
-    );
-  });
-
-  it('adds an interpolated contour on an empty slice between adjacent contour slices', async () => {
-    mocks.getViewport.mockReturnValue({
-      getCamera: () => ({ focalPoint: [0, 0, 15] as [number, number, number] }),
-      scroll: mocks.scroll,
-      render: mocks.renderViewport,
-    });
-    const loaded = makeLoadedSeries();
-    loaded.series.instances = [
-      { sopInstanceUID: 'sop-1', instanceNumber: 1, sliceLocation: 10 },
-      { sopInstanceUID: 'sop-mid', instanceNumber: 2, sliceLocation: 15 },
-      { sopInstanceUID: 'sop-2', instanceNumber: 3, sliceLocation: 20 },
-    ];
-    useVolumeStore.setState({
-      loadedSeries: [loaded],
-      activeSeriesUID: 'series-1',
-    });
-
-    render(<Toolbar />);
-
-    const interpolateButton = screen.getByRole('button', { name: 'Interp' }) as HTMLButtonElement;
-    expect(interpolateButton.disabled).toBe(false);
-
-    fireEvent.click(interpolateButton);
-
-    await waitFor(() =>
-      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(3)
-    );
-    const interpolated = useStructureStore
-      .getState()
-      .structureSets[0]
-      .structures[0]
-      .contours.find((contour) => contour.slicePosition === 15);
-    expect(interpolated?.referencedSOPInstanceUID).toBe('sop-mid');
-  });
-
-  it('fills all missing contour slices between existing contour slices', async () => {
-    const loaded = makeLoadedSeries();
-    loaded.series.instances = [
-      { sopInstanceUID: 'sop-1', instanceNumber: 1, sliceLocation: 10 },
-      { sopInstanceUID: 'sop-mid-1', instanceNumber: 2, sliceLocation: 13 },
-      { sopInstanceUID: 'sop-mid-2', instanceNumber: 3, sliceLocation: 16 },
-      { sopInstanceUID: 'sop-2', instanceNumber: 4, sliceLocation: 20 },
-    ];
-    useVolumeStore.setState({
-      loadedSeries: [loaded],
-      activeSeriesUID: 'series-1',
-    });
-
-    render(<Toolbar />);
-
-    const fillGapsButton = screen.getByRole('button', { name: 'Fill Gaps' }) as HTMLButtonElement;
-    expect(fillGapsButton.disabled).toBe(false);
-
-    fireEvent.click(fillGapsButton);
-
-    await waitFor(() =>
-      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(4)
-    );
-    expect(
-      useStructureStore.getState().structureSets[0].structures[0].contours.map((contour) => contour.slicePosition)
-    ).toEqual([10, 13, 16, 20]);
-    expect(screen.getByRole('button', { name: 'Undo' }).getAttribute('title')).toContain(
-      'Undo: Interpolate 2 contours'
-    );
-  });
-
-  it('navigates to adjacent contour slices from the top operation bar', () => {
-    render(<Toolbar />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-    expect(mocks.scroll).toHaveBeenCalledWith(1);
-    expect(mocks.renderViewport).toHaveBeenCalled();
-
-    mocks.scroll.mockClear();
-    mocks.getViewport.mockReturnValue({
-      getCamera: () => ({ focalPoint: [0, 0, 20] as [number, number, number] }),
-      scroll: mocks.scroll,
-      render: mocks.renderViewport,
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Prev' }));
-    expect(mocks.scroll).toHaveBeenCalledWith(-1);
-  });
-
-  it('restores a deleted current-slice contour through the top operation bar undo control', async () => {
-    render(<Toolbar />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Slice' }));
-
-    await waitFor(() =>
-      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(1)
-    );
-
-    const undoButton = screen.getByRole('button', { name: 'Undo' }) as HTMLButtonElement;
-    expect(undoButton.disabled).toBe(false);
-
-    fireEvent.click(undoButton);
-
-    await waitFor(() =>
-      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(2)
-    );
-    expect(screen.getByRole('button', { name: 'Redo' }).getAttribute('title')).toContain(
-      'Redo: Delete contour'
-    );
-  });
-
-  it('disables current-slice contour deletion when the active structure is locked', () => {
-    useStructureStore.setState({
-      structureSets: [makeStructureSet(true)],
-      activeStructureSetId: 'ss-1',
-      activeStructureId: 'structure-1',
-    });
-
-    render(<Toolbar />);
-
-    const deleteButton = screen.getByRole('button', { name: 'Delete Slice' }) as HTMLButtonElement;
-    expect(deleteButton.disabled).toBe(true);
-  });
 });
