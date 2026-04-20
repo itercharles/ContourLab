@@ -167,7 +167,33 @@ describe('DicomRepoPanel', () => {
     await waitFor(() => expect(mocks.queryDicomWebSeries).toHaveBeenCalledTimes(2));
   });
 
-  it('focuses image-set choices after patient selection when multiple patients exist', async () => {
+  it('loads the newest image set after patient selection when multiple patients exist', async () => {
+    const smithLoadedSeries = {
+      ...makeLoadedSeries(),
+      seriesUID: 'series-2',
+      cornerstoneVolumeId: 'volume-2',
+      volume: {
+        ...makeLoadedSeries().volume,
+        seriesUID: 'series-2',
+      },
+      patient: {
+        ...makeLoadedSeries().patient,
+        id: 'MRN-2',
+        mrn: 'MRN-2',
+        name: { given: 'JOHN', family: 'SMITH' },
+      },
+      study: {
+        ...makeLoadedSeries().study,
+        studyInstanceUID: 'study-2',
+        studyDate: '20260412',
+        studyDescription: 'Simulation CT',
+      },
+      series: {
+        ...makeLoadedSeries().series,
+        seriesInstanceUID: 'series-2',
+        seriesDescription: 'CT SIM',
+      },
+    };
     mocks.queryDicomWebSeries.mockResolvedValue([
       {
         studyInstanceUID: 'study-1',
@@ -192,6 +218,7 @@ describe('DicomRepoPanel', () => {
         instanceCount: 96,
       },
     ]);
+    mocks.loadSeriesFromDicomWeb.mockResolvedValue(smithLoadedSeries);
 
     render(<DicomRepoPanel />);
 
@@ -205,10 +232,61 @@ describe('DicomRepoPanel', () => {
     fireEvent.click(screen.getByText('JOHN SMITH'));
 
     await waitFor(() => expect(mocks.queryRtstructInstancesForStudy).toHaveBeenCalledWith('study-2'));
+    await waitFor(() => expect(mocks.loadSeriesFromDicomWeb).toHaveBeenCalledWith(expect.objectContaining({
+      seriesInstanceUID: 'series-2',
+    })));
+    expect(useVolumeStore.getState().activeSeriesUID).toBe('series-2');
     expect(screen.queryByText('Select Patient')).toBeNull();
     expect(screen.getByText('Simulation CT')).toBeTruthy();
     expect(screen.getByText('CT SIM')).toBeTruthy();
     expect(screen.queryByText('Axial')).toBeNull();
+  });
+
+  it('loads the latest matching RTSTRUCT when a patient is selected', async () => {
+    const imported = makeStructureSet();
+    imported.id = 'ss-auto';
+    imported.structures[0].id = 'structure-auto';
+    const dicomBuffer = new ArrayBuffer(16);
+    mocks.queryRtstructInstancesForStudy.mockResolvedValue([
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-old-series',
+        sopInstanceUID: 'rtss-old',
+        seriesDescription: 'RTSTRUCT Old',
+        seriesDate: '20260410',
+        seriesTime: '090000',
+        roiCount: 1,
+        referencedSeriesInstanceUIDs: ['series-1'],
+      },
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-new-series',
+        sopInstanceUID: 'rtss-new',
+        seriesDescription: 'RTSTRUCT Latest',
+        seriesDate: '20260412',
+        seriesTime: '120000',
+        roiCount: 2,
+        referencedSeriesInstanceUIDs: ['series-1'],
+      },
+    ]);
+    mocks.retrieveDicomWebInstance.mockResolvedValue(dicomBuffer);
+    mocks.importRtstructArrayBuffer.mockResolvedValue(imported);
+
+    render(<DicomRepoPanel />);
+
+    await screen.findByText('Image Sets');
+    act(() => {
+      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+    });
+
+    fireEvent.click(await screen.findByText('JANE DOE'));
+
+    await waitFor(() => expect(mocks.retrieveDicomWebInstance).toHaveBeenCalledWith(expect.objectContaining({
+      sopInstanceUID: 'rtss-new',
+    })));
+    expect(mocks.importRtstructArrayBuffer).toHaveBeenCalledWith(dicomBuffer, 'series-1');
+    expect(useVolumeStore.getState().activeSeriesUID).toBe('series-1');
+    expect(useStructureStore.getState().activeStructureSetId).toBe('ss-auto');
   });
 
   it('opens patient selection from the patient context command', async () => {
@@ -229,6 +307,27 @@ describe('DicomRepoPanel', () => {
     expect(screen.getByText('Status')).toBeTruthy();
     expect(screen.getByText('Assignee')).toBeTruthy();
     expect(screen.getByText('Last activity')).toBeTruthy();
+  });
+
+  it('imports local DICOM files from the patient browser', async () => {
+    render(<DicomRepoPanel />);
+
+    await screen.findByText('Image Sets');
+    act(() => {
+      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+    });
+
+    expect(await screen.findByText('Patient browser')).toBeTruthy();
+    const importButton = screen.getByRole('button', { name: 'Import DICOM' }) as HTMLButtonElement;
+    expect(importButton.disabled).toBe(false);
+
+    const file = new File(['dicom'], 'ct-1.dcm', { type: 'application/dicom' });
+    fireEvent.change(screen.getByLabelText('Import DICOM files'), {
+      target: { files: [file] },
+    });
+
+    await waitFor(() => expect(mocks.uploadDicomWebStudies).toHaveBeenCalledWith([file]));
+    await waitFor(() => expect(mocks.queryDicomWebSeries).toHaveBeenCalledTimes(2));
   });
 
   it('closes the patient browser with the close command and Escape', async () => {
@@ -426,7 +525,8 @@ describe('DicomRepoPanel', () => {
     expect(screen.getByText(/3 ROI/)).toBeTruthy();
     expect(screen.getByText('RTSTRUCT Thorax CT')).toBeTruthy();
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Load' }).at(-1)!);
+    expect(screen.queryByRole('button', { name: 'Load' })).toBeNull();
+    fireEvent.doubleClick(screen.getByText('RTSTRUCT Thorax CT').closest('[role="button"]')!);
 
     await waitFor(() => expect(mocks.loadSeriesFromDicomWeb).toHaveBeenCalledTimes(1));
     expect(useVolumeStore.getState().activeSeriesUID).toBe('series-1');
@@ -580,8 +680,8 @@ describe('DicomRepoPanel', () => {
     expect(mocks.retrieveDicomWebInstance).not.toHaveBeenCalled();
     expect(mocks.importRtstructArrayBuffer).not.toHaveBeenCalled();
     expect(useStructureStore.getState().activeStructureSetId).toBe('ss-1');
-    expect(screen.getByText('Ready')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Load' })).toBeTruthy();
+    expect(screen.getByText('Double-click to activate')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Load' })).toBeNull();
   });
 
 });

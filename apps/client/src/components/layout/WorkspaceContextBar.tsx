@@ -44,28 +44,41 @@ export default function WorkspaceContextBar() {
       window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
     }, 0);
   };
+  const openWorkspaceSelector = () => {
+    setLeftSidebarOpen(true);
+  };
 
   return (
     <div className="flex h-9 flex-none items-stretch border-b border-[#24292f] bg-[#13161a] text-[10px] text-[#a0a7b0]">
       {/* Patient selector */}
-      <button
-        type="button"
-        onClick={openPatientSelector}
-        title="Select patient, image set, and RTSS"
-        className="flex min-w-0 max-w-56 items-center gap-2 border-r border-[#24292f] px-3 text-left hover:bg-[#1f242b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-      >
-        <svg aria-hidden="true" className="flex-none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="10" cy="8" r="4" />
-          <path d="M3 21a7 7 0 0 1 14 0" />
-          <path d="M19 8v6M16 11h6" />
-        </svg>
-        <span className="min-w-0 truncate text-[12px] font-semibold text-[#e6e9ed]">
-          {formatPatientName(activeLoadedSeries?.patient)}
-        </span>
-        <svg aria-hidden="true" className="flex-none text-[#6b7280]" width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 6l4 4 4-4" />
-        </svg>
-      </button>
+      <div className="flex min-w-0 max-w-64 items-stretch border-r border-[#24292f]">
+        <button
+          type="button"
+          onClick={openPatientSelector}
+          title="Select patient"
+          className="flex min-w-0 items-center gap-2 px-3 text-left hover:bg-[#1f242b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          <svg aria-hidden="true" className="flex-none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="10" cy="8" r="4" />
+            <path d="M3 21a7 7 0 0 1 14 0" />
+            <path d="M19 8v6M16 11h6" />
+          </svg>
+          <span className="min-w-0 truncate text-[12px] font-semibold text-[#e6e9ed]">
+            {formatPatientName(activeLoadedSeries?.patient)}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={openWorkspaceSelector}
+          title="Choose image set and RTSS"
+          aria-label="Choose image set and RTSS"
+          className="flex w-7 flex-none items-center justify-center border-l border-[#24292f] text-[#6b7280] hover:bg-[#1f242b] hover:text-[#e6e9ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          <svg aria-hidden="true" className="flex-none" width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+        </button>
+      </div>
 
       {/* Context fields */}
       <div className="flex min-w-0 flex-1 items-stretch overflow-hidden">

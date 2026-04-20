@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   queryDicomWebSeries,
+  uploadDicomWebStudies,
   loadSeriesFromDicomWeb,
   queryRtstructInstancesForStudy,
   retrieveDicomWebInstance,
@@ -106,6 +107,13 @@ function compareRtstructInstances(a: DicomWebRtstructInstance, b: DicomWebRtstru
   return b.sopInstanceUID.localeCompare(a.sopInstanceUID);
 }
 
+function compareSeriesByRecency(a: DicomWebSeriesSummary, b: DicomWebSeriesSummary): number {
+  const dateCompare = b.studyDate.localeCompare(a.studyDate);
+  if (dateCompare !== 0) return dateCompare;
+
+  return b.seriesInstanceUID.localeCompare(a.seriesInstanceUID);
+}
+
 function formatPatientName(name: string, patientId: string): string {
   if (!name) return patientId || 'Unknown patient';
   const [family, given] = name.split('^');
@@ -127,6 +135,26 @@ function getPatientLastActivity(patient: PatientGroup): string {
     .map((study) => study.studyDate)
     .sort((a, b) => b.localeCompare(a))[0];
   return latestStudyDate ? formatDicomDate(latestStudyDate) : 'unknown';
+}
+
+function getLatestImageSeries(patient: PatientGroup): DicomWebSeriesSummary | null {
+  return patient.studies
+    .flatMap((study) => study.series)
+    .sort(compareSeriesByRecency)[0] ?? null;
+}
+
+function getLatestRtstructForSeries(
+  imageSeries: DicomWebSeriesSummary,
+  studySeriesCount: number,
+  rtstructs: DicomWebRtstructInstance[]
+): DicomWebRtstructInstance | null {
+  return rtstructs
+    .filter((instance) => (
+      instance.referencedSeriesInstanceUIDs.length > 0
+        ? instance.referencedSeriesInstanceUIDs.includes(imageSeries.seriesInstanceUID)
+        : studySeriesCount === 1
+    ))
+    .sort(compareRtstructInstances)[0] ?? null;
 }
 
 function groupSeriesByPatient(series: DicomWebSeriesSummary[]): PatientGroup[] {
@@ -239,6 +267,7 @@ function RtstructCompareSummary({ comparison }: { comparison: RtstructComparison
 export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshStateChange }: DicomRepoPanelProps) {
   const lastRefreshRequestTokenRef = useRef(refreshRequestToken);
   const lastSeriesSignatureRef = useRef('');
+  const importInputRef = useRef<HTMLInputElement>(null);
   const addSeries = useVolumeStore((s) => s.addSeries);
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
@@ -266,6 +295,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
   const [patientBrowserFilter, setPatientBrowserFilter] = useState<PatientBrowserFilter>('all');
   const [selectedPatientKey, setSelectedPatientKey] = useState<string | null>(null);
   const [isPatientSelectorOpen, setIsPatientSelectorOpen] = useState(false);
+  const [isImportingDicom, setIsImportingDicom] = useState(false);
   const [expandedImageSetUIDs, setExpandedImageSetUIDs] = useState<string[]>([]);
   const [comparingRtstructSop, setComparingRtstructSop] = useState<string | null>(null);
   const [rtstructComparison, setRtstructComparison] = useState<RtstructComparisonState | null>(null);
@@ -472,6 +502,32 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
     }
   }, []);
 
+  const onImportDicomFiles = useCallback(async (files: File[]) => {
+    if (files.length === 0) return;
+
+    setIsImportingDicom(true);
+    setStatus({
+      tone: 'muted',
+      message: `Importing ${files.length} DICOM file${files.length === 1 ? '' : 's'} to repository...`,
+    });
+
+    try {
+      await uploadDicomWebStudies(files);
+      await refreshRepository();
+      setStatus({
+        tone: 'muted',
+        message: `Imported ${files.length} DICOM file${files.length === 1 ? '' : 's'} to repository.`,
+      });
+      logClientDebug('DicomRepoPanel', `import:dicom files=${files.length}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to import DICOM files.';
+      setStatus({ tone: 'error', message });
+      logClientDebug('DicomRepoPanel', `import:dicom:error ${message}`);
+    } finally {
+      setIsImportingDicom(false);
+    }
+  }, [refreshRepository]);
+
   useEffect(() => {
     onRefreshStateChange?.({ hasUpdates: hasRepositoryUpdates, isRefreshing });
   }, [hasRepositoryUpdates, isRefreshing, onRefreshStateChange]);
@@ -602,7 +658,11 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
   );
 
   const onLoadRtstruct = useCallback(
-    async (instance: DicomWebRtstructInstance, imageSeries: DicomWebSeriesSummary[]) => {
+    async (
+      instance: DicomWebRtstructInstance,
+      imageSeries: DicomWebSeriesSummary[],
+      options?: { skipUnsyncedConfirm?: boolean }
+    ) => {
       const activeSeriesInStudy = activeSeriesUID
         ? imageSeries.some((entry) => entry.seriesInstanceUID === activeSeriesUID)
         : false;
@@ -615,7 +675,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
         return;
       }
 
-      if (!confirmUnsyncedWorkspaceChange('load another RTSTRUCT')) {
+      if (!options?.skipUnsyncedConfirm && !confirmUnsyncedWorkspaceChange('load another RTSTRUCT')) {
         setStatus({ tone: 'muted', message: 'Kept the current structure set active. Push changes before loading another RTSTRUCT.' });
         return;
       }
@@ -677,6 +737,97 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
       structureSets,
     ]
   );
+
+  const fetchRtstructsForPatient = useCallback(async (patient: PatientGroup) => {
+    const studyUIDs = patient.studies.map((study) => study.studyInstanceUID);
+    if (studyUIDs.length === 0) return [] as DicomWebRtstructInstance[];
+
+    setLoadingRtstructStudyUIDs((current) => Array.from(new Set([...current, ...studyUIDs])));
+
+    const results = await Promise.all(
+      patient.studies.map(async (study) => {
+        try {
+          const instances = await queryRtstructInstancesForStudy(study.studyInstanceUID);
+          setRtstructByStudy((current) => ({
+            ...current,
+            [study.studyInstanceUID]: [
+              ...instances,
+              ...(current[study.studyInstanceUID] ?? []).filter(
+                (currentInstance) => !instances.some(
+                  (instance) => instance.sopInstanceUID === currentInstance.sopInstanceUID
+                )
+              ),
+            ].sort(compareRtstructInstances),
+          }));
+          return instances;
+        } finally {
+          setLoadingRtstructStudyUIDs((current) =>
+            current.filter((studyUIDInFlight) => studyUIDInFlight !== study.studyInstanceUID)
+          );
+        }
+      })
+    );
+
+    return results.flat();
+  }, []);
+
+  const openPatientWorkspace = useCallback(async (patient: PatientGroup) => {
+    if (
+      patient.patientKey !== activePatientKey &&
+      !confirmUnsyncedWorkspaceChange('select another patient')
+    ) {
+      setStatus({
+        tone: 'muted',
+        message: 'Kept the current patient active. Push changes before switching patients.',
+      });
+      return;
+    }
+
+    setSelectedPatientKey(patient.patientKey);
+    setIsPatientSelectorOpen(false);
+
+    const latestImageSeries = getLatestImageSeries(patient);
+    if (!latestImageSeries) {
+      setStatus({ tone: 'error', message: 'No planning CT image set is available for this patient.' });
+      return;
+    }
+
+    try {
+      setStatus({
+        tone: 'muted',
+        message: `Opening ${patient.patientName}: loading latest image set and RTSS...`,
+      });
+      const patientRtstructs = await fetchRtstructsForPatient(patient);
+      const latestImageStudy = patient.studies.find(
+        (study) => study.studyInstanceUID === latestImageSeries.studyInstanceUID
+      );
+      const latestRtstruct = getLatestRtstructForSeries(
+        latestImageSeries,
+        latestImageStudy?.series.length ?? 0,
+        patientRtstructs
+      );
+
+      if (latestRtstruct) {
+        await onLoadRtstruct(latestRtstruct, [latestImageSeries], { skipUnsyncedConfirm: true });
+        return;
+      }
+
+      await onLoadSeries(latestImageSeries.seriesInstanceUID, {
+        keepNavigatorOpen: false,
+        skipUnsyncedConfirm: true,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to open patient workspace.';
+      setStatus({ tone: 'error', message });
+      logClientDebug('DicomRepoPanel', `open:patient:error ${message}`);
+    }
+  }, [
+    activePatientKey,
+    confirmUnsyncedWorkspaceChange,
+    fetchRtstructsForPatient,
+    onLoadRtstruct,
+    onLoadSeries,
+  ]);
 
   const onCompareRtstruct = useCallback(
     async (instance: DicomWebRtstructInstance, targetSeriesUID: string) => {
@@ -753,13 +904,27 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
               <div className="ml-auto" />
               <button
                 type="button"
-                disabled
-                title="Not implemented"
-                className="flex h-6 cursor-not-allowed items-center gap-1.5 rounded bg-[#242424] px-2 text-[11px] text-[#404040]"
+                onClick={() => importInputRef.current?.click()}
+                disabled={isImportingDicom}
+                title="Import local DICOM files into the repository"
+                className="flex h-6 items-center gap-1.5 rounded bg-[#242424] px-2 text-[11px] text-[#a0a7b0] hover:bg-blue-900/40 hover:text-blue-200 disabled:cursor-not-allowed disabled:text-[#404040] disabled:hover:bg-[#242424]"
               >
                 <span aria-hidden="true">+</span>
-                Import DICOM
+                {isImportingDicom ? 'Importing...' : 'Import DICOM'}
               </button>
+              <input
+                ref={importInputRef}
+                aria-label="Import DICOM files"
+                type="file"
+                multiple
+                {...{ webkitdirectory: '' }}
+                className="sr-only"
+                onChange={(event) => {
+                  const files = Array.from(event.currentTarget.files ?? []);
+                  event.currentTarget.value = '';
+                  void onImportDicomFiles(files);
+                }}
+              />
               <button
                 type="button"
                 onClick={() => setIsPatientSelectorOpen(false)}
@@ -843,20 +1008,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                     <button
                       key={patient.patientKey}
                       type="button"
-                      onClick={() => {
-                        if (
-                          patient.patientKey !== activePatientKey &&
-                          !confirmUnsyncedWorkspaceChange('select another patient')
-                        ) {
-                          setStatus({
-                            tone: 'muted',
-                            message: 'Kept the current patient active. Push changes before switching patients.',
-                          });
-                          return;
-                        }
-                        setSelectedPatientKey(patient.patientKey);
-                        setIsPatientSelectorOpen(false);
-                      }}
+                      onClick={() => void openPatientWorkspace(patient)}
                       className={`grid w-full grid-cols-[2fr_1fr_1.2fr_1.8fr_1fr_0.7fr_0.9fr] items-center gap-3 border-b px-4 py-2 text-left last:border-b-0 hover:bg-[#1e2329] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${
                         isActivePatient
                           ? 'border-[#24292f] border-l-2 border-l-blue-500 bg-blue-900/10'
@@ -1102,7 +1254,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                           ? 'cursor-pointer hover:bg-blue-950/20'
                                           : 'cursor-not-allowed opacity-60'
                                       }`}
-                                      title="Double-click or use Load to activate this image set and load RTSTRUCT"
+                                      title="Double-click to activate this image set and RTSTRUCT"
                                     >
                                       <div className="flex items-center gap-2">
                                         <span className="rounded bg-[#242424] px-1.5 py-0.5 text-[10px] font-semibold text-[#a0a0a0]">
@@ -1134,20 +1286,8 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                             ? 'Loading'
                                             : isActiveRtstruct
                                               ? 'Active in workspace'
-                                              : 'Ready'}
+                                              : 'Double-click to activate'}
                                         </span>
-                                        <button
-                                          type="button"
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            void onLoadRtstruct(instance, [entry]);
-                                          }}
-                                          disabled={!!importingRtstructSop}
-                                          className="h-5 rounded border border-blue-700 bg-blue-950/30 px-1.5 text-[10px] font-medium text-blue-200 hover:bg-blue-900/60 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-                                          title="Load this RTSTRUCT into the active workspace"
-                                        >
-                                          {importingRtstructSop === instance.sopInstanceUID ? 'Loading' : 'Load'}
-                                        </button>
                                         <button
                                           type="button"
                                           onClick={(event) => {
