@@ -115,7 +115,6 @@ interface StructureRowProps {
   structure: Structure;
   setId: string;
   isActive: boolean;
-  contourSliceCount: number;
   onSelect: () => void;
   onStatus: (message: string) => void;
 }
@@ -124,7 +123,6 @@ function StructureRow({
   structure,
   setId,
   isActive,
-  contourSliceCount,
   onSelect,
   onStatus,
 }: StructureRowProps) {
@@ -257,26 +255,17 @@ function StructureRow({
         </span>
       )}
 
-      {/* Type badge */}
-      <span
-        className="flex-none rounded border border-[#24292f] bg-[#0b0d10] px-1 py-px font-mono text-[9px] uppercase tracking-wider text-[#6b7280]"
-        title={`Structure type: ${structure.type}`}
-      >
-        {structure.type}
-      </span>
-
-      {/* Volume */}
       <span className="w-[46px] flex-none text-right font-mono text-[10px] text-[#a0a7b0]" title="Volume">
         {formatVolumeCc(structure.volume_cc)}
       </span>
 
-      {/* Lock — always shown when locked, hover-only when unlocked */}
+      {/* Lock — always visible so editability is readable without hover. */}
       <button
         onClick={handleLockToggle}
         aria-label={isLocked ? `Unlock ${structure.name}` : `Lock ${structure.name}`}
         title={isLocked ? 'Unlock' : 'Lock'}
         className={`flex-none flex h-4 w-4 items-center justify-center transition-opacity hover:text-[#e6e9ed] ${
-          isLocked ? 'text-[#f59e0b]' : 'text-[#3a3f46] opacity-0 group-hover:opacity-100'
+          isLocked ? 'text-[#f59e0b]' : 'text-[#6b7280]'
         }`}
       >
         {isLocked ? (
@@ -327,9 +316,11 @@ export default function StructurePanel() {
 
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newStructureType, setNewStructureType] = useState<StructureType>('PTV');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [panelTab, setPanelTab] = useState<PanelTab>('structures');
   const [axialRevision, setAxialRevision] = useState(0);
+  const [isEditingActiveType, setIsEditingActiveType] = useState(false);
   const [activePop, setActivePop] = useState<'margin' | 'interpolate' | 'boolean' | null>(null);
   const [marginValue, setMarginValue] = useState(5);
   const [interpMethod, setInterpMethod] = useState<'linear' | 'shape' | 'morph'>('linear');
@@ -345,9 +336,6 @@ export default function StructurePanel() {
   const activeStructureSetById = structureSets.find(
     (structureSet) => structureSet.id === activeStructureSetId
   );
-  const activeSeriesStructureSets = activeSeriesUID
-    ? structureSets.filter((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID)
-    : [];
   const activeSeriesStructureSet = activeSeriesUID
     ? (
         activeStructureSetById?.referencedSeriesUID === activeSeriesUID
@@ -513,7 +501,6 @@ export default function StructurePanel() {
       )
         .then(() => {
           markSeriesClean(activeSeriesUID);
-          setStatusMessage('Local draft auto-saved in this browser.');
           logClientDebug('StructurePanel', `draft:save series=${activeSeriesUID}`);
         })
         .catch((error) => {
@@ -537,8 +524,9 @@ export default function StructurePanel() {
     structureSets,
   ]);
 
-  const handleAddClick = () => {
+  const handleAddClick = (type: StructureType) => {
     if (!activeSeriesUID) return;
+    setNewStructureType(type);
     setNewName('');
     setIsAdding(true);
   };
@@ -560,10 +548,10 @@ export default function StructurePanel() {
     }
 
     try {
-      StructureSetManager.createStructure(setId, name);
+      StructureSetManager.createStructure(setId, name, newStructureType);
       setIsAdding(false);
       setNewName('');
-      setStatusMessage(`Added structure ${name}.`);
+      setStatusMessage(`Added ${newStructureType} structure ${name}.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to add structure.';
       setStatusMessage(message);
@@ -596,6 +584,7 @@ export default function StructurePanel() {
     updateStructure(activeSeriesStructureSet.id, activeStructure.id, {
       type: nextType,
     });
+    setIsEditingActiveType(false);
     setStatusMessage(`Updated ${activeStructure.name} type to ${nextType}.`);
   };
 
@@ -739,6 +728,7 @@ export default function StructurePanel() {
         {
           id: 'targets',
           label: 'Targets',
+          defaultType: 'PTV' as StructureType,
           structures: activeSeriesStructureSet.structures.filter((structure) =>
             ['GTV', 'CTV', 'PTV'].includes(structure.type)
           ),
@@ -746,6 +736,7 @@ export default function StructurePanel() {
         {
           id: 'oars',
           label: 'Organs at Risk',
+          defaultType: 'OAR' as StructureType,
           structures: activeSeriesStructureSet.structures.filter((structure) =>
             structure.type === 'OAR' || structure.type === 'AVOIDANCE'
           ),
@@ -753,11 +744,12 @@ export default function StructurePanel() {
         {
           id: 'external',
           label: 'External / Support',
+          defaultType: 'EXTERNAL' as StructureType,
           structures: activeSeriesStructureSet.structures.filter((structure) =>
             structure.type === 'EXTERNAL' || structure.type === 'SUPPORT'
           ),
         },
-      ].filter((group) => group.structures.length > 0)
+      ]
     : [];
 
   const tabButtonClass = (isActive: boolean) =>
@@ -817,21 +809,6 @@ export default function StructurePanel() {
       {panelTab === 'structures' && (
         <>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-            <div className="flex items-center gap-2 border-b border-[#2a2a2a] bg-[#171717] px-3 py-1.5">
-              <span className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
-                Structure Set
-              </span>
-              <button
-                onClick={handleAddClick}
-                aria-label="Add structure"
-                title={activeSeriesUID ? 'Add structure [N]' : 'Load a series first'}
-                disabled={!activeSeriesUID}
-                className="flex h-5 w-5 items-center justify-center bg-[#2e2e2e] text-[13px] font-semibold leading-none text-[#a0a0a0] transition-colors hover:bg-blue-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#2e2e2e] disabled:hover:text-[#a0a0a0] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-              >
-                +
-              </button>
-            </div>
-
             {isAdding && (
               <div className="border-b border-[#2a2a2a] bg-[#242424] px-2 py-1.5 flex-none">
                 <input
@@ -856,70 +833,40 @@ export default function StructurePanel() {
 
             {!activeSeriesUID ? (
               <p className="px-3 py-3 text-[11px] text-[#6b6b6b]">Load an image set to review structures.</p>
-            ) : activeSeriesStructureSets.length === 0 ? (
-              <p className="px-3 py-3 text-[11px] text-[#6b6b6b]">No structures for this image set. Click "+" to add one.</p>
+            ) : !activeSeriesStructureSet ? (
+              <p className="px-3 py-3 text-[11px] text-[#6b6b6b]">No active structure set for this image set.</p>
             ) : (
-              <>
-                {activeSeriesStructureSets.map((ss) => {
-                  const isActiveStructureSet = ss.id === activeStructureSetId;
-
-                  return (
-                    <div key={ss.id} className="border-b border-[#2a2a2a]">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveStructureSet(ss.id);
-                          setActiveStructure(ss.structures[0]?.id ?? null);
-                        }}
-                        className={`flex w-full items-center gap-2 border-b border-[#2a2a2a] px-3 py-1.5 text-left text-[10px] uppercase tracking-widest focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
-                          isActiveStructureSet
-                            ? 'border-l-2 border-l-blue-500 bg-blue-950/30 text-blue-200'
-                            : 'border-l-2 border-l-transparent bg-[#202020] text-[#6b6b6b] hover:bg-[#2e2e2e] hover:text-[#a0a0a0]'
-                        }`}
-                        title={`Activate structure set ${ss.label}`}
-                        aria-label={`Activate structure set ${ss.label}`}
-                      >
-                        <span className="min-w-0 flex-1 truncate">{ss.label}</span>
-                        <span className="text-[9px] text-[#6b6b6b]">{ss.structures.length}</span>
-                        {isActiveStructureSet ? (
-                          <span className="bg-blue-900 px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-blue-200">
-                            ACTIVE
-                          </span>
-                        ) : null}
-                      </button>
-
-                      {isActiveStructureSet ? (
-                        ss.structures.length === 0 ? (
-                          <p className="px-3 py-3 text-[11px] text-[#6b6b6b]">No structures in this set</p>
-                        ) : (
-                          structureGroups.map((group) => (
-                            <section key={group.id}>
-                              <div className="flex h-6 items-center border-b border-[#2a2a2a] bg-[#171717] px-3 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
-                                <span className="min-w-0 flex-1 truncate">{group.label}</span>
-                                <span>{group.structures.length}</span>
-                              </div>
-                              {group.structures.map((structure) => (
-                                <StructureRow
-                                  key={structure.id}
-                                  structure={structure}
-                                  setId={ss.id}
-                                  isActive={structure.id === activeStructureId}
-                                  contourSliceCount={getReviewSlices(structure.contours).length}
-                                  onSelect={() => {
-                                    setActiveStructureSet(ss.id);
-                                    setActiveStructure(structure.id);
-                                  }}
-                                  onStatus={setStatusMessage}
-                                />
-                              ))}
-                            </section>
-                          ))
-                        )
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </>
+              structureGroups.map((group) => (
+                <section key={group.id}>
+                  <div className="flex h-6 items-center border-b border-[#2a2a2a] bg-[#171717] px-3 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+                    <span className="min-w-0 flex-1 truncate">{group.label}</span>
+                    <span>{group.structures.length}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleAddClick(group.defaultType)}
+                      aria-label={`Add structure to ${group.label}`}
+                      title={activeSeriesUID ? `Add ${group.defaultType} structure to ${group.label}` : 'Load a series first'}
+                      disabled={!activeSeriesUID}
+                      className="ml-2 flex h-5 w-5 items-center justify-center bg-[#2e2e2e] text-[13px] font-semibold leading-none text-[#a0a0a0] transition-colors hover:bg-blue-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#2e2e2e] disabled:hover:text-[#a0a0a0] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                    >
+                      +
+                    </button>
+                  </div>
+                  {group.structures.map((structure) => (
+                    <StructureRow
+                      key={structure.id}
+                      structure={structure}
+                      setId={activeSeriesStructureSet.id}
+                      isActive={structure.id === activeStructureId}
+                      onSelect={() => {
+                        setActiveStructureSet(activeSeriesStructureSet.id);
+                        setActiveStructure(structure.id);
+                      }}
+                      onStatus={setStatusMessage}
+                    />
+                  ))}
+                </section>
+              ))
             )}
           </div>
 
@@ -944,9 +891,40 @@ export default function StructurePanel() {
                 <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#e6e9ed]">
                   {activeStructure.name}
                 </span>
-                <span className="text-[10px] uppercase tracking-widest text-[#6b7280]">
-                  {activeStructure.type}
-                </span>
+                {isEditingActiveType ? (
+                  <select
+                    aria-label="Active structure type"
+                    value={activeStructure.type}
+                    onChange={handleActiveStructureTypeChange}
+                    onBlur={() => setIsEditingActiveType(false)}
+                    autoFocus
+                    className="h-6 w-24 border border-[#3a3a3a] bg-[#2e2e2e] px-1 text-[11px] font-semibold text-[#e5e5e5] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    {STRUCTURE_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="flex flex-none items-center gap-1">
+                    <span className="text-[10px] uppercase tracking-widest text-[#6b7280]">
+                      {activeStructure.type}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Edit active structure type"
+                      title="Edit type"
+                      onClick={() => setIsEditingActiveType(true)}
+                      className="flex h-5 w-5 items-center justify-center rounded text-[#6b7280] hover:bg-[#242424] hover:text-[#e6e9ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    >
+                      <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* b) Stats: volume + slices + Manual */}
@@ -1126,44 +1104,6 @@ export default function StructurePanel() {
                 </div>
               )}
 
-              {/* e) Type selector + stats pills + lock/sync status */}
-              <div className="flex items-center gap-1.5 border-b border-[#2a2a2a] px-3 py-2 text-[10px]">
-                <select
-                  id="active-structure-type"
-                  aria-label="Active structure type"
-                  value={activeStructure.type}
-                  onChange={handleActiveStructureTypeChange}
-                  title="Structure type"
-                  className="h-6 w-24 border border-[#3a3a3a] bg-[#2e2e2e] px-1 text-[11px] font-semibold text-[#e5e5e5] focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  {STRUCTURE_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-                <span className="border border-[#2a2a2a] bg-[#111] px-2 py-1 font-mono text-[#e5e5e5]" title="Structure volume">
-                  {formatVolumeCc(activeStructure.volume_cc)}
-                </span>
-                <span className="border border-[#2a2a2a] bg-[#111] px-2 py-1 font-mono text-[#a0a0a0]" title="Contour slices">
-                  {activeStructureReviewSlices.length === 1 ? '1 slice' : `${activeStructureReviewSlices.length} slices`}
-                </span>
-                <span
-                  className={`ml-auto flex-none border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
-                    activeStructure.isLocked
-                      ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
-                      : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
-                  }`}
-                  title={activeStructure.isLocked ? 'Structure is locked and cannot be contoured' : 'Structure is editable'}
-                >
-                  {activeStructure.isLocked ? 'Locked' : 'Editable'}
-                </span>
-                {isActiveSeriesRepositoryDirty && (
-                  <span className="flex-none border border-[#854d0e] bg-[#2a2112] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-[#f59e0b]">
-                    Unsynced
-                  </span>
-                )}
-              </div>
             </section>
           )}
         </>

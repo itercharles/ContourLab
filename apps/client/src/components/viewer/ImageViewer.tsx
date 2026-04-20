@@ -6,6 +6,7 @@ import { useVolumeStore } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import ContourOverlay from './ContourOverlay';
+import ToolOptions from './ToolOptions';
 
 class ContourErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -220,51 +221,54 @@ export default function ImageViewer() {
   return (
     <div
       ref={containerRef}
-      className="grid grid-cols-2 grid-rows-2 h-full gap-[1px] bg-[#2a2a2a] flex-1"
+      className="relative h-full flex-1 bg-[#2a2a2a]"
     >
-      <ViewportPanel
-        id={VIEWPORT_IDS.AXIAL}
-        label="AXIAL"
-        orientation="AXIAL"
-        onReady={onReady}
-      />
-      <ViewportPanel
-        id={VIEWPORT_IDS.SAGITTAL}
-        label="SAGITTAL"
-        orientation="SAGITTAL"
-        onReady={onReady}
-      />
-      <ViewportPanel
-        id={VIEWPORT_IDS.CORONAL}
-        label="CORONAL"
-        orientation="CORONAL"
-        onReady={onReady}
-      />
+      <ToolOptions />
+      <div className="grid h-full grid-cols-2 grid-rows-2 gap-[1px]">
+        <ViewportPanel
+          id={VIEWPORT_IDS.AXIAL}
+          label="AXIAL"
+          orientation="AXIAL"
+          onReady={onReady}
+        />
+        <ViewportPanel
+          id={VIEWPORT_IDS.SAGITTAL}
+          label="SAGITTAL"
+          orientation="SAGITTAL"
+          onReady={onReady}
+        />
+        <ViewportPanel
+          id={VIEWPORT_IDS.CORONAL}
+          label="CORONAL"
+          orientation="CORONAL"
+          onReady={onReady}
+        />
 
-      {/* 4th quadrant: 3D placeholder */}
-      <div className="relative bg-black flex items-center justify-center overflow-hidden">
-        <div className="text-center">
-          <svg
-            width="32"
-            height="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-[#404040] mx-auto mb-2"
-          >
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-            <line x1="12" y1="22.08" x2="12" y2="12" />
-          </svg>
-          <p className="text-xs text-[#404040] font-mono">3D View</p>
-          <p className="text-xs text-[#404040] mt-1">Not yet implemented</p>
+        {/* 4th quadrant: 3D placeholder */}
+        <div className="relative bg-black flex items-center justify-center overflow-hidden">
+          <div className="text-center">
+            <svg
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-[#404040] mx-auto mb-2"
+            >
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+              <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
+            <p className="text-xs text-[#404040] font-mono">3D View</p>
+            <p className="text-xs text-[#404040] mt-1">Not yet implemented</p>
+          </div>
+          <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
+            3D
+          </span>
         </div>
-        <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
-          3D
-        </span>
       </div>
     </div>
   );

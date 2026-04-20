@@ -221,6 +221,34 @@ describe('DicomRepoPanel', () => {
 
     expect(await screen.findByText('Patient browser')).toBeTruthy();
     expect(screen.getByPlaceholderText('Search patient, MRN, study, series…')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /All/ })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /New/ })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /In progress/ })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /Awaiting review/ })).toBeTruthy();
+    expect(screen.getByText('Treatment site')).toBeTruthy();
+    expect(screen.getByText('Status')).toBeTruthy();
+    expect(screen.getByText('Assignee')).toBeTruthy();
+    expect(screen.getByText('Last activity')).toBeTruthy();
+  });
+
+  it('closes the patient browser with the close command and Escape', async () => {
+    render(<DicomRepoPanel />);
+
+    await screen.findByText('Image Sets');
+    act(() => {
+      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+    });
+
+    expect(await screen.findByText('Patient browser')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Close patient browser' }));
+    expect(screen.queryByText('Patient browser')).toBeNull();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+    });
+    expect(await screen.findByText('Patient browser')).toBeTruthy();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByText('Patient browser')).toBeNull();
   });
 
   it('loads a series into the volume store when clicked', async () => {

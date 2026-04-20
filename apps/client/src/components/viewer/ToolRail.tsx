@@ -191,6 +191,19 @@ export default function ToolRail() {
       return;
     }
 
+    const cornerstoneTool = CORNERSTONE_TOOL_NAME[tool];
+    if (activeTool === tool) {
+      setActiveTool('none');
+      if (cornerstoneTool) {
+        try {
+          await MPRController.clearPrimaryTool();
+        } catch {
+          // The tool group may not exist yet while the viewer is initializing.
+        }
+      }
+      return;
+    }
+
     if (CONTOUR_TOOLS.has(tool) && !canUseContourTool) {
       setRightSidebarOpen(true);
       setActiveViewport('AXIAL');
@@ -203,7 +216,6 @@ export default function ToolRail() {
       setActiveViewport('AXIAL');
     }
 
-    const cornerstoneTool = CORNERSTONE_TOOL_NAME[tool];
     if (cornerstoneTool) {
       try {
         await MPRController.setActiveTool(cornerstoneTool);

@@ -70,6 +70,14 @@ describe('StatusBar', () => {
     expect(screen.getByText('synced')).toBeTruthy();
   });
 
+  it('shows no active tool after the tool is toggled off', () => {
+    useUIStore.setState({ activeTool: 'none' });
+
+    render(<StatusBar />);
+
+    expect(screen.getAllByText('n/a').length).toBeGreaterThanOrEqual(5);
+  });
+
   it('shows slice count and unsynced repository state for the active series', () => {
     useVolumeStore.setState({
       loadedSeries: [makeLoadedSeries()],

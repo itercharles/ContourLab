@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
 export type ViewerTool =
+  | 'none'
   | 'windowLevel'
   | 'zoom'
   | 'pan'
@@ -17,7 +18,7 @@ export type ViewerTool =
   | 'brush'
   | 'eraser';
 
-export type WLPreset = 'lung' | 'bone' | 'softTissue' | 'brain' | 'abdomen' | 'custom';
+export type WLPreset = 'lung' | 'bone' | 'softTissue' | 'brain' | 'mediastinum' | 'abdomen' | 'custom';
 export type ViewportOrientation = 'AXIAL' | 'SAGITTAL' | 'CORONAL';
 
 interface UIState {

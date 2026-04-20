@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
     render: vi.fn(),
   })),
   setActiveTool: vi.fn(),
+  clearPrimaryTool: vi.fn(),
   enableCrosshairs: vi.fn(),
   disableCrosshairs: vi.fn(),
   setWindowLevel: vi.fn(),
@@ -33,6 +34,7 @@ vi.mock('../../core/rendering/MPRController', () => ({
   },
   MPRController: {
     setActiveTool: mocks.setActiveTool,
+    clearPrimaryTool: mocks.clearPrimaryTool,
     enableCrosshairs: mocks.enableCrosshairs,
     disableCrosshairs: mocks.disableCrosshairs,
   },
@@ -220,6 +222,18 @@ describe('Toolbar contour operations', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Edit contour \(D\)/ }));
     expect(useUIStore.getState().activeTool).toBe('edit');
+  });
+
+  it('deactivates the active image tool when clicked again', async () => {
+    render(<ToolRail />);
+
+    const windowLevelButton = screen.getByRole('button', { name: /Window \/ Level \(W\)/ });
+
+    fireEvent.click(windowLevelButton);
+
+    await waitFor(() => expect(mocks.clearPrimaryTool).toHaveBeenCalledTimes(1));
+    expect(useUIStore.getState().activeTool).toBe('none');
+    expect(windowLevelButton.getAttribute('data-active')).toBe('false');
   });
 
   it('shows and activates measurement tools from the tool rail without Cornerstone binding', () => {

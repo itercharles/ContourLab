@@ -88,6 +88,18 @@ export const MPRController = {
     });
   },
 
+  async clearPrimaryTool(): Promise<void> {
+    if (!toolGroupId) return;
+    const { ToolGroupManager } = await import('@cornerstonejs/tools');
+    const toolGroup = ToolGroupManager.getToolGroup(toolGroupId);
+    if (!toolGroup) return;
+
+    const tools = ['WindowLevel', 'Zoom', 'Pan', 'StackScroll'];
+    for (const t of tools) {
+      try { toolGroup.setToolPassive(t); } catch { /* not added */ }
+    }
+  },
+
   async enableCrosshairs(): Promise<void> {
     if (!toolGroupId) return;
     const { ToolGroupManager, CrosshairsTool } = await import('@cornerstonejs/tools');

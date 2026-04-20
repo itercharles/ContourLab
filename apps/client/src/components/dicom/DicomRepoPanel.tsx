@@ -41,6 +41,32 @@ interface PatientGroup {
   studies: StudyGroup[];
 }
 
+type PatientBrowserFilter = 'all' | 'new' | 'in-progress' | 'awaiting-review' | 'approved';
+
+const PATIENT_FILTERS: Array<{ id: PatientBrowserFilter; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'new', label: 'New' },
+  { id: 'in-progress', label: 'In progress' },
+  { id: 'awaiting-review', label: 'Awaiting review' },
+  { id: 'approved', label: 'Approved' },
+];
+
+const PATIENT_STATUS_LABEL: Record<PatientBrowserFilter, string> = {
+  all: 'All',
+  new: 'New',
+  'in-progress': 'In progress',
+  'awaiting-review': 'Awaiting review',
+  approved: 'Approved',
+};
+
+const PATIENT_STATUS_COLOR: Record<PatientBrowserFilter, string> = {
+  all: '#6b7280',
+  new: '#3b82f6',
+  'in-progress': '#f59e0b',
+  'awaiting-review': '#8b5cf6',
+  approved: '#22c55e',
+};
+
 interface RepoRefreshState {
   hasUpdates: boolean;
   isRefreshing: boolean;
@@ -90,6 +116,17 @@ function formatPatientName(name: string, patientId: string): string {
 function getPatientInitials(patientName: string): string {
   const words = patientName.trim().split(/\s+/);
   return ((words[0]?.[0] ?? '') + (words[1]?.[0] ?? '')).toUpperCase() || '?';
+}
+
+function getPatientSite(patient: PatientGroup): string {
+  return patient.studies[0]?.studyDescription || 'Planning';
+}
+
+function getPatientLastActivity(patient: PatientGroup): string {
+  const latestStudyDate = patient.studies
+    .map((study) => study.studyDate)
+    .sort((a, b) => b.localeCompare(a))[0];
+  return latestStudyDate ? formatDicomDate(latestStudyDate) : 'unknown';
 }
 
 function groupSeriesByPatient(series: DicomWebSeriesSummary[]): PatientGroup[] {
@@ -226,6 +263,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
   const [importingRtstructSop, setImportingRtstructSop] = useState<string | null>(null);
   const [status, setStatus] = useState<RepoStatus | null>(null);
   const [patientQuery, setPatientQuery] = useState('');
+  const [patientBrowserFilter, setPatientBrowserFilter] = useState<PatientBrowserFilter>('all');
   const [selectedPatientKey, setSelectedPatientKey] = useState<string | null>(null);
   const [isPatientSelectorOpen, setIsPatientSelectorOpen] = useState(false);
   const [expandedImageSetUIDs, setExpandedImageSetUIDs] = useState<string[]>([]);
@@ -262,19 +300,42 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
     );
   }, [activeLoadedSeries, activeSeriesStructureSet, activeSeriesUID, repositoryDirtySeriesUIDs]);
   const patientGroups = useMemo(() => groupSeriesByPatient(series), [series]);
+  const getPatientStatus = useCallback((patient: PatientGroup): PatientBrowserFilter => {
+    if (patient.patientKey === activePatientKey) return 'in-progress';
+    const rtstructCount = patient.studies.reduce(
+      (count, study) => count + (rtstructByStudy[study.studyInstanceUID]?.length ?? 0),
+      0
+    );
+    if (rtstructCount > 0) return 'awaiting-review';
+    return 'new';
+  }, [activePatientKey, rtstructByStudy]);
+  const patientFilterCounts = useMemo(() => {
+    const counts = {
+      all: patientGroups.length,
+      new: 0,
+      'in-progress': 0,
+      'awaiting-review': 0,
+      approved: 0,
+    } satisfies Record<PatientBrowserFilter, number>;
+    for (const patient of patientGroups) {
+      counts[getPatientStatus(patient)] += 1;
+    }
+    return counts;
+  }, [getPatientStatus, patientGroups]);
   const filteredPatientGroups = useMemo(() => {
     const query = patientQuery.trim().toLowerCase();
-    if (!query) return patientGroups;
-
     return patientGroups.filter((patient) =>
+      (patientBrowserFilter === 'all' || getPatientStatus(patient) === patientBrowserFilter) &&
+      (!query ||
       [
         patient.patientName,
         patient.patientId,
+        getPatientSite(patient),
         ...patient.studies.map((study) => study.studyDescription),
         ...patient.studies.flatMap((study) => study.series.map((entry) => entry.seriesDescription)),
-      ].some((value) => value.toLowerCase().includes(query))
+      ].some((value) => value.toLowerCase().includes(query)))
     );
-  }, [patientGroups, patientQuery]);
+  }, [getPatientStatus, patientBrowserFilter, patientGroups, patientQuery]);
   const selectedPatient = useMemo(() => {
     if (selectedPatientKey) {
       const selected = patientGroups.find((patient) => patient.patientKey === selectedPatientKey);
@@ -692,6 +753,15 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
               <div className="ml-auto" />
               <button
                 type="button"
+                disabled
+                title="Not implemented"
+                className="flex h-6 cursor-not-allowed items-center gap-1.5 rounded bg-[#242424] px-2 text-[11px] text-[#404040]"
+              >
+                <span aria-hidden="true">+</span>
+                Import DICOM
+              </button>
+              <button
+                type="button"
                 onClick={() => setIsPatientSelectorOpen(false)}
                 aria-label="Close patient browser"
                 className="flex h-6 w-6 items-center justify-center rounded text-[#6b7280] hover:bg-[#242424] hover:text-[#e6e9ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
@@ -703,8 +773,8 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
             </div>
 
             {/* Search toolbar */}
-            <div className="flex flex-none items-center gap-2 border-b border-[#24292f] px-4 py-2">
-              <div className="flex h-7 flex-1 items-center gap-1.5 rounded border border-[#3a3a3a] bg-[#0b0d10] px-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+            <div className="flex flex-none items-center gap-4 border-b border-[#24292f] bg-[#181b20] px-4 py-2">
+              <div className="flex h-7 w-[360px] items-center gap-1.5 rounded border border-[#3a3a3a] bg-[#0b0d10] px-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
                 <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
@@ -728,14 +798,34 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                   </button>
                 )}
               </div>
+              <div className="flex min-w-0 flex-1 items-center gap-1" role="tablist" aria-label="Patient browser filters">
+                {PATIENT_FILTERS.map((filter) => (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={patientBrowserFilter === filter.id}
+                    onClick={() => setPatientBrowserFilter(filter.id)}
+                    className={`flex h-7 items-center gap-1.5 rounded border px-2 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                      patientBrowserFilter === filter.id
+                        ? 'border-blue-500/40 bg-blue-900/30 text-[#e6e9ed]'
+                        : 'border-transparent text-[#a0a7b0] hover:bg-[#242424] hover:text-[#e6e9ed]'
+                    }`}
+                  >
+                    {filter.label}
+                    <span className="rounded bg-[#0b0d10] px-1.5 font-mono text-[10px] text-[#6b7280]">
+                      {patientFilterCounts[filter.id]}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Column headers */}
-            <div className="grid flex-none grid-cols-[2fr_1fr_3fr_28px] gap-4 border-b border-[#24292f] px-4 py-1.5">
-              {['Patient', 'MRN', 'Studies'].map((col) => (
+            <div className="grid flex-none grid-cols-[2fr_1fr_1.2fr_1.8fr_1fr_0.7fr_0.9fr] gap-3 border-b border-[#24292f] bg-[#181b20] px-4 py-1.5">
+              {['Patient', 'MRN', 'Treatment site', 'Studies', 'Status', 'Assignee', 'Last activity'].map((col) => (
                 <span key={col} className="text-[10px] font-semibold uppercase tracking-widest text-[#4b5563]">{col}</span>
               ))}
-              <span />
             </div>
 
             {/* Patient rows */}
@@ -746,6 +836,8 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                 shownPatients.map((patient) => {
                   const isActivePatient = activePatientKey === patient.patientKey;
                   const initials = getPatientInitials(patient.patientName);
+                  const patientStatus = getPatientStatus(patient);
+                  const statusColor = PATIENT_STATUS_COLOR[patientStatus];
 
                   return (
                     <button
@@ -765,7 +857,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                         setSelectedPatientKey(patient.patientKey);
                         setIsPatientSelectorOpen(false);
                       }}
-                      className={`grid w-full grid-cols-[2fr_1fr_3fr_28px] items-center gap-4 border-b px-4 py-2 text-left last:border-b-0 hover:bg-[#1e2329] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${
+                      className={`grid w-full grid-cols-[2fr_1fr_1.2fr_1.8fr_1fr_0.7fr_0.9fr] items-center gap-3 border-b px-4 py-2 text-left last:border-b-0 hover:bg-[#1e2329] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${
                         isActivePatient
                           ? 'border-[#24292f] border-l-2 border-l-blue-500 bg-blue-900/10'
                           : 'border-[#1e2329] border-l-2 border-l-transparent'
@@ -793,6 +885,10 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                       {/* MRN */}
                       <span className="truncate font-mono text-[11px] text-[#6b7280]">{patient.patientId || '—'}</span>
 
+                      <span className="truncate text-[11px] text-[#a0a7b0]" title={getPatientSite(patient)}>
+                        {getPatientSite(patient)}
+                      </span>
+
                       {/* Studies */}
                       <div className="flex flex-wrap gap-1">
                         {patient.studies.map((study) => {
@@ -808,10 +904,14 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                         })}
                       </div>
 
-                      {/* Arrow */}
-                      <svg aria-hidden="true" className="text-[#4b5563]" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
+                      <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-[11px] text-[#a0a7b0]">
+                        <span className="h-1.5 w-1.5 flex-none rounded-full" style={{ background: statusColor }} />
+                        {PATIENT_STATUS_LABEL[patientStatus]}
+                      </span>
+                      <span className="grid h-5 w-5 place-items-center rounded-full text-[9px] font-semibold text-white" style={{ background: statusColor }}>
+                        {isActivePatient ? 'ME' : '—'}
+                      </span>
+                      <span className="truncate text-[11px] text-[#6b7280]">{getPatientLastActivity(patient)}</span>
                     </button>
                   );
                 })

@@ -3,6 +3,7 @@ import { useUIStore, type ViewerTool } from '../../core/store/uiStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 
 const TOOL_LABELS: Record<ViewerTool, string> = {
+  none: 'n/a',
   windowLevel: 'Window/Level',
   zoom: 'Zoom',
   pan: 'Pan',

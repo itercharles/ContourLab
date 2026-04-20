@@ -32,8 +32,22 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 async function activateTool(tool: ViewerTool): Promise<void> {
+  const uiStore = useUIStore.getState();
+  const cornerstoneTool = TOOL_NAME_MAP[tool];
+
+  if (uiStore.activeTool === tool) {
+    uiStore.setActiveTool('none');
+    if (!cornerstoneTool) return;
+
+    try {
+      await MPRController.clearPrimaryTool();
+    } catch {
+      // Ignore early shortcut presses before the tool group exists.
+    }
+    return;
+  }
+
   if (CONTOUR_TOOLS.has(tool)) {
-    const uiStore = useUIStore.getState();
     const volumeStore = useVolumeStore.getState();
     const structureStore = useStructureStore.getState();
 
@@ -74,12 +88,11 @@ async function activateTool(tool: ViewerTool): Promise<void> {
     uiStore.setActiveViewport('AXIAL');
   }
 
-  useUIStore.getState().setActiveTool(tool);
+  uiStore.setActiveTool(tool);
   if (MEASUREMENT_TOOLS.has(tool)) {
     return;
   }
 
-  const cornerstoneTool = TOOL_NAME_MAP[tool];
   if (!cornerstoneTool) return;
 
   try {
