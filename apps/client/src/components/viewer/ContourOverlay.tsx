@@ -76,6 +76,19 @@ interface MeasurementAnnotation {
   label: string;
 }
 
+function formatMeasurementKindLabel(kind: MeasurementKind): string {
+  switch (kind) {
+    case 'hu':
+      return 'HU probe';
+    case 'distance':
+      return 'distance measurement';
+    case 'angle':
+      return 'angle measurement';
+    case 'area':
+      return 'area measurement';
+  }
+}
+
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
 
@@ -105,6 +118,7 @@ export default function ContourOverlay({
   const [draftPoints, setDraftPoints] = useState<WorldPoint[]>([]);
   const [measurementDraftPoints, setMeasurementDraftPoints] = useState<MeasurementWorldPoint[]>([]);
   const [measurements, setMeasurements] = useState<MeasurementAnnotation[]>([]);
+  const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const drawingRef = useRef(false);
   const editingPointIndexRef = useRef<number | null>(null);
@@ -131,6 +145,25 @@ export default function ContourOverlay({
       setStatusMessage(message);
     }
   };
+
+  const deleteMeasurement = (measurementId: string | null | undefined) => {
+    if (!measurementId) return false;
+
+    const measurement = measurements.find((entry) => entry.id === measurementId);
+    if (!measurement) return false;
+
+    setMeasurements((current) => current.filter((entry) => entry.id !== measurementId));
+    setSelectedMeasurementId((current) => (current === measurementId ? null : current));
+    setStatusMessage(`Removed ${formatMeasurementKindLabel(measurement.kind)}.`);
+    logClientDebug(
+      'ContourOverlay',
+      `measurement:remove viewport=${viewportId} kind=${measurement.kind} id=${measurement.id}`
+    );
+    return true;
+  };
+
+  const deleteLatestMeasurement = () =>
+    deleteMeasurement(selectedMeasurementId ?? measurements.at(-1)?.id);
 
   useEffect(() => {
     if (!viewportElement) return;
@@ -182,6 +215,12 @@ export default function ContourOverlay({
       }
     };
   }, [viewportElement, viewportId]);
+
+  useEffect(() => {
+    setMeasurements([]);
+    setSelectedMeasurementId(null);
+    setMeasurementDraftPoints([]);
+  }, [activeSeriesUID]);
 
   const canvasMetrics = useMemo<CanvasMetrics>(() => {
     if (!viewportElement) {
@@ -304,6 +343,17 @@ export default function ContourOverlay({
         return;
       }
 
+      if (
+        event.key === 'Escape' &&
+        isMeasurementTool &&
+        measurementDraftPoints.length === 0 &&
+        measurements.length > 0
+      ) {
+        event.preventDefault();
+        deleteLatestMeasurement();
+        return;
+      }
+
       if (event.key === 'Enter' && activeTool === 'polygon' && draftPointsRef.current.length >= 3) {
         event.preventDefault();
         finishDrawing();
@@ -314,6 +364,17 @@ export default function ContourOverlay({
         event.preventDefault();
         commitMeasurement('area', measurementDraftPoints);
         setMeasurementDraftPoints([]);
+        return;
+      }
+
+      if (
+        (event.key === 'Delete' || event.key === 'Backspace') &&
+        isMeasurementTool &&
+        measurementDraftPoints.length === 0 &&
+        measurements.length > 0
+      ) {
+        event.preventDefault();
+        deleteLatestMeasurement();
         return;
       }
 
@@ -361,6 +422,8 @@ export default function ContourOverlay({
     isContourEditTool,
     isMeasurementTool,
     measurementDraftPoints,
+    measurements,
+    selectedMeasurementId,
     viewportId,
   ]);
 
@@ -752,15 +815,17 @@ export default function ContourOverlay({
     const label = formatMeasurementLabel(kind, points);
     if (!label) return;
 
+    const nextMeasurement = {
+      id: `${kind}-${Date.now()}-${measurements.length}`,
+      kind,
+      points,
+      label,
+    } satisfies MeasurementAnnotation;
     setMeasurements((current) => [
       ...current,
-      {
-        id: `${kind}-${Date.now()}-${current.length}`,
-        kind,
-        points,
-        label,
-      },
+      nextMeasurement,
     ]);
+    setSelectedMeasurementId(nextMeasurement.id);
     setStatusMessage(label);
     logClientDebug('ContourOverlay', `measurement:${kind} viewport=${viewportId} ${label}`);
   };
@@ -1184,13 +1249,21 @@ export default function ContourOverlay({
       ))}
 
       {renderableMeasurements.map((measurement) => (
-        <g key={measurement.id}>
+        <g
+          key={measurement.id}
+          onPointerDown={(event) => {
+            event.stopPropagation();
+            setSelectedMeasurementId(measurement.id);
+            setStatusMessage(`${measurement.label}. Delete removes it.`);
+          }}
+          className="cursor-pointer"
+        >
           {measurement.kind === 'area' && measurement.canvasPoints.length >= 3 ? (
             <polygon
               points={measurement.canvasPoints.map((point) => point.join(',')).join(' ')}
-              fill="rgba(234, 179, 8, 0.08)"
-              stroke="#eab308"
-              strokeWidth="1.5"
+              fill={selectedMeasurementId === measurement.id ? 'rgba(59, 130, 246, 0.12)' : 'rgba(234, 179, 8, 0.08)'}
+              stroke={selectedMeasurementId === measurement.id ? '#3b82f6' : '#eab308'}
+              strokeWidth={selectedMeasurementId === measurement.id ? '2' : '1.5'}
               vectorEffect="non-scaling-stroke"
             />
           ) : null}
@@ -1198,8 +1271,8 @@ export default function ContourOverlay({
             <polyline
               points={measurement.canvasPoints.map((point) => point.join(',')).join(' ')}
               fill="none"
-              stroke="#eab308"
-              strokeWidth="1.5"
+              stroke={selectedMeasurementId === measurement.id ? '#3b82f6' : '#eab308'}
+              strokeWidth={selectedMeasurementId === measurement.id ? '2' : '1.5'}
               vectorEffect="non-scaling-stroke"
             />
           ) : null}
@@ -1208,8 +1281,8 @@ export default function ContourOverlay({
               key={`${measurement.id}-${index}`}
               cx={point[0]}
               cy={point[1]}
-              r="2.5"
-              fill="#eab308"
+              r={selectedMeasurementId === measurement.id ? '3.5' : '2.5'}
+              fill={selectedMeasurementId === measurement.id ? '#3b82f6' : '#eab308'}
               stroke="#000"
               strokeWidth="1"
               vectorEffect="non-scaling-stroke"
@@ -1218,7 +1291,7 @@ export default function ContourOverlay({
           <text
             x={measurement.canvasPoints.at(-1)![0] + 6}
             y={measurement.canvasPoints.at(-1)![1] - 6}
-            fill="#eab308"
+            fill={selectedMeasurementId === measurement.id ? '#60a5fa' : '#eab308'}
             fontSize="10"
             fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
             paintOrder="stroke"

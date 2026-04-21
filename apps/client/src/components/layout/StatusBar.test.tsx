@@ -46,7 +46,7 @@ function makeLoadedSeries(): LoadedSeries {
 
 beforeEach(() => {
   useUIStore.setState({
-    activeTool: 'windowLevel',
+    activeTool: 'none',
     brushRadius: 10,
     activeViewport: null,
   });
@@ -65,8 +65,7 @@ describe('StatusBar', () => {
   it('shows compact global viewport status', () => {
     render(<StatusBar />);
 
-    expect(screen.getByText('Window/Level')).toBeTruthy();
-    expect(screen.getAllByText('n/a').length).toBeGreaterThanOrEqual(4);
+    expect(screen.getAllByText('n/a').length).toBeGreaterThanOrEqual(5);
     expect(screen.getByText('synced')).toBeTruthy();
   });
 

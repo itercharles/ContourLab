@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
@@ -30,7 +30,7 @@ import { computeMarginContoursForStructure } from '../../core/contouring/MarginC
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
-import { getQaRuleConfig } from '../../core/qa/qaRuleConfig';
+import { QA_RULE_DEFINITIONS, getQaRuleConfig } from '../../core/qa/qaRuleConfig';
 
 const STRUCTURE_TYPES: StructureType[] = [
   'GTV',
@@ -116,26 +116,13 @@ interface StructureSetQualityIssue {
 }
 
 type PanelTab = 'structures' | 'qa' | 'dicom';
-
-const CONTOUR_QA_GROUP_LABEL: Record<ContourQualityIssue['type'], string> = {
-  empty: 'Empty structure',
-  'open-contour': 'Open contours',
-  'degenerate-contour': 'Degenerate contours',
-  'slice-gap': 'Slice gaps',
-  'area-jump': 'Area jumps',
-  'centroid-jump': 'Centroid jumps',
-  'out-of-bounds': 'Out of bounds',
+type QaChecklistEntry = {
+  id: string;
+  label: string;
+  description: string;
+  issueCount: number;
+  severity: 'info' | 'warning';
 };
-
-const CONTOUR_QA_GROUP_ORDER: ContourQualityIssue['type'][] = [
-  'open-contour',
-  'degenerate-contour',
-  'slice-gap',
-  'area-jump',
-  'centroid-jump',
-  'out-of-bounds',
-  'empty',
-];
 
 interface StructureRowProps {
   structure: Structure;
@@ -355,8 +342,9 @@ export default function StructurePanel() {
   const [boolOp, setBoolOp] = useState<'union' | 'intersect' | 'subtract'>('subtract');
   const [boolTarget, setBoolTarget] = useState('');
   const [contourQaSeverityFilter, setContourQaSeverityFilter] = useState<'warnings' | 'all'>('warnings');
-  const [expandedContourQaGroups, setExpandedContourQaGroups] = useState<string[]>([]);
-  const [contourQaVisibleCountByGroup, setContourQaVisibleCountByGroup] = useState<Record<string, number>>({});
+  const [expandedContourQaRules, setExpandedContourQaRules] = useState<string[]>([]);
+  const [expandedRtssQaRules, setExpandedRtssQaRules] = useState<string[]>([]);
+  const [qaVisibleCountByRule, setQaVisibleCountByRule] = useState<Record<string, number>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const attemptedAutoLoadSeriesRef = useRef(new Set<string>());
   const draftSaveTimerRef = useRef<number | null>(null);
@@ -422,13 +410,50 @@ export default function StructurePanel() {
         contourQaSeverityFilter === 'all' ? true : issue.severity === 'warning'
       )
     : [];
-  const contourQaIssueGroups = CONTOUR_QA_GROUP_ORDER
-    .map((type) => ({
-      type,
-      label: CONTOUR_QA_GROUP_LABEL[type],
-      issues: filteredContourQaIssues.filter((issue) => issue.type === type),
+  const contourQaIssuesByRule = useMemo(
+    () =>
+      filteredContourQaIssues.reduce<Record<string, ContourQualityIssue[]>>((grouped, issue) => {
+        grouped[issue.type] = [...(grouped[issue.type] ?? []), issue];
+        return grouped;
+      }, {}),
+    [filteredContourQaIssues]
+  );
+  const rtssQaIssuesByRule = useMemo(
+    () =>
+      activeStructureSetQaIssues.reduce<Record<string, StructureSetQualityIssue[]>>((grouped, qualityIssue) => {
+        grouped[qualityIssue.issue.type] = [...(grouped[qualityIssue.issue.type] ?? []), qualityIssue];
+        return grouped;
+      }, {}),
+    [activeStructureSetQaIssues]
+  );
+  const contourQaChecklist: QaChecklistEntry[] = QA_RULE_DEFINITIONS
+    .filter((rule) => rule.section === 'contour' && qaRuleConfig[rule.id] !== false)
+    .map((rule) => ({
+      id: rule.id,
+      label: rule.label,
+      description: rule.description,
+      severity: rule.severity,
+      issueCount: contourQaIssuesByRule[rule.id]?.length ?? 0,
     }))
-    .filter((group) => group.issues.length > 0);
+    .sort((a, b) => {
+      const aHasIssues = a.issueCount > 0 ? 0 : 1;
+      const bHasIssues = b.issueCount > 0 ? 0 : 1;
+      return aHasIssues - bHasIssues;
+    });
+  const rtssQaChecklist: QaChecklistEntry[] = QA_RULE_DEFINITIONS
+    .filter((rule) => rule.section === 'rtss' && qaRuleConfig[rule.id] !== false)
+    .map((rule) => ({
+      id: rule.id,
+      label: rule.label,
+      description: rule.description,
+      severity: rule.severity,
+      issueCount: activeStructureSetQa?.issues.filter((issue) => issue.type === rule.id).length ?? 0,
+    }))
+    .sort((a, b) => {
+      const aHasIssues = a.issueCount > 0 ? 0 : 1;
+      const bHasIssues = b.issueCount > 0 ? 0 : 1;
+      return aHasIssues - bHasIssues;
+    });
   void axialRevision;
   useEffect(() => {
     if (isAdding && inputRef.current) {
@@ -485,9 +510,16 @@ export default function StructurePanel() {
   }, [activeSeriesStructureSet, activeStructure, setActiveStructureOperationPanel]);
 
   useEffect(() => {
-    setExpandedContourQaGroups([]);
-    setContourQaVisibleCountByGroup({});
-  }, [activeStructure?.id, contourQaSeverityFilter, activeStructureQa?.issueCount]);
+    setExpandedContourQaRules([]);
+    setExpandedRtssQaRules([]);
+    setQaVisibleCountByRule({});
+  }, [
+    activeStructure?.id,
+    activeSeriesStructureSet?.id,
+    contourQaSeverityFilter,
+    activeStructureQa?.issueCount,
+    activeStructureSetQa?.issueCount,
+  ]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -1410,33 +1442,78 @@ export default function StructurePanel() {
                   : 'OK'}
               </span>
             </div>
-            {activeSeriesStructureSet && activeStructureSetQaIssues.length > 0 ? (
-              <div className="border border-[#2a2a2a] bg-[#171717]">
-                {activeStructureSetQaIssues.map((qualityIssue, index) => (
-                  <button
-                    key={`${qualityIssue.structureId}-${qualityIssue.issue.type}-${qualityIssue.issue.slicePosition ?? 'structure'}-${index}`}
-                    type="button"
-                    onClick={() => handleQaIssueSelect(qualityIssue)}
-                    className={`flex w-full items-start gap-1.5 border-b border-[#2a2a2a] px-2 py-1 text-left text-[10px] last:border-b-0 hover:bg-[#2e2e2e] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
-                      qualityIssue.issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
-                    }`}
-                    title={Number.isFinite(qualityIssue.issue.slicePosition) ? `Jump to z=${qualityIssue.issue.slicePosition!.toFixed(1)} mm` : 'Select RTSS QA item'}
-                    aria-label={`${qualityIssue.structureName ?? 'RTSS'} ${qualityIssue.issue.message}`}
+            {activeSeriesStructureSet ? (
+              <div className="mb-1.5 border border-[#2a2a2a] bg-[#171717]">
+                {rtssQaChecklist.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="border-b border-[#2a2a2a] last:border-b-0"
                   >
-                    {qualityIssue.structureName && (
-                      <span className="max-w-[64px] flex-none truncate font-semibold text-[#a0a0a0]">
-                        {qualityIssue.structureName}
+                    <button
+                      type="button"
+                      disabled={entry.issueCount === 0}
+                      onClick={() => setExpandedRtssQaRules((current) =>
+                        current.includes(entry.id)
+                          ? current.filter((value) => value !== entry.id)
+                          : [...current, entry.id]
+                      )}
+                      className={`grid w-full grid-cols-[12px_1fr_auto_auto] items-start gap-2 px-2 py-1 text-left text-[10px] ${
+                        entry.issueCount > 0
+                          ? 'hover:bg-[#202020] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none'
+                          : 'cursor-default'
+                      }`}
+                      title={entry.description}
+                      aria-expanded={entry.issueCount > 0 ? expandedRtssQaRules.includes(entry.id) : undefined}
+                      aria-label={entry.issueCount > 0 ? `${entry.label} ${entry.issueCount} hit` : `${entry.label} pass`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={entry.issueCount > 0 ? 'text-[#f59e0b]' : 'text-[#22c55e]'}
+                      >
+                        {entry.issueCount > 0 ? '!' : '✓'}
                       </span>
-                    )}
-                    <span className="min-w-0 flex-1">{qualityIssue.issue.message}</span>
-                  </button>
+                      <span className={entry.issueCount > 0 ? 'text-[#e5e5e5]' : 'text-[#a0a0a0]'}>
+                        {entry.label}
+                      </span>
+                      <span className="font-mono text-[9px] text-[#6b6b6b]">
+                        {entry.issueCount > 0 ? `${entry.issueCount} hit` : 'pass'}
+                      </span>
+                      <span className="w-3 text-[10px] text-[#6b6b6b]">
+                        {entry.issueCount > 0 ? (expandedRtssQaRules.includes(entry.id) ? '−' : '+') : ''}
+                      </span>
+                    </button>
+                    {entry.issueCount > 0 && expandedRtssQaRules.includes(entry.id) ? (
+                      <div className="border-t border-[#2a2a2a]">
+                        {(rtssQaIssuesByRule[entry.id] ?? []).map((qualityIssue, index) => (
+                          <button
+                            key={`${qualityIssue.structureId}-${qualityIssue.issue.type}-${qualityIssue.issue.slicePosition ?? 'structure'}-${index}`}
+                            type="button"
+                            onClick={() => handleQaIssueSelect(qualityIssue)}
+                            className={`flex w-full items-start gap-1.5 border-b border-[#2a2a2a] px-2 py-1 text-left text-[10px] last:border-b-0 hover:bg-[#2e2e2e] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                              qualityIssue.issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
+                            }`}
+                            title={Number.isFinite(qualityIssue.issue.slicePosition) ? `Jump to z=${qualityIssue.issue.slicePosition!.toFixed(1)} mm` : 'Select RTSS QA item'}
+                            aria-label={`${qualityIssue.structureName ?? 'RTSS'} ${qualityIssue.issue.message}`}
+                          >
+                            {qualityIssue.structureName && (
+                              <span className="max-w-[64px] flex-none truncate font-semibold text-[#a0a0a0]">
+                                {qualityIssue.structureName}
+                              </span>
+                            )}
+                            <span className="min-w-0 flex-1">{qualityIssue.issue.message}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                 ))}
               </div>
-            ) : (
+            ) : null}
+            {!(activeSeriesStructureSet && activeStructureSetQaIssues.length > 0) ? (
               <p className="text-[10px] text-[#6b6b6b]">
                 {activeSeriesStructureSet ? 'No RTSS QA warnings for this structure set.' : 'No active structure set.'}
               </p>
-            )}
+            ) : null}
           </section>
 
           <section className="border-b border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2">
@@ -1472,99 +1549,108 @@ export default function StructurePanel() {
                       : 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
                   }`}
                 >
-                  {contourQaIssueGroups.length > 0
+                  {contourQaChecklist.some((entry) => entry.issueCount > 0)
                     ? `${filteredContourQaIssues.length} issue${filteredContourQaIssues.length === 1 ? '' : 's'}`
                     : 'OK'}
                 </span>
               </div>
             </div>
-            {activeStructureQa && contourQaIssueGroups.length > 0 ? (
-              <div className="space-y-1">
-                {contourQaIssueGroups.map((group) => {
-                  const expanded = expandedContourQaGroups.includes(group.type);
-                  const visibleCount = contourQaVisibleCountByGroup[group.type] ?? 12;
-                  const visibleIssues = expanded ? group.issues.slice(0, visibleCount) : [];
-                  const remainingCount = Math.max(0, group.issues.length - visibleIssues.length);
-
-                  return (
-                    <div key={group.type} className="border border-[#2a2a2a] bg-[#171717]">
-                      <button
-                        type="button"
-                        onClick={() => setExpandedContourQaGroups((current) =>
-                          current.includes(group.type)
-                            ? current.filter((value) => value !== group.type)
-                            : [...current, group.type]
-                        )}
-                        className="flex w-full items-center gap-2 px-2 py-1.5 text-left hover:bg-[#202020] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-                      >
-                        <span className="w-3 text-[10px] text-[#6b6b6b]">{expanded ? '−' : '+'}</span>
-                        <span className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-widest text-[#a0a0a0]">
-                          {group.label}
-                        </span>
-                        <span className="border border-[#2a2a2a] bg-[#202020] px-1.5 py-0.5 font-mono text-[9px] text-[#a0a0a0]">
-                          {group.issues.length}
-                        </span>
-                      </button>
-                      {!expanded ? (
-                        <p className="border-t border-[#2a2a2a] px-2 py-1 text-[10px] text-[#6b6b6b]">
-                          {group.issues[0]?.message}
-                        </p>
-                      ) : (
-                        <div className="border-t border-[#2a2a2a]">
-                          {visibleIssues.map((issue, index) => {
-                            const isNavigable = Number.isFinite(issue.slicePosition);
-                            const key = `${issue.type}-${issue.slicePosition ?? 'structure'}-${index}`;
-
-                            return isNavigable ? (
-                              <button
-                                key={key}
-                                type="button"
-                                onClick={() => handleContourQaIssueSelect(issue)}
-                                className={`flex w-full items-start gap-1.5 border-b border-[#2a2a2a] px-2 py-1 text-left text-[10px] last:border-b-0 hover:bg-[#2e2e2e] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
-                                  issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
-                                }`}
-                                title={`Jump to z=${issue.slicePosition!.toFixed(1)} mm`}
-                                aria-label={`${group.label} ${issue.message}`}
-                              >
-                                <span className="min-w-0 flex-1">{issue.message}</span>
-                                <span className="font-mono text-[9px] text-[#6b6b6b]">
-                                  z={issue.slicePosition!.toFixed(1)}
-                                </span>
-                              </button>
-                            ) : (
-                              <div
-                                key={key}
-                                className={`border-b border-[#2a2a2a] px-2 py-1 text-[10px] last:border-b-0 ${
-                                  issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
-                                }`}
-                              >
-                                {issue.message}
-                              </div>
-                            );
-                          })}
-                          {remainingCount > 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => setContourQaVisibleCountByGroup((current) => ({
-                                ...current,
-                                [group.type]: visibleCount + 20,
-                              }))}
-                              className="w-full border-t border-[#2a2a2a] px-2 py-1 text-[10px] text-[#6b7280] hover:bg-[#202020] hover:text-[#e5e5e5] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
-                            >
-                              Show {Math.min(20, remainingCount)} more
-                            </button>
-                          ) : null}
-                        </div>
+            {activeStructure ? (
+              <div className="mb-1.5 border border-[#2a2a2a] bg-[#171717]">
+                {contourQaChecklist.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="border-b border-[#2a2a2a] last:border-b-0"
+                  >
+                    <button
+                      type="button"
+                      disabled={entry.issueCount === 0}
+                      onClick={() => setExpandedContourQaRules((current) =>
+                        current.includes(entry.id)
+                          ? current.filter((value) => value !== entry.id)
+                          : [...current, entry.id]
                       )}
-                    </div>
-                  );
-                })}
+                      className={`grid w-full grid-cols-[12px_1fr_auto_auto] items-start gap-2 px-2 py-1 text-left text-[10px] ${
+                        entry.issueCount > 0
+                          ? 'hover:bg-[#202020] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none'
+                          : 'cursor-default'
+                      }`}
+                      title={entry.description}
+                      aria-expanded={entry.issueCount > 0 ? expandedContourQaRules.includes(entry.id) : undefined}
+                      aria-label={entry.issueCount > 0 ? `${entry.label} ${entry.issueCount} hit` : `${entry.label} pass`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={entry.issueCount > 0 ? 'text-[#f59e0b]' : 'text-[#22c55e]'}
+                      >
+                        {entry.issueCount > 0 ? '!' : '✓'}
+                      </span>
+                      <span className={entry.issueCount > 0 ? 'text-[#e5e5e5]' : 'text-[#a0a0a0]'}>
+                        {entry.label}
+                      </span>
+                      <span className="font-mono text-[9px] text-[#6b6b6b]">
+                        {entry.issueCount > 0 ? `${entry.issueCount} hit` : 'pass'}
+                      </span>
+                      <span className="w-3 text-[10px] text-[#6b6b6b]">
+                        {entry.issueCount > 0 ? (expandedContourQaRules.includes(entry.id) ? '−' : '+') : ''}
+                      </span>
+                    </button>
+                    {entry.issueCount > 0 && expandedContourQaRules.includes(entry.id) ? (
+                      <div className="border-t border-[#2a2a2a]">
+                        {(contourQaIssuesByRule[entry.id] ?? []).slice(0, qaVisibleCountByRule[entry.id] ?? 12).map((issue, index) => {
+                          const isNavigable = Number.isFinite(issue.slicePosition);
+                          const key = `${issue.type}-${issue.slicePosition ?? 'structure'}-${index}`;
+
+                          return isNavigable ? (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => handleContourQaIssueSelect(issue)}
+                              className={`flex w-full items-start gap-1.5 border-b border-[#2a2a2a] px-2 py-1 text-left text-[10px] last:border-b-0 hover:bg-[#2e2e2e] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                                issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
+                              }`}
+                              title={`Jump to z=${issue.slicePosition!.toFixed(1)} mm`}
+                              aria-label={`${entry.label} ${issue.message}`}
+                            >
+                              <span className="min-w-0 flex-1">{issue.message}</span>
+                              <span className="font-mono text-[9px] text-[#6b6b6b]">
+                                z={issue.slicePosition!.toFixed(1)}
+                              </span>
+                            </button>
+                          ) : (
+                            <div
+                              key={key}
+                              className={`border-b border-[#2a2a2a] px-2 py-1 text-[10px] last:border-b-0 ${
+                                issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
+                              }`}
+                            >
+                              {issue.message}
+                            </div>
+                          );
+                        })}
+                        {(contourQaIssuesByRule[entry.id] ?? []).length > (qaVisibleCountByRule[entry.id] ?? 12) ? (
+                          <button
+                            type="button"
+                            onClick={() => setQaVisibleCountByRule((current) => ({
+                              ...current,
+                              [entry.id]: (current[entry.id] ?? 12) + 20,
+                            }))}
+                            className="w-full border-t border-[#2a2a2a] px-2 py-1 text-[10px] text-[#6b7280] hover:bg-[#202020] hover:text-[#e5e5e5] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                          >
+                            Show {Math.min(20, (contourQaIssuesByRule[entry.id] ?? []).length - (qaVisibleCountByRule[entry.id] ?? 12))} more
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
               </div>
-            ) : (
+            ) : null}
+            {!(activeStructureQa && contourQaChecklist.some((entry) => entry.issueCount > 0)) ? (
               <p className="text-[10px] text-[#6b6b6b]">
                 {activeStructure ? 'No contour QA issues for this structure.' : 'No active structure.'}
               </p>
-            )}
+            ) : null}
           </section>
         </div>
       )}

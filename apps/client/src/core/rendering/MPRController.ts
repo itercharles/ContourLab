@@ -49,10 +49,8 @@ export const MPRController = {
       getReferenceLineSlabThicknessControlsOn: () => false,
     });
 
-    // Set defaults: WindowLevel on left mouse, Zoom on right, Pan on middle
-    toolGroup.setToolActive(WindowLevelTool.toolName, {
-      bindings: [{ mouseButton: csToolsEnums.MouseBindings.Primary }],
-    });
+    // Start with no primary-button image tool selected. The user explicitly chooses
+    // Window/Level, Zoom, Pan, or Scroll from the tool rail / shortcuts.
     toolGroup.setToolActive(ZoomTool.toolName, {
       bindings: [{ mouseButton: csToolsEnums.MouseBindings.Secondary }],
     });

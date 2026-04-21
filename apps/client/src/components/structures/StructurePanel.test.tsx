@@ -421,12 +421,21 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByText('Contour QA')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Warnings' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'All' })).toBeTruthy();
-    expect(screen.getByText('Open contours')).toBeTruthy();
-    expect(screen.getByText('Slice gaps')).toBeTruthy();
-    expect(screen.getByText('Area jumps')).toBeTruthy();
-    expect(screen.getAllByText('Open contour at z=5.0 mm.').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Gap from z=0.0 to 5.0 mm.').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Area jump near z=5.0 mm.').length).toBeGreaterThan(0);
+    expect(screen.getByText('Open contour')).toBeTruthy();
+    expect(screen.getAllByText('1 hit').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('pass').length).toBeGreaterThan(0);
+    expect(screen.getByText('Slice gap')).toBeTruthy();
+    expect(screen.getByText('Area jump')).toBeTruthy();
+    expect(screen.queryByText('Open contour at z=5.0 mm.')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open contour 1 hit' }));
+    expect(screen.getByText('Open contour at z=5.0 mm.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Slice gap 1 hit' }));
+    expect(screen.getByText('Gap from z=0.0 to 5.0 mm.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Area jump 1 hit' }));
+    expect(screen.getByText('Area jump near z=5.0 mm.')).toBeTruthy();
   });
 
   it('navigates to a contour QA slice when an expanded issue is selected', async () => {
@@ -464,8 +473,8 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     render(<StructurePanel />);
 
     fireEvent.click(screen.getByRole('button', { name: 'QA' }));
-    fireEvent.click(screen.getByRole('button', { name: /Slice gaps/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Slice gaps Gap from z=0.0 to 20.0 mm./i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Slice gap 1 hit' }));
+    fireEvent.click(screen.getByRole('button', { name: /Slice gap Gap from z=0.0 to 20.0 mm./i }));
 
     await waitFor(() => expect(mocks.scroll).toHaveBeenCalledWith(1));
     expect(mocks.renderViewport).toHaveBeenCalled();
@@ -517,10 +526,16 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     expect(screen.getByText('RTSS QA')).toBeTruthy();
     expect(screen.getAllByText(/warnings/).length).toBeGreaterThan(0);
+    expect(screen.getByText('Duplicate ROI name')).toBeTruthy();
+    expect(screen.getAllByText('1 hit').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Duplicate ROI name "PTV".')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate ROI name 1 hit' }));
     expect(screen.getByText('Duplicate ROI name "PTV".')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Empty ROI 1 hit' }));
     expect(screen.getByText('ptv: ROI has no contour sequence.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Foreign contour reference 1 hit' }));
     expect(screen.getByText('PTV: contour at z=5.0 mm references an image outside the active image set.')).toBeTruthy();
-    expect(screen.getAllByText('Open contour at z=5.0 mm.')).toHaveLength(1);
+    expect(screen.queryByText('Open contour at z=5.0 mm.')).toBeNull();
   });
 
   it('activates a structure and jumps to the RTSS QA issue slice when a structure-set QA item is clicked', async () => {
@@ -561,6 +576,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     render(<StructurePanel />);
 
     fireEvent.click(screen.getByRole('button', { name: 'QA' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Foreign contour reference 1 hit' }));
     fireEvent.click(screen.getByRole('button', { name: /Cord.*references an image outside the active image set./ }));
 
     await waitFor(() => expect(useStructureStore.getState().activeStructureId).toBe('structure-2'));

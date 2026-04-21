@@ -46,7 +46,7 @@ interface UIState {
 
 export const useUIStore = create<UIState>()(
   immer((set) => ({
-    activeTool: 'windowLevel',
+    activeTool: 'none',
     windowLevelPreset: 'softTissue',
     brushRadius: 10,
     rightSidebarOpen: true,
