@@ -32,6 +32,7 @@ export interface ContourQualityContext {
     minY: number;
     maxY: number;
   };
+  enabledRules?: Partial<Record<ContourQualityIssueType, boolean>>;
 }
 
 const MIN_VALID_AREA_MM2 = 0.01;
@@ -119,13 +120,17 @@ export function analyzeContourQuality(
   const normalizedContext =
     typeof context === 'number' ? { sliceSpacingMm: context } : context;
   const sliceSpacingMm = normalizedContext.sliceSpacingMm ?? 1;
+  const isRuleEnabled = (rule: ContourQualityIssueType) =>
+    normalizedContext.enabledRules?.[rule] !== false;
 
   if (structure.contours.length === 0) {
-    issues.push({
-      type: 'empty',
-      severity: 'info',
-      message: 'No contours in this structure.',
-    });
+    if (isRuleEnabled('empty')) {
+      issues.push({
+        type: 'empty',
+        severity: 'info',
+        message: 'No contours in this structure.',
+      });
+    }
     return {
       issueCount: issues.length,
       warningCount: 0,
@@ -138,7 +143,7 @@ export function analyzeContourQuality(
 
   contoursBySlice.forEach((contour) => {
     const area = getContourAreaMm2(contour);
-    if (!contour.isClosed) {
+    if (isRuleEnabled('open-contour') && !contour.isClosed) {
       issues.push({
         type: 'open-contour',
         severity: 'warning',
@@ -146,7 +151,7 @@ export function analyzeContourQuality(
         message: `Open contour at z=${contour.slicePosition.toFixed(1)} mm.`,
       });
     }
-    if (area <= MIN_VALID_AREA_MM2) {
+    if (isRuleEnabled('degenerate-contour') && area <= MIN_VALID_AREA_MM2) {
       issues.push({
         type: 'degenerate-contour',
         severity: 'warning',
@@ -154,7 +159,11 @@ export function analyzeContourQuality(
         message: `Degenerate contour at z=${contour.slicePosition.toFixed(1)} mm.`,
       });
     }
-    if (normalizedContext.imageBounds && contourExceedsBounds(contour, normalizedContext.imageBounds)) {
+    if (
+      isRuleEnabled('out-of-bounds') &&
+      normalizedContext.imageBounds &&
+      contourExceedsBounds(contour, normalizedContext.imageBounds)
+    ) {
       issues.push({
         type: 'out-of-bounds',
         severity: 'warning',
@@ -168,7 +177,7 @@ export function analyzeContourQuality(
     const previous = contoursBySlice[index - 1];
     const current = contoursBySlice[index];
     const gap = current.slicePosition - previous.slicePosition;
-    if (gap > expectedSpacingMm * 1.5) {
+    if (isRuleEnabled('slice-gap') && gap > expectedSpacingMm * 1.5) {
       issues.push({
         type: 'slice-gap',
         severity: 'warning',
@@ -182,6 +191,7 @@ export function analyzeContourQuality(
     const smallerArea = Math.min(previousArea, currentArea);
     const largerArea = Math.max(previousArea, currentArea);
     if (
+      isRuleEnabled('area-jump') &&
       smallerArea > MIN_VALID_AREA_MM2 &&
       largerArea - smallerArea >= MIN_AREA_JUMP_MM2 &&
       largerArea / smallerArea >= AREA_JUMP_RATIO
@@ -201,7 +211,7 @@ export function analyzeContourQuality(
         currentCentroid.x - previousCentroid.x,
         currentCentroid.y - previousCentroid.y
       );
-      if (centroidDistance >= MIN_CENTROID_JUMP_MM) {
+      if (isRuleEnabled('centroid-jump') && centroidDistance >= MIN_CENTROID_JUMP_MM) {
         issues.push({
           type: 'centroid-jump',
           severity: 'warning',

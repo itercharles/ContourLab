@@ -4,6 +4,7 @@ import StructurePanel from './StructurePanel';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
+import { resetQaRuleConfig } from '../../core/qa/qaRuleConfig';
 import type { StructureSet } from '@webtps/shared-types';
 
 const mocks = vi.hoisted(() => ({
@@ -134,6 +135,7 @@ function makeOtherSeriesStructureSet(): StructureSet {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resetQaRuleConfig();
   mocks.getViewport.mockReturnValue({
     getCamera: () => ({ focalPoint: [0, 0, 10] as [number, number, number] }),
     scroll: mocks.scroll,
@@ -417,10 +419,56 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     fireEvent.click(screen.getByRole('button', { name: 'QA' }));
 
     expect(screen.getByText('Contour QA')).toBeTruthy();
-    expect(screen.getAllByText(/warnings/).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Warnings' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'All' })).toBeTruthy();
+    expect(screen.getByText('Open contours')).toBeTruthy();
+    expect(screen.getByText('Slice gaps')).toBeTruthy();
+    expect(screen.getByText('Area jumps')).toBeTruthy();
     expect(screen.getAllByText('Open contour at z=5.0 mm.').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Gap from z=0.0 to 5.0 mm.').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Area jump near z=5.0 mm.').length).toBeGreaterThan(0);
+  });
+
+  it('navigates to a contour QA slice when an expanded issue is selected', async () => {
+    const loadedSeries = makeLoadedSeries();
+    loadedSeries.series.instances = [
+      { sopInstanceUID: 'sop-0', instanceNumber: 1, sliceLocation: 0 },
+      { sopInstanceUID: 'sop-10', instanceNumber: 2, sliceLocation: 10 },
+      { sopInstanceUID: 'sop-20', instanceNumber: 3, sliceLocation: 20 },
+    ];
+    const structureSet = makeStructureSet();
+    structureSet.structures[0].contours = [
+      {
+        referencedSOPInstanceUID: 'sop-0',
+        slicePosition: 0,
+        points: new Float32Array([0, 0, 0, 10, 0, 0, 10, 10, 0, 0, 10, 0]),
+        isClosed: true,
+      },
+      {
+        referencedSOPInstanceUID: 'sop-20',
+        slicePosition: 20,
+        points: new Float32Array([0, 0, 20, 40, 0, 20, 40, 40, 20, 0, 40, 20]),
+        isClosed: true,
+      },
+    ];
+    useVolumeStore.setState({
+      loadedSeries: [loadedSeries],
+      activeSeriesUID: loadedSeries.seriesUID,
+    });
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'QA' }));
+    fireEvent.click(screen.getByRole('button', { name: /Slice gaps/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Slice gaps Gap from z=0.0 to 20.0 mm./i }));
+
+    await waitFor(() => expect(mocks.scroll).toHaveBeenCalledWith(1));
+    expect(mocks.renderViewport).toHaveBeenCalled();
   });
 
   it('summarizes RTSS QA separately from contour geometry QA', () => {

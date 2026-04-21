@@ -97,4 +97,21 @@ describe('analyzeContourQuality', () => {
       'out-of-bounds',
     ]));
   });
+
+  it('skips disabled contour QA rules', () => {
+    const summary = analyzeContourQuality(
+      makeStructure([
+        squareContour(0, 10),
+        squareContour(5, 10, false),
+      ]),
+      {
+        sliceSpacingMm: 2.5,
+        enabledRules: {
+          'open-contour': false,
+        },
+      }
+    );
+
+    expect(summary.issues.some((issue) => issue.type === 'open-contour')).toBe(false);
+  });
 });

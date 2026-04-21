@@ -98,4 +98,21 @@ describe('analyzeRtssQuality', () => {
     ]));
     expect(summary.warningCount).toBeGreaterThanOrEqual(3);
   });
+
+  it('skips disabled RTSS QA rules', () => {
+    const summary = analyzeRtssQuality(makeStructureSet({
+      structures: [
+        makeStructure({ id: 'structure-1', name: 'PTV' }),
+        makeStructure({ id: 'structure-2', name: 'ptv' }),
+      ],
+    }), {
+      activeSeriesUID: 'series-1',
+      imageSopInstanceUIDs: ['sop-1'],
+      enabledRules: {
+        'duplicate-roi-name': false,
+      },
+    });
+
+    expect(summary.issues.some((issue) => issue.type === 'duplicate-roi-name')).toBe(false);
+  });
 });

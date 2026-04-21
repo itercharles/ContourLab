@@ -7,6 +7,13 @@ import {
   setDicomWebBaseUrl,
   uploadDicomWebStudies,
 } from '../core/dicom/dicomWebClient';
+import {
+  QA_RULE_DEFINITIONS,
+  getQaRuleConfig,
+  resetQaRuleConfig,
+  setQaRuleEnabled,
+  type QaRuleConfig,
+} from '../core/qa/qaRuleConfig';
 
 interface SettingsStatus {
   tone: 'muted' | 'error';
@@ -15,6 +22,7 @@ interface SettingsStatus {
 
 export default function Settings() {
   const [endpoint, setEndpoint] = useState(getDicomWebBaseUrl());
+  const [qaRuleConfig, setQaRuleConfig] = useState<QaRuleConfig>(getQaRuleConfig());
   const [status, setStatus] = useState<SettingsStatus | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -63,6 +71,21 @@ export default function Settings() {
       setIsImporting(false);
     }
   };
+
+  const onToggleQaRule = (ruleId: keyof QaRuleConfig, enabled: boolean) => {
+    const next = setQaRuleEnabled(ruleId, enabled);
+    setQaRuleConfig(next);
+    setStatus({ tone: 'muted', message: 'QA rule configuration saved for this browser.' });
+  };
+
+  const onResetQaRules = () => {
+    const next = resetQaRuleConfig();
+    setQaRuleConfig(next);
+    setStatus({ tone: 'muted', message: 'QA rule configuration reset to the application default.' });
+  };
+
+  const contourRules = QA_RULE_DEFINITIONS.filter((rule) => rule.section === 'contour');
+  const rtssRules = QA_RULE_DEFINITIONS.filter((rule) => rule.section === 'rtss');
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-[#e5e5e5]">
@@ -148,6 +171,72 @@ export default function Settings() {
                 disabled={isImporting}
               />
             </label>
+          </div>
+        </section>
+
+        <section className="border border-[#2a2a2a] bg-[#1a1a1a]">
+          <div className="border-b border-[#2a2a2a] px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[#a0a0a0]">
+                  QA Rules
+                </h2>
+                <p className="mt-1 text-[11px] text-[#6b6b6b]">
+                  Enable or disable contour and RTSS QA checks for this browser. Changes apply to the review workspace immediately after returning.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onResetQaRules}
+                className="h-8 rounded bg-[#242424] px-3 text-[11px] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                Reset QA Rules
+              </button>
+            </div>
+          </div>
+          <div className="grid gap-4 px-3 py-3 md:grid-cols-2">
+            {[
+              { label: 'Contour QA', rules: contourRules },
+              { label: 'RTSS QA', rules: rtssRules },
+            ].map((section) => (
+              <section key={section.label} className="border border-[#2a2a2a] bg-[#171717]">
+                <div className="border-b border-[#2a2a2a] px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+                  {section.label}
+                </div>
+                <div>
+                  {section.rules.map((rule) => (
+                    <label
+                      key={rule.id}
+                      className="grid grid-cols-[1fr_auto] gap-3 border-b border-[#2a2a2a] px-2 py-2 last:border-b-0"
+                    >
+                      <span>
+                        <span className="block text-[11px] font-semibold text-[#e5e5e5]">{rule.label}</span>
+                        <span className="mt-0.5 block text-[10px] text-[#6b6b6b]">{rule.description}</span>
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className={`text-[9px] uppercase tracking-widest ${
+                          rule.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
+                        }`}>
+                          {rule.severity}
+                        </span>
+                        <input
+                          aria-label={`${rule.label} QA rule`}
+                          type="checkbox"
+                          checked={qaRuleConfig[rule.id]}
+                          onChange={(event) => onToggleQaRule(rule.id, event.target.checked)}
+                          className="h-4 w-4 accent-blue-500"
+                        />
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+          <div className="border-t border-[#2a2a2a] bg-[#171717] px-3 py-2">
+            <p className="text-[10px] text-[#6b6b6b]">
+              Custom user-authored QA rules are not implemented yet. When added, they should target a constrained rule schema rather than arbitrary scripting.
+            </p>
           </div>
         </section>
 

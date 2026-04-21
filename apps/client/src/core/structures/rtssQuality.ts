@@ -29,6 +29,7 @@ export interface RtssQualitySummary {
 export interface RtssQualityContext {
   activeSeriesUID?: string | null;
   imageSopInstanceUIDs?: string[];
+  enabledRules?: Partial<Record<RtssQualityIssueType, boolean>>;
 }
 
 function formatSlicePosition(slicePosition: number | undefined): string {
@@ -42,8 +43,14 @@ export function analyzeRtssQuality(
   const issues: RtssQualityIssue[] = [];
   const activeSeriesUID = context.activeSeriesUID ?? null;
   const imageSopInstanceUIDs = new Set(context.imageSopInstanceUIDs ?? []);
+  const isRuleEnabled = (rule: RtssQualityIssueType) =>
+    context.enabledRules?.[rule] !== false;
 
-  if (activeSeriesUID && structureSet.referencedSeriesUID !== activeSeriesUID) {
+  if (
+    isRuleEnabled('series-mismatch') &&
+    activeSeriesUID &&
+    structureSet.referencedSeriesUID !== activeSeriesUID
+  ) {
     issues.push({
       type: 'series-mismatch',
       severity: 'warning',
@@ -51,7 +58,7 @@ export function analyzeRtssQuality(
     });
   }
 
-  if (structureSet.structures.length === 0) {
+  if (isRuleEnabled('empty-structure-set') && structureSet.structures.length === 0) {
     issues.push({
       type: 'empty-structure-set',
       severity: 'warning',
@@ -59,7 +66,11 @@ export function analyzeRtssQuality(
     });
   }
 
-  if (structureSet.source?.type === 'rtstruct' && !structureSet.source.sopInstanceUID) {
+  if (
+    isRuleEnabled('missing-rtstruct-source') &&
+    structureSet.source?.type === 'rtstruct' &&
+    !structureSet.source.sopInstanceUID
+  ) {
     issues.push({
       type: 'missing-rtstruct-source',
       severity: 'info',
@@ -75,7 +86,7 @@ export function analyzeRtssQuality(
   });
 
   roiNames.forEach((names) => {
-    if (names.length <= 1) return;
+    if (!isRuleEnabled('duplicate-roi-name') || names.length <= 1) return;
     issues.push({
       type: 'duplicate-roi-name',
       severity: 'warning',
@@ -84,7 +95,7 @@ export function analyzeRtssQuality(
   });
 
   structureSet.structures.forEach((structure) => {
-    if (structure.contours.length === 0) {
+    if (isRuleEnabled('empty-roi') && structure.contours.length === 0) {
       issues.push({
         type: 'empty-roi',
         severity: 'info',
@@ -96,7 +107,7 @@ export function analyzeRtssQuality(
     }
 
     structure.contours.forEach((contour) => {
-      if (!contour.referencedSOPInstanceUID) {
+      if (isRuleEnabled('missing-contour-reference') && !contour.referencedSOPInstanceUID) {
         issues.push({
           type: 'missing-contour-reference',
           severity: 'warning',
@@ -108,7 +119,11 @@ export function analyzeRtssQuality(
         return;
       }
 
-      if (imageSopInstanceUIDs.size > 0 && !imageSopInstanceUIDs.has(contour.referencedSOPInstanceUID)) {
+      if (
+        isRuleEnabled('foreign-contour-reference') &&
+        imageSopInstanceUIDs.size > 0 &&
+        !imageSopInstanceUIDs.has(contour.referencedSOPInstanceUID)
+      ) {
         issues.push({
           type: 'foreign-contour-reference',
           severity: 'warning',
