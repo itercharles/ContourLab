@@ -113,9 +113,20 @@ More detail: [`docs/local_development.md`](docs/local_development.md).
 ## Testing
 
 ```bash
+pnpm --filter @webtps/client lint
 pnpm -r test          # all workspaces
 pnpm -r typecheck     # TypeScript check all workspaces
+dotnet build apps/api/api.csproj --configuration Release
 ```
+
+## CI
+
+GitHub Actions validates:
+
+- Frontend lint, typecheck, test, and build
+- ASP.NET API restore and build
+- Shared types typecheck and build
+- Integration smoke startup of Orthanc + API + frontend via `pnpm local:doctor`
 
 ## Build
 

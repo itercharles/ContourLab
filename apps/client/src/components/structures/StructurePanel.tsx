@@ -349,8 +349,6 @@ export default function StructurePanel() {
   const attemptedAutoLoadSeriesRef = useRef(new Set<string>());
   const draftSaveTimerRef = useRef<number | null>(null);
   const isActiveSeriesDirty = !!activeSeriesUID && dirtySeriesUIDs.includes(activeSeriesUID);
-  const isActiveSeriesRepositoryDirty =
-    !!activeSeriesUID && repositoryDirtySeriesUIDs.includes(activeSeriesUID);
   const activeStructureSetById = structureSets.find(
     (structureSet) => structureSet.id === activeStructureSetId
   );

@@ -42,9 +42,7 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
       setViewportElement(elRef.current);
       onReady(id, elRef.current);
     }
-    // onReady is stable (created with useCallback in parent)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [id, onReady]);
 
   useEffect(() => {
     const element = elRef.current;

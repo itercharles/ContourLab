@@ -77,7 +77,8 @@ described in [`docs/agent_environment.md`](agent_environment.md).
 ## Validation Commands
 
 - Frontend UI change: `pnpm --filter @webtps/client test`
-- API change: `cd apps/api && dotnet test`
+- Frontend static checks: `pnpm --filter @webtps/client lint && pnpm --filter @webtps/client typecheck`
+- API change: `dotnet build apps/api/api.csproj --configuration Release`
 - Data model change: `pnpm -r typecheck` (all consumers must still compile)
 - Before merge: `pnpm -r test && pnpm -r typecheck && pnpm -r build`
 
@@ -101,9 +102,10 @@ If no CR exists yet, create one in WebTPS-DHF before opening the PR.
 
 GitHub Actions defines the acceptance path:
 
-1. Phase 1: Frontend lint + typecheck + test
-2. Phase 2: API build + test
-3. Phase 3: Build all workspaces
+1. Phase 1: Frontend lint + typecheck + test + build
+2. Phase 2: API restore + build
+3. Phase 3: Shared types typecheck + build
+4. Phase 4: Integration smoke check using local Orthanc + API + frontend + `pnpm local:doctor`
 
 ## Design Rules
 
