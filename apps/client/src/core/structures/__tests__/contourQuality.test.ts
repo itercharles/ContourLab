@@ -53,4 +53,48 @@ describe('analyzeContourQuality', () => {
     ]));
     expect(summary.warningCount).toBeGreaterThanOrEqual(3);
   });
+
+  it('detects centroid jumps and contours outside image bounds', () => {
+    const summary = analyzeContourQuality(
+      makeStructure([
+        squareContour(0, 10),
+        {
+          referencedSOPInstanceUID: 'sop-5',
+          slicePosition: 5,
+          points: new Float32Array([
+            40, 0, 5,
+            50, 0, 5,
+            50, 10, 5,
+            40, 10, 5,
+          ]),
+          isClosed: true,
+        },
+        {
+          referencedSOPInstanceUID: 'sop-10',
+          slicePosition: 10,
+          points: new Float32Array([
+            -2, 0, 10,
+            8, 0, 10,
+            8, 10, 10,
+            -2, 10, 10,
+          ]),
+          isClosed: true,
+        },
+      ]),
+      {
+        sliceSpacingMm: 2.5,
+        imageBounds: {
+          minX: 0,
+          maxX: 30,
+          minY: 0,
+          maxY: 30,
+        },
+      }
+    );
+
+    expect(summary.issues.map((issue) => issue.type)).toEqual(expect.arrayContaining([
+      'centroid-jump',
+      'out-of-bounds',
+    ]));
+  });
 });

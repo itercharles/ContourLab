@@ -14,6 +14,13 @@ const mocks = vi.hoisted(() => ({
   retrieveDicomWebInstance: vi.fn(),
   exportRtstructObject: vi.fn(),
   importRtstructArrayBuffer: vi.fn(),
+  scroll: vi.fn(),
+  renderViewport: vi.fn(),
+  getViewport: vi.fn(() => ({
+    getCamera: () => ({ focalPoint: [0, 0, 0] as [number, number, number] }),
+    scroll: vi.fn(),
+    render: vi.fn(),
+  })),
 }));
 
 vi.mock('../../core/dicom/dicomWebClient', () => ({
@@ -35,6 +42,22 @@ vi.mock('../../core/structures/rtstructImport', () => ({
 
 vi.mock('../../core/debug/clientDebugLog', () => ({
   logClientDebug: vi.fn(),
+}));
+
+vi.mock('../../core/rendering/MPRController', () => ({
+  VIEWPORT_IDS: {
+    AXIAL: 'viewport-axial',
+    SAGITTAL: 'viewport-sagittal',
+    CORONAL: 'viewport-coronal',
+  },
+}));
+
+vi.mock('../../core/rendering/ViewportManager', () => ({
+  ViewportManager: {
+    getRenderingEngine: vi.fn(() => ({
+      getViewport: mocks.getViewport,
+    })),
+  },
 }));
 
 function makeLoadedSeries(): LoadedSeries {
@@ -68,7 +91,10 @@ function makeLoadedSeries(): LoadedSeries {
       seriesInstanceUID: 'series-1',
       seriesDescription: 'Axial',
       modality: 'CT',
-      instances: [],
+      instances: [
+        { sopInstanceUID: 'sop-0', instanceNumber: 1, sliceLocation: 0 },
+        { sopInstanceUID: 'sop-10', instanceNumber: 2, sliceLocation: 10 },
+      ],
     },
   };
 }
@@ -85,7 +111,12 @@ function makeStructureSet(): StructureSet {
         name: 'PTV',
         type: 'PTV',
         color: [0, 0, 255],
-        contours: [],
+        contours: [{
+          referencedSOPInstanceUID: 'sop-10',
+          slicePosition: 10,
+          points: new Float32Array([0, 0, 10, 10, 0, 10, 10, 10, 10, 0, 10, 10]),
+          isClosed: true,
+        }],
         isVisible: true,
         isLocked: false,
         volume_cc: 1.2,
@@ -96,6 +127,11 @@ function makeStructureSet(): StructureSet {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.getViewport.mockReturnValue({
+    getCamera: () => ({ focalPoint: [0, 0, 0] as [number, number, number] }),
+    scroll: mocks.scroll,
+    render: mocks.renderViewport,
+  });
   mocks.queryDicomWebSeries.mockResolvedValue([
     {
       studyInstanceUID: 'study-1',
@@ -602,6 +638,12 @@ describe('DicomRepoPanel', () => {
     repositoryRtstruct.id = 'repo-ss';
     repositoryRtstruct.label = 'Repository Set';
     repositoryRtstruct.structures[0].volume_cc = 0.4;
+    repositoryRtstruct.structures[0].contours = [{
+      referencedSOPInstanceUID: 'sop-0',
+      slicePosition: 0,
+      points: new Float32Array([0, 0, 0, 6, 0, 0, 6, 6, 0, 0, 6, 0]),
+      isClosed: true,
+    }];
     repositoryRtstruct.structures.push({
       id: 'old-oar',
       name: 'Old_OAR',
@@ -647,6 +689,10 @@ describe('DicomRepoPanel', () => {
     expect(screen.getByText('RTSTRUCT Baseline vs active workspace')).toBeTruthy();
     expect(screen.getByText('+0 / -1 / Δ1')).toBeTruthy();
     expect(useStructureStore.getState().activeStructureSetId).toBe('ss-1');
+    fireEvent.click(screen.getByRole('button', { name: /PTV changed/i }));
+    expect(useStructureStore.getState().activeStructureId).toBe('structure-1');
+    expect(mocks.scroll).toHaveBeenCalledWith(1);
+    expect(mocks.renderViewport).toHaveBeenCalled();
   });
 
   it('keeps the active RTSTRUCT when unsynced changes are not confirmed', async () => {

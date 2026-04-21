@@ -18,6 +18,8 @@ export type ViewerTool =
   | 'brush'
   | 'eraser';
 
+export type StructureOperationPanel = 'margin' | 'interpolate' | 'boolean' | null;
+
 export type WLPreset = 'lung' | 'bone' | 'softTissue' | 'brain' | 'mediastinum' | 'abdomen' | 'custom';
 export type ViewportOrientation = 'AXIAL' | 'SAGITTAL' | 'CORONAL';
 
@@ -29,7 +31,9 @@ interface UIState {
   leftSidebarOpen: boolean;
   crosshairsEnabled: boolean;
   activeViewport: ViewportOrientation | null;
+  activeStructureOperationPanel: StructureOperationPanel;
   setActiveTool: (tool: ViewerTool) => void;
+  setActiveStructureOperationPanel: (panel: StructureOperationPanel) => void;
   setWindowLevelPreset: (preset: WLPreset) => void;
   setBrushRadius: (r: number) => void;
   toggleRightSidebar: () => void;
@@ -49,10 +53,15 @@ export const useUIStore = create<UIState>()(
     leftSidebarOpen: false,
     crosshairsEnabled: true,
     activeViewport: null,
+    activeStructureOperationPanel: null,
 
     setActiveTool: (tool) =>
       set((state) => {
         state.activeTool = tool;
+      }),
+    setActiveStructureOperationPanel: (panel) =>
+      set((state) => {
+        state.activeStructureOperationPanel = panel;
       }),
     setWindowLevelPreset: (preset) =>
       set((state) => {

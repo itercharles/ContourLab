@@ -15,8 +15,12 @@ import { importRtstructArrayBuffer } from '../../core/structures/rtstructImport'
 import { replaceStructureSetsForSeries } from '../../core/structures/structurePersistence';
 import {
   compareStructureSets,
+  type StructureComparisonRow,
   type StructureSetComparison,
 } from '../../core/structures/structureSetCompare';
+import { resolveScrollDeltaToSlice } from '../../core/structures/contourReview';
+import { ViewportManager } from '../../core/rendering/ViewportManager';
+import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 
 const WORKLIST_POLL_INTERVAL_MS = 60_000;
@@ -76,6 +80,12 @@ interface RepoRefreshState {
 interface RtstructComparisonState {
   label: string;
   summary: StructureSetComparison;
+}
+
+interface AxialViewportLike {
+  getCamera?: () => { focalPoint?: [number, number, number] };
+  scroll?: (delta: number) => void;
+  render?: () => void;
 }
 
 interface DicomRepoPanelProps {
@@ -225,10 +235,15 @@ function RepoSectionHeader({ label, meta }: { label: string; meta?: string }) {
   );
 }
 
-function RtstructCompareSummary({ comparison }: { comparison: RtstructComparisonState }) {
+function RtstructCompareSummary({
+  comparison,
+  onSelectRow,
+}: {
+  comparison: RtstructComparisonState;
+  onSelectRow: (row: StructureComparisonRow) => void;
+}) {
   const changedRows = comparison.summary.rows
-    .filter((row) => row.status !== 'unchanged')
-    .slice(0, 3);
+    .filter((row) => row.status !== 'unchanged');
 
   return (
     <div className="border-b border-[#2a2a2a] bg-[#181818] px-3 py-2">
@@ -248,15 +263,29 @@ function RtstructCompareSummary({ comparison }: { comparison: RtstructComparison
       ) : (
         <div className="mt-1 space-y-0.5">
           {changedRows.map((row) => (
-            <p key={row.name} className="truncate text-[10px] text-[#a0a0a0]" title={row.name}>
-              <span className="font-semibold text-[#e5e5e5]">{row.name}</span>
-              {' '}
-              {row.status}
-              {' · '}
-              Δvol {row.volumeDeltaCc.toFixed(1)} cc
-              {' · '}
-              Δslices {row.sliceDelta >= 0 ? '+' : ''}{row.sliceDelta}
-            </p>
+            <button
+              key={row.name}
+              type="button"
+              onClick={() => onSelectRow(row)}
+              disabled={!row.currentStructureId}
+              className="flex w-full items-center gap-2 truncate rounded px-1 py-0.5 text-left text-[10px] text-[#a0a0a0] hover:bg-[#20252b] hover:text-[#e5e5e5] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+              title={row.currentStructureId ? `Open ${row.name} in contour review` : `${row.name} is not present in the active workspace`}
+            >
+              <span className="min-w-0 flex-1 truncate">
+                <span className="font-semibold text-[#e5e5e5]">{row.name}</span>
+                {' '}
+                {row.status}
+                {' · '}
+                Δvol {row.volumeDeltaCc.toFixed(1)} cc
+                {' · '}
+                Δslices {row.sliceDelta >= 0 ? '+' : ''}{row.sliceDelta}
+              </span>
+              {row.targetSlicePosition !== undefined ? (
+                <span className="font-mono text-[9px] text-[#6b7280]">
+                  z={row.targetSlicePosition.toFixed(1)}
+                </span>
+              ) : null}
+            </button>
           ))}
         </div>
       )}
@@ -864,6 +893,50 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
     [activeSeriesStructureSet]
   );
 
+  const onSelectComparisonRow = useCallback((row: StructureComparisonRow) => {
+    if (!activeSeriesStructureSet || !row.currentStructureId) {
+      setStatus({ tone: 'muted', message: `${row.name} is not present in the active workspace.` });
+      return;
+    }
+
+    setActiveStructureSet(activeSeriesStructureSet.id);
+    setActiveStructure(row.currentStructureId);
+
+    const targetSlicePosition = row.targetSlicePosition;
+    if (!Number.isFinite(targetSlicePosition) || !activeLoadedSeries) {
+      setStatus({ tone: 'muted', message: `Opened ${row.name} in the active workspace.` });
+      return;
+    }
+    const resolvedTargetSlicePosition = targetSlicePosition as number;
+
+    const viewport = ViewportManager
+      .getRenderingEngine()
+      ?.getViewport(VIEWPORT_IDS.AXIAL) as AxialViewportLike | undefined;
+    const frames = activeLoadedSeries.series.instances
+      .map((instance, index) => ({
+        index,
+        sliceLocation: instance.sliceLocation,
+      }))
+      .filter((frame): frame is { index: number; sliceLocation: number } =>
+        Number.isFinite(frame.sliceLocation)
+      );
+
+    const currentSlicePosition = viewport?.getCamera?.().focalPoint?.[2]
+      ?? activeSeriesStructureSet.structures.find((structure) => structure.id === row.currentStructureId)?.contours[0]?.slicePosition
+      ?? 0;
+    const scrollDelta = resolveScrollDeltaToSlice(frames, currentSlicePosition, resolvedTargetSlicePosition);
+
+    if (viewport?.scroll && scrollDelta !== null && scrollDelta !== 0) {
+      viewport.scroll(scrollDelta);
+    }
+    viewport?.render?.();
+
+    setStatus({
+      tone: 'muted',
+      message: `Opened ${row.name} at z=${resolvedTargetSlicePosition.toFixed(1)} mm for review.`,
+    });
+  }, [activeLoadedSeries, activeSeriesStructureSet, setActiveStructure, setActiveStructureSet]);
+
   const isRepositoryRtstructActive = useCallback(
     (
       instance: DicomWebRtstructInstance,
@@ -1089,7 +1162,12 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
             {status.message}
           </p>
         )}
-        {rtstructComparison ? <RtstructCompareSummary comparison={rtstructComparison} /> : null}
+        {rtstructComparison ? (
+          <RtstructCompareSummary
+            comparison={rtstructComparison}
+            onSelectRow={onSelectComparisonRow}
+          />
+        ) : null}
         {patientGroups.length === 0 ? (
           <p className="px-3 py-2 text-[11px] text-[#6b6b6b]">No planning CT image series available.</p>
         ) : !selectedPatient ? (

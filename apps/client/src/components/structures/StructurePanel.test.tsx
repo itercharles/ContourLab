@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import StructurePanel from './StructurePanel';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
+import { useUIStore } from '../../core/store/uiStore';
 import type { StructureSet } from '@webtps/shared-types';
 
 const mocks = vi.hoisted(() => ({
@@ -145,6 +146,16 @@ beforeEach(() => {
     activeSeriesUID: 'series-1',
     isLoading: false,
     loadError: null,
+  });
+  useUIStore.setState({
+    activeTool: 'none',
+    activeStructureOperationPanel: null,
+    windowLevelPreset: 'softTissue',
+    brushRadius: 10,
+    rightSidebarOpen: true,
+    leftSidebarOpen: false,
+    crosshairsEnabled: true,
+    activeViewport: null,
   });
   useStructureStore.setState({
     structureSets: [makeStructureSet()],
@@ -579,7 +590,29 @@ describe('StructurePanel local draft and structure editing interactions', () => 
   });
 
   it('opens inline operation panels from the active structure detail section', () => {
+    const loadedSeries = makeLoadedSeries();
+    loadedSeries.volume.dimensions = [32, 32, 2];
+    loadedSeries.volume.pixelData = new Float32Array(32 * 32 * 2);
+    loadedSeries.series.instances = [
+      { sopInstanceUID: 'sop-0', instanceNumber: 1, sliceLocation: 0 },
+      { sopInstanceUID: 'sop-10', instanceNumber: 2, sliceLocation: 10 },
+    ];
+    useVolumeStore.setState({
+      loadedSeries: [loadedSeries],
+      activeSeriesUID: loadedSeries.seriesUID,
+      isLoading: false,
+      loadError: null,
+    });
+
     const structureSet = makeStructureSet();
+    structureSet.structures[0].contours = [
+      {
+        referencedSOPInstanceUID: 'sop-0',
+        slicePosition: 0,
+        points: new Float32Array([8, 8, 0, 16, 8, 0, 16, 16, 0, 8, 16, 0]),
+        isClosed: true,
+      },
+    ];
     structureSet.structures.push({
       id: 'structure-2',
       name: 'Cord',
@@ -603,7 +636,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     fireEvent.change(screen.getByLabelText('Margin value'), { target: { value: '7' } });
     expect(screen.getByText('+7 mm')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
-    expect(screen.getByText('Not yet implemented.')).toBeTruthy();
+    expect(screen.getByText('Applied +7 mm margin.')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Interpolate' }));
     expect(screen.getByText('Fill missing slices')).toBeTruthy();
@@ -618,6 +651,161 @@ describe('StructurePanel local draft and structure editing interactions', () => 
       target: { value: 'structure-2' },
     });
     expect(container.textContent).toContain('PTV − Cord');
+  });
+
+  it('applies boolean subtract to the active structure', async () => {
+    const loadedSeries = makeLoadedSeries();
+    loadedSeries.volume.dimensions = [32, 32, 2];
+    loadedSeries.volume.pixelData = new Float32Array(32 * 32 * 2);
+    loadedSeries.series.instances = [
+      { sopInstanceUID: 'sop-0', instanceNumber: 1, sliceLocation: 0 },
+      { sopInstanceUID: 'sop-10', instanceNumber: 2, sliceLocation: 10 },
+    ];
+    useVolumeStore.setState({
+      loadedSeries: [loadedSeries],
+      activeSeriesUID: loadedSeries.seriesUID,
+      isLoading: false,
+      loadError: null,
+    });
+
+    const structureSet = makeStructureSet();
+    structureSet.structures[0].contours = [
+      {
+        referencedSOPInstanceUID: 'sop-0',
+        slicePosition: 0,
+        points: new Float32Array([4, 4, 0, 20, 4, 0, 20, 20, 0, 4, 20, 0]),
+        isClosed: true,
+      },
+    ];
+    structureSet.structures.push({
+      id: 'structure-2',
+      name: 'Cord',
+      type: 'OAR',
+      color: [0, 255, 0],
+      contours: [
+        {
+          referencedSOPInstanceUID: 'sop-0',
+          slicePosition: 0,
+          points: new Float32Array([10, 10, 0, 16, 10, 0, 16, 16, 0, 10, 16, 0]),
+          isClosed: true,
+        },
+      ],
+      isVisible: true,
+      isLocked: false,
+      volume_cc: 0.8,
+    });
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Boolean' }));
+    fireEvent.change(screen.getByLabelText('Boolean target structure'), {
+      target: { value: 'structure-2' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    await waitFor(() =>
+      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(1)
+    );
+    expect(useStructureStore.getState().structureSets[0].structures[0].contours[0].points.length).toBeGreaterThan(0);
+    expect(screen.getByText('Subtracted Cord.')).toBeTruthy();
+  });
+
+  it('interpolates missing contour slices for the active structure', async () => {
+    const loadedSeries = makeLoadedSeries();
+    loadedSeries.series.instances = [
+      { sopInstanceUID: 'sop-0', instanceNumber: 1, sliceLocation: 0 },
+      { sopInstanceUID: 'sop-10', instanceNumber: 2, sliceLocation: 10 },
+      { sopInstanceUID: 'sop-20', instanceNumber: 3, sliceLocation: 20 },
+      { sopInstanceUID: 'sop-30', instanceNumber: 4, sliceLocation: 30 },
+    ];
+    useVolumeStore.setState({
+      loadedSeries: [loadedSeries],
+      activeSeriesUID: loadedSeries.seriesUID,
+      isLoading: false,
+      loadError: null,
+    });
+
+    const structureSet = makeStructureSet();
+    structureSet.structures[0].contours = [
+      {
+        referencedSOPInstanceUID: 'sop-0',
+        slicePosition: 0,
+        points: new Float32Array([0, 0, 0, 10, 0, 0, 10, 10, 0, 0, 10, 0]),
+        isClosed: true,
+      },
+      {
+        referencedSOPInstanceUID: 'sop-30',
+        slicePosition: 30,
+        points: new Float32Array([0, 0, 30, 20, 0, 30, 20, 20, 30, 0, 20, 30]),
+        isClosed: true,
+      },
+    ];
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Interpolate' }));
+    fireEvent.change(screen.getByLabelText('Interpolation gap'), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    await waitFor(() =>
+      expect(
+        useStructureStore.getState().structureSets[0].structures[0].contours.map((contour) => contour.slicePosition)
+      ).toEqual([0, 10, 20, 30])
+    );
+    expect(screen.getByText('Interpolated 2 contour slices.')).toBeTruthy();
+  });
+
+  it('applies a positive margin to the active structure', async () => {
+    const loadedSeries = makeLoadedSeries();
+    loadedSeries.volume.dimensions = [32, 32, 2];
+    loadedSeries.volume.pixelData = new Float32Array(32 * 32 * 2);
+    loadedSeries.series.instances = [
+      { sopInstanceUID: 'sop-0', instanceNumber: 1, sliceLocation: 0 },
+      { sopInstanceUID: 'sop-10', instanceNumber: 2, sliceLocation: 10 },
+    ];
+    useVolumeStore.setState({
+      loadedSeries: [loadedSeries],
+      activeSeriesUID: loadedSeries.seriesUID,
+      isLoading: false,
+      loadError: null,
+    });
+
+    const structureSet = makeStructureSet();
+    structureSet.structures[0].contours = [
+      {
+        referencedSOPInstanceUID: 'sop-0',
+        slicePosition: 0,
+        points: new Float32Array([8, 8, 0, 16, 8, 0, 16, 16, 0, 8, 16, 0]),
+        isClosed: true,
+      },
+    ];
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Margin' }));
+    fireEvent.change(screen.getByLabelText('Margin value'), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    await waitFor(() =>
+      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(1)
+    );
+    expect(useStructureStore.getState().structureSets[0].structures[0].contours[0].points.length).toBeGreaterThan(0);
+    expect(screen.getByText('Applied +2 mm margin.')).toBeTruthy();
   });
 
   it('shows the active structure set source when it came from repository RTSTRUCT', () => {

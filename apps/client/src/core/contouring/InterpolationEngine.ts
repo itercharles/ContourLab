@@ -124,7 +124,8 @@ export interface InterpolationFrame {
 export function interpolateMissingContoursForFrames(
   contours: ContourSlice[],
   frames: InterpolationFrame[],
-  sampleCount = DEFAULT_SAMPLE_COUNT
+  sampleCount = DEFAULT_SAMPLE_COUNT,
+  maxMissingFrames = Number.POSITIVE_INFINITY
 ): ContourSlice[] {
   const sortedFrames = [...frames]
     .filter((frame) => Number.isFinite(frame.sliceLocation))
@@ -144,6 +145,9 @@ export function interpolateMissingContoursForFrames(
         frame.sliceLocation < upper.slicePosition &&
         !existingPositions.has(frame.sliceLocation)
     );
+    if (gapFrames.length === 0 || gapFrames.length > maxMissingFrames) {
+      continue;
+    }
 
     for (const frame of gapFrames) {
       const contour = interpolateContourSlice(

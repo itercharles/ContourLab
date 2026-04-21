@@ -1,6 +1,10 @@
 import { MPRController } from '../../core/rendering/MPRController';
 import { useStructureStore } from '../../core/store/structureStore';
-import { useUIStore, type ViewerTool } from '../../core/store/uiStore';
+import {
+  useUIStore,
+  type StructureOperationPanel,
+  type ViewerTool,
+} from '../../core/store/uiStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 
@@ -82,9 +86,9 @@ const TOOL_GROUPS: Array<{ id: string; items: ToolRailItem[] }> = [
   {
     id: 'structure',
     items: [
-      { id: 'interpolate', name: 'Interpolate slices', icon: 'interpolate', shortcut: 'I', desc: 'Fill missing slices between key contours', implemented: false },
-      { id: 'margin', name: 'Margin', icon: 'margin', shortcut: 'G', desc: 'Grow or shrink structure by N mm', implemented: false },
-      { id: 'boolean', name: 'Boolean ops', icon: 'boolean', shortcut: 'O', desc: 'Union, intersect, or subtract structures', implemented: false },
+      { id: 'interpolate', name: 'Interpolate slices', icon: 'interpolate', shortcut: 'I', desc: 'Open slice interpolation controls for the active structure', implemented: true },
+      { id: 'margin', name: 'Margin', icon: 'margin', shortcut: 'G', desc: 'Open expand / contract controls for the active structure', implemented: true },
+      { id: 'boolean', name: 'Boolean ops', icon: 'boolean', shortcut: 'O', desc: 'Open union / intersect / subtract controls', implemented: true },
     ],
   },
 ];
@@ -152,6 +156,8 @@ function ToolIcon({ name }: { name: ToolIconName }) {
 export default function ToolRail() {
   const activeTool = useUIStore((s) => s.activeTool);
   const setActiveTool = useUIStore((s) => s.setActiveTool);
+  const activeStructureOperationPanel = useUIStore((s) => s.activeStructureOperationPanel);
+  const setActiveStructureOperationPanel = useUIStore((s) => s.setActiveStructureOperationPanel);
   const setActiveViewport = useUIStore((s) => s.setActiveViewport);
   const setRightSidebarOpen = useUIStore((s) => s.setRightSidebarOpen);
   const crosshairsEnabled = useUIStore((s) => s.crosshairsEnabled);
@@ -174,6 +180,9 @@ export default function ToolRail() {
     !!activeStructureSet &&
     !!activeStructure &&
     !(activeStructure.isLocked ?? false);
+
+  const isStructureOperation = (tool: string): tool is Exclude<StructureOperationPanel, null> =>
+    tool === 'margin' || tool === 'interpolate' || tool === 'boolean';
 
   const activateTool = async (tool: ViewerTool) => {
     if (tool === 'crosshairs') {
@@ -225,6 +234,21 @@ export default function ToolRail() {
     }
   };
 
+  const activateStructureOperation = (operation: Exclude<StructureOperationPanel, null>) => {
+    if (!canUseContourTool) {
+      setRightSidebarOpen(true);
+      setActiveViewport('AXIAL');
+      logClientDebug('ToolRail', `${operation}:blocked missing drawable structure`);
+      return;
+    }
+
+    setRightSidebarOpen(true);
+    setActiveViewport('AXIAL');
+    setActiveStructureOperationPanel(
+      activeStructureOperationPanel === operation ? null : operation
+    );
+  };
+
   return (
     <nav className="flex w-10 flex-none flex-col items-center gap-1 border-r border-[#24292f] bg-[#13161a] py-1.5" aria-label="Tools">
       {TOOL_GROUPS.map((group, groupIndex) => (
@@ -232,7 +256,11 @@ export default function ToolRail() {
           {groupIndex > 0 && <div className="my-1 h-px w-5 bg-[#24292f]" />}
           {group.items.map((tool) => {
             const isActive =
-              tool.id === 'crosshairs' ? crosshairsEnabled : tool.id === activeTool;
+              tool.id === 'crosshairs'
+                ? crosshairsEnabled
+                : isStructureOperation(tool.id)
+                  ? activeStructureOperationPanel === tool.id
+                  : tool.id === activeTool;
             return (
               <button
                 key={tool.id}
@@ -240,7 +268,14 @@ export default function ToolRail() {
                 aria-label={`${tool.name} (${tool.shortcut})`}
                 disabled={!tool.implemented}
                 data-active={isActive}
-                onClick={() => tool.implemented && void activateTool(tool.id as ViewerTool)}
+                onClick={() => {
+                  if (!tool.implemented) return;
+                  if (isStructureOperation(tool.id)) {
+                    activateStructureOperation(tool.id);
+                    return;
+                  }
+                  void activateTool(tool.id as ViewerTool);
+                }}
                 className={`tool-btn relative flex h-7 w-7 items-center justify-center rounded text-[#a0a7b0] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                   isActive
                     ? 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6] ring-1 ring-[rgba(59,130,246,0.35)]'

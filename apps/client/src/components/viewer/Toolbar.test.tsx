@@ -164,6 +164,7 @@ beforeEach(() => {
   mocks.uploadDicomBlobToRepository.mockResolvedValue(undefined);
   useUIStore.setState({
     activeTool: 'windowLevel',
+    activeStructureOperationPanel: null,
     windowLevelPreset: 'softTissue',
     brushRadius: 10,
     rightSidebarOpen: true,
@@ -253,14 +254,27 @@ describe('Toolbar contour operations', () => {
     expect(mocks.setActiveTool).not.toHaveBeenCalledWith('measureDistance');
   });
 
-  it('shows unimplemented roadmap tools as disabled tool rail items', () => {
+  it('opens structure operation panels from the tool rail and keeps only roadmap stubs disabled', () => {
     render(<ToolRail />);
 
-    // Unimplemented tools are rendered as disabled buttons
-    const allButtons = screen.getAllByRole('button');
-    const disabledTools = allButtons.filter((btn) => (btn as HTMLButtonElement).disabled);
-    expect(disabledTools.length).toBeGreaterThanOrEqual(5);
-    expect((disabledTools[0] as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /Interpolate slices \(I\)/ }));
+    expect(useUIStore.getState().activeStructureOperationPanel).toBe('interpolate');
+
+    fireEvent.click(screen.getByRole('button', { name: /Margin \(G\)/ }));
+    expect(useUIStore.getState().activeStructureOperationPanel).toBe('margin');
+
+    fireEvent.click(screen.getByRole('button', { name: /Boolean ops \(O\)/ }));
+    expect(useUIStore.getState().activeStructureOperationPanel).toBe('boolean');
+
+    const disabledLabels = screen.getAllByRole('button')
+      .filter((btn) => (btn as HTMLButtonElement).disabled)
+      .map((btn) => btn.getAttribute('aria-label'));
+    expect(disabledLabels).toEqual(expect.arrayContaining([
+      'Select (V)',
+      'Smart Edge (S)',
+      'Threshold (T)',
+      'Help',
+    ]));
   });
 
   it('keeps patient selection out of the global title bar', () => {

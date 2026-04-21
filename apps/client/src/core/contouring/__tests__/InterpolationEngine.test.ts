@@ -59,4 +59,20 @@ describe('InterpolationEngine', () => {
     expect(interpolated.map((contour) => contour.slicePosition)).toEqual([10, 20]);
     expect(interpolated.map((contour) => contour.referencedSOPInstanceUID)).toEqual(['sop-10', 'sop-20']);
   });
+
+  it('skips interpolation when the contour gap exceeds the configured maximum', () => {
+    const contours = [
+      squareContour(0, 10),
+      squareContour(40, 20),
+    ];
+    const interpolated = interpolateMissingContoursForFrames(contours, [
+      { sopInstanceUID: 'sop-0', sliceLocation: 0 },
+      { sopInstanceUID: 'sop-10', sliceLocation: 10 },
+      { sopInstanceUID: 'sop-20', sliceLocation: 20 },
+      { sopInstanceUID: 'sop-30', sliceLocation: 30 },
+      { sopInstanceUID: 'sop-40', sliceLocation: 40 },
+    ], 8, 2);
+
+    expect(interpolated).toHaveLength(0);
+  });
 });

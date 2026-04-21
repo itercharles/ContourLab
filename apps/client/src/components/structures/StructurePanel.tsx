@@ -22,6 +22,10 @@ import {
   analyzeRtssQuality,
   type RtssQualityIssue,
 } from '../../core/structures/rtssQuality';
+import { ContourEngine } from '../../core/contouring/ContourEngine';
+import { computeBooleanContoursForStructure, type BooleanOperation } from '../../core/contouring/BooleanContourEngine';
+import { interpolateMissingContoursForFrames } from '../../core/contouring/InterpolationEngine';
+import { computeMarginContoursForStructure } from '../../core/contouring/MarginContourEngine';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
@@ -313,6 +317,8 @@ export default function StructurePanel() {
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
   const setActiveViewport = useUIStore((s) => s.setActiveViewport);
+  const activeStructureOperationPanel = useUIStore((s) => s.activeStructureOperationPanel);
+  const setActiveStructureOperationPanel = useUIStore((s) => s.setActiveStructureOperationPanel);
 
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -321,7 +327,6 @@ export default function StructurePanel() {
   const [panelTab, setPanelTab] = useState<PanelTab>('structures');
   const [axialRevision, setAxialRevision] = useState(0);
   const [isEditingActiveType, setIsEditingActiveType] = useState(false);
-  const [activePop, setActivePop] = useState<'margin' | 'interpolate' | 'boolean' | null>(null);
   const [marginValue, setMarginValue] = useState(5);
   const [interpMethod, setInterpMethod] = useState<'linear' | 'shape' | 'morph'>('linear');
   const [interpGaps, setInterpGaps] = useState(3);
@@ -352,8 +357,23 @@ export default function StructurePanel() {
   const activeStructureReviewSlices = activeStructure
     ? getReviewSlices(activeStructure.contours)
     : [];
+  const activePop = activeStructureOperationPanel;
   const activeStructureQa = activeStructure
-    ? analyzeContourQuality(activeStructure, activeLoadedSeries?.volume.spacing[2] ?? 1)
+    ? analyzeContourQuality(activeStructure, activeLoadedSeries
+      ? {
+          sliceSpacingMm: activeLoadedSeries.volume.spacing[2] ?? 1,
+          imageBounds: {
+            minX: activeLoadedSeries.volume.origin[0] - activeLoadedSeries.volume.spacing[0] / 2,
+            maxX:
+              activeLoadedSeries.volume.origin[0] +
+              activeLoadedSeries.volume.spacing[0] * (activeLoadedSeries.volume.dimensions[0] - 0.5),
+            minY: activeLoadedSeries.volume.origin[1] - activeLoadedSeries.volume.spacing[1] / 2,
+            maxY:
+              activeLoadedSeries.volume.origin[1] +
+              activeLoadedSeries.volume.spacing[1] * (activeLoadedSeries.volume.dimensions[1] - 0.5),
+          },
+        }
+      : { sliceSpacingMm: 1 })
     : null;
   const activeStructureSetQa = activeSeriesStructureSet
     ? analyzeRtssQuality(activeSeriesStructureSet, {
@@ -417,6 +437,12 @@ export default function StructurePanel() {
   useEffect(() => {
     StructureSetManager.syncSelectionToSeries(activeSeriesUID);
   }, [activeSeriesUID, structureSets]);
+
+  useEffect(() => {
+    if (!activeSeriesStructureSet || !activeStructure) {
+      setActiveStructureOperationPanel(null);
+    }
+  }, [activeSeriesStructureSet, activeStructure, setActiveStructureOperationPanel]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -643,6 +669,152 @@ export default function StructurePanel() {
     );
   };
 
+  const handleInterpolateApply = () => {
+    if (!activeSeriesStructureSet || !activeStructure || !activeLoadedSeries) {
+      setStatusMessage('Load an image set and select a structure before interpolating.');
+      setActiveStructureOperationPanel(null);
+      return;
+    }
+
+    const frames = activeLoadedSeries.series.instances
+      .map((instance) => ({
+        sopInstanceUID: instance.sopInstanceUID,
+        sliceLocation: instance.sliceLocation,
+      }))
+      .filter((frame): frame is { sopInstanceUID: string; sliceLocation: number } =>
+        Number.isFinite(frame.sliceLocation)
+      );
+
+    if (frames.length < 3) {
+      setStatusMessage('Image slice metadata is unavailable for interpolation.');
+      setActiveStructureOperationPanel(null);
+      return;
+    }
+
+    const interpolatedContours = interpolateMissingContoursForFrames(
+      activeStructure.contours,
+      frames,
+      64,
+      interpGaps
+    );
+
+    if (interpolatedContours.length === 0) {
+      setStatusMessage('No missing contour slices were eligible for interpolation.');
+      setActiveStructureOperationPanel(null);
+      return;
+    }
+
+    const applied = ContourEngine.addContours(
+      activeSeriesStructureSet.id,
+      activeStructure.id,
+      interpolatedContours,
+      `Interpolate ${interpolatedContours.length} contour${interpolatedContours.length === 1 ? '' : 's'}`
+    );
+
+    setStatusMessage(
+      applied
+        ? `Interpolated ${interpolatedContours.length} contour slice${interpolatedContours.length === 1 ? '' : 's'}.`
+        : 'Unable to interpolate the selected structure.'
+    );
+    setActiveStructureOperationPanel(null);
+  };
+
+  const handleBooleanApply = () => {
+    if (!activeSeriesStructureSet || !activeStructure || !activeLoadedSeries) {
+      setStatusMessage('Load an image set and select a structure before running boolean operations.');
+      setActiveStructureOperationPanel(null);
+      return;
+    }
+
+    const targetStructure = activeSeriesStructureSet.structures.find((structure) => structure.id === boolTarget);
+    if (!targetStructure) {
+      setStatusMessage('Select a target structure for the boolean operation.');
+      setActiveStructureOperationPanel(null);
+      return;
+    }
+
+    const frames = activeLoadedSeries.series.instances
+      .map((instance) => ({
+        sopInstanceUID: instance.sopInstanceUID,
+        sliceLocation: instance.sliceLocation,
+      }))
+      .filter((frame): frame is { sopInstanceUID: string; sliceLocation: number } =>
+        Number.isFinite(frame.sliceLocation)
+      );
+
+    if (frames.length === 0) {
+      setStatusMessage('Image slice metadata is unavailable for boolean operations.');
+      setActiveStructureOperationPanel(null);
+      return;
+    }
+
+    const nextContours = computeBooleanContoursForStructure(
+      activeStructure.contours,
+      targetStructure.contours,
+      frames,
+      activeLoadedSeries.volume,
+      boolOp as BooleanOperation
+    );
+
+    const applied = ContourEngine.replaceContours(
+      activeSeriesStructureSet.id,
+      activeStructure.id,
+      nextContours,
+      `Boolean ${boolOp} with ${targetStructure.name}`
+    );
+
+    setStatusMessage(
+      applied
+        ? `${boolOp === 'union' ? 'Merged' : boolOp === 'intersect' ? 'Intersected' : 'Subtracted'} ${targetStructure.name}.`
+        : 'Unable to apply the boolean operation.'
+    );
+    setActiveStructureOperationPanel(null);
+  };
+
+  const handleMarginApply = () => {
+    if (!activeSeriesStructureSet || !activeStructure || !activeLoadedSeries) {
+      setStatusMessage('Load an image set and select a structure before applying a margin.');
+      setActiveStructureOperationPanel(null);
+      return;
+    }
+
+    const frames = activeLoadedSeries.series.instances
+      .map((instance) => ({
+        sopInstanceUID: instance.sopInstanceUID,
+        sliceLocation: instance.sliceLocation,
+      }))
+      .filter((frame): frame is { sopInstanceUID: string; sliceLocation: number } =>
+        Number.isFinite(frame.sliceLocation)
+      );
+
+    if (frames.length === 0) {
+      setStatusMessage('Image slice metadata is unavailable for margin operations.');
+      setActiveStructureOperationPanel(null);
+      return;
+    }
+
+    const nextContours = computeMarginContoursForStructure(
+      activeStructure.contours,
+      frames,
+      activeLoadedSeries.volume,
+      marginValue
+    );
+
+    const applied = ContourEngine.replaceContours(
+      activeSeriesStructureSet.id,
+      activeStructure.id,
+      nextContours,
+      `Margin ${marginValue > 0 ? '+' : ''}${marginValue} mm`
+    );
+
+    setStatusMessage(
+      applied
+        ? `Applied ${marginValue > 0 ? '+' : ''}${marginValue} mm margin.`
+        : 'Unable to apply the margin.'
+    );
+    setActiveStructureOperationPanel(null);
+  };
+
   const handleQaIssueSelect = (qualityIssue: StructureSetQualityIssue) => {
     if (!activeSeriesStructureSet) return;
 
@@ -720,7 +892,7 @@ export default function StructurePanel() {
   }, [activeStructureReviewSlices.length, handleReviewNavigate]);
 
   useEffect(() => {
-    setActivePop(null);
+    setActiveStructureOperationPanel(null);
   }, [activeStructureId]);
 
   const structureGroups = activeSeriesStructureSet
@@ -946,7 +1118,7 @@ export default function StructurePanel() {
                   <button
                     key={op}
                     type="button"
-                    onClick={() => setActivePop(activePop === op ? null : op)}
+                    onClick={() => setActiveStructureOperationPanel(activePop === op ? null : op)}
                     className={`h-6 rounded border px-2 text-[10px] capitalize transition-colors ${
                       activePop === op
                         ? 'border-blue-500/50 bg-blue-900/30 text-blue-300'
@@ -1088,14 +1260,27 @@ export default function StructurePanel() {
                   <div className="flex justify-end gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setActivePop(null)}
+                      onClick={() => setActiveStructureOperationPanel(null)}
                       className="h-6 rounded border border-[#2a2a2a] bg-[#202020] px-2.5 text-[10px] text-[#a0a0a0] hover:text-[#e6e9ed]"
                     >
                       Cancel
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setStatusMessage('Not yet implemented.'); setActivePop(null); }}
+                      onClick={() => {
+                        if (activePop === 'margin') {
+                          handleMarginApply();
+                          return;
+                        }
+                        if (activePop === 'interpolate') {
+                          handleInterpolateApply();
+                          return;
+                        }
+                        if (activePop === 'boolean') {
+                          handleBooleanApply();
+                          return;
+                        }
+                      }}
                       className="h-6 rounded bg-blue-600 px-2.5 text-[10px] text-white hover:bg-blue-500"
                     >
                       Apply

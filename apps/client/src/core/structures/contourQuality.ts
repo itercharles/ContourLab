@@ -5,7 +5,9 @@ export type ContourQualityIssueType =
   | 'open-contour'
   | 'degenerate-contour'
   | 'slice-gap'
-  | 'area-jump';
+  | 'area-jump'
+  | 'centroid-jump'
+  | 'out-of-bounds';
 
 export type ContourQualitySeverity = 'info' | 'warning';
 
@@ -22,9 +24,20 @@ export interface ContourQualitySummary {
   issues: ContourQualityIssue[];
 }
 
+export interface ContourQualityContext {
+  sliceSpacingMm?: number;
+  imageBounds?: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  };
+}
+
 const MIN_VALID_AREA_MM2 = 0.01;
 const AREA_JUMP_RATIO = 3;
 const MIN_AREA_JUMP_MM2 = 50;
+const MIN_CENTROID_JUMP_MM = 20;
 
 function getContourAreaMm2(contour: ContourSlice): number {
   const pointCount = contour.points.length / 3;
@@ -56,11 +69,56 @@ function inferExpectedSpacingMm(contours: ContourSlice[], fallbackSpacingMm: num
   return deltas.length > 0 ? Math.min(...deltas) : 1;
 }
 
+function getContourCentroidMm(contour: ContourSlice): { x: number; y: number } | null {
+  const pointCount = contour.points.length / 3;
+  if (pointCount < 3) return null;
+
+  let signedArea = 0;
+  let centroidX = 0;
+  let centroidY = 0;
+  for (let index = 0; index < pointCount; index += 1) {
+    const nextIndex = (index + 1) % pointCount;
+    const x1 = contour.points[index * 3];
+    const y1 = contour.points[index * 3 + 1];
+    const x2 = contour.points[nextIndex * 3];
+    const y2 = contour.points[nextIndex * 3 + 1];
+    const cross = x1 * y2 - x2 * y1;
+    signedArea += cross;
+    centroidX += (x1 + x2) * cross;
+    centroidY += (y1 + y2) * cross;
+  }
+
+  if (Math.abs(signedArea) <= Number.EPSILON) return null;
+
+  return {
+    x: centroidX / (3 * signedArea),
+    y: centroidY / (3 * signedArea),
+  };
+}
+
+function contourExceedsBounds(
+  contour: ContourSlice,
+  bounds: NonNullable<ContourQualityContext['imageBounds']>
+): boolean {
+  for (let index = 0; index < contour.points.length; index += 3) {
+    const x = contour.points[index];
+    const y = contour.points[index + 1];
+    if (x < bounds.minX || x > bounds.maxX || y < bounds.minY || y > bounds.maxY) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export function analyzeContourQuality(
   structure: Structure,
-  sliceSpacingMm = 1
+  context: number | ContourQualityContext = 1
 ): ContourQualitySummary {
   const issues: ContourQualityIssue[] = [];
+  const normalizedContext =
+    typeof context === 'number' ? { sliceSpacingMm: context } : context;
+  const sliceSpacingMm = normalizedContext.sliceSpacingMm ?? 1;
 
   if (structure.contours.length === 0) {
     issues.push({
@@ -96,6 +154,14 @@ export function analyzeContourQuality(
         message: `Degenerate contour at z=${contour.slicePosition.toFixed(1)} mm.`,
       });
     }
+    if (normalizedContext.imageBounds && contourExceedsBounds(contour, normalizedContext.imageBounds)) {
+      issues.push({
+        type: 'out-of-bounds',
+        severity: 'warning',
+        slicePosition: contour.slicePosition,
+        message: `Contour extends outside image bounds at z=${contour.slicePosition.toFixed(1)} mm.`,
+      });
+    }
   });
 
   for (let index = 1; index < contoursBySlice.length; index += 1) {
@@ -126,6 +192,23 @@ export function analyzeContourQuality(
         slicePosition: current.slicePosition,
         message: `Area jump near z=${current.slicePosition.toFixed(1)} mm.`,
       });
+    }
+
+    const previousCentroid = getContourCentroidMm(previous);
+    const currentCentroid = getContourCentroidMm(current);
+    if (previousCentroid && currentCentroid) {
+      const centroidDistance = Math.hypot(
+        currentCentroid.x - previousCentroid.x,
+        currentCentroid.y - previousCentroid.y
+      );
+      if (centroidDistance >= MIN_CENTROID_JUMP_MM) {
+        issues.push({
+          type: 'centroid-jump',
+          severity: 'warning',
+          slicePosition: current.slicePosition,
+          message: `Centroid jump near z=${current.slicePosition.toFixed(1)} mm.`,
+        });
+      }
     }
   }
 

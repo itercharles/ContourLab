@@ -1,9 +1,12 @@
-import type { StructureSet } from '@webtps/shared-types';
+import type { ContourSlice, StructureSet } from '@webtps/shared-types';
 import { getReviewSlices } from './contourReview';
 
 export interface StructureComparisonRow {
   name: string;
   status: 'added' | 'removed' | 'changed' | 'unchanged';
+  currentStructureId?: string;
+  previousStructureId?: string;
+  targetSlicePosition?: number;
   volumeDeltaCc: number;
   sliceDelta: number;
   previousVolumeCc: number;
@@ -21,6 +24,71 @@ export interface StructureSetComparison {
 
 function normalizeName(name: string): string {
   return name.trim().toUpperCase();
+}
+
+function getContourAreaMm2(contour: ContourSlice): number {
+  const pointCount = contour.points.length / 3;
+  if (pointCount < 3) return 0;
+
+  let area = 0;
+  for (let index = 0; index < pointCount; index += 1) {
+    const nextIndex = (index + 1) % pointCount;
+    const x = contour.points[index * 3];
+    const y = contour.points[index * 3 + 1];
+    const nextX = contour.points[nextIndex * 3];
+    const nextY = contour.points[nextIndex * 3 + 1];
+    area += x * nextY - nextX * y;
+  }
+
+  return Math.abs(area) / 2;
+}
+
+function findTargetSlicePosition(
+  previousContours: ContourSlice[] | undefined,
+  currentContours: ContourSlice[] | undefined,
+  status: StructureComparisonRow['status']
+): number | undefined {
+  const previousSlices = getReviewSlices(previousContours ?? []).map((slice) => slice.slicePosition);
+  const currentSlices = getReviewSlices(currentContours ?? []).map((slice) => slice.slicePosition);
+
+  if (status === 'added') return currentSlices[0];
+  if (status === 'removed') return previousSlices[0];
+
+  const previousSet = new Set(previousSlices);
+  const currentSet = new Set(currentSlices);
+  const addedSlices = currentSlices.filter((slice) => !previousSet.has(slice));
+  if (addedSlices.length > 0) return addedSlices[0];
+
+  const removedSlices = previousSlices.filter((slice) => !currentSet.has(slice));
+  if (removedSlices.length > 0) {
+    return currentSlices[0] ?? removedSlices[0];
+  }
+
+  const previousBySlice = new Map(
+    (previousContours ?? []).map((contour) => [contour.slicePosition, contour] as const)
+  );
+  const currentBySlice = new Map(
+    (currentContours ?? []).map((contour) => [contour.slicePosition, contour] as const)
+  );
+  const commonSlices = currentSlices.filter((slice) => previousBySlice.has(slice));
+  let largestAreaDelta = 0;
+  let targetSlicePosition: number | undefined;
+
+  for (const slicePosition of commonSlices) {
+    const previousContour = previousBySlice.get(slicePosition);
+    const currentContour = currentBySlice.get(slicePosition);
+    if (!previousContour || !currentContour) continue;
+
+    const areaDelta = Math.abs(
+      getContourAreaMm2(currentContour) - getContourAreaMm2(previousContour)
+    );
+    if (areaDelta > largestAreaDelta) {
+      largestAreaDelta = areaDelta;
+      targetSlicePosition = slicePosition;
+    }
+  }
+
+  return targetSlicePosition ?? currentSlices[0] ?? previousSlices[0];
 }
 
 export function compareStructureSets(
@@ -54,6 +122,13 @@ export function compareStructureSets(
     return {
       name,
       status,
+      currentStructureId: currentStructure?.id,
+      previousStructureId: previousStructure?.id,
+      targetSlicePosition: findTargetSlicePosition(
+        previousStructure?.contours,
+        currentStructure?.contours,
+        status
+      ),
       volumeDeltaCc,
       sliceDelta,
       previousVolumeCc,
