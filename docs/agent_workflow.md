@@ -5,6 +5,22 @@ described in [`docs/agent_environment.md`](agent_environment.md).
 
 ## Change Workflow
 
+0. Pre-analyze
+   - Review [`../AI-harness/pre-analyze.md`](../AI-harness/pre-analyze.md).
+   - Classify the request as `docs/process`, `infra/devops`, `bugfix`,
+     `feature`, or `architecture`.
+   - Check the request against:
+     - [`strategy/product_strategy.md`](strategy/product_strategy.md)
+     - [`strategy/product_roadmap.md`](strategy/product_roadmap.md)
+     - [`strategy/technical_strategy.md`](strategy/technical_strategy.md)
+     - [`strategy/testing_strategy.md`](strategy/testing_strategy.md)
+   - Determine whether the request conflicts with current product or technical
+     direction.
+   - Determine whether an ADR is required.
+   - Determine whether a new dependency is being introduced and justify it.
+   - Determine whether DHF updates are expected and list the candidate DHF
+     files before implementation when applicable.
+
 1. Orient
    - Read `CLAUDE.md`.
    - Read [`docs/agent_environment.md`](agent_environment.md).
@@ -13,10 +29,13 @@ described in [`docs/agent_environment.md`](agent_environment.md).
    - If the change involves new or modified requirements, create or update the
      corresponding DHF items in the **WebTPS-DHF** repository first.
 
-2. DHF — update before and after code changes
-   **This is mandatory, not optional.** Every non-trivial code change must be
-   accompanied by DHF updates in **WebTPS-DHF**. Use the table below to decide
-   which item types need updating:
+2. DHF — assess before and after code changes
+   Use the pre-analyze step to decide whether the request changes product
+   behavior, requirements, architecture decisions, risk posture, or
+   verification expectations in a way that requires updates in
+   **WebTPS-DHF**. When DHF impact is expected, list the candidate files before
+   implementation and update them as part of the same change cycle. Use the
+   table below to decide which item types need updating:
 
    | Code change type | DHF items to update |
    |---|---|
@@ -27,12 +46,14 @@ described in [`docs/agent_environment.md`](agent_environment.md).
    | CR implemented | Transition CR status to `completed` |
 
    Rules:
-   - Create a CR before starting significant work; transition it to `completed`
-     in the same commit as the implementing code.
+   - Create a CR before starting significant work when the change affects
+     product behavior, system design, risk, or formal verification scope;
+     transition it to `completed` in the same commit as the implementing code.
    - SRS items must derive from SYS items (`derives_from: [SYS-xxx]`).
    - SWDD items must reference the SRS they implement (`implements: [SRS-xxx]`).
    - RISK items must have a corresponding RCM (`mitigates: RISK-xxx`).
    - Do not leave CRs in `planned` status after code ships.
+   - If DHF was intentionally not updated, state why in the final handoff.
 
 3. Tests — write or update alongside every code change
    **Every functional change requires test coverage.** Follow this checklist:
@@ -71,8 +92,42 @@ described in [`docs/agent_environment.md`](agent_environment.md).
    - Use the CI phases in `ci-pipeline.yml` as the acceptance model.
 
 8. Handoff
+   - Review [`../AI-harness/post-implement.md`](../AI-harness/post-implement.md).
    - Summarize what changed, what was tested, what DHF items were updated,
      and any remaining risk.
+
+9. Branch / PR discipline for functional changes
+   - If the change modifies product behavior, workflow behavior, UI behavior,
+     integration behavior, or verification scope, do the work on a dedicated
+     branch instead of directly on `main`.
+   - Open a PR before merge.
+   - The PR description must include:
+     - a concise summary of the change
+     - the exact DHF files changed, or an explicit statement that no DHF update
+       was required
+     - the automated validation commands that were run
+     - the manual testing still required, with concrete steps
+   - Documentation-only or repo-process-only changes may be handled without a
+     PR when the user explicitly wants a direct local commit.
+
+9a. PR follow-up discipline
+   - After opening a PR, continue monitoring review comments and CI until the
+     PR is resolved.
+   - When practical, use a recurring thread follow-up or equivalent automation
+     to check for new review feedback at a short interval.
+   - For each new review comment, explicitly decide whether to:
+     - fix immediately
+     - reply with rationale and not fix
+     - ask for clarification
+     - defer to a follow-up item
+   - Every review comment should receive a response. Do not silently ignore
+     actionable feedback.
+
+10. Definition of done
+   - Do not treat implementation as complete when only code or docs were
+     written.
+   - Completion requires explicit review of direction fit, DHF impact, ADR /
+     dependency impact, validation run, and manual testing still required.
 
 ## Validation Commands
 
@@ -92,6 +147,16 @@ feat(CR-002): implement DICOM MPR viewer
 ```
 
 If no CR exists yet, create one in WebTPS-DHF before opening the PR.
+
+PR description should always include:
+
+1. Change summary
+2. DHF updates
+3. Automated validation run
+4. Manual test plan / remaining manual verification
+
+After PR creation, agents are expected to keep following the PR until comments
+and CI outcomes are addressed or explicitly handed off.
 
 ### Branch naming
 

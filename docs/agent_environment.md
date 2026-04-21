@@ -21,7 +21,13 @@ working in this repository.
 3. [`WebTPS_Plan_Spec.md`](../WebTPS_Plan_Spec.md) — architecture spec and feature roadmap
 4. [`.github/workflows/ci-pipeline.yml`](../.github/workflows/ci-pipeline.yml) —
    enforced acceptance path
-5. Agent entrypoint: [`CLAUDE.md`](../CLAUDE.md)
+5. [`docs/strategy/product_strategy.md`](strategy/product_strategy.md) and
+   [`docs/strategy/product_roadmap.md`](strategy/product_roadmap.md) — current product
+   direction and delivery priorities
+6. [`docs/strategy/technical_strategy.md`](strategy/technical_strategy.md) and
+   [`docs/strategy/testing_strategy.md`](strategy/testing_strategy.md) — architecture
+   and verification direction
+7. Agent entrypoint: [`CLAUDE.md`](../CLAUDE.md)
 
 ## Repository Layout
 
