@@ -9,6 +9,8 @@ described in [`docs/agent_environment.md`](agent_environment.md).
    - Review [`../AI-harness/pre-analyze.md`](../AI-harness/pre-analyze.md).
    - Classify the request as `docs/process`, `infra/devops`, `bugfix`,
      `feature`, or `architecture`.
+   - Check the request against
+     [`architecture/system_architecture.md`](architecture/system_architecture.md).
    - Check the request against:
      - [`strategy/product_strategy.md`](strategy/product_strategy.md)
      - [`strategy/product_roadmap.md`](strategy/product_roadmap.md)

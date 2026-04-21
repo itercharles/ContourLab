@@ -5,6 +5,7 @@ This file is the Codex-specific entrypoint for this repository.
 Shared repository guidance lives in:
 - [`docs/agent_environment.md`](docs/agent_environment.md)
 - [`docs/agent_workflow.md`](docs/agent_workflow.md)
+- [`docs/architecture/system_architecture.md`](docs/architecture/system_architecture.md)
 - [`docs/strategy/product_strategy.md`](docs/strategy/product_strategy.md)
 - [`docs/strategy/product_roadmap.md`](docs/strategy/product_roadmap.md)
 - [`docs/strategy/technical_strategy.md`](docs/strategy/technical_strategy.md)
@@ -18,7 +19,7 @@ Read those first.
 
 Before implementing any request:
 - review `AI-harness/pre-analyze.md`
-- check the request against product and technical strategy documents
+- check the request against architecture, product, and technical strategy documents
 - determine whether DHF updates are required
 - if DHF changes are expected, list the candidate DHF files before
   implementation

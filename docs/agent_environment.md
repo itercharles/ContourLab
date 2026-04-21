@@ -1,9 +1,10 @@
 # Agent Environment
 
 WebTPS is a web-based radiation therapy Treatment Planning System — a monorepo
-containing the React frontend, ASP.NET Core API gateway, and Python compute services.
-Local development also depends on a DICOMweb-capable repository for image
-access. The default developer setup uses Orthanc via Docker.
+containing the React frontend, ASP.NET Core API gateway, shared domain types,
+and local development tooling. Local development also depends on a
+DICOMweb-capable repository for image access. The default developer setup uses
+Orthanc via Docker.
 
 Compliance and traceability (DHF, requirements, change requests) are managed in
 the **WebTPS-DHF** repository. Compliance analysis runs via the **CompliantFlow**
@@ -18,16 +19,20 @@ working in this repository.
 1. [`README.md`](../README.md) — repository layout and setup
 2. [`packages/shared-types/src/index.ts`](../packages/shared-types/src/index.ts) —
    canonical data model (Patient, Study, Volume, StructureSet, TreatmentPlan)
-3. [`WebTPS_Plan_Spec.md`](../WebTPS_Plan_Spec.md) — architecture spec and feature roadmap
+3. [`WebTPS_Plan_Spec.md`](../WebTPS_Plan_Spec.md) — broader historical spec
+   and roadmap context; use with care when it conflicts with newer strategy or
+   architecture documents
 4. [`.github/workflows/ci-pipeline.yml`](../.github/workflows/ci-pipeline.yml) —
    enforced acceptance path
-5. [`docs/strategy/product_strategy.md`](strategy/product_strategy.md) and
+5. [`docs/architecture/system_architecture.md`](architecture/system_architecture.md) —
+   architecture baseline and evolution constraints
+6. [`docs/strategy/product_strategy.md`](strategy/product_strategy.md) and
    [`docs/strategy/product_roadmap.md`](strategy/product_roadmap.md) — current product
    direction and delivery priorities
-6. [`docs/strategy/technical_strategy.md`](strategy/technical_strategy.md) and
+7. [`docs/strategy/technical_strategy.md`](strategy/technical_strategy.md) and
    [`docs/strategy/testing_strategy.md`](strategy/testing_strategy.md) — architecture
    and verification direction
-7. Agent entrypoint: [`CLAUDE.md`](../CLAUDE.md)
+8. Agent entrypoint: [`CLAUDE.md`](../CLAUDE.md)
 
 ## Repository Layout
 

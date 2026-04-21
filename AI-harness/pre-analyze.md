@@ -53,6 +53,8 @@ implementation.
 
 - Does the request change architecture boundaries, deployment shape, data flow,
   storage location, integration responsibility, or external dependency model?
+- If the request is future-oriented, is that future work actually supported by
+  current product strategy and the active roadmap phase?
 - If yes, should an ADR be added in `docs/adr/`?
 - If yes, identify the ADR title before implementation.
 
