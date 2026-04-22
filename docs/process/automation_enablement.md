@@ -23,6 +23,9 @@ Before enabling automation, confirm:
 3. branch protection is enabled on protected branches
 4. authorized approver policy is agreed
 5. repository dispatch payload contract is understood
+6. the corrected repository split is understood:
+   - `WebTPS-DHF` owns `CR + Spec`
+   - `WebTPS` owns implementation
 
 ## Required Secrets
 
@@ -33,6 +36,7 @@ Before enabling automation, confirm:
 Purpose:
 
 - verify DHF PR state through GitHub API
+- consume approved Plan Spec state from `WebTPS-DHF`
 - update DHF CR labels and comments
 - completion synchronization back to `WebTPS-DHF`
 
@@ -50,7 +54,7 @@ Do not use a broad personal token if a narrower option is available.
 
 ## Label Initialization
 
-Run the label reconcile workflow before using Stage 1 / Stage 2 automation.
+Run the label reconcile workflow before using implementation-side automation.
 
 Required source:
 
@@ -101,6 +105,11 @@ workflow assumes explicit allowlists.
 
 ### Stage 1
 
+Stage 1 is now owned by `WebTPS-DHF`.
+
+The payload below is included here only as the cross-repository contract that
+the rest of the system expects.
+
 Required baseline fields:
 
 ```json
@@ -134,7 +143,7 @@ Required baseline fields:
   "crId": "CR-123",
   "title": "Example title",
   "crPrUrl": "https://github.com/org/WebTPS-DHF/pull/123",
-  "planPrUrl": "https://github.com/org/WebTPS/pull/456",
+  "planPrUrl": "https://github.com/org/WebTPS-DHF/pull/456",
   "planPullNumber": 456,
   "prTypeLabel": "pr:plan",
   "crStatusLabel": "cr:analyze",
@@ -160,7 +169,7 @@ Example payload file:
 3. enable branch protection on `main`
 4. test Stage 1 with `workflow_dispatch` and `manual_bypass=true`
 5. test Stage 1 with a real payload and live DHF PR verification
-6. test Stage 2 with a real approved Plan PR
+6. test Stage 2 with a real approved Plan PR in `WebTPS-DHF`
 7. test follow-up workflows on non-critical PRs
 8. test completion sync on a disposable CR
 
@@ -168,11 +177,10 @@ Example payload file:
 
 Enable in this order:
 
-1. dry-run and scaffold generation only
-2. Stage 1 live verification
-3. Stage 2 live verification
-4. follow-up workflows
-5. completion sync
+1. Stage 1 enablement in `WebTPS-DHF`
+2. Stage 2 live verification in `WebTPS`
+3. implementation follow-up workflows
+4. completion sync
 
 Do not enable all workflows at once without a dry-run phase.
 

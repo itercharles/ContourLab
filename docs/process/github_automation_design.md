@@ -45,13 +45,15 @@ Owns:
 
 - CR PR creation
 - CR state transitions
+- Plan Spec PR
+- Stage 1 analysis automation
+- Plan Spec review follow-up
 - DHF traceability updates
 
 ### `WebTPS`
 
 Owns:
 
-- Plan Spec PR
 - Implementation PR
 - code, tests, and developer-facing docs
 
@@ -158,20 +160,20 @@ Automation action:
 - read CR item
 - run pre-analysis against product, roadmap, architecture, technical strategy,
   testing strategy, and AI harness
-- create or update `docs/CRxxx-Spec.md` in `WebTPS`
-- open or update a Plan Spec PR
+- create or update `docs/cr-specs/CRxxx-Spec.md` in `WebTPS-DHF`
+- open or update a Plan Spec PR in `WebTPS-DHF`
 - update CR status to `analyze`
 
 Artifacts:
 
-- Plan Spec PR in `WebTPS`
+- Plan Spec PR in `WebTPS-DHF`
 - comment or status note linking CR PR and Plan Spec PR
 
 ### Stage 2: Plan Approval -> Implementation PR Creation
 
 Source repository:
 
-- `WebTPS`
+- `WebTPS-DHF`
 
 Trigger event candidates:
 
@@ -190,17 +192,18 @@ Required guard conditions:
 
 Automation action:
 
-- read approved `docs/CRxxx-Spec.md`
-- generate implementation branch or branches
+- read approved `docs/cr-specs/CRxxx-Spec.md`
+- dispatch the approved plan context into `WebTPS`
+- generate implementation branch or branches in `WebTPS`
 - implement according to the approved plan
 - update `WebTPS-DHF` when required
-- open or update an Implementation PR
+- open or update an Implementation PR in `WebTPS`
 - update CR status to `developing`
 
 Artifacts:
 
 - Implementation PR in `WebTPS`
-- optional linked DHF PR in `WebTPS-DHF`
+- optional linked DHF implementation PR in `WebTPS-DHF`
 - comment or status note linking plan and implementation PRs
 
 ### Stage 3: Implementation Review Follow-up
@@ -279,8 +282,8 @@ Rules:
 
 ## Heartbeat Monitoring Model
 
-Scheduled follow-up is allowed only for active Plan Spec PRs and active
-Implementation PRs.
+Scheduled follow-up is allowed only for active Plan Spec PRs in `WebTPS-DHF`
+and active Implementation PRs in `WebTPS`.
 
 Recommended interval:
 
@@ -298,8 +301,8 @@ Rules:
 Recommended branches:
 
 - CR PR: handled in `WebTPS-DHF` according to DHF repository policy
-- Plan Spec PR: `codex/cr-XXX-plan`
-- Implementation PR: `codex/cr-XXX-impl`
+- Plan Spec PR: `codex/cr-XXX-plan` in `WebTPS-DHF`
+- Implementation PR: `codex/cr-XXX-impl` in `WebTPS`
 
 If `WebTPS-DHF` also needs a code-adjacent update during implementation:
 

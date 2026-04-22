@@ -21,6 +21,9 @@ Before starting:
 3. `WEBTPS_AUTOMATION_TOKEN` is configured in `WebTPS`
 4. branch protection is enabled on `main`
 5. the test reviewers are listed in `authorizedApprovers`
+6. the repository split is understood:
+   - `WebTPS-DHF` owns `CR + Spec`
+   - `WebTPS` owns implementation
 
 Reference:
 
@@ -66,47 +69,47 @@ In `WebTPS-DHF`:
 
 Preferred method:
 
-- trigger `repository_dispatch` with the Stage 1 payload
+- trigger Stage 1 inside `WebTPS-DHF`
 
 Fallback method:
 
-- run `.github/workflows/cr-stage1-plan-spec.yml` with `workflow_dispatch`
-- use `manual_bypass=true` only for workflow debugging, not for real gate
-  validation
+- use a temporary local dry-run only if the DHF-side workflow is not yet live
+- do not treat the `WebTPS` legacy Stage 1 scaffold as the target design
 
 Expected result:
 
-1. `codex/cr-XXX-plan` branch is created in `WebTPS`
-2. `docs/CRxxx-Spec.md` is created or updated
-3. a Plan Spec PR is created or updated
+1. `codex/cr-XXX-plan` branch is created in `WebTPS-DHF`
+2. `docs/cr-specs/CRxxx-Spec.md` is created or updated in `WebTPS-DHF`
+3. a Plan Spec PR is created or updated in `WebTPS-DHF`
 4. the linked CR in `WebTPS-DHF` moves from `cr:new` to `cr:analyze`
 
 ## Stage D: Stage 2 Trigger
 
-In `WebTPS`:
+In `WebTPS-DHF`:
 
-1. approve the disposable Plan Spec PR with an authorized reviewer
+1. approve the disposable Plan Spec PR in `WebTPS-DHF` with an authorized
+   reviewer
 2. ensure labels are:
    - `pr:plan`
    - `cr:analyze`
    - `ai:ready`
-3. trigger Stage 2 with the Stage 2 payload
+3. trigger Stage 2 with the Stage 2 payload into `WebTPS`
 
 Expected result:
 
-1. `codex/cr-XXX-impl` branch is created
-2. `docs/CRxxx-Implementation.md` is created or updated
-3. a draft Implementation PR is created or updated
+1. `codex/cr-XXX-impl` branch is created in `WebTPS`
+2. `docs/CRxxx-Implementation.md` is created or updated in `WebTPS`
+3. a draft Implementation PR is created or updated in `WebTPS`
 4. the linked CR in `WebTPS-DHF` moves from `cr:analyze` to `cr:developing`
 
 ## Stage E: Follow-up Validation
 
-Plan PR:
+Plan PR in `WebTPS-DHF`:
 
 1. add a human comment
 2. confirm `ai:needs-human` appears
 
-Implementation PR:
+Implementation PR in `WebTPS`:
 
 1. add a human comment
 2. confirm `ai:needs-human` appears

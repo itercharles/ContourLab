@@ -4,7 +4,7 @@
 
 This document describes the current implementation scaffold for Stage 2:
 
-- approved Plan Spec input
+- approved Plan Spec input from `WebTPS-DHF`
 - implementation kickoff branch and PR generation
 
 It is intentionally narrower than the full implementation automation target.
@@ -38,7 +38,8 @@ Current behavior:
 
 - resolves the incoming payload
 - enforces Stage 2 guard checks on normal automation payloads
-- verifies the Plan PR through the GitHub API when `planPullNumber` is provided
+- verifies the Plan PR in `WebTPS-DHF` through the GitHub API when
+  `planPullNumber` is provided
 - generates an implementation kickoff document
 - creates or updates a draft implementation PR
 - optionally mirrors the CR state to `cr:developing` in `WebTPS-DHF`
@@ -55,6 +56,9 @@ Normal automation payloads must include:
 - `approvalActor`
 - `authorizedApprovers`
 
+`planPrUrl` and `planPullNumber` refer to the approved Plan Spec PR in
+`WebTPS-DHF`, not to a PR in `WebTPS`.
+
 ## Limitations
 
 This scaffold does **not yet**:
@@ -66,7 +70,9 @@ This scaffold does **not yet**:
 
 ## Next Steps
 
-1. add implementation review follow-up automation
-2. wire actual implementation execution into the implementation branch
-3. open linked DHF implementation PRs when required
-4. add completion synchronization for `developing -> completed`
+1. consume approved Plan Spec context from `WebTPS-DHF` instead of assuming a
+   local WebTPS plan-review surface
+2. add implementation review follow-up automation
+3. wire actual implementation execution into the implementation branch
+4. open linked DHF implementation PRs when required
+5. add completion synchronization for `developing -> completed`

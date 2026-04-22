@@ -4,7 +4,7 @@
     "crId": "CR-123",
     "title": "Disposable automation dry-run",
     "crPrUrl": "https://github.com/example/WebTPS-DHF/pull/123",
-    "planPrUrl": "https://github.com/example/WebTPS/pull/456",
+    "planPrUrl": "https://github.com/example/WebTPS-DHF/pull/456",
     "planPullNumber": 456,
     "prTypeLabel": "pr:plan",
     "crStatusLabel": "cr:analyze",
@@ -23,7 +23,7 @@
       "pnpm automation:test"
     ],
     "manualValidation": [
-      "Confirm Implementation PR is created"
+      "Confirm Implementation PR is created in WebTPS"
     ],
     "initialWorkstreams": [
       "Create implementation kickoff doc",

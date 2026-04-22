@@ -3,7 +3,7 @@
 ## Purpose
 
 This document defines how AI should respond to review comments on Plan Spec PRs
-and Implementation PRs.
+in `WebTPS-DHF` and Implementation PRs in `WebTPS`.
 
 ## Rule
 
@@ -35,7 +35,7 @@ Each comment must be classified as one of:
 
 - fix directly when the comment stays within the approved plan
 - if the comment changes scope or invalidates the approved plan, return to the
-  plan spec stage and update `docs/CRxxx-Spec.md`
+  plan spec stage and update `docs/cr-specs/CRxxx-Spec.md` in `WebTPS-DHF`
 - keep DHF changes aligned with the final implementation decision
 
 ## Reply Expectations

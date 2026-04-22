@@ -2,18 +2,24 @@
 
 ## Purpose
 
-This document describes the current follow-up scaffold for active Plan Spec
-PRs.
+This document describes the legacy follow-up scaffold for active Plan Spec PRs
+that still exists in `WebTPS`.
 
 ## Workflow
 
 - `.github/workflows/plan-pr-follow-up.yml`
 
+## Current Status
+
+Plan Spec review now belongs in `WebTPS-DHF`, because the authoritative
+Plan Spec PR also belongs there.
+
+This scaffold should therefore be treated as transitional only.
+
 ## Current Behavior
 
-- reacts to new comments and reviews
-- may also run on a schedule
-- inspects an active Plan PR
+- runs only through `workflow_dispatch`
+- inspects a manually specified legacy Plan PR in `WebTPS`
 - summarizes comment and review state
 - adds `ai:needs-human` when human-originated feedback is present
 
@@ -28,5 +34,8 @@ This scaffold does **not yet**:
 
 ## Role In The System
 
-This workflow is an observability and handoff scaffold. It is not yet the full
-AI review-response loop described in the process documents.
+This workflow is no longer the target design for plan follow-up. The target
+behavior is:
+
+- Plan PR follow-up in `WebTPS-DHF`
+- Implementation PR follow-up in `WebTPS`

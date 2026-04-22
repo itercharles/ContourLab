@@ -169,6 +169,7 @@ For CR-driven delivery, also follow:
 - [`process/plan_spec_template.md`](process/plan_spec_template.md)
 - [`process/github_automation_design.md`](process/github_automation_design.md)
 - [`process/github_labels.md`](process/github_labels.md)
+- [`process/spec_in_dhf_migration.md`](process/spec_in_dhf_migration.md)
 - [`process/reviewer_authorization_policy.md`](process/reviewer_authorization_policy.md)
 - [`process/stage1_workflow_scaffold.md`](process/stage1_workflow_scaffold.md)
 - [`process/stage2_workflow_scaffold.md`](process/stage2_workflow_scaffold.md)

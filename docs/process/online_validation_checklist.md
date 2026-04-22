@@ -19,23 +19,23 @@ automation workflows.
 - obtain an approved review from an authorized approver
 - trigger Stage 1
 - confirm:
-  - Plan Spec branch is created
-  - Plan Spec PR is created
+  - Plan Spec branch is created in `WebTPS-DHF`
+  - Plan Spec PR is created in `WebTPS-DHF`
   - `cr:new -> cr:analyze` sync occurs in `WebTPS-DHF`
 
 ## Stage 2: Implementation Automation
 
-- approve the disposable Plan Spec PR
+- approve the disposable Plan Spec PR in `WebTPS-DHF`
 - trigger Stage 2
 - confirm:
   - implementation kickoff doc is created
-  - implementation branch is created
-  - draft implementation PR is created
+  - implementation branch is created in `WebTPS`
+  - draft implementation PR is created in `WebTPS`
   - `cr:analyze -> cr:developing` sync occurs in `WebTPS-DHF`
 
 ## Follow-up Validation
 
-- add a human comment on the Plan Spec PR
+- add a human comment on the Plan Spec PR in `WebTPS-DHF`
 - confirm `ai:needs-human` appears
 - add a review with `CHANGES_REQUESTED` on the implementation PR
 - confirm `ai:replan` appears

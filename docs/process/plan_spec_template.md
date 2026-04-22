@@ -1,8 +1,10 @@
 # Plan Spec Template
 
-Save each approved plan specification as:
+Save each approved plan specification in `WebTPS-DHF` as:
 
-- `docs/CRxxx-Spec.md`
+- `docs/cr-specs/CRxxx-Spec.md`
+
+Do not treat a copy in `WebTPS` as authoritative.
 
 Use the following structure.
 

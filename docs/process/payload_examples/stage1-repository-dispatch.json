@@ -24,10 +24,10 @@
       "pnpm automation:test"
     ],
     "manualValidation": [
-      "Confirm Plan Spec PR is created"
+      "Confirm Plan Spec PR is created in WebTPS-DHF"
     ],
     "acceptanceSignals": [
-      "Plan Spec PR opens and CR status becomes cr:analyze"
+      "Plan Spec PR opens in WebTPS-DHF and CR status becomes cr:analyze"
     ]
   }
 }

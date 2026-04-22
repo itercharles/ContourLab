@@ -10,8 +10,8 @@ human approval checkpoints.
 
 This workflow spans two repositories:
 
-- `WebTPS-DHF` for the CR item and formal DHF lifecycle
-- `WebTPS` for plan specification and implementation work
+- `WebTPS-DHF` for the CR item, CR Spec, and formal DHF lifecycle
+- `WebTPS` for implementation work
 
 ## Core Principle
 
@@ -51,12 +51,12 @@ Rules:
 
 Repository:
 
-- `WebTPS`
+- `WebTPS-DHF`
 
 Contents:
 
-- `docs/CRxxx-Spec.md`
-- optional supporting documentation updates
+- `docs/cr-specs/CRxxx-Spec.md`
+- optional CR-adjacent DHF documentation updates
 
 Purpose:
 
@@ -70,7 +70,7 @@ Rules:
 - created or updated by AI only after the CR PR is approved
 - requires human approval before AI implementation begins
 - if plan-level review feedback changes scope or approach, AI updates the spec
-  and resubmits for review
+  and resubmits for review in `WebTPS-DHF`
 
 ### 3. Implementation PR
 
@@ -167,19 +167,19 @@ Result:
 
 - AI may begin analysis
 - CR status changes from `new` to `analyze`
-- AI creates or updates the Plan Spec PR in `WebTPS`
+- AI creates or updates the Plan Spec PR in `WebTPS-DHF`
 
 ### Gate 2: Plan Approval
 
 Input:
 
-- approved Plan Spec PR in `WebTPS`
+- approved Plan Spec PR in `WebTPS-DHF`
 
 Result:
 
 - AI may begin implementation
 - CR status changes from `analyze` to `developing`
-- AI creates or updates the Implementation PR
+- AI creates or updates the Implementation PR in `WebTPS`
 
 ### Gate 3: Implementation Approval
 
@@ -221,26 +221,23 @@ If comments are raised on the Implementation PR:
 Owns:
 
 - CR item lifecycle
+- CR Spec
+- plan-review surface
 - DHF traceability items
 - formal compliance records
-
-Does not own:
-
-- implementation plan specification
-- code review surface for product code
 
 ### `WebTPS`
 
 Owns:
 
-- plan specification
 - implementation code
 - tests
+- implementation-review surface
 - developer-facing design and process docs
 
-Does not replace:
+Does not own:
 
-- formal DHF traceability responsibilities that remain in `WebTPS-DHF`
+- authoritative CR Spec
 
 ## Required Content Per PR
 

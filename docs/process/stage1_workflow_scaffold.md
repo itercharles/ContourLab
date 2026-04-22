@@ -2,16 +2,17 @@
 
 ## Purpose
 
-This document describes the current implementation scaffold for Stage 1:
+This document describes the legacy Stage 1 scaffold that still exists in
+`WebTPS`:
 
 - approved CR input
 - plan spec scaffold generation
 
-It is intentionally narrower than the full automation design. The current goal
-is to establish a deterministic entry point and payload contract before adding
-cross-repository PR creation and review orchestration.
+It is no longer the target architecture. The authoritative Stage 1 workflow now
+belongs in `WebTPS-DHF` because both the CR item and the CR Spec are owned
+there.
 
-## Implemented Pieces
+## Legacy Pieces Currently Present In `WebTPS`
 
 ### 1. Plan spec generator script
 
@@ -19,15 +20,15 @@ Script:
 
 - `scripts/automation/stage1-plan-spec.mjs`
 
-Behavior:
+Historical behavior:
 
 - validates a CR payload
 - requires `crId`, `title`, and `crPrUrl`
-- writes or updates `docs/CRxxx-Spec.md`
+- writes or updates a local Plan Spec scaffold
 - uses the approved plan spec structure from
   [plan_spec_template.md](plan_spec_template.md)
 
-### 2. GitHub Actions scaffold
+### 2. Legacy GitHub Actions scaffold
 
 Workflow:
 
@@ -36,44 +37,46 @@ Workflow:
 Supported triggers:
 
 - `workflow_dispatch`
-- `repository_dispatch` with event type `cr-approved`
 
 Current behavior:
 
-- checks out the repository
-- installs dependencies
-- resolves the incoming payload
-- generates or updates a plan spec scaffold
-- creates or updates a Plan Spec branch
-- commits the generated spec change when needed
-- creates or updates a Plan Spec PR in `WebTPS`
-- optionally mirrors the CR state to `cr:analyze` in `WebTPS-DHF` when
-  cross-repository credentials and payload fields are provided
-- enforces Stage 1 guard checks on normal automation payloads:
-  - `prTypeLabel == pr:cr`
-  - `crStatusLabel == cr:new`
-  - `aiControlLabel == ai:ready`
-  - `blocked == false`
-  - `hasHumanApproval == true`
-  - `approvalActor` present
-  - `authorizedApprovers` present
-- when `WEBTPS_AUTOMATION_TOKEN` and DHF PR coordinates are provided, performs
-  live GitHub API verification of the DHF PR before continuing
+- requires `manual_bypass=true`
+- remains available only as a temporary dry-run reference
+- demonstrates payload validation and branch/PR scaffolding logic
+- must not be extended as the long-term Stage 1 implementation
+
+## Current Status
+
+Stage 1 should be migrated into `WebTPS-DHF`.
+
+The `WebTPS` copies of:
+
+- `scripts/automation/stage1-plan-spec.mjs`
+- `.github/workflows/cr-stage1-plan-spec.yml`
+
+should be treated as transitional only.
+
+## Why This Scaffold Is No Longer Authoritative
+
+The corrected repository split is:
+
+- `WebTPS-DHF`: CR item, CR Spec, Stage 1 analysis, Plan PR follow-up
+- `WebTPS`: implementation only
+
+Keeping Stage 1 in `WebTPS` would recreate unnecessary cross-repository
+orchestration at the wrong point in the workflow.
 
 ## Current Limitations
 
-This scaffold does **not yet**:
+This scaffold does **not** represent the intended future implementation.
 
-- create cross-repository links beyond comment/URL propagation
-- enforce the full label guard model from the GitHub automation design beyond
-  the minimum Stage 1 payload contract
-- open an implementation PR
-- independently verify reviewer authorization beyond the presence of an
-  approved review
+Its remaining value is:
 
-Those are deliberate next steps, not omissions.
+- reference payload shape
+- local dry-run testing
+- migration aid while the authoritative DHF-side workflow is built
 
-## Payload Contract
+## Historical Payload Contract
 
 Minimum payload:
 
@@ -106,7 +109,8 @@ Payload for optional DHF status sync:
 ```
 
 The same DHF repository fields also enable live GitHub API verification when
-`WEBTPS_AUTOMATION_TOKEN` is available to the workflow.
+`WEBTPS_AUTOMATION_TOKEN` is available to the workflow during a legacy manual
+dry-run.
 
 Optional fields:
 
@@ -138,9 +142,8 @@ Example:
 pnpm automation:stage1:plan-spec --payload '{"crId":"CR-123","title":"Example","crPrUrl":"https://github.com/example/WebTPS-DHF/pull/123"}'
 ```
 
-Manual debug runs may bypass guard fields only through the GitHub workflow
-input `manual_bypass=true`. That bypass is for scaffold debugging only and
-should not be used for normal CR automation.
+Manual runs must explicitly set `manual_bypass=true`. That switch exists only
+for legacy scaffold debugging and should not be used for normal CR automation.
 
 Validation-only example:
 
@@ -154,10 +157,9 @@ Temporary output example:
 pnpm automation:stage1:plan-spec --payload '{"crId":"CR-123","title":"Example","crPrUrl":"https://github.com/example/WebTPS-DHF/pull/123"}' --output-dir /tmp/webtps-stage1-spec
 ```
 
-## Next Steps
+## Required Follow-Up
 
-1. enforce approval and label guards matching
-   [github_automation_design.md](github_automation_design.md)
-2. harden reviewer-authorization checks beyond generic approved reviews
-3. add Plan Spec PR review-follow-up automation
-4. create the Stage 2 implementation workflow
+1. move authoritative Stage 1 automation into `WebTPS-DHF`
+2. move authoritative Plan PR follow-up into `WebTPS-DHF`
+3. keep only Stage 2 and later automation in `WebTPS`
+4. retire or clearly mark the local Stage 1 scaffold after DHF-side migration

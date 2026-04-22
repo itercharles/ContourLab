@@ -141,25 +141,32 @@ jobs:
           script: |
             const payload = JSON.parse(process.env.PAYLOAD_JSON);
             const pull_number = Number(payload.planPullNumber);
+            const owner = String(payload.dhfRepoOwner || '').trim();
+            const repo = String(payload.dhfRepoName || '').trim();
             const authorizedApprovers = Array.isArray(payload.authorizedApprovers)
               ? payload.authorizedApprovers.map((value) => String(value).trim()).filter(Boolean)
               : [];
 
+            if (!owner || !repo) {
+              core.setFailed('Stage 2 API verification failed: dhfRepoOwner and dhfRepoName are required');
+              return;
+            }
+
             const [{ data: issueLabels }, { data: reviews }, { data: pull }] = await Promise.all([
               github.rest.issues.listLabelsOnIssue({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 issue_number: pull_number,
               }),
               github.rest.pulls.listReviews({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 pull_number,
                 per_page: 100,
               }),
               github.rest.pulls.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 pull_number,
               }),
             ]);

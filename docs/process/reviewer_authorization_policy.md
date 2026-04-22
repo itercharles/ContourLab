@@ -75,7 +75,7 @@ the CR PR in `WebTPS-DHF`.
 ### Stage 2
 
 At least one active approved review must come from an authorized reviewer for
-the Plan Spec PR in `WebTPS`.
+the Plan Spec PR in `WebTPS-DHF`.
 
 Current scaffold support:
 
