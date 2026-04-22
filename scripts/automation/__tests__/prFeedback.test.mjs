@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  renderImplementationFollowUpComment,
+  renderPlanFollowUpComment,
   summarizeCompletionSync,
   summarizeImplementationFeedback,
   summarizePlanFeedback,
@@ -37,6 +39,33 @@ test('summarizeImplementationFeedback flags replan on changes requested', () => 
   assert.equal(summary.hasChangesRequested, true);
   assert.equal(summary.shouldLabelNeedsHuman, true);
   assert.equal(summary.shouldLabelReplan, true);
+});
+
+test('render follow-up comments include marker and triage result', () => {
+  const planComment = renderPlanFollowUpComment({
+    prNumber: 11,
+    feedback: {
+      humanIssueComments: 1,
+      humanReviewComments: 0,
+      activeReviewStates: { alice: 'APPROVED' },
+      shouldLabelNeedsHuman: true,
+    },
+  });
+  assert.match(planComment, /ai-follow-up:plan/);
+  assert.match(planComment, /Triage result:/);
+
+  const implementationComment = renderImplementationFollowUpComment({
+    prNumber: 12,
+    feedback: {
+      humanIssueComments: 0,
+      humanReviewComments: 1,
+      activeReviewStates: { bob: 'CHANGES_REQUESTED' },
+      shouldLabelNeedsHuman: true,
+      shouldLabelReplan: true,
+    },
+  });
+  assert.match(implementationComment, /ai-follow-up:implementation/);
+  assert.match(implementationComment, /Replan suggested: yes/);
 });
 
 test('summarizeCompletionSync recognizes implementation PR and linked CR', () => {

@@ -45,6 +45,134 @@ export function hasAuthorizedApproval(reviews, authorizedApprovers) {
   return activeApprovedUsers(reviews).some((login) => allowlist.includes(login));
 }
 
+export function parseCsvList(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function escapeRegex(value) {
+  return value.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+}
+
+export function globToRegex(pattern) {
+  let result = '';
+  for (let index = 0; index < pattern.length; index += 1) {
+    const char = pattern[index];
+    const next = pattern[index + 1];
+    if (char === '*' && next === '*') {
+      result += '.*';
+      index += 1;
+      continue;
+    }
+    if (char === '*') {
+      result += '[^/]*';
+      continue;
+    }
+    result += escapeRegex(char);
+  }
+  return new RegExp(`^${result}$`);
+}
+
+export function parseCodeowners(text) {
+  return String(text || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'))
+    .map((line) => {
+      const [pattern, ...owners] = line.split(/\s+/);
+      return {
+        pattern,
+        owners,
+      };
+    })
+    .filter((entry) => entry.pattern && entry.owners.length);
+}
+
+export function resolveCodeownerOwnersForFiles(codeownersText, changedFiles) {
+  const entries = parseCodeowners(codeownersText);
+  const owners = new Set();
+
+  for (const filePath of changedFiles || []) {
+    let matchedOwners = [];
+    for (const entry of entries) {
+      const normalizedPattern = entry.pattern.startsWith('/')
+        ? entry.pattern.slice(1)
+        : entry.pattern;
+      if (globToRegex(normalizedPattern).test(filePath)) {
+        matchedOwners = entry.owners;
+      }
+    }
+    for (const owner of matchedOwners) {
+      owners.add(owner);
+    }
+  }
+
+  return Array.from(owners);
+}
+
+export function extractCodeownerUsers(owners) {
+  return owners
+    .filter((owner) => owner.startsWith('@') && !owner.includes('/'))
+    .map((owner) => owner.slice(1));
+}
+
+export function extractCodeownerTeams(owners) {
+  return owners
+    .filter((owner) => owner.startsWith('@') && owner.includes('/'))
+    .map((owner) => owner.slice(1));
+}
+
+export function evaluateReviewerAuthorization({
+  reviews = [],
+  authorizedApprovers = [],
+  authorizedTeams = [],
+  teamMembersByTeam = {},
+  requireCodeownerApproval = false,
+  codeownerUsers = [],
+  codeownerTeams = [],
+}) {
+  const activeApprovals = activeApprovedUsers(reviews);
+  const allowlist = parseCsvList(authorizedApprovers);
+  const teamList = parseCsvList(authorizedTeams);
+  const normalizedTeamMembers = Object.fromEntries(
+    Object.entries(teamMembersByTeam || {}).map(([team, members]) => [team, parseCsvList(members)])
+  );
+  const requiredCodeownerUsers = parseCsvList(codeownerUsers);
+  const requiredCodeownerTeams = parseCsvList(codeownerTeams);
+
+  const authorizedByAllowlist = activeApprovals.filter((login) => allowlist.includes(login));
+  const authorizedByTeams = activeApprovals.filter((login) =>
+    teamList.some((team) => (normalizedTeamMembers[team] || []).includes(login))
+  );
+  const authorizedByCodeowners = activeApprovals.filter((login) => {
+    if (requiredCodeownerUsers.includes(login)) {
+      return true;
+    }
+    return requiredCodeownerTeams.some((team) => (normalizedTeamMembers[team] || []).includes(login));
+  });
+
+  const baseAuthorized = teamList.length ? authorizedByTeams : authorizedByAllowlist;
+  const hasBaseAuthorization = baseAuthorized.length > 0;
+  const hasCodeownerAuthorization = requireCodeownerApproval
+    ? authorizedByCodeowners.length > 0
+    : true;
+
+  return {
+    activeApprovals,
+    authorizedByAllowlist,
+    authorizedByTeams,
+    authorizedByCodeowners,
+    hasBaseAuthorization,
+    hasCodeownerAuthorization,
+    hasAuthorizedApproval: hasBaseAuthorization && hasCodeownerAuthorization,
+  };
+}
+
 export function isHumanUser(user) {
   return !user?.type || user.type !== 'Bot';
 }

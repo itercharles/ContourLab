@@ -47,7 +47,7 @@ Current behavior:
 
 ## Current Status
 
-Stage 1 should be migrated into `WebTPS-DHF`.
+Stage 1 has now been migrated into `WebTPS-DHF`.
 
 The `WebTPS` copies of:
 
@@ -159,7 +159,5 @@ pnpm automation:stage1:plan-spec --payload '{"crId":"CR-123","title":"Example","
 
 ## Required Follow-Up
 
-1. move authoritative Stage 1 automation into `WebTPS-DHF`
-2. move authoritative Plan PR follow-up into `WebTPS-DHF`
-3. keep only Stage 2 and later automation in `WebTPS`
-4. retire or clearly mark the local Stage 1 scaffold after DHF-side migration
+1. keep only Stage 2 and later automation in `WebTPS`
+2. retire the local Stage 1 scaffold once the DHF-side workflow is fully proven online

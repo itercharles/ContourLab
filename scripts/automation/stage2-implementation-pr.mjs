@@ -112,7 +112,7 @@ async function main() {
     title,
     crPrUrl,
     planPrUrl,
-    planSpecPath: String(payload.planSpecPath || `docs/${crId.replace('-', '')}-Spec.md`),
+    planSpecPath: String(payload.planSpecPath || `docs/cr-specs/${crId.replace('-', '')}-Spec.md`),
     status: String(payload.status || 'draft'),
     expectedDhfImpact: Array.isArray(payload.expectedDhfImpact) ? payload.expectedDhfImpact.map(String) : [],
     automatedValidation: Array.isArray(payload.automatedValidation) ? payload.automatedValidation.map(String) : [],

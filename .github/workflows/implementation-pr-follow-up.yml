@@ -32,7 +32,10 @@ jobs:
           FEEDBACK_LIB_PATH: ${{ github.workspace }}/scripts/automation/lib/prFeedback.mjs
         with:
           script: |
-            const { summarizeImplementationFeedback } = await import(`file://${process.env.FEEDBACK_LIB_PATH}`);
+            const {
+              summarizeImplementationFeedback,
+              renderImplementationFollowUpComment,
+            } = await import(`file://${process.env.FEEDBACK_LIB_PATH}`);
             const explicitPrNumber = core.getInput('pr_number');
             const candidatePrNumber =
               explicitPrNumber ||
@@ -79,20 +82,63 @@ jobs:
               .addCodeBlock(summary)
               .write();
 
-            if (feedback.shouldLabelNeedsHuman && !labelNames.has('ai:needs-human')) {
-              await github.rest.issues.addLabels({
+            const marker = '<!-- ai-follow-up:implementation -->';
+            const existingBotComment = comments.find((comment) =>
+              comment.user?.type === 'Bot' && String(comment.body || '').includes(marker)
+            );
+            const commentBody = renderImplementationFollowUpComment({
+              prNumber: pull_number,
+              feedback,
+            });
+
+            if (existingBotComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingBotComment.id,
+                body: commentBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
                 owner,
                 repo,
                 issue_number: pull_number,
-                labels: ['ai:needs-human'],
+                body: commentBody,
               });
             }
 
-            if (feedback.shouldLabelReplan && !labelNames.has('ai:replan')) {
-              await github.rest.issues.addLabels({
+            if (feedback.shouldLabelNeedsHuman) {
+              if (!labelNames.has('ai:needs-human')) {
+                await github.rest.issues.addLabels({
+                  owner,
+                  repo,
+                  issue_number: pull_number,
+                  labels: ['ai:needs-human'],
+                });
+              }
+            } else if (labelNames.has('ai:needs-human')) {
+              await github.rest.issues.removeLabel({
                 owner,
                 repo,
                 issue_number: pull_number,
-                labels: ['ai:replan'],
-              });
+                name: 'ai:needs-human',
+              }).catch(() => {});
+            }
+
+            if (feedback.shouldLabelReplan) {
+              if (!labelNames.has('ai:replan')) {
+                await github.rest.issues.addLabels({
+                  owner,
+                  repo,
+                  issue_number: pull_number,
+                  labels: ['ai:replan'],
+                });
+              }
+            } else if (labelNames.has('ai:replan')) {
+              await github.rest.issues.removeLabel({
+                owner,
+                repo,
+                issue_number: pull_number,
+                name: 'ai:replan',
+              }).catch(() => {});
             }

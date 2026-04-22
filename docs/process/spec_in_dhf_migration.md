@@ -98,8 +98,6 @@ reference or temporary dry-run use, but they are no longer the target design.
 
 ## Required Follow-Up
 
-1. move authoritative Stage 1 automation into `WebTPS-DHF`
-2. move authoritative Plan PR follow-up into `WebTPS-DHF`
-3. treat Stage 2 entry in `WebTPS` as a dispatch from approved DHF plan review
-4. keep completion sync in `WebTPS` because merge completion still originates
+1. treat Stage 2 entry in `WebTPS` as a dispatch from approved DHF plan review
+2. keep completion sync in `WebTPS` because merge completion still originates
    from the implementation repository

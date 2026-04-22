@@ -88,18 +88,24 @@ For CR-driven automation, do not allow automated workflows to merge directly to
 
 ## Authorized Approver Setup
 
-Current scaffold supports:
+Current automation supports:
 
-- explicit `authorizedApprovers` allowlist in payloads
+- explicit `authorizedApprovers`
+- optional `authorizedTeams`
+- optional `requireCodeownerApproval`
 
 Before enabling automation, decide:
 
 - who is allowed to approve CR PRs
 - who is allowed to approve Plan Spec PRs
 - whether the same reviewers are allowed for both stages
+- whether team-based approval is required
+- whether CODEOWNERS-aligned approval should be enforced
 
-Future work may replace this with team-based authorization, but the current
-workflow assumes explicit allowlists.
+Recommended operational source:
+
+- `WebTPS-DHF` repository variables for Stage 1 / plan approval gates
+- explicit dispatch payload for the cross-repository Stage 2 handoff
 
 ## Repository Dispatch Payload Contracts
 
@@ -124,6 +130,7 @@ Required baseline fields:
   "hasHumanApproval": true,
   "approvalActor": "reviewer-login",
   "authorizedApprovers": ["reviewer-login"],
+  "authorizedTeams": ["org/reviewers"],
   "dhfRepoOwner": "org",
   "dhfRepoName": "WebTPS-DHF",
   "crPullNumber": 123
@@ -152,6 +159,8 @@ Required baseline fields:
   "hasHumanApproval": true,
   "approvalActor": "reviewer-login",
   "authorizedApprovers": ["reviewer-login"],
+  "authorizedTeams": ["org/reviewers"],
+  "requireCodeownerApproval": true,
   "dhfRepoOwner": "org",
   "dhfRepoName": "WebTPS-DHF",
   "crPullNumber": 123

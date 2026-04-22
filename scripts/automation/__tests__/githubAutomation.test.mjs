@@ -6,10 +6,16 @@ import {
   countHumanComments,
   crNumberFromId,
   docNameFromCrId,
+  evaluateReviewerAuthorization,
   extractLinkedCrPr,
+  extractCodeownerTeams,
+  extractCodeownerUsers,
+  globToRegex,
   hasAuthorizedApproval,
   latestReviewStatesByUser,
   normalizeCrId,
+  parseCodeowners,
+  resolveCodeownerOwnersForFiles,
   validateImplementationPayload,
   validatePlanSpecPayload,
 } from '../lib/githubAutomation.mjs';
@@ -83,6 +89,53 @@ test('activeApprovedUsers and hasAuthorizedApproval respect latest review state'
   assert.equal(hasAuthorizedApproval(reviews, ['alice']), false);
   assert.equal(hasAuthorizedApproval(reviews, ['bob']), true);
   assert.equal(hasAuthorizedApproval(reviews, []), false);
+});
+
+test('parseCodeowners resolves owners for changed files', () => {
+  const text = `
+# comment
+* @global-owner
+apps/client/** @frontend-team @alice
+docs/process/* @bob
+`;
+
+  assert.deepEqual(parseCodeowners(text), [
+    { pattern: '*', owners: ['@global-owner'] },
+    { pattern: 'apps/client/**', owners: ['@frontend-team', '@alice'] },
+    { pattern: 'docs/process/*', owners: ['@bob'] },
+  ]);
+
+  assert.deepEqual(
+    resolveCodeownerOwnersForFiles(text, ['apps/client/src/App.tsx', 'docs/process/foo.md']).sort(),
+    ['@alice', '@bob', '@frontend-team']
+  );
+  assert.deepEqual(extractCodeownerUsers(['@alice', '@org/team']), ['alice']);
+  assert.deepEqual(extractCodeownerTeams(['@alice', '@org/team']), ['org/team']);
+  assert.equal(globToRegex('apps/client/**').test('apps/client/src/App.tsx'), true);
+});
+
+test('evaluateReviewerAuthorization supports teams and codeowners', () => {
+  const reviews = [
+    { user: { login: 'alice' }, state: 'APPROVED' },
+    { user: { login: 'bob' }, state: 'COMMENTED' },
+    { user: { login: 'carol' }, state: 'APPROVED' },
+  ];
+
+  const result = evaluateReviewerAuthorization({
+    reviews,
+    authorizedTeams: ['org/frontend'],
+    teamMembersByTeam: {
+      'org/frontend': ['carol'],
+      'org/codeowners': ['alice'],
+    },
+    requireCodeownerApproval: true,
+    codeownerTeams: ['org/codeowners'],
+  });
+
+  assert.deepEqual(result.activeApprovals, ['alice', 'carol']);
+  assert.deepEqual(result.authorizedByTeams, ['carol']);
+  assert.deepEqual(result.authorizedByCodeowners, ['alice']);
+  assert.equal(result.hasAuthorizedApproval, true);
 });
 
 test('countHumanComments ignores bot comments', () => {

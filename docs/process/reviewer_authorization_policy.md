@@ -48,12 +48,21 @@ At least one active `APPROVED` review must come from a reviewer listed in
 
 ### 2. Team-based authorization
 
-Future support may add:
+Supported:
 
 - organization team allowlists
-- CODEOWNERS-aligned approval rules
 
-These are not yet implemented in the current scaffold.
+When configured, an active approval is valid if the reviewer is a member of an
+authorized team.
+
+### 3. CODEOWNERS-aligned authorization
+
+Supported:
+
+- optional CODEOWNERS-aware approval enforcement
+
+When enabled, automation additionally requires at least one active approval
+from a reviewer who matches a user or team owner for the changed files.
 
 ## Review State Rules
 
@@ -80,11 +89,8 @@ the Plan Spec PR in `WebTPS-DHF`.
 Current scaffold support:
 
 - `authorizedApprovers` allowlist
-
-Not yet supported:
-
-- GitHub team allowlists
-- CODEOWNERS-derived authorization
+- `authorizedTeams`
+- optional CODEOWNERS-derived approval enforcement
 
 ## Payload Contract
 
@@ -92,12 +98,14 @@ When automation is triggered through payload-based dispatch, include:
 
 ```json
 {
-  "authorizedApprovers": ["alice", "bob"]
+  "authorizedApprovers": ["alice", "bob"],
+  "authorizedTeams": ["org/reviewers"],
+  "requireCodeownerApproval": true
 }
 ```
 
-If `authorizedApprovers` is omitted, automation may still run in scaffold mode,
-but approval authorization remains weaker and should be treated as incomplete.
+At least one explicit authorization path must be configured. Omitted reviewer
+policy should be treated as an error, not as implicit approval.
 
 ## Manual Bypass
 
