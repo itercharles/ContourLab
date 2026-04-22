@@ -40,7 +40,22 @@ Before enabling the automation workflows in a repository, create or reconcile
 these labels first.
 
 The current repository stores the canonical manifest but does not yet apply the
-labels automatically through GitHub API.
+labels automatically through GitHub API unless the reconcile workflow is run.
+
+## Reconcile Workflow
+
+Workflow:
+
+- `.github/workflows/reconcile-labels.yml`
+
+Script:
+
+- `scripts/automation/reconcile-labels.mjs`
+
+Modes:
+
+- dry-run by default
+- apply mode when `workflow_dispatch` input `apply=true`
 
 ## Change Policy
 

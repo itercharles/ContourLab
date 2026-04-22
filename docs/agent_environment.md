@@ -48,7 +48,11 @@ working in this repository.
    current implementation review-follow-up scaffold
 15. [`docs/process/completion_sync_scaffold.md`](process/completion_sync_scaffold.md) —
    current completion-state synchronization scaffold
-16. Agent entrypoint: [`CLAUDE.md`](../CLAUDE.md)
+16. [`docs/process/automation_enablement.md`](process/automation_enablement.md) —
+   required GitHub setup and rollout sequence for automation
+17. [`docs/process/online_validation_checklist.md`](process/online_validation_checklist.md) —
+   disposable online validation checklist before real adoption
+18. Agent entrypoint: [`CLAUDE.md`](../CLAUDE.md)
 
 ## Repository Layout
 

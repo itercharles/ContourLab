@@ -175,6 +175,8 @@ For CR-driven delivery, also follow:
 - [`process/plan_followup_scaffold.md`](process/plan_followup_scaffold.md)
 - [`process/implementation_followup_scaffold.md`](process/implementation_followup_scaffold.md)
 - [`process/completion_sync_scaffold.md`](process/completion_sync_scaffold.md)
+- [`process/automation_enablement.md`](process/automation_enablement.md)
+- [`process/online_validation_checklist.md`](process/online_validation_checklist.md)
 
 ### Branch naming
 
