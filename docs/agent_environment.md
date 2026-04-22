@@ -32,7 +32,21 @@ working in this repository.
 7. [`docs/strategy/technical_strategy.md`](strategy/technical_strategy.md) and
    [`docs/strategy/testing_strategy.md`](strategy/testing_strategy.md) — architecture
    and verification direction
-8. Agent entrypoint: [`CLAUDE.md`](../CLAUDE.md)
+8. [`docs/process/cr_automation_workflow.md`](process/cr_automation_workflow.md) —
+   CR-driven automation workflow and PR gating model
+9. [`docs/process/github_automation_design.md`](process/github_automation_design.md) —
+   GitHub event, label, and approval mapping for CR automation
+10. [`docs/process/reviewer_authorization_policy.md`](process/reviewer_authorization_policy.md) —
+   authorized-approver rules for automation gates
+11. [`docs/process/stage1_workflow_scaffold.md`](process/stage1_workflow_scaffold.md) —
+   current Stage 1 implementation scaffold
+12. [`docs/process/stage2_workflow_scaffold.md`](process/stage2_workflow_scaffold.md) —
+   current Stage 2 implementation scaffold
+13. [`docs/process/implementation_followup_scaffold.md`](process/implementation_followup_scaffold.md) —
+   current implementation review-follow-up scaffold
+14. [`docs/process/completion_sync_scaffold.md`](process/completion_sync_scaffold.md) —
+   current completion-state synchronization scaffold
+15. Agent entrypoint: [`CLAUDE.md`](../CLAUDE.md)
 
 ## Repository Layout
 

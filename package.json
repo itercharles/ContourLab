@@ -11,6 +11,8 @@
     "local:up": "node scripts/dev/up.mjs",
     "local:doctor": "node scripts/dev/doctor.mjs",
     "local:down": "pnpm repo:down",
+    "automation:stage1:plan-spec": "node scripts/automation/stage1-plan-spec.mjs",
+    "automation:stage2:implementation": "node scripts/automation/stage2-implementation-pr.mjs",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",

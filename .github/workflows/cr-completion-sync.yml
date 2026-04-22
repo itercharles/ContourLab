@@ -1,0 +1,113 @@
+name: CR Completion Sync
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Optional implementation PR number to inspect'
+        required: false
+        type: string
+      merged:
+        description: 'Set to true for manual completion test'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  completion-sync:
+    name: Sync completed CR state
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect merged implementation PR
+        uses: actions/github-script@v7
+        env:
+          MANUAL_MERGED: ${{ inputs.merged }}
+        with:
+          github-token: ${{ secrets.WEBTPS_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const explicitPrNumber = core.getInput('pr_number');
+            const pull_number = Number(explicitPrNumber || context.payload.pull_request?.number || 0);
+            const merged = explicitPrNumber ? process.env.MANUAL_MERGED === 'true' : Boolean(context.payload.pull_request?.merged);
+
+            if (!pull_number) {
+              core.notice('No PR number available for completion sync.');
+              return;
+            }
+
+            if (!merged) {
+              core.notice(`PR #${pull_number} is not merged; no completion sync needed.`);
+              return;
+            }
+
+            const [{ data: pull }, { data: labels }] = await Promise.all([
+              github.rest.pulls.get({ owner, repo, pull_number }),
+              github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: pull_number }),
+            ]);
+
+            const labelNames = new Set(labels.map((label) => label.name));
+            if (!labelNames.has('pr:implementation')) {
+              core.notice(`PR #${pull_number} is not an implementation PR.`);
+              return;
+            }
+
+            const body = pull.body || '';
+            const match = body.match(/CR PR:\s+(https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+))/i);
+            if (!match) {
+              core.notice(`Implementation PR #${pull_number} does not expose a linked CR PR URL.`);
+              return;
+            }
+
+            const [, crPrUrl, dhfOwner, dhfRepo, issueNumberRaw] = match;
+            const issue_number = Number(issueNumberRaw);
+
+            if (!dhfOwner || !dhfRepo || !issue_number) {
+              core.notice(`Implementation PR #${pull_number} does not expose valid DHF coordinates.`);
+              return;
+            }
+
+            const { data: dhfLabels } = await github.rest.issues.listLabelsOnIssue({
+              owner: dhfOwner,
+              repo: dhfRepo,
+              issue_number,
+            });
+
+            for (const name of dhfLabels.map((label) => label.name).filter((name) => name === 'cr:developing')) {
+              await github.rest.issues.removeLabel({
+                owner: dhfOwner,
+                repo: dhfRepo,
+                issue_number,
+                name,
+              });
+            }
+
+            await github.rest.issues.addLabels({
+              owner: dhfOwner,
+              repo: dhfRepo,
+              issue_number,
+              labels: ['cr:completed'],
+            });
+
+            await github.rest.issues.createComment({
+              owner: dhfOwner,
+              repo: dhfRepo,
+              issue_number,
+              body: [
+                `Implementation PR #${pull_number} was merged.`,
+                `Implementation PR URL: ${pull.html_url}`,
+                'CR status should now be treated as `completed`.',
+              ].join('\n'),
+            });
+
+            core.summary
+              .addHeading(`Completion Sync for PR #${pull_number}`)
+              .addCodeBlock(`Updated ${dhfOwner}/${dhfRepo}#${issue_number} to cr:completed`)
+              .write();

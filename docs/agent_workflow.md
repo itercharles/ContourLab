@@ -54,7 +54,8 @@ described in [`docs/agent_environment.md`](agent_environment.md).
    - SRS items must derive from SYS items (`derives_from: [SYS-xxx]`).
    - SWDD items must reference the SRS they implement (`implements: [SRS-xxx]`).
    - RISK items must have a corresponding RCM (`mitigates: RISK-xxx`).
-   - Do not leave CRs in `planned` status after code ships.
+   - Do not leave CRs in active pre-completion states after implementation has
+     shipped; transition them according to the CR automation workflow.
    - If DHF was intentionally not updated, state why in the final handoff.
 
 3. Tests — write or update alongside every code change
@@ -124,6 +125,8 @@ described in [`docs/agent_environment.md`](agent_environment.md).
      - defer to a follow-up item
    - Every review comment should receive a response. Do not silently ignore
      actionable feedback.
+   - Follow [`process/pr_review_response_policy.md`](process/pr_review_response_policy.md)
+     for comment triage and response behavior.
 
 10. Definition of done
    - Do not treat implementation as complete when only code or docs were
@@ -159,6 +162,18 @@ PR description should always include:
 
 After PR creation, agents are expected to keep following the PR until comments
 and CI outcomes are addressed or explicitly handed off.
+
+For CR-driven delivery, also follow:
+
+- [`process/cr_automation_workflow.md`](process/cr_automation_workflow.md)
+- [`process/plan_spec_template.md`](process/plan_spec_template.md)
+- [`process/github_automation_design.md`](process/github_automation_design.md)
+- [`process/reviewer_authorization_policy.md`](process/reviewer_authorization_policy.md)
+- [`process/stage1_workflow_scaffold.md`](process/stage1_workflow_scaffold.md)
+- [`process/stage2_workflow_scaffold.md`](process/stage2_workflow_scaffold.md)
+- [`process/plan_followup_scaffold.md`](process/plan_followup_scaffold.md)
+- [`process/implementation_followup_scaffold.md`](process/implementation_followup_scaffold.md)
+- [`process/completion_sync_scaffold.md`](process/completion_sync_scaffold.md)
 
 ### Branch naming
 
