@@ -177,6 +177,7 @@ For CR-driven delivery, also follow:
 - [`process/completion_sync_scaffold.md`](process/completion_sync_scaffold.md)
 - [`process/automation_enablement.md`](process/automation_enablement.md)
 - [`process/online_validation_checklist.md`](process/online_validation_checklist.md)
+- [`process/online_dry_run_runbook.md`](process/online_dry_run_runbook.md)
 
 ### Branch naming
 

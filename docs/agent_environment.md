@@ -52,7 +52,9 @@ working in this repository.
    required GitHub setup and rollout sequence for automation
 17. [`docs/process/online_validation_checklist.md`](process/online_validation_checklist.md) —
    disposable online validation checklist before real adoption
-18. Agent entrypoint: [`CLAUDE.md`](../CLAUDE.md)
+18. [`docs/process/online_dry_run_runbook.md`](process/online_dry_run_runbook.md) —
+   step-by-step disposable dry-run procedure for first online validation
+19. Agent entrypoint: [`CLAUDE.md`](../CLAUDE.md)
 
 ## Repository Layout
 

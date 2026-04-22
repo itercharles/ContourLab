@@ -121,6 +121,10 @@ Required baseline fields:
 }
 ```
 
+Example payload file:
+
+- [payload_examples/stage1-repository-dispatch.json](payload_examples/stage1-repository-dispatch.json)
+
 ### Stage 2
 
 Required baseline fields:
@@ -144,6 +148,10 @@ Required baseline fields:
   "crPullNumber": 123
 }
 ```
+
+Example payload file:
+
+- [payload_examples/stage2-repository-dispatch.json](payload_examples/stage2-repository-dispatch.json)
 
 ## Recommended Enablement Sequence
 
