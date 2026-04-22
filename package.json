@@ -13,6 +13,7 @@
     "local:down": "pnpm repo:down",
     "automation:stage1:plan-spec": "node scripts/automation/stage1-plan-spec.mjs",
     "automation:stage2:implementation": "node scripts/automation/stage2-implementation-pr.mjs",
+    "automation:test": "node --test scripts/automation/__tests__/*.test.mjs",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",

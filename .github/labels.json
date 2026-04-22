@@ -1,0 +1,62 @@
+[
+  {
+    "name": "pr:cr",
+    "color": "1d76db",
+    "description": "DHF change request PR"
+  },
+  {
+    "name": "pr:plan",
+    "color": "5319e7",
+    "description": "Plan Spec PR"
+  },
+  {
+    "name": "pr:implementation",
+    "color": "0e8a16",
+    "description": "Implementation PR"
+  },
+  {
+    "name": "cr:new",
+    "color": "d4c5f9",
+    "description": "CR created, waiting for analysis approval"
+  },
+  {
+    "name": "cr:analyze",
+    "color": "fbca04",
+    "description": "CR is in analysis / plan phase"
+  },
+  {
+    "name": "cr:developing",
+    "color": "f9d0c4",
+    "description": "CR is in implementation phase"
+  },
+  {
+    "name": "cr:completed",
+    "color": "0e8a16",
+    "description": "CR completed"
+  },
+  {
+    "name": "cr:rejected",
+    "color": "b60205",
+    "description": "CR rejected"
+  },
+  {
+    "name": "ai:ready",
+    "color": "0e8a16",
+    "description": "Automation may proceed"
+  },
+  {
+    "name": "ai:blocked",
+    "color": "b60205",
+    "description": "Automation must stop"
+  },
+  {
+    "name": "ai:needs-human",
+    "color": "fbca04",
+    "description": "Human follow-up required"
+  },
+  {
+    "name": "ai:replan",
+    "color": "e99695",
+    "description": "Implementation must return to plan revision"
+  }
+]

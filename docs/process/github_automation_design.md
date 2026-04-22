@@ -11,6 +11,7 @@ the workflows.
 Use this document together with:
 
 - [CR automation workflow](cr_automation_workflow.md)
+- [GitHub label manifest](github_labels.md)
 - [Plan spec template](plan_spec_template.md)
 - [PR review response policy](pr_review_response_policy.md)
 - [Reviewer authorization policy](reviewer_authorization_policy.md)

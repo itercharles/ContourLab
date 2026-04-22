@@ -28,10 +28,12 @@ jobs:
       - name: Inspect merged implementation PR
         uses: actions/github-script@v7
         env:
+          FEEDBACK_LIB_PATH: ${{ github.workspace }}/scripts/automation/lib/prFeedback.mjs
           MANUAL_MERGED: ${{ inputs.merged }}
         with:
           github-token: ${{ secrets.WEBTPS_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
+            const { summarizeCompletionSync } = await import(`file://${process.env.FEEDBACK_LIB_PATH}`);
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const explicitPrNumber = core.getInput('pr_number');
@@ -53,21 +55,23 @@ jobs:
               github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: pull_number }),
             ]);
 
-            const labelNames = new Set(labels.map((label) => label.name));
-            if (!labelNames.has('pr:implementation')) {
+            const summary = summarizeCompletionSync({
+              merged,
+              labels,
+              body: pull.body || '',
+            });
+
+            if (!summary.isImplementationPr) {
               core.notice(`PR #${pull_number} is not an implementation PR.`);
               return;
             }
 
-            const body = pull.body || '';
-            const match = body.match(/CR PR:\s+(https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+))/i);
-            if (!match) {
+            if (!summary.linkedCrPr) {
               core.notice(`Implementation PR #${pull_number} does not expose a linked CR PR URL.`);
               return;
             }
 
-            const [, crPrUrl, dhfOwner, dhfRepo, issueNumberRaw] = match;
-            const issue_number = Number(issueNumberRaw);
+            const { owner: dhfOwner, repo: dhfRepo, pullNumber: issue_number } = summary.linkedCrPr;
 
             if (!dhfOwner || !dhfRepo || !issue_number) {
               core.notice(`Implementation PR #${pull_number} does not expose valid DHF coordinates.`);

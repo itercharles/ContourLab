@@ -1,5 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  docNameFromCrId,
+  normalizeCrId,
+  toBullets,
+  validatePlanSpecPayload,
+} from './lib/githubAutomation.mjs';
 
 function getArg(name) {
   const index = process.argv.indexOf(`--${name}`);
@@ -33,25 +39,6 @@ function toPlanStatus(value) {
     throw new Error(`Invalid plan status "${value}". Expected one of: ${Array.from(allowed).join(', ')}`);
   }
   return value;
-}
-
-function normalizeCrId(raw) {
-  const value = raw.trim().toUpperCase();
-  if (!/^CR-\d+$/.test(value)) {
-    throw new Error(`Invalid CR id "${raw}". Expected format CR-123`);
-  }
-  return value;
-}
-
-function toSpecFilename(crId) {
-  return `${crId.replace('-', '')}-Spec.md`;
-}
-
-function toBullets(items, emptyText) {
-  if (!items.length) {
-    return `- ${emptyText}`;
-  }
-  return items.map((item) => `- ${item}`).join('\n');
 }
 
 async function readOptional(filePath) {
@@ -182,15 +169,11 @@ async function main() {
   const checkOnly = hasFlag('check');
   const outputDirArg = getArg('output-dir');
 
-  const crId = normalizeCrId(payload.crId);
-  const title = String(payload.title || '').trim();
-  const crPrUrl = String(payload.crPrUrl || '').trim();
-  if (!title) throw new Error('Payload field "title" is required');
-  if (!crPrUrl) throw new Error('Payload field "crPrUrl" is required');
+  const { crId, title, crPrUrl } = validatePlanSpecPayload(payload);
 
   const specStatus = toPlanStatus(String(payload.status || 'draft'));
   const specDir = outputDirArg ? path.resolve(repoRoot, outputDirArg) : path.join(repoRoot, 'docs');
-  const specPath = path.join(specDir, toSpecFilename(crId));
+  const specPath = path.join(specDir, docNameFromCrId(crId, 'Spec'));
   await mkdir(specDir, { recursive: true });
 
   const content = renderSpec({

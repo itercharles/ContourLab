@@ -1,5 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  docNameFromCrId,
+  normalizeCrId,
+  toBullets,
+  validateImplementationPayload,
+} from './lib/githubAutomation.mjs';
 
 function getArg(name) {
   const index = process.argv.indexOf(`--${name}`);
@@ -25,21 +31,6 @@ function parseJson(value, name) {
   } catch (error) {
     throw new Error(`Invalid JSON for --${name}: ${error instanceof Error ? error.message : String(error)}`);
   }
-}
-
-function normalizeCrId(raw) {
-  const value = raw.trim().toUpperCase();
-  if (!/^CR-\d+$/.test(value)) {
-    throw new Error(`Invalid CR id "${raw}". Expected format CR-123`);
-  }
-  return value;
-}
-
-function toBullets(items, emptyText) {
-  if (!items.length) {
-    return `- ${emptyText}`;
-  }
-  return items.map((item) => `- ${item}`).join('\n');
 }
 
 async function readOptional(filePath) {
@@ -110,17 +101,10 @@ async function main() {
   const checkOnly = hasFlag('check');
   const outputDirArg = getArg('output-dir');
 
-  const crId = normalizeCrId(payload.crId);
-  const title = String(payload.title || '').trim();
-  const crPrUrl = String(payload.crPrUrl || '').trim();
-  const planPrUrl = String(payload.planPrUrl || '').trim();
-
-  if (!title) throw new Error('Payload field "title" is required');
-  if (!crPrUrl) throw new Error('Payload field "crPrUrl" is required');
-  if (!planPrUrl) throw new Error('Payload field "planPrUrl" is required');
+  const { crId, title, crPrUrl, planPrUrl } = validateImplementationPayload(payload);
 
   const docDir = outputDirArg ? path.resolve(repoRoot, outputDirArg) : path.join(repoRoot, 'docs');
-  const docPath = path.join(docDir, `${crId.replace('-', '')}-Implementation.md`);
+  const docPath = path.join(docDir, docNameFromCrId(crId, 'Implementation'));
   await mkdir(docDir, { recursive: true });
 
   const content = renderImplementationKickoff({

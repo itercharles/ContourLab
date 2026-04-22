@@ -38,15 +38,17 @@ working in this repository.
    GitHub event, label, and approval mapping for CR automation
 10. [`docs/process/reviewer_authorization_policy.md`](process/reviewer_authorization_policy.md) —
    authorized-approver rules for automation gates
-11. [`docs/process/stage1_workflow_scaffold.md`](process/stage1_workflow_scaffold.md) —
+11. [`docs/process/github_labels.md`](process/github_labels.md) —
+   GitHub label baseline required by automation
+12. [`docs/process/stage1_workflow_scaffold.md`](process/stage1_workflow_scaffold.md) —
    current Stage 1 implementation scaffold
-12. [`docs/process/stage2_workflow_scaffold.md`](process/stage2_workflow_scaffold.md) —
+13. [`docs/process/stage2_workflow_scaffold.md`](process/stage2_workflow_scaffold.md) —
    current Stage 2 implementation scaffold
-13. [`docs/process/implementation_followup_scaffold.md`](process/implementation_followup_scaffold.md) —
+14. [`docs/process/implementation_followup_scaffold.md`](process/implementation_followup_scaffold.md) —
    current implementation review-follow-up scaffold
-14. [`docs/process/completion_sync_scaffold.md`](process/completion_sync_scaffold.md) —
+15. [`docs/process/completion_sync_scaffold.md`](process/completion_sync_scaffold.md) —
    current completion-state synchronization scaffold
-15. Agent entrypoint: [`CLAUDE.md`](../CLAUDE.md)
+16. Agent entrypoint: [`CLAUDE.md`](../CLAUDE.md)
 
 ## Repository Layout
 
