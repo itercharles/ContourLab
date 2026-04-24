@@ -11,7 +11,6 @@ the workflows.
 Use this document together with:
 
 - [CR automation workflow](cr_automation_workflow.md)
-- [GitHub label manifest](github_labels.md)
 - [Plan spec template](plan_spec_template.md)
 - [PR review response policy](pr_review_response_policy.md)
 - [Reviewer authorization policy](reviewer_authorization_policy.md)
@@ -73,6 +72,11 @@ Use labels as the primary automation signal. Use review approval as the
 secondary gate. Use PR comments only for explicit operator commands.
 
 ### Required Labels
+
+Machine-readable definitions live in `.github/labels.json`. Apply via
+`.github/workflows/reconcile-labels.yml` (run with `apply=true`). When adding,
+removing, or renaming labels, update `.github/labels.json` and any workflows
+that depend on the label.
 
 #### PR type labels
 

@@ -25,7 +25,7 @@ Related documents:
 - [Product roadmap](../strategy/product_roadmap.md)
 - [Technical strategy](../strategy/technical_strategy.md)
 - [Testing strategy](../strategy/testing_strategy.md)
-- [ADR index](../adr/README.md)
+- [ADR template](../adr/ADR-template.md)
 
 ## Scope
 

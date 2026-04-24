@@ -1,3 +1,17 @@
+# Architecture Decision Records
+
+Create or update an ADR when a change materially affects:
+
+- architecture boundaries
+- deployment shape
+- data flow or storage location
+- external integration responsibility
+- dependency model
+
+Copy the template below into a new file named `ADR-XXXX-short-title.md`.
+
+---
+
 # ADR-XXXX: Title
 
 ## Status

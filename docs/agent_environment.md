@@ -38,19 +38,9 @@ working in this repository.
    GitHub event, label, and approval mapping for CR automation
 10. [`docs/process/reviewer_authorization_policy.md`](process/reviewer_authorization_policy.md) —
    authorized-approver rules for automation gates
-11. [`docs/process/github_labels.md`](process/github_labels.md) —
-   GitHub label baseline required by automation
-12. [`docs/process/spec_in_dhf_migration.md`](process/spec_in_dhf_migration.md) —
-   repository-boundary correction for `CR + Spec` ownership
-13. [`docs/process/stage1_workflow_scaffold.md`](process/stage1_workflow_scaffold.md) —
-   legacy Stage 1 scaffold still present in `WebTPS`
-14. [`docs/process/stage2_workflow_scaffold.md`](process/stage2_workflow_scaffold.md) —
-   current Stage 2 implementation scaffold
-15. [`docs/process/implementation_followup_scaffold.md`](process/implementation_followup_scaffold.md) —
-   current implementation review-follow-up scaffold
-16. [`docs/process/completion_sync_scaffold.md`](process/completion_sync_scaffold.md) —
-   current completion-state synchronization scaffold
-17. [`docs/process/automation_enablement.md`](process/automation_enablement.md) —
+11. [`docs/process/automation_scaffolds.md`](process/automation_scaffolds.md) —
+   current state of Stage 1 (legacy), Stage 2, follow-up, and completion sync scaffolds
+12. [`docs/process/automation_enablement.md`](process/automation_enablement.md) —
    required GitHub setup and rollout sequence for automation
 18. [`docs/process/online_validation_checklist.md`](process/online_validation_checklist.md) —
    disposable online validation checklist before real adoption
