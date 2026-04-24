@@ -86,6 +86,9 @@ pnpm -r build                             # build all workspaces
 
 ## PR Conventions
 
+**Never commit directly to `main`.** Always work on a branch. Before merging or
+pushing, ask the user whether to open a PR or merge locally — do not decide unilaterally.
+
 - Branch: `feature/`, `fix/`, `refactor/`, or `claude/`
 - Title: `feat(CR-042): description` — always include CR ID
 - Body: change summary · DHF files updated (or reason not to) · validation run · manual testing remaining
