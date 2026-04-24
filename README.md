@@ -148,6 +148,20 @@ Sample DICOM datasets for testing are available from:
 
 More detail: [`docs/local_development.md`](docs/local_development.md).
 
+## Deployed Build
+
+The GitHub Actions deploy workflow builds the app and serves it via PM2 on
+different ports to avoid conflicting with the local dev server:
+
+| | Dev server | Deployed build |
+|--|------------|----------------|
+| Frontend | `http://127.0.0.1:3000` | `http://127.0.0.1:3001` |
+| API | `http://127.0.0.1:4000` | `http://127.0.0.1:4001` |
+| Orthanc | `http://127.0.0.1:8042` | `http://127.0.0.1:8042` (shared) |
+
+Both can run simultaneously. See [`docs/local_development.md`](docs/local_development.md)
+for PM2 setup and first-time deploy instructions.
+
 ## Testing
 
 ```bash
