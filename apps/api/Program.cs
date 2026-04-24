@@ -5,9 +5,15 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("DevCors", policy =>
+    options.AddPolicy("LocalCors", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        // Allow any origin on the frontend ports (3000 dev, 3001 deployed).
+        // This covers localhost and any LAN IP when the deployed build binds on 0.0.0.0.
+        policy.SetIsOriginAllowed(origin =>
+              {
+                  if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) return false;
+                  return uri.Port is 3000 or 3001;
+              })
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -16,10 +22,9 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
-{
     app.MapOpenApi();
-    app.UseCors("DevCors");
-}
+
+app.UseCors("LocalCors");
 
 app.UseAuthorization();
 app.MapControllers();

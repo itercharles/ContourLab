@@ -161,11 +161,13 @@ The GitHub Actions deploy workflow builds the app and serves it via PM2 on
 
 | | Dev server | Deployed build |
 |--|------------|----------------|
-| Frontend | `http://127.0.0.1:3000` | `http://127.0.0.1:3001` |
-| API | `http://127.0.0.1:4000` | `http://127.0.0.1:4001` |
+| Frontend | `http://127.0.0.1:3000` | `http://<workstation-ip>:3001` |
+| API | `http://127.0.0.1:4000` | `http://<workstation-ip>:4001` |
 | Orthanc | `http://127.0.0.1:8042` | `http://127.0.0.1:8042` (shared) |
 
-Both can run at the same time with no conflicts.
+Both can run at the same time with no conflicts. The deployed build binds on
+`0.0.0.0`, so anyone on the same network (or VPN) can reach it at the
+workstation's IP address — run `ipconfig` to find it.
 
 ### First-time manual deploy
 
@@ -179,11 +181,11 @@ pnpm --filter @webtps/client build
 
 # Start frontend on port 3001, proxying API on 4001
 $env:WEBTPS_API_PORT = "4001"
-pm2 start "pnpm --filter @webtps/client preview --host 127.0.0.1 --port 3001" --name webtps-client
+pm2 start "pnpm --filter @webtps/client preview --host 0.0.0.0 --port 3001" --name webtps-client
 
 # Publish and start API on port 4001
 dotnet publish apps/api/api.csproj --configuration Release --output apps/api/publish
-pm2 start "dotnet apps/api/publish/WebTPS.Api.dll --urls http://127.0.0.1:4001" --name webtps-api
+pm2 start "dotnet apps/api/publish/WebTPS.Api.dll --urls http://0.0.0.0:4001" --name webtps-api
 
 pm2 save
 ```

@@ -44,7 +44,7 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             pm2 restart webtps-client --update-env
           } else {
-            pm2 start "pnpm --filter @webtps/client preview --host 127.0.0.1 --port 3001" --name webtps-client
+            pm2 start "pnpm --filter @webtps/client preview --host 0.0.0.0 --port 3001" --name webtps-client
           }
           pm2 save
         shell: pwsh
@@ -62,7 +62,7 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             pm2 restart webtps-api
           } else {
-            pm2 start "dotnet apps/api/publish/WebTPS.Api.dll --urls http://127.0.0.1:4001" --name webtps-api
+            pm2 start "dotnet apps/api/publish/WebTPS.Api.dll --urls http://0.0.0.0:4001" --name webtps-api
           }
           pm2 save
         shell: pwsh
