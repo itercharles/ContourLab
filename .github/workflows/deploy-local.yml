@@ -39,7 +39,7 @@ jobs:
       - name: Set HOME and PM2_HOME (Windows)
         shell: pwsh
         run: |
-          $home      = $env:USERPROFILE
+          $userHome  = $env:USERPROFILE
           $homedrive = Split-Path $env:USERPROFILE -Qualifier
           $homepath  = Split-Path $env:USERPROFILE -NoQualifier
           $pm2Home   = Join-Path $env:USERPROFILE ".pm2"
@@ -47,12 +47,12 @@ jobs:
           New-Item -ItemType Directory -Force $pm2Home | Out-Null
 
           # Persist across all subsequent steps
-          "HOME=$home"          | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "HOME=$userHome"      | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "HOMEDRIVE=$homedrive"| Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "HOMEPATH=$homepath"  | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "PM2_HOME=$pm2Home"   | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-          Write-Output "HOME=$home"
+          Write-Output "HOME=$userHome"
           Write-Output "PM2_HOME=$pm2Home"
 
       - name: Add npm global bin to PATH
