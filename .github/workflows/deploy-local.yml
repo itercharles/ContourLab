@@ -27,11 +27,6 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
 
@@ -60,7 +55,6 @@ jobs:
           dotnet publish apps/api/api.csproj
           --configuration Release
           --output apps/api/publish
-          --no-restore
 
       - name: Restart API (PM2)
         run: |
