@@ -201,3 +201,4 @@ If automation behaves incorrectly:
 2. disable the relevant GitHub workflow
 3. remove or rotate `WEBTPS_AUTOMATION_TOKEN` if needed
 4. return to manual PR handling until root cause is understood
+# CR automation smoke test - safe to delete
