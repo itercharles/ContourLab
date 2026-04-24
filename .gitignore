@@ -20,6 +20,7 @@ coverage/
 *.lcov
 *-test-results.xml
 .pytest_cache/
+test-results/
 
 # Environment
 .env

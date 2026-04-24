@@ -41,6 +41,14 @@ jobs:
       - name: Test
         run: pnpm --filter @webtps/client test
 
+      - name: Upload compliance test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliantflow-junit
+          path: apps/client/test-results/compliantflow-junit.xml
+          if-no-files-found: ignore
+
       - name: Build
         run: pnpm --filter @webtps/client build
 

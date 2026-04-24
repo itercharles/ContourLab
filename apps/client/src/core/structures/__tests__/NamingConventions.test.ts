@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { inferTypeFromName, isTG263Name } from '../NamingConventions';
 
-describe('inferTypeFromName', () => {
+describe('inferTypeFromName @links:SRS-005', () => {
   it("'GTV' → 'GTV'", () => {
     expect(inferTypeFromName('GTV')).toBe('GTV');
   });
@@ -55,7 +55,7 @@ describe('inferTypeFromName', () => {
   });
 });
 
-describe('isTG263Name', () => {
+describe('isTG263Name @links:SRS-005', () => {
   it("'Brain' → true", () => {
     expect(isTG263Name('Brain')).toBe(true);
   });

@@ -37,7 +37,7 @@ function makeStructure(contourPoints: Float32Array[]): Structure {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('computeVolume', () => {
+describe('computeVolume @links:SRS-006', () => {
   it('returns 0 for an empty structure (no contours)', () => {
     const structure = makeStructure([]);
     expect(computeVolume(structure, 1)).toBe(0);
