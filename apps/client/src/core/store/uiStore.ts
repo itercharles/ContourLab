@@ -19,6 +19,7 @@ export type ViewerTool =
   | 'eraser';
 
 export type StructureOperationPanel = 'margin' | 'interpolate' | 'boolean' | null;
+export type Theme = 'dark' | 'light';
 
 export type WLPreset = 'lung' | 'bone' | 'softTissue' | 'brain' | 'mediastinum' | 'abdomen' | 'custom';
 export type ViewportOrientation = 'AXIAL' | 'SAGITTAL' | 'CORONAL';
@@ -32,6 +33,7 @@ interface UIState {
   crosshairsEnabled: boolean;
   activeViewport: ViewportOrientation | null;
   activeStructureOperationPanel: StructureOperationPanel;
+  theme: Theme;
   setActiveTool: (tool: ViewerTool) => void;
   setActiveStructureOperationPanel: (panel: StructureOperationPanel) => void;
   setWindowLevelPreset: (preset: WLPreset) => void;
@@ -42,6 +44,16 @@ interface UIState {
   setLeftSidebarOpen: (open: boolean) => void;
   setCrosshairsEnabled: (v: boolean) => void;
   setActiveViewport: (v: ViewportOrientation | null) => void;
+  setTheme: (t: Theme) => void;
+}
+
+function initTheme(): Theme {
+  const saved = typeof window !== 'undefined' ? localStorage.getItem('webtps-theme') : null;
+  const t: Theme = saved === 'light' ? 'light' : 'dark';
+  if (typeof document !== 'undefined') {
+    document.documentElement.dataset.theme = t;
+  }
+  return t;
 }
 
 export const useUIStore = create<UIState>()(
@@ -54,6 +66,7 @@ export const useUIStore = create<UIState>()(
     crosshairsEnabled: true,
     activeViewport: null,
     activeStructureOperationPanel: null,
+    theme: initTheme(),
 
     setActiveTool: (tool) =>
       set((state) => {
@@ -94,6 +107,12 @@ export const useUIStore = create<UIState>()(
     setActiveViewport: (v) =>
       set((state) => {
         state.activeViewport = v;
+      }),
+    setTheme: (t) =>
+      set((state) => {
+        state.theme = t;
+        document.documentElement.dataset.theme = t;
+        localStorage.setItem('webtps-theme', t);
       }),
   }))
 );

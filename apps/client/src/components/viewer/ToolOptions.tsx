@@ -24,8 +24,8 @@ function OptionButton({
       className={`flex h-6 items-center gap-1 rounded px-2 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
         active
           ? 'bg-blue-900/40 text-blue-200'
-          : 'text-[#a0a7b0] hover:bg-[#1f242b] hover:text-[#e6e9ed]'
-      } disabled:cursor-not-allowed disabled:text-[#404040] disabled:hover:bg-transparent`}
+          : 'text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)]'
+      } disabled:cursor-not-allowed disabled:text-[var(--color-text-dim)] disabled:hover:bg-transparent`}
     >
       {children}
     </button>
@@ -33,12 +33,12 @@ function OptionButton({
 }
 
 function Divider() {
-  return <div className="mx-1 h-4 w-px bg-[#24292f]" />;
+  return <div className="mx-1 h-4 w-px bg-[var(--color-border)]" />;
 }
 
 function Label({ children }: { children: ReactNode }) {
   return (
-    <div className="border-r border-[#24292f] px-2 text-[10px] font-semibold uppercase tracking-widest text-[#6b7280]">
+    <div className="border-r border-[var(--color-border)] px-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
       {children}
     </div>
   );
@@ -54,7 +54,7 @@ export default function ToolOptions() {
   if (activeTool === 'windowLevel') {
     const activePreset = WINDOW_LEVEL_PRESETS[windowLevelPreset];
     return (
-      <div className="absolute left-1/2 top-2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded border border-[#24292f] bg-[#13161a]/95 px-1 py-1 text-[11px] text-[#e6e9ed] backdrop-blur" role="toolbar" aria-label="Window level options">
+      <div className="absolute left-1/2 top-2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded border border-[var(--color-border)] bg-[var(--color-surface-alt)] px-1 py-1 text-[11px] text-[var(--color-text-bright)] backdrop-blur" role="toolbar" aria-label="Window level options">
         <Label>Window</Label>
         {WL_PRESETS.map((preset) => (
           <OptionButton
@@ -66,7 +66,7 @@ export default function ToolOptions() {
           </OptionButton>
         ))}
         <Divider />
-        <span className="px-2 font-mono text-[10px] text-[#6b7280]">
+        <span className="px-2 font-mono text-[10px] text-[var(--color-text-muted)]">
           W {activePreset.windowWidth} · L {activePreset.windowCenter}
         </span>
       </div>
@@ -76,13 +76,13 @@ export default function ToolOptions() {
   if (activeTool === 'brush' || activeTool === 'eraser') {
     const label = activeTool === 'brush' ? 'Brush' : 'Eraser';
     return (
-      <div className="absolute left-1/2 top-2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded border border-[#24292f] bg-[#13161a]/95 px-1 py-1 text-[11px] text-[#e6e9ed] backdrop-blur" role="toolbar" aria-label={`${label} options`}>
+      <div className="absolute left-1/2 top-2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded border border-[var(--color-border)] bg-[var(--color-surface-alt)] px-1 py-1 text-[11px] text-[var(--color-text-bright)] backdrop-blur" role="toolbar" aria-label={`${label} options`}>
         <Label>{label}</Label>
         <OptionButton active>Circle</OptionButton>
         <OptionButton disabled>Square</OptionButton>
         <Divider />
         <div className="flex items-center gap-2 px-2">
-          <span className="text-[10px] text-[#6b7280]">Size</span>
+          <span className="text-[10px] text-[var(--color-text-muted)]">Size</span>
           <input
             aria-label={`${label} size`}
             type="range"
@@ -92,7 +92,7 @@ export default function ToolOptions() {
             onChange={(event) => setBrushRadius(Number(event.target.value))}
             className="w-24 accent-blue-500"
           />
-          <span className="min-w-[34px] font-mono text-[10px] text-[#e6e9ed]">{brushRadius}px</span>
+          <span className="min-w-[34px] font-mono text-[10px] text-[var(--color-text-bright)]">{brushRadius}px</span>
         </div>
         <Divider />
         <OptionButton disabled>3D mode</OptionButton>
@@ -103,7 +103,7 @@ export default function ToolOptions() {
   if (activeTool === 'freehand' || activeTool === 'polygon') {
     const label = activeTool === 'freehand' ? 'Freehand' : 'Polygon';
     return (
-      <div className="absolute left-1/2 top-2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded border border-[#24292f] bg-[#13161a]/95 px-1 py-1 text-[11px] text-[#e6e9ed] backdrop-blur" role="toolbar" aria-label={`${label} options`}>
+      <div className="absolute left-1/2 top-2 z-20 flex -translate-x-1/2 items-center gap-0.5 rounded border border-[var(--color-border)] bg-[var(--color-surface-alt)] px-1 py-1 text-[11px] text-[var(--color-text-bright)] backdrop-blur" role="toolbar" aria-label={`${label} options`}>
         <Label>{label}</Label>
         <OptionButton active>New contour</OptionButton>
         <OptionButton disabled>Add to</OptionButton>

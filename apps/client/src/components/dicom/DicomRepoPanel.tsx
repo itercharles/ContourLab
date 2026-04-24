@@ -224,12 +224,12 @@ function getSeriesSignature(series: DicomWebSeriesSummary[]): string {
 
 function RepoSectionHeader({ label, meta }: { label: string; meta?: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-[#2a2a2a] bg-[#111] px-3 py-1.5">
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-[#8a8a8a]">
+    <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-header)] px-3 py-1.5">
+      <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
         {label}
       </span>
       {meta ? (
-        <span className="text-[10px] text-[#5a5a5a]">{meta}</span>
+        <span className="text-[10px] text-[var(--color-text-muted)]">{meta}</span>
       ) : null}
     </div>
   );
@@ -246,20 +246,20 @@ function RtstructCompareSummary({
     .filter((row) => row.status !== 'unchanged');
 
   return (
-    <div className="border-b border-[#2a2a2a] bg-[#181818] px-3 py-2">
+    <div className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
       <div className="flex items-center gap-2">
-        <span className="rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-[#a0a0a0]">
+        <span className="rounded bg-[var(--color-elevated)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
           RTSS Compare
         </span>
-        <p className="min-w-0 flex-1 truncate text-[11px] text-[#e5e5e5]" title={comparison.label}>
+        <p className="min-w-0 flex-1 truncate text-[11px] text-[var(--color-text)]" title={comparison.label}>
           {comparison.label}
         </p>
       </div>
-      <p className="mt-1 text-[10px] text-[#a0a0a0]">
+      <p className="mt-1 text-[10px] text-[var(--color-text-sec)]">
         +{comparison.summary.addedCount} / -{comparison.summary.removedCount} / Δ{comparison.summary.changedCount}
       </p>
       {changedRows.length === 0 ? (
-        <p className="mt-1 text-[10px] text-[#6b6b6b]">No ROI volume or slice-count differences detected.</p>
+        <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">No ROI volume or slice-count differences detected.</p>
       ) : (
         <div className="mt-1 space-y-0.5">
           {changedRows.map((row) => (
@@ -268,11 +268,11 @@ function RtstructCompareSummary({
               type="button"
               onClick={() => onSelectRow(row)}
               disabled={!row.currentStructureId}
-              className="flex w-full items-center gap-2 truncate rounded px-1 py-0.5 text-left text-[10px] text-[#a0a0a0] hover:bg-[#20252b] hover:text-[#e5e5e5] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+              className="flex w-full items-center gap-2 truncate rounded px-1 py-0.5 text-left text-[10px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
               title={row.currentStructureId ? `Open ${row.name} in contour review` : `${row.name} is not present in the active workspace`}
             >
               <span className="min-w-0 flex-1 truncate">
-                <span className="font-semibold text-[#e5e5e5]">{row.name}</span>
+                <span className="font-semibold text-[var(--color-text)]">{row.name}</span>
                 {' '}
                 {row.status}
                 {' · '}
@@ -281,7 +281,7 @@ function RtstructCompareSummary({
                 Δslices {row.sliceDelta >= 0 ? '+' : ''}{row.sliceDelta}
               </span>
               {row.targetSlicePosition !== undefined ? (
-                <span className="font-mono text-[9px] text-[#6b7280]">
+                <span className="font-mono text-[9px] text-[var(--color-text-muted)]">
                   z={row.targetSlicePosition.toFixed(1)}
                 </span>
               ) : null}
@@ -966,21 +966,21 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65"
           onClick={(e) => { if (e.target === e.currentTarget) setIsPatientSelectorOpen(false); }}
         >
-          <div className="flex h-full max-h-[720px] w-full max-w-[1100px] flex-col overflow-hidden rounded border border-[#24292f] bg-[#13161a]">
+          <div className="flex h-full max-h-[720px] w-full max-w-[1100px] flex-col overflow-hidden rounded border border-[var(--color-border)] bg-[var(--color-surface-alt)]">
             {/* Modal header */}
-            <div className="flex h-10 flex-none items-center gap-2 border-b border-[#24292f] px-4">
+            <div className="flex h-10 flex-none items-center gap-2 border-b border-[var(--color-border)] px-4">
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
               </svg>
-              <span className="text-[13px] font-semibold text-[#e6e9ed]">Patient browser</span>
-              <span className="text-[11px] text-[#6b7280]">·  Orthanc · local repository</span>
+              <span className="text-[13px] font-semibold text-[var(--color-text-bright)]">Patient browser</span>
+              <span className="text-[11px] text-[var(--color-text-muted)]">·  Orthanc · local repository</span>
               <div className="ml-auto" />
               <button
                 type="button"
                 onClick={() => importInputRef.current?.click()}
                 disabled={isImportingDicom}
                 title="Import local DICOM files into the repository"
-                className="flex h-6 items-center gap-1.5 rounded bg-[#242424] px-2 text-[11px] text-[#a0a7b0] hover:bg-blue-900/40 hover:text-blue-200 disabled:cursor-not-allowed disabled:text-[#404040] disabled:hover:bg-[#242424]"
+                className="flex h-6 items-center gap-1.5 rounded bg-[var(--color-elevated)] px-2 text-[11px] text-[var(--color-text-sec)] hover:bg-blue-900/40 hover:text-blue-200 disabled:cursor-not-allowed disabled:text-[var(--color-text-dim)] disabled:hover:bg-[var(--color-elevated)]"
               >
                 <span aria-hidden="true">+</span>
                 {isImportingDicom ? 'Importing...' : 'Import DICOM'}
@@ -1002,7 +1002,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                 type="button"
                 onClick={() => setIsPatientSelectorOpen(false)}
                 aria-label="Close patient browser"
-                className="flex h-6 w-6 items-center justify-center rounded text-[#6b7280] hover:bg-[#242424] hover:text-[#e6e9ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-text-muted)] hover:bg-[var(--color-elevated)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -1011,8 +1011,8 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
             </div>
 
             {/* Search toolbar */}
-            <div className="flex flex-none items-center gap-4 border-b border-[#24292f] bg-[#181b20] px-4 py-2">
-              <div className="flex h-7 w-[360px] items-center gap-1.5 rounded border border-[#3a3a3a] bg-[#0b0d10] px-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+            <div className="flex flex-none items-center gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-4 py-2">
+              <div className="flex h-7 w-[360px] items-center gap-1.5 rounded border border-[var(--color-border-input)] bg-[var(--color-surface-alt)] px-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
                 <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
@@ -1021,14 +1021,14 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                   value={patientQuery}
                   onChange={(event) => setPatientQuery(event.target.value)}
                   placeholder="Search patient, MRN, study, series…"
-                  className="min-w-0 flex-1 bg-transparent text-[11px] text-[#e5e5e5] placeholder:text-[#6b6b6b] focus:outline-none"
+                  className="min-w-0 flex-1 bg-transparent text-[11px] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
                 />
                 {patientQuery && (
                   <button
                     type="button"
                     onClick={() => setPatientQuery('')}
                     aria-label="Clear search"
-                    className="flex h-4 w-4 items-center justify-center rounded text-[#6b7280] hover:text-[#e6e9ed]"
+                    className="flex h-4 w-4 items-center justify-center rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-bright)]"
                   >
                     <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                       <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -1046,12 +1046,12 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                     onClick={() => setPatientBrowserFilter(filter.id)}
                     className={`flex h-7 items-center gap-1.5 rounded border px-2 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                       patientBrowserFilter === filter.id
-                        ? 'border-blue-500/40 bg-blue-900/30 text-[#e6e9ed]'
-                        : 'border-transparent text-[#a0a7b0] hover:bg-[#242424] hover:text-[#e6e9ed]'
+                        ? 'border-blue-500/40 bg-blue-900/30 text-[var(--color-text-bright)]'
+                        : 'border-transparent text-[var(--color-text-sec)] hover:bg-[var(--color-elevated)] hover:text-[var(--color-text-bright)]'
                     }`}
                   >
                     {filter.label}
-                    <span className="rounded bg-[#0b0d10] px-1.5 font-mono text-[10px] text-[#6b7280]">
+                    <span className="rounded bg-[var(--color-surface-alt)] px-1.5 font-mono text-[10px] text-[var(--color-text-muted)]">
                       {patientFilterCounts[filter.id]}
                     </span>
                   </button>
@@ -1060,16 +1060,16 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
             </div>
 
             {/* Column headers */}
-            <div className="grid flex-none grid-cols-[2fr_1fr_1.2fr_1.8fr_1fr_0.7fr_0.9fr] gap-3 border-b border-[#24292f] bg-[#181b20] px-4 py-1.5">
+            <div className="grid flex-none grid-cols-[2fr_1fr_1.2fr_1.8fr_1fr_0.7fr_0.9fr] gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-4 py-1.5">
               {['Patient', 'MRN', 'Treatment site', 'Studies', 'Status', 'Assignee', 'Last activity'].map((col) => (
-                <span key={col} className="text-[10px] font-semibold uppercase tracking-widest text-[#4b5563]">{col}</span>
+                <span key={col} className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">{col}</span>
               ))}
             </div>
 
             {/* Patient rows */}
             <div className="min-h-0 flex-1 overflow-y-auto">
               {shownPatients.length === 0 ? (
-                <p className="px-4 py-4 text-[11px] text-[#6b6b6b]">No matching patients.</p>
+                <p className="px-4 py-4 text-[11px] text-[var(--color-text-muted)]">No matching patients.</p>
               ) : (
                 shownPatients.map((patient) => {
                   const isActivePatient = activePatientKey === patient.patientKey;
@@ -1082,10 +1082,10 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                       key={patient.patientKey}
                       type="button"
                       onClick={() => void openPatientWorkspace(patient)}
-                      className={`grid w-full grid-cols-[2fr_1fr_1.2fr_1.8fr_1fr_0.7fr_0.9fr] items-center gap-3 border-b px-4 py-2 text-left last:border-b-0 hover:bg-[#1e2329] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${
+                      className={`grid w-full grid-cols-[2fr_1fr_1.2fr_1.8fr_1fr_0.7fr_0.9fr] items-center gap-3 border-b px-4 py-2 text-left last:border-b-0 hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${
                         isActivePatient
-                          ? 'border-[#24292f] border-l-2 border-l-blue-500 bg-blue-900/10'
-                          : 'border-[#1e2329] border-l-2 border-l-transparent'
+                          ? 'border-[var(--color-border)] border-l-2 border-l-blue-500 bg-blue-900/10'
+                          : 'border-[var(--color-border)] border-l-2 border-l-transparent'
                       }`}
                     >
                       {/* Patient name + avatar */}
@@ -1098,19 +1098,19 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="truncate text-[12px] font-semibold text-[#e6e9ed]">{patient.patientName}</span>
+                            <span className="truncate text-[12px] font-semibold text-[var(--color-text-bright)]">{patient.patientName}</span>
                             {isActivePatient && (
                               <span className="rounded bg-blue-900/60 px-1 py-0.5 text-[9px] font-semibold tracking-widest text-blue-300">open</span>
                             )}
                           </div>
-                          <div className="text-[10px] text-[#6b7280]">MRN {patient.patientId || 'unknown'}</div>
+                          <div className="text-[10px] text-[var(--color-text-muted)]">MRN {patient.patientId || 'unknown'}</div>
                         </div>
                       </div>
 
                       {/* MRN */}
-                      <span className="truncate font-mono text-[11px] text-[#6b7280]">{patient.patientId || '—'}</span>
+                      <span className="truncate font-mono text-[11px] text-[var(--color-text-muted)]">{patient.patientId || '—'}</span>
 
-                      <span className="truncate text-[11px] text-[#a0a7b0]" title={getPatientSite(patient)}>
+                      <span className="truncate text-[11px] text-[var(--color-text-sec)]" title={getPatientSite(patient)}>
                         {getPatientSite(patient)}
                       </span>
 
@@ -1121,7 +1121,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                           return modalities.map((mod) => (
                             <span
                               key={`${study.studyInstanceUID}-${mod}`}
-                              className="rounded bg-[#1e2329] px-1.5 py-0.5 text-[10px] text-[#a0a7b0]"
+                              className="rounded bg-[var(--color-elevated)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-sec)]"
                             >
                               {mod} {formatDicomDate(study.studyDate)}
                             </span>
@@ -1129,14 +1129,14 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                         })}
                       </div>
 
-                      <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-[11px] text-[#a0a7b0]">
+                      <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-[11px] text-[var(--color-text-sec)]">
                         <span className="h-1.5 w-1.5 flex-none rounded-full" style={{ background: statusColor }} />
                         {PATIENT_STATUS_LABEL[patientStatus]}
                       </span>
                       <span className="grid h-5 w-5 place-items-center rounded-full text-[9px] font-semibold text-white" style={{ background: statusColor }}>
                         {isActivePatient ? 'ME' : '—'}
                       </span>
-                      <span className="truncate text-[11px] text-[#6b7280]">{getPatientLastActivity(patient)}</span>
+                      <span className="truncate text-[11px] text-[var(--color-text-muted)]">{getPatientLastActivity(patient)}</span>
                     </button>
                   );
                 })
@@ -1144,13 +1144,13 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
             </div>
 
             {/* Footer */}
-            <div className="flex h-7 flex-none items-center justify-between border-t border-[#24292f] px-4">
-              <span className="text-[10px] text-[#4b5563]">
+            <div className="flex h-7 flex-none items-center justify-between border-t border-[var(--color-border)] px-4">
+              <span className="text-[10px] text-[var(--color-text-muted)]">
                 {filteredPatientGroups.length > shownPatients.length
                   ? `${shownPatients.length} of ${filteredPatientGroups.length} patients shown — narrow search to see more`
                   : `${filteredPatientGroups.length} patient${filteredPatientGroups.length !== 1 ? 's' : ''}`}
               </span>
-              <span className="text-[10px] text-[#4b5563]">↵ open · esc close</span>
+              <span className="text-[10px] text-[var(--color-text-muted)]">↵ open · esc close</span>
             </div>
           </div>
         </div>
@@ -1158,7 +1158,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {status && status.tone === 'error' && (
-          <p className="border-b border-[#2a2a2a] px-3 py-1 text-[11px] text-red-400">
+          <p className="border-b border-[var(--color-border)] px-3 py-1 text-[11px] text-red-400">
             {status.message}
           </p>
         )}
@@ -1169,11 +1169,11 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
           />
         ) : null}
         {patientGroups.length === 0 ? (
-          <p className="px-3 py-2 text-[11px] text-[#6b6b6b]">No planning CT image series available.</p>
+          <p className="px-3 py-2 text-[11px] text-[var(--color-text-muted)]">No planning CT image series available.</p>
         ) : !selectedPatient ? (
           <>
-            <div className="border-b border-[#2a2a2a] bg-[#181818] px-3 py-3">
-              <p className="text-[11px] text-[#a0a0a0]">Select a patient to begin.</p>
+            <div className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3">
+              <p className="text-[11px] text-[var(--color-text-sec)]">Select a patient to begin.</p>
               <button
                 type="button"
                 onClick={() => setIsPatientSelectorOpen(true)}
@@ -1183,36 +1183,36 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
               </button>
             </div>
             <RepoSectionHeader label="Image Sets" meta="choose patient first" />
-            <p className="border-b border-[#2a2a2a] px-3 py-2 text-[11px] text-[#6b6b6b]">
+            <p className="border-b border-[var(--color-border)] px-3 py-2 text-[11px] text-[var(--color-text-muted)]">
               Image sets appear after patient selection.
             </p>
-            <p className="px-3 py-2 text-[11px] text-[#6b6b6b]">
+            <p className="px-3 py-2 text-[11px] text-[var(--color-text-muted)]">
               Structure sets appear under an active or expanded image set.
             </p>
           </>
         ) : (
           <>
-            <div className="flex items-center justify-between border-b border-[#2a2a2a] bg-[#181818] px-3 py-1.5">
-              <p className="min-w-0 truncate text-[10px] text-[#6b6b6b]">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5">
+              <p className="min-w-0 truncate text-[10px] text-[var(--color-text-muted)]">
                 {selectedPatient.studies.length} studies · {selectedPatientSeriesCount} images · {selectedPatientRtstructCount} RTSS
               </p>
             </div>
 
-            <div className="bg-[#151515]">
+            <div className="bg-[var(--color-surface-alt)]">
               <RepoSectionHeader label="Image Sets" meta={`${selectedPatientSeriesCount} CT series`} />
 
               {selectedPatient?.studies.map((study) => (
-                <div key={study.studyInstanceUID} className="border-b border-[#2a2a2a]">
-                  <div className="bg-[#202020] px-3 py-1">
+                <div key={study.studyInstanceUID} className="border-b border-[var(--color-border)]">
+                  <div className="bg-[var(--color-elevated)] px-3 py-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="rounded bg-[#242424] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[#6b6b6b]">
+                      <span className="rounded bg-[var(--color-elevated)] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[var(--color-text-muted)]">
                         STUDY
                       </span>
-                      <p className="min-w-0 flex-1 truncate text-[10px] uppercase tracking-wide text-[#a0a0a0]" title={study.studyDescription}>
+                      <p className="min-w-0 flex-1 truncate text-[10px] uppercase tracking-wide text-[var(--color-text-sec)]" title={study.studyDescription}>
                         {study.studyDescription || 'Study'}
                       </p>
                     </div>
-                    <p className="mt-0.5 pl-[46px] text-[10px] text-[#6b6b6b]">
+                    <p className="mt-0.5 pl-[46px] text-[10px] text-[var(--color-text-muted)]">
                       {formatDicomDate(study.studyDate)} · {study.series.length} image set{study.series.length === 1 ? '' : 's'}
                     </p>
                   </div>
@@ -1232,7 +1232,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                       : `${rtstructsForImageSet.length} RTSS`;
 
                     return (
-                      <div key={entry.seriesInstanceUID} className="border-t border-[#2a2a2a]">
+                      <div key={entry.seriesInstanceUID} className="border-t border-[var(--color-border)]">
                         <div
                           className={`flex items-stretch ${
                             isActive ? 'bg-blue-900/30 border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'
@@ -1243,17 +1243,17 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                             aria-label={`Load image set ${entry.seriesDescription || entry.seriesInstanceUID}`}
                             onClick={() => void onLoadSeries(entry.seriesInstanceUID)}
                             disabled={loadingSeriesUID === entry.seriesInstanceUID}
-                            className="min-w-0 flex-1 py-1.5 pl-4 pr-2 text-left hover:bg-[#2e2e2e] disabled:hover:bg-transparent focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                            className="min-w-0 flex-1 py-1.5 pl-4 pr-2 text-left hover:bg-[var(--color-hover)] disabled:hover:bg-transparent focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                           >
                             <div className="flex items-center gap-2">
                               <span
                                 className={`inline-flex min-w-8 justify-center rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                                  isActive ? 'bg-blue-950 text-blue-200' : 'bg-[#242424] text-[#a0a0a0]'
+                                  isActive ? 'bg-blue-950 text-blue-200' : 'bg-[var(--color-elevated)] text-[var(--color-text-sec)]'
                                 }`}
                               >
                                 {entry.modality}
                               </span>
-                              <span className="min-w-0 flex-1 truncate text-xs text-[#e5e5e5]">
+                              <span className="min-w-0 flex-1 truncate text-xs text-[var(--color-text)]">
                                 {entry.seriesDescription || entry.seriesInstanceUID}
                               </span>
                               {isActive ? (
@@ -1262,7 +1262,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                 </span>
                               ) : null}
                             </div>
-                            <div className="mt-0.5 flex items-center gap-2 text-[10px] text-[#6b6b6b]">
+                            <div className="mt-0.5 flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
                               <span>Image Set · {entry.instanceCount} inst</span>
                               <span>{rtstructMeta}</span>
                               {isLoaded && !isActive ? <span>loaded</span> : null}
@@ -1280,7 +1280,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                   : [...current, entry.seriesInstanceUID]
                               );
                             }}
-                            className="flex w-8 items-center justify-center border-l border-[#2a2a2a] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                            className="flex w-8 items-center justify-center border-l border-[var(--color-border)] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                             title={isExpanded ? 'Hide structure sets for this image set' : 'Show structure sets for this image set'}
                             aria-label={`${isExpanded ? 'Hide' : 'Show'} structure sets for ${entry.seriesDescription || entry.seriesInstanceUID}`}
                           >
@@ -1290,7 +1290,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                           </button>
                         </div>
                         {isExpanded ? (
-                          <div className="border-t border-[#2a2a2a] bg-[#171717]">
+                          <div className="border-t border-[var(--color-border)] bg-[var(--color-surface)]">
                             <RepoSectionHeader
                               label="Structure Sets / RTSS"
                               meta={loadingRtstructStudyUIDs.includes(study.studyInstanceUID) ? 'loading' : `${studyRtstructs.length} objects`}
@@ -1298,7 +1298,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                             {loadingRtstructStudyUIDs.includes(study.studyInstanceUID) ? (
                               <p className="px-3 py-2 text-[10px] text-blue-400">Loading RTSTRUCT objects...</p>
                             ) : rtstructsForImageSet.length === 0 ? (
-                              <p className="px-3 py-2 text-[10px] text-[#6b6b6b]">No RTSTRUCT for this image set context.</p>
+                              <p className="px-3 py-2 text-[10px] text-[var(--color-text-muted)]">No RTSTRUCT for this image set context.</p>
                             ) : (
                               <div>
                                 {rtstructsForImageSet.map((instance, index) => {
@@ -1325,8 +1325,8 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                         }
                                       }}
                                       aria-disabled={!!importingRtstructSop}
-                                      className={`border-t border-[#2a2a2a] py-1.5 pl-7 pr-2 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
-                                        isActiveRtstruct ? 'border-l-4 border-l-blue-500 bg-blue-950/20' : 'border-l-4 border-l-transparent bg-[#1a1a1a]'
+                                      className={`border-t border-[var(--color-border)] py-1.5 pl-7 pr-2 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                                        isActiveRtstruct ? 'border-l-4 border-l-blue-500 bg-blue-950/20' : 'border-l-4 border-l-transparent bg-[var(--color-surface)]'
                                       } ${
                                         !importingRtstructSop
                                           ? 'cursor-pointer hover:bg-blue-950/20'
@@ -1335,10 +1335,10 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                       title="Double-click to activate this image set and RTSTRUCT"
                                     >
                                       <div className="flex items-center gap-2">
-                                        <span className="rounded bg-[#242424] px-1.5 py-0.5 text-[10px] font-semibold text-[#a0a0a0]">
+                                        <span className="rounded bg-[var(--color-elevated)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--color-text-sec)]">
                                           RTSS
                                         </span>
-                                        <p className="min-w-0 flex-1 truncate text-[11px] text-[#e5e5e5]" title={instance.seriesDescription}>
+                                        <p className="min-w-0 flex-1 truncate text-[11px] text-[var(--color-text)]" title={instance.seriesDescription}>
                                           {instance.seriesDescription || 'RTSTRUCT'}
                                         </p>
                                         {isActiveRtstruct && (
@@ -1347,19 +1347,19 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                           </span>
                                         )}
                                         {isLatestRtstruct && !isActiveRtstruct && (
-                                          <span className="rounded bg-[#2a2a2a] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[#c8c8c8]">
+                                          <span className="rounded bg-[var(--color-elevated)] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[var(--color-text-sec)]">
                                             LATEST
                                           </span>
                                         )}
                                       </div>
                                       <div className="mt-0.5 flex items-center gap-2">
-                                        <span className="min-w-0 flex-1 truncate text-[10px] text-[#6b6b6b]" title={instance.sopInstanceUID}>
+                                        <span className="min-w-0 flex-1 truncate text-[10px] text-[var(--color-text-muted)]" title={instance.sopInstanceUID}>
                                           {formatDicomDateTime(instance.seriesDate, instance.seriesTime)}
                                           {' · '}
                                           SOP …{formatSopTail(instance.sopInstanceUID)}
                                           {typeof instance.roiCount === 'number' ? ` · ${instance.roiCount} ROI` : ''}
                                         </span>
-                                        <span className="text-[10px] text-[#6b6b6b]">
+                                        <span className="text-[10px] text-[var(--color-text-muted)]">
                                           {importingRtstructSop === instance.sopInstanceUID
                                             ? 'Loading'
                                             : isActiveRtstruct
@@ -1373,14 +1373,14 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                             void onCompareRtstruct(instance, entry.seriesInstanceUID);
                                           }}
                                           disabled={!!comparingRtstructSop}
-                                          className="h-5 rounded border border-[#3a3a3a] px-1.5 text-[10px] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                                          className="h-5 rounded border border-[var(--color-border-input)] px-1.5 text-[10px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                                           title="Compare this repository RTSTRUCT with the active workspace RTSTRUCT"
                                         >
                                           {comparingRtstructSop === instance.sopInstanceUID ? 'Comparing' : 'Compare'}
                                         </button>
                                       </div>
-                                      <div className="mt-1 border-t border-[#2a2a2a] pt-1">
-                                        <div className="flex items-center gap-2 text-[10px] text-[#6b6b6b]">
+                                      <div className="mt-1 border-t border-[var(--color-border)] pt-1">
+                                        <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
                                           <span className="font-semibold uppercase tracking-widest">Plans</span>
                                           <span>No plans yet</span>
                                         </div>

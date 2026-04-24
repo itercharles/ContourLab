@@ -95,21 +95,21 @@ export default function Toolbar() {
   };
 
   return (
-    <div className="flex flex-none flex-col border-b border-[#2a2a2a] bg-[#111]">
-      <div className="flex h-9 items-center gap-2 border-b border-[#24292f] bg-[#181b20] px-2">
+    <div className="flex flex-none flex-col border-b border-[var(--color-border)] bg-[var(--color-header)]">
+      <div className="flex h-9 items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-2">
         <div className="flex items-center gap-1.5 pr-1">
           <div className="grid h-5 w-5 place-items-center rounded bg-blue-600 font-mono text-[10px] font-bold text-white">
             W
           </div>
-          <span className="text-[12px] font-semibold tracking-tight text-[#e6e9ed]">WebTPS</span>
+          <span className="text-[12px] font-semibold tracking-tight text-[var(--color-text-bright)]">WebTPS</span>
         </div>
-        <div className="flex items-center rounded border border-[#24292f] bg-[#0b0d10] p-0.5">
+        <div className="flex items-center rounded border border-[var(--color-border)] bg-[var(--color-surface-alt)] p-0.5">
           <button
             type="button"
-            className="rounded bg-[#181b20] px-2.5 py-1 text-[11px] font-medium text-[#e6e9ed]"
+            className="rounded bg-[var(--color-surface-alt)] px-2.5 py-1 text-[11px] font-medium text-[var(--color-text-bright)]"
             title="Contour workspace"
           >
-            <span className="mr-1 font-mono text-[9px] text-[#6b7280]">01</span>
+            <span className="mr-1 font-mono text-[9px] text-[var(--color-text-muted)]">01</span>
             Contour
           </button>
           {(['Review', 'Plan'] as const).map((label, index) => (
@@ -117,7 +117,7 @@ export default function Toolbar() {
               key={label}
               type="button"
               disabled
-              className="cursor-not-allowed rounded px-2.5 py-1 text-[11px] font-medium text-[#6b7280]"
+              className="cursor-not-allowed rounded px-2.5 py-1 text-[11px] font-medium text-[var(--color-text-muted)]"
               title="Not implemented"
             >
               <span className="mr-1 font-mono text-[9px]">{String(index + 2).padStart(2, '0')}</span>
@@ -141,7 +141,7 @@ export default function Toolbar() {
           className={`flex h-7 w-7 items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
             canPushChanges
               ? 'bg-blue-700 text-white hover:bg-blue-600'
-              : 'bg-[#242424] text-[#6b6b6b] opacity-60'
+              : 'bg-[var(--color-elevated)] text-[var(--color-text-muted)] opacity-60'
           }`}
         >
           <svg
@@ -172,7 +172,7 @@ export default function Toolbar() {
             <span
               key={initials}
               title={`Collaborator ${initials}`}
-              className="grid h-[22px] w-[22px] place-items-center rounded-full border-2 border-[#13161a] text-[10px] font-bold text-white"
+              className="grid h-[22px] w-[22px] place-items-center rounded-full border-2 border-[var(--color-surface-alt)] text-[10px] font-bold text-white"
               style={{ background: color, marginLeft: i === 0 ? 0 : -6 }}
             >
               {initials}
@@ -185,7 +185,7 @@ export default function Toolbar() {
           disabled={!canUndo}
           title={canUndo ? `Undo: ${UndoRedoManager.getUndoDescription()} (⌘Z)` : 'Undo (⌘Z)'}
           aria-label="Undo"
-          className="flex h-7 w-7 items-center justify-center rounded text-[#a0a7b0] transition-colors hover:bg-[#1f242b] hover:text-[#e6e9ed] disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] disabled:cursor-not-allowed disabled:opacity-30"
         >
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 4 3 7l3 3" />
@@ -197,7 +197,7 @@ export default function Toolbar() {
           disabled={!canRedo}
           title={canRedo ? `Redo: ${UndoRedoManager.getRedoDescription()} (⌘⇧Z)` : 'Redo (⌘⇧Z)'}
           aria-label="Redo"
-          className="flex h-7 w-7 items-center justify-center rounded text-[#a0a7b0] transition-colors hover:bg-[#1f242b] hover:text-[#e6e9ed] disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] disabled:cursor-not-allowed disabled:opacity-30"
         >
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="m10 4 3 3-3 3" />
@@ -210,19 +210,19 @@ export default function Toolbar() {
           disabled
           title="Inbox · 0 unread"
           aria-label="Inbox"
-          className="relative flex h-7 w-7 cursor-not-allowed items-center justify-center rounded text-[#404040]"
+          className="relative flex h-7 w-7 cursor-not-allowed items-center justify-center rounded text-[var(--color-text-dim)]"
         >
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
         </button>
-        <div className="h-4 w-px bg-[#24292f]" />
+        <div className="h-4 w-px bg-[var(--color-border)]" />
         <Link
           to="/settings"
           title="Settings"
           aria-label="Settings"
-          className="flex h-7 w-7 items-center justify-center rounded text-[#a0a7b0] transition-colors hover:bg-[#1f242b] hover:text-[#e6e9ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />

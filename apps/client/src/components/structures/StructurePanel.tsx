@@ -210,10 +210,10 @@ function StructureRow({
     <div
       onClick={onSelect}
       className={`
-        h-7 flex items-center gap-1.5 px-2 cursor-pointer group border-b border-[#24292f]/60 transition-colors
+        h-7 flex items-center gap-1.5 px-2 cursor-pointer group border-b border-[var(--color-border)] transition-colors
         ${isActive
           ? 'bg-[rgba(59,130,246,0.1)] border-l-2 border-l-[#3b82f6]'
-          : 'border-l-2 border-l-transparent hover:bg-[#1f242b]'
+          : 'border-l-2 border-l-transparent hover:bg-[var(--color-hover)]'
         }
       `}
     >
@@ -222,8 +222,8 @@ function StructureRow({
         onClick={handleVisibilityToggle}
         aria-label={isVisible ? `Hide ${structure.name}` : `Show ${structure.name}`}
         title={isVisible ? 'Hide' : 'Show'}
-        className={`flex-none flex h-4 w-4 items-center justify-center transition-opacity hover:text-[#e6e9ed] ${
-          isVisible ? 'text-[#6b7280]' : 'text-[#3a3f46]'
+        className={`flex-none flex h-4 w-4 items-center justify-center transition-opacity hover:text-[var(--color-text-bright)] ${
+          isVisible ? 'text-[var(--color-text-muted)]' : 'text-[var(--color-text-dim)]'
         }`}
       >
         {isVisible ? (
@@ -254,21 +254,21 @@ function StructureRow({
           onKeyDown={handleRenameKeyDown}
           onClick={(event) => event.stopPropagation()}
           autoFocus
-          className="min-w-0 flex-1 rounded border border-blue-500 bg-[#0b0d10] px-1 py-0.5 text-[11px] text-[#e6e9ed] focus:outline-none"
+          className="min-w-0 flex-1 rounded border border-blue-500 bg-[var(--color-surface-alt)] px-1 py-0.5 text-[11px] text-[var(--color-text-bright)] focus:outline-none"
         />
       ) : (
         <span
           onDoubleClick={beginRename}
           title="Double-click to rename"
           className={`min-w-0 flex-1 truncate text-[12px] font-medium transition-colors ${
-            isVisible ? 'text-[#e6e9ed]' : 'text-[#6b7280]'
+            isVisible ? 'text-[var(--color-text-bright)]' : 'text-[var(--color-text-muted)]'
           }`}
         >
           {structure.name}
         </span>
       )}
 
-      <span className="w-[46px] flex-none text-right font-mono text-[10px] text-[#a0a7b0]" title="Volume">
+      <span className="w-[46px] flex-none text-right font-mono text-[10px] text-[var(--color-text-sec)]" title="Volume">
         {formatVolumeCc(structure.volume_cc)}
       </span>
 
@@ -277,8 +277,8 @@ function StructureRow({
         onClick={handleLockToggle}
         aria-label={isLocked ? `Unlock ${structure.name}` : `Lock ${structure.name}`}
         title={isLocked ? 'Unlock' : 'Lock'}
-        className={`flex-none flex h-4 w-4 items-center justify-center transition-opacity hover:text-[#e6e9ed] ${
-          isLocked ? 'text-[#f59e0b]' : 'text-[#6b7280]'
+        className={`flex-none flex h-4 w-4 items-center justify-center transition-opacity hover:text-[var(--color-text-bright)] ${
+          isLocked ? 'text-[#f59e0b]' : 'text-[var(--color-text-muted)]'
         }`}
       >
         {isLocked ? (
@@ -299,7 +299,7 @@ function StructureRow({
         onClick={handleDelete}
         aria-label={`Delete ${structure.name}`}
         title="Delete structure"
-        className="flex-none flex h-4 w-4 items-center justify-center text-[#3a3f46] opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+        className="flex-none flex h-4 w-4 items-center justify-center text-[var(--color-text-dim)] opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
       >
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="3 6 5 6 21 6" />
@@ -1056,16 +1056,16 @@ export default function StructurePanel() {
   const tabButtonClass = (isActive: boolean) =>
     `h-8 border-b-2 px-3 text-[10px] font-semibold uppercase tracking-widest transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
       isActive
-        ? 'border-blue-500 bg-[#202020] text-[#e5e5e5]'
-        : 'border-transparent text-[#6b6b6b] hover:bg-[#242424] hover:text-[#a0a0a0]'
+        ? 'border-blue-500 bg-[var(--color-elevated)] text-[var(--color-text)]'
+        : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-sec)]'
     }`;
 
   const disabledTabClass =
-    'h-8 cursor-not-allowed border-b-2 border-transparent px-3 text-[10px] font-semibold uppercase tracking-widest text-[#404040]';
+    'h-8 cursor-not-allowed border-b-2 border-transparent px-3 text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-dim)]';
 
   return (
-    <div className="flex h-full flex-col bg-[#1a1a1a]">
-      <div className="flex flex-none border-b border-[#2a2a2a] bg-[#111]">
+    <div className="flex h-full flex-col bg-[var(--color-surface)]">
+      <div className="flex flex-none border-b border-[var(--color-border)] bg-[var(--color-header)]">
         <button
           type="button"
           className={tabButtonClass(panelTab === 'structures')}
@@ -1096,13 +1096,13 @@ export default function StructurePanel() {
       </div>
 
       {statusMessage && (
-        <div className="border-b border-[#2a2a2a] bg-[#242424] px-3 py-1 text-[10px] text-[#a0a0a0]">
+        <div className="border-b border-[var(--color-border)] bg-[var(--color-elevated)] px-3 py-1 text-[10px] text-[var(--color-text-sec)]">
           {statusMessage}
         </div>
       )}
 
       {isActiveSeriesDirty && (
-        <div className="border-b border-[#2a2a2a] bg-[#2a2112] px-3 py-1 text-[10px] text-[#f59e0b]">
+        <div className="border-b border-[var(--color-border)] bg-[#2a2112] px-3 py-1 text-[10px] text-[#f59e0b]">
           Local draft pending auto-save.
         </div>
       )}
@@ -1111,7 +1111,7 @@ export default function StructurePanel() {
         <>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             {isAdding && (
-              <div className="border-b border-[#2a2a2a] bg-[#242424] px-2 py-1.5 flex-none">
+              <div className="border-b border-[var(--color-border)] bg-[var(--color-elevated)] px-2 py-1.5 flex-none">
                 <input
                   ref={inputRef}
                   type="text"
@@ -1119,13 +1119,13 @@ export default function StructurePanel() {
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="e.g. PTV, Brainstem…"
-                  className="w-full border border-[#3a3a3a] bg-[#1a1a1a] px-2 py-1 text-[11px] text-[#e5e5e5] placeholder-[#6b6b6b] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full border border-[var(--color-border-input)] bg-[var(--color-surface)] px-2 py-1 text-[11px] text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <div className="mt-1.5 flex gap-1.5">
                   <button onClick={handleConfirmAdd} className="flex-1 py-0.5 text-[11px] text-blue-400 hover:text-blue-300">
                     Add
                   </button>
-                  <button onClick={handleCancelAdd} className="flex-1 py-0.5 text-[11px] text-[#6b6b6b] hover:text-[#a0a0a0]">
+                  <button onClick={handleCancelAdd} className="flex-1 py-0.5 text-[11px] text-[var(--color-text-muted)] hover:text-[var(--color-text-sec)]">
                     Cancel
                   </button>
                 </div>
@@ -1133,13 +1133,13 @@ export default function StructurePanel() {
             )}
 
             {!activeSeriesUID ? (
-              <p className="px-3 py-3 text-[11px] text-[#6b6b6b]">Load an image set to review structures.</p>
+              <p className="px-3 py-3 text-[11px] text-[var(--color-text-muted)]">Load an image set to review structures.</p>
             ) : !activeSeriesStructureSet ? (
-              <p className="px-3 py-3 text-[11px] text-[#6b6b6b]">No active structure set for this image set.</p>
+              <p className="px-3 py-3 text-[11px] text-[var(--color-text-muted)]">No active structure set for this image set.</p>
             ) : (
               structureGroups.map((group) => (
                 <section key={group.id}>
-                  <div className="flex h-6 items-center border-b border-[#2a2a2a] bg-[#171717] px-3 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+                  <div className="flex h-6 items-center border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
                     <span className="min-w-0 flex-1 truncate">{group.label}</span>
                     <span>{group.structures.length}</span>
                     <button
@@ -1148,7 +1148,7 @@ export default function StructurePanel() {
                       aria-label={`Add structure to ${group.label}`}
                       title={activeSeriesUID ? `Add ${group.defaultType} structure to ${group.label}` : 'Load a series first'}
                       disabled={!activeSeriesUID}
-                      className="ml-2 flex h-5 w-5 items-center justify-center bg-[#2e2e2e] text-[13px] font-semibold leading-none text-[#a0a0a0] transition-colors hover:bg-blue-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#2e2e2e] disabled:hover:text-[#a0a0a0] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                      className="ml-2 flex h-5 w-5 items-center justify-center bg-[var(--color-hover)] text-[13px] font-semibold leading-none text-[var(--color-text-sec)] transition-colors hover:bg-blue-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[var(--color-hover)] disabled:hover:text-[var(--color-text-sec)] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                     >
                       +
                     </button>
@@ -1172,9 +1172,9 @@ export default function StructurePanel() {
           </div>
 
           {activeSeriesStructureSet && activeStructure && (
-            <section className="flex-none border-t border-[#2a2a2a] bg-[#171717]">
+            <section className="flex-none border-t border-[var(--color-border)] bg-[var(--color-surface)]">
               {/* a) Header: color swatch + name + type */}
-              <div className="flex items-center gap-2 border-b border-[#2a2a2a] px-3 py-1.5">
+              <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-3 py-1.5">
                 <label className="flex-none cursor-pointer" title="Change structure color">
                   <span
                     className="block h-2.5 w-2.5 rounded-sm shadow-[inset_0_0_0_1px_rgba(0,0,0,0.3)]"
@@ -1189,7 +1189,7 @@ export default function StructurePanel() {
                     className="sr-only"
                   />
                 </label>
-                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#e6e9ed]">
+                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[var(--color-text-bright)]">
                   {activeStructure.name}
                 </span>
                 {isEditingActiveType ? (
@@ -1199,7 +1199,7 @@ export default function StructurePanel() {
                     onChange={handleActiveStructureTypeChange}
                     onBlur={() => setIsEditingActiveType(false)}
                     autoFocus
-                    className="h-6 w-24 border border-[#3a3a3a] bg-[#2e2e2e] px-1 text-[11px] font-semibold text-[#e5e5e5] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="h-6 w-24 border border-[var(--color-border-input)] bg-[var(--color-hover)] px-1 text-[11px] font-semibold text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     {STRUCTURE_TYPES.map((type) => (
                       <option key={type} value={type}>
@@ -1209,7 +1209,7 @@ export default function StructurePanel() {
                   </select>
                 ) : (
                   <div className="flex flex-none items-center gap-1">
-                    <span className="text-[10px] uppercase tracking-widest text-[#6b7280]">
+                    <span className="text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">
                       {activeStructure.type}
                     </span>
                     <button
@@ -1217,7 +1217,7 @@ export default function StructurePanel() {
                       aria-label="Edit active structure type"
                       title="Edit type"
                       onClick={() => setIsEditingActiveType(true)}
-                      className="flex h-5 w-5 items-center justify-center rounded text-[#6b7280] hover:bg-[#242424] hover:text-[#e6e9ed] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                      className="flex h-5 w-5 items-center justify-center rounded text-[var(--color-text-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     >
                       <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M12 20h9" />
@@ -1229,20 +1229,20 @@ export default function StructurePanel() {
               </div>
 
               {/* b) Stats: volume + slices + Manual */}
-              <div className="flex items-baseline gap-3.5 border-b border-[#2a2a2a] px-3 py-1.5 font-mono text-[11px] text-[#6b7280]">
+              <div className="flex items-baseline gap-3.5 border-b border-[var(--color-border)] px-3 py-1.5 font-mono text-[11px] text-[var(--color-text-muted)]">
                 <span>
-                  <span className="text-[13px] text-[#e6e9ed]">{(activeStructure.volume_cc ?? 0).toFixed(1)}</span>
+                  <span className="text-[13px] text-[var(--color-text-bright)]">{(activeStructure.volume_cc ?? 0).toFixed(1)}</span>
                   {' '}cm³
                 </span>
                 <span>
-                  <span className="text-[13px] text-[#e6e9ed]">{activeStructureReviewSlices.length}</span>
+                  <span className="text-[13px] text-[var(--color-text-bright)]">{activeStructureReviewSlices.length}</span>
                   {' '}sl
                 </span>
                 <span className="ml-auto text-[10px]">Manual</span>
               </div>
 
               {/* c) Operation buttons */}
-              <div className="flex flex-wrap gap-1.5 border-b border-[#2a2a2a] px-3 py-2">
+              <div className="flex flex-wrap gap-1.5 border-b border-[var(--color-border)] px-3 py-2">
                 {(['margin', 'interpolate', 'boolean'] as const).map((op) => (
                   <button
                     key={op}
@@ -1251,7 +1251,7 @@ export default function StructurePanel() {
                     className={`h-6 rounded border px-2 text-[10px] capitalize transition-colors ${
                       activePop === op
                         ? 'border-blue-500/50 bg-blue-900/30 text-blue-300'
-                        : 'border-[#2a2a2a] bg-[#202020] text-[#a0a0a0] hover:border-[#3a3a3a] hover:text-[#e6e9ed]'
+                        : 'border-[var(--color-border)] bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:border-[var(--color-border-input)] hover:text-[var(--color-text-bright)]'
                     }`}
                   >
                     {op.charAt(0).toUpperCase() + op.slice(1)}
@@ -1261,7 +1261,7 @@ export default function StructurePanel() {
                   type="button"
                   disabled
                   title="More operations (not yet implemented)"
-                  className="h-6 cursor-not-allowed rounded border border-[#2a2a2a] bg-[#202020] px-1.5 text-[10px] text-[#404040]"
+                  className="h-6 cursor-not-allowed rounded border border-[var(--color-border)] bg-[var(--color-elevated)] px-1.5 text-[10px] text-[var(--color-text-dim)]"
                 >
                   ⋯
                 </button>
@@ -1269,10 +1269,10 @@ export default function StructurePanel() {
 
               {/* d) Inline operation popover */}
               {activePop && (
-                <div className="border-b border-[#2a2a2a] bg-[#131619] px-3 py-2.5">
+                <div className="border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-3 py-2.5">
                   {activePop === 'margin' && (
                     <>
-                      <p className="mb-2 text-[10px] uppercase tracking-widest text-[#6b7280]">Expand / contract</p>
+                      <p className="mb-2 text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">Expand / contract</p>
                       <div className="mb-2 flex items-center gap-2">
                         <input
                           type="range"
@@ -1284,7 +1284,7 @@ export default function StructurePanel() {
                           className="flex-1 accent-blue-500"
                           aria-label="Margin value"
                         />
-                        <span className="min-w-[52px] text-right font-mono text-[11px] text-[#e6e9ed]">
+                        <span className="min-w-[52px] text-right font-mono text-[11px] text-[var(--color-text-bright)]">
                           {marginValue > 0 ? '+' : ''}{marginValue} mm
                         </span>
                       </div>
@@ -1297,14 +1297,14 @@ export default function StructurePanel() {
                             className={`flex-1 rounded border py-0.5 text-[10px] transition-colors ${
                               marginValue === m
                                 ? 'border-blue-500/50 bg-blue-900/30 text-blue-300'
-                                : 'border-[#2a2a2a] bg-[#202020] text-[#a0a0a0] hover:text-[#e6e9ed]'
+                                : 'border-[var(--color-border)] bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:text-[var(--color-text-bright)]'
                             }`}
                           >
                             {m > 0 ? '+' : ''}{m}
                           </button>
                         ))}
                       </div>
-                      <div className="mb-2.5 flex justify-between font-mono text-[11px] text-[#6b7280]">
+                      <div className="mb-2.5 flex justify-between font-mono text-[11px] text-[var(--color-text-muted)]">
                         <span>{'→ '}{activeStructure.name}{marginValue !== 0 ? ` ${marginValue > 0 ? '+' : ''}${marginValue}mm` : ''}</span>
                         <span>{((activeStructure.volume_cc ?? 0) * Math.pow(1 + marginValue / 30, 3)).toFixed(1)} cm³</span>
                       </div>
@@ -1312,7 +1312,7 @@ export default function StructurePanel() {
                   )}
                   {activePop === 'interpolate' && (
                     <>
-                      <p className="mb-2 text-[10px] uppercase tracking-widest text-[#6b7280]">Fill missing slices</p>
+                      <p className="mb-2 text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">Fill missing slices</p>
                       <div className="mb-2 flex gap-1">
                         {(['linear', 'shape', 'morph'] as const).map((m) => (
                           <button
@@ -1322,7 +1322,7 @@ export default function StructurePanel() {
                             className={`flex-1 rounded border py-0.5 text-[10px] capitalize transition-colors ${
                               interpMethod === m
                                 ? 'border-blue-500/50 bg-blue-900/30 text-blue-300'
-                                : 'border-[#2a2a2a] bg-[#202020] text-[#a0a0a0] hover:text-[#e6e9ed]'
+                                : 'border-[var(--color-border)] bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:text-[var(--color-text-bright)]'
                             }`}
                           >
                             {m}
@@ -1330,7 +1330,7 @@ export default function StructurePanel() {
                         ))}
                       </div>
                       <div className="mb-2 flex items-center gap-2">
-                        <span className="text-[11px] text-[#6b7280]">Max gap</span>
+                        <span className="text-[11px] text-[var(--color-text-muted)]">Max gap</span>
                         <input
                           type="range"
                           min={1}
@@ -1340,9 +1340,9 @@ export default function StructurePanel() {
                           className="flex-1 accent-blue-500"
                           aria-label="Interpolation gap"
                         />
-                        <span className="min-w-[36px] text-right font-mono text-[11px] text-[#e6e9ed]">{interpGaps} sl</span>
+                        <span className="min-w-[36px] text-right font-mono text-[11px] text-[var(--color-text-bright)]">{interpGaps} sl</span>
                       </div>
-                      <p className="mb-2.5 text-[11px] text-[#6b7280]">
+                      <p className="mb-2.5 text-[11px] text-[var(--color-text-muted)]">
                         {activeStructureReviewSlices.length > 1
                           ? `${activeStructureReviewSlices.length} contour slices available.`
                           : 'No contour slices available.'}
@@ -1351,7 +1351,7 @@ export default function StructurePanel() {
                   )}
                   {activePop === 'boolean' && (
                     <>
-                      <p className="mb-2 text-[10px] uppercase tracking-widest text-[#6b7280]">Combine with</p>
+                      <p className="mb-2 text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">Combine with</p>
                       <div className="mb-2 flex gap-1">
                         {([['union', '∪'], ['intersect', '∩'], ['subtract', '−']] as const).map(([op, sym]) => (
                           <button
@@ -1361,7 +1361,7 @@ export default function StructurePanel() {
                             className={`flex-1 rounded border py-0.5 text-[10px] capitalize transition-colors ${
                               boolOp === op
                                 ? 'border-blue-500/50 bg-blue-900/30 text-blue-300'
-                                : 'border-[#2a2a2a] bg-[#202020] text-[#a0a0a0] hover:text-[#e6e9ed]'
+                                : 'border-[var(--color-border)] bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:text-[var(--color-text-bright)]'
                             }`}
                           >
                             <span className="mr-1 font-mono">{sym}</span>{op}
@@ -1372,7 +1372,7 @@ export default function StructurePanel() {
                         value={boolTarget}
                         onChange={(e) => setBoolTarget(e.target.value)}
                         aria-label="Boolean target structure"
-                        className="mb-2 h-6 w-full border border-[#3a3a3a] bg-[#202020] px-1 text-[11px] text-[#e5e5e5] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="mb-2 h-6 w-full border border-[var(--color-border-input)] bg-[var(--color-elevated)] px-1 text-[11px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
                       >
                         <option value="">— select structure —</option>
                         {activeSeriesStructureSet.structures
@@ -1381,7 +1381,7 @@ export default function StructurePanel() {
                             <option key={s.id} value={s.id}>{s.name} ({s.type})</option>
                           ))}
                       </select>
-                      <p className="mb-2.5 font-mono text-[11px] text-[#6b7280]">
+                      <p className="mb-2.5 font-mono text-[11px] text-[var(--color-text-muted)]">
                         {'→ '}{activeStructure.name}{' '}{boolOp === 'union' ? '∪' : boolOp === 'intersect' ? '∩' : '−'}{' '}{activeSeriesStructureSet.structures.find((s) => s.id === boolTarget)?.name ?? '—'}
                       </p>
                     </>
@@ -1390,7 +1390,7 @@ export default function StructurePanel() {
                     <button
                       type="button"
                       onClick={() => setActiveStructureOperationPanel(null)}
-                      className="h-6 rounded border border-[#2a2a2a] bg-[#202020] px-2.5 text-[10px] text-[#a0a0a0] hover:text-[#e6e9ed]"
+                      className="h-6 rounded border border-[var(--color-border)] bg-[var(--color-elevated)] px-2.5 text-[10px] text-[var(--color-text-sec)] hover:text-[var(--color-text-bright)]"
                     >
                       Cancel
                     </button>
@@ -1425,9 +1425,9 @@ export default function StructurePanel() {
 
       {panelTab === 'qa' && (
         <div className="flex-1 overflow-y-auto">
-          <section className="border-b border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2">
+          <section className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">RTSS QA</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">RTSS QA</p>
               <span
                 className={`border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
                   activeStructureSetWarningCount > 0
@@ -1441,11 +1441,11 @@ export default function StructurePanel() {
               </span>
             </div>
             {activeSeriesStructureSet ? (
-              <div className="mb-1.5 border border-[#2a2a2a] bg-[#171717]">
+              <div className="mb-1.5 border border-[var(--color-border)] bg-[var(--color-surface)]">
                 {rtssQaChecklist.map((entry) => (
                   <div
                     key={entry.id}
-                    className="border-b border-[#2a2a2a] last:border-b-0"
+                    className="border-b border-[var(--color-border)] last:border-b-0"
                   >
                     <button
                       type="button"
@@ -1457,7 +1457,7 @@ export default function StructurePanel() {
                       )}
                       className={`grid w-full grid-cols-[12px_1fr_auto_auto] items-start gap-2 px-2 py-1 text-left text-[10px] ${
                         entry.issueCount > 0
-                          ? 'hover:bg-[#202020] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none'
+                          ? 'hover:bg-[var(--color-hover)] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none'
                           : 'cursor-default'
                       }`}
                       title={entry.description}
@@ -1470,31 +1470,31 @@ export default function StructurePanel() {
                       >
                         {entry.issueCount > 0 ? '!' : '✓'}
                       </span>
-                      <span className={entry.issueCount > 0 ? 'text-[#e5e5e5]' : 'text-[#a0a0a0]'}>
+                      <span className={entry.issueCount > 0 ? 'text-[var(--color-text)]' : 'text-[var(--color-text-sec)]'}>
                         {entry.label}
                       </span>
-                      <span className="font-mono text-[9px] text-[#6b6b6b]">
+                      <span className="font-mono text-[9px] text-[var(--color-text-muted)]">
                         {entry.issueCount > 0 ? `${entry.issueCount} hit` : 'pass'}
                       </span>
-                      <span className="w-3 text-[10px] text-[#6b6b6b]">
+                      <span className="w-3 text-[10px] text-[var(--color-text-muted)]">
                         {entry.issueCount > 0 ? (expandedRtssQaRules.includes(entry.id) ? '−' : '+') : ''}
                       </span>
                     </button>
                     {entry.issueCount > 0 && expandedRtssQaRules.includes(entry.id) ? (
-                      <div className="border-t border-[#2a2a2a]">
+                      <div className="border-t border-[var(--color-border)]">
                         {(rtssQaIssuesByRule[entry.id] ?? []).map((qualityIssue, index) => (
                           <button
                             key={`${qualityIssue.structureId}-${qualityIssue.issue.type}-${qualityIssue.issue.slicePosition ?? 'structure'}-${index}`}
                             type="button"
                             onClick={() => handleQaIssueSelect(qualityIssue)}
-                            className={`flex w-full items-start gap-1.5 border-b border-[#2a2a2a] px-2 py-1 text-left text-[10px] last:border-b-0 hover:bg-[#2e2e2e] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
-                              qualityIssue.issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
+                            className={`flex w-full items-start gap-1.5 border-b border-[var(--color-border)] px-2 py-1 text-left text-[10px] last:border-b-0 hover:bg-[var(--color-hover)] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                              qualityIssue.issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[var(--color-text-muted)]'
                             }`}
                             title={Number.isFinite(qualityIssue.issue.slicePosition) ? `Jump to z=${qualityIssue.issue.slicePosition!.toFixed(1)} mm` : 'Select RTSS QA item'}
                             aria-label={`${qualityIssue.structureName ?? 'RTSS'} ${qualityIssue.issue.message}`}
                           >
                             {qualityIssue.structureName && (
-                              <span className="max-w-[64px] flex-none truncate font-semibold text-[#a0a0a0]">
+                              <span className="max-w-[64px] flex-none truncate font-semibold text-[var(--color-text-sec)]">
                                 {qualityIssue.structureName}
                               </span>
                             )}
@@ -1508,15 +1508,15 @@ export default function StructurePanel() {
               </div>
             ) : null}
             {!(activeSeriesStructureSet && activeStructureSetQaIssues.length > 0) ? (
-              <p className="text-[10px] text-[#6b6b6b]">
+              <p className="text-[10px] text-[var(--color-text-muted)]">
                 {activeSeriesStructureSet ? 'No RTSS QA warnings for this structure set.' : 'No active structure set.'}
               </p>
             ) : null}
           </section>
 
-          <section className="border-b border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2">
+          <section className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">Contour QA</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Contour QA</p>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
@@ -1524,7 +1524,7 @@ export default function StructurePanel() {
                   className={`border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
                     contourQaSeverityFilter === 'warnings'
                       ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
-                      : 'border-[#2a2a2a] bg-[#171717] text-[#6b6b6b] hover:text-[#a0a0a0]'
+                      : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-sec)]'
                   }`}
                 >
                   Warnings
@@ -1534,8 +1534,8 @@ export default function StructurePanel() {
                   onClick={() => setContourQaSeverityFilter('all')}
                   className={`border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
                     contourQaSeverityFilter === 'all'
-                      ? 'border-[#3a3a3a] bg-[#202020] text-[#e5e5e5]'
-                      : 'border-[#2a2a2a] bg-[#171717] text-[#6b6b6b] hover:text-[#a0a0a0]'
+                      ? 'border-[var(--color-border-input)] bg-[var(--color-elevated)] text-[var(--color-text)]'
+                      : 'border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text-sec)]'
                   }`}
                 >
                   All
@@ -1554,11 +1554,11 @@ export default function StructurePanel() {
               </div>
             </div>
             {activeStructure ? (
-              <div className="mb-1.5 border border-[#2a2a2a] bg-[#171717]">
+              <div className="mb-1.5 border border-[var(--color-border)] bg-[var(--color-surface)]">
                 {contourQaChecklist.map((entry) => (
                   <div
                     key={entry.id}
-                    className="border-b border-[#2a2a2a] last:border-b-0"
+                    className="border-b border-[var(--color-border)] last:border-b-0"
                   >
                     <button
                       type="button"
@@ -1570,7 +1570,7 @@ export default function StructurePanel() {
                       )}
                       className={`grid w-full grid-cols-[12px_1fr_auto_auto] items-start gap-2 px-2 py-1 text-left text-[10px] ${
                         entry.issueCount > 0
-                          ? 'hover:bg-[#202020] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none'
+                          ? 'hover:bg-[var(--color-hover)] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none'
                           : 'cursor-default'
                       }`}
                       title={entry.description}
@@ -1583,18 +1583,18 @@ export default function StructurePanel() {
                       >
                         {entry.issueCount > 0 ? '!' : '✓'}
                       </span>
-                      <span className={entry.issueCount > 0 ? 'text-[#e5e5e5]' : 'text-[#a0a0a0]'}>
+                      <span className={entry.issueCount > 0 ? 'text-[var(--color-text)]' : 'text-[var(--color-text-sec)]'}>
                         {entry.label}
                       </span>
-                      <span className="font-mono text-[9px] text-[#6b6b6b]">
+                      <span className="font-mono text-[9px] text-[var(--color-text-muted)]">
                         {entry.issueCount > 0 ? `${entry.issueCount} hit` : 'pass'}
                       </span>
-                      <span className="w-3 text-[10px] text-[#6b6b6b]">
+                      <span className="w-3 text-[10px] text-[var(--color-text-muted)]">
                         {entry.issueCount > 0 ? (expandedContourQaRules.includes(entry.id) ? '−' : '+') : ''}
                       </span>
                     </button>
                     {entry.issueCount > 0 && expandedContourQaRules.includes(entry.id) ? (
-                      <div className="border-t border-[#2a2a2a]">
+                      <div className="border-t border-[var(--color-border)]">
                         {(contourQaIssuesByRule[entry.id] ?? []).slice(0, qaVisibleCountByRule[entry.id] ?? 12).map((issue, index) => {
                           const isNavigable = Number.isFinite(issue.slicePosition);
                           const key = `${issue.type}-${issue.slicePosition ?? 'structure'}-${index}`;
@@ -1604,22 +1604,22 @@ export default function StructurePanel() {
                               key={key}
                               type="button"
                               onClick={() => handleContourQaIssueSelect(issue)}
-                              className={`flex w-full items-start gap-1.5 border-b border-[#2a2a2a] px-2 py-1 text-left text-[10px] last:border-b-0 hover:bg-[#2e2e2e] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
-                                issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
+                              className={`flex w-full items-start gap-1.5 border-b border-[var(--color-border)] px-2 py-1 text-left text-[10px] last:border-b-0 hover:bg-[var(--color-hover)] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                                issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[var(--color-text-muted)]'
                               }`}
                               title={`Jump to z=${issue.slicePosition!.toFixed(1)} mm`}
                               aria-label={`${entry.label} ${issue.message}`}
                             >
                               <span className="min-w-0 flex-1">{issue.message}</span>
-                              <span className="font-mono text-[9px] text-[#6b6b6b]">
+                              <span className="font-mono text-[9px] text-[var(--color-text-muted)]">
                                 z={issue.slicePosition!.toFixed(1)}
                               </span>
                             </button>
                           ) : (
                             <div
                               key={key}
-                              className={`border-b border-[#2a2a2a] px-2 py-1 text-[10px] last:border-b-0 ${
-                                issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
+                              className={`border-b border-[var(--color-border)] px-2 py-1 text-[10px] last:border-b-0 ${
+                                issue.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[var(--color-text-muted)]'
                               }`}
                             >
                               {issue.message}
@@ -1633,7 +1633,7 @@ export default function StructurePanel() {
                               ...current,
                               [entry.id]: (current[entry.id] ?? 12) + 20,
                             }))}
-                            className="w-full border-t border-[#2a2a2a] px-2 py-1 text-[10px] text-[#6b7280] hover:bg-[#202020] hover:text-[#e5e5e5] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+                            className="w-full border-t border-[var(--color-border)] px-2 py-1 text-[10px] text-[var(--color-text-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                           >
                             Show {Math.min(20, (contourQaIssuesByRule[entry.id] ?? []).length - (qaVisibleCountByRule[entry.id] ?? 12))} more
                           </button>
@@ -1645,7 +1645,7 @@ export default function StructurePanel() {
               </div>
             ) : null}
             {!(activeStructureQa && contourQaChecklist.some((entry) => entry.issueCount > 0)) ? (
-              <p className="text-[10px] text-[#6b6b6b]">
+              <p className="text-[10px] text-[var(--color-text-muted)]">
                 {activeStructure ? 'No contour QA issues for this structure.' : 'No active structure.'}
               </p>
             ) : null}
@@ -1655,7 +1655,7 @@ export default function StructurePanel() {
 
       {panelTab === 'dicom' && (
         <div className="flex-1 overflow-y-auto px-3 py-2 text-[10px]">
-          <section className="border border-[#2a2a2a] bg-[#171717]">
+          <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
             {[
               ['Structure Set', activeSeriesStructureSet?.label ?? 'n/a'],
               ['Source', activeSeriesStructureSet ? formatSourceLabel(activeSeriesStructureSet) : 'n/a'],
@@ -1664,9 +1664,9 @@ export default function StructurePanel() {
               ['Imported', activeSeriesStructureSet?.source?.importedAt ? formatSourceTimestamp(activeSeriesStructureSet.source.importedAt) : 'n/a'],
               ['Series UID', activeSeriesUID ?? 'n/a'],
             ].map(([label, value]) => (
-              <div key={label} className="grid grid-cols-[72px_1fr] border-b border-[#2a2a2a] last:border-b-0">
-                <div className="bg-[#202020] px-2 py-1 font-semibold uppercase tracking-widest text-[#6b6b6b]">{label}</div>
-                <div className="min-w-0 truncate px-2 py-1 font-mono text-[#a0a0a0]" title={value}>{value}</div>
+              <div key={label} className="grid grid-cols-[72px_1fr] border-b border-[var(--color-border)] last:border-b-0">
+                <div className="bg-[var(--color-elevated)] px-2 py-1 font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">{label}</div>
+                <div className="min-w-0 truncate px-2 py-1 font-mono text-[var(--color-text-sec)]" title={value}>{value}</div>
               </div>
             ))}
           </section>

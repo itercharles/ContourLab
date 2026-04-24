@@ -5,7 +5,7 @@ export default function RightSidebar() {
   const rightSidebarOpen = useUIStore((s) => s.rightSidebarOpen);
 
   return (
-    <div className="flex h-full min-w-0 flex-col bg-[#1a1a1a]">
+    <div className="flex h-full min-w-0 flex-col bg-[var(--color-surface)]">
       {rightSidebarOpen && <StructurePanel />}
     </div>
   );

@@ -219,7 +219,7 @@ export default function ImageViewer() {
   return (
     <div
       ref={containerRef}
-      className="relative h-full flex-1 bg-[#2a2a2a]"
+      className="relative h-full flex-1 bg-[var(--color-border)]"
     >
       <ToolOptions />
       <div className="grid h-full grid-cols-2 grid-rows-2 gap-[1px]">
@@ -254,14 +254,14 @@ export default function ImageViewer() {
               strokeWidth="1"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="text-[#404040] mx-auto mb-2"
+              className="text-[var(--color-text-dim)] mx-auto mb-2"
             >
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
               <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
               <line x1="12" y1="22.08" x2="12" y2="12" />
             </svg>
-            <p className="text-xs text-[#404040] font-mono">3D View</p>
-            <p className="text-xs text-[#404040] mt-1">Not yet implemented</p>
+            <p className="text-xs text-[var(--color-text-dim)] font-mono">3D View</p>
+            <p className="text-xs text-[var(--color-text-dim)] mt-1">Not yet implemented</p>
           </div>
           <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
             3D

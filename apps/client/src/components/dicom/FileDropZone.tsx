@@ -127,7 +127,7 @@ export default function FileDropZone() {
           ${isLoading ? 'opacity-60 cursor-not-allowed' : ''}
           ${isDragOver
             ? 'border-blue-500 bg-blue-950/20'
-            : 'border-[#3a3a3a] hover:border-[#4a4a4a]'
+            : 'border-[var(--color-border-input)] hover:border-[var(--color-border-input)]'
           }
         `}
         style={{ minHeight: '72px', padding: '10px 8px' }}
@@ -142,7 +142,7 @@ export default function FileDropZone() {
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={`flex-none ${isDragOver ? 'text-blue-400' : 'text-[#6b6b6b]'}`}
+          className={`flex-none ${isDragOver ? 'text-blue-400' : 'text-[var(--color-text-muted)]'}`}
         >
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
           <polyline points="17 8 12 3 7 8" />
@@ -151,10 +151,10 @@ export default function FileDropZone() {
 
         {isLoading && progress ? (
           <div className="w-full space-y-1">
-            <p className="text-[11px] text-[#a0a0a0]">
+            <p className="text-[11px] text-[var(--color-text-sec)]">
               Loading… {progress.loaded}/{progress.total}
             </p>
-            <div className="w-full bg-[#2a2a2a] rounded-full h-0.5">
+            <div className="w-full bg-[var(--color-border)] rounded-full h-0.5">
               <div
                 className="bg-blue-500 h-0.5 rounded-full transition-all duration-100"
                 style={{
@@ -166,7 +166,7 @@ export default function FileDropZone() {
             </div>
           </div>
         ) : (
-          <p className={`text-[11px] leading-snug ${isDragOver ? 'text-blue-300' : 'text-[#6b6b6b]'}`}>
+          <p className={`text-[11px] leading-snug ${isDragOver ? 'text-blue-300' : 'text-[var(--color-text-muted)]'}`}>
             Drop folder or files, or click
           </p>
         )}

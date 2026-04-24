@@ -12,14 +12,14 @@ export default function LeftSidebar() {
   const setLeftSidebarOpen = useUIStore((s) => s.setLeftSidebarOpen);
 
   return (
-    <div className="flex flex-col h-full bg-[#1a1a1a]">
-      <div className="border-b border-[#2a2a2a] bg-[#111] px-3 py-2">
+    <div className="flex flex-col h-full bg-[var(--color-surface)]">
+      <div className="border-b border-[var(--color-border)] bg-[var(--color-header)] px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
               Workspace Selector
             </p>
-            <p className="mt-0.5 truncate text-[10px] text-[#8a8a8a]">
+            <p className="mt-0.5 truncate text-[10px] text-[var(--color-text-sec)]">
               Select patient, image, and RTSS
             </p>
           </div>
@@ -31,7 +31,7 @@ export default function LeftSidebar() {
               className={`flex h-6 w-6 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                 repoRefreshState.hasUpdates
                   ? 'bg-blue-700 text-white hover:bg-blue-600'
-                  : 'bg-[#242424] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5]'
+                  : 'bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)]'
               } disabled:cursor-not-allowed disabled:opacity-50`}
               title={
                 repoRefreshState.hasUpdates
@@ -63,7 +63,7 @@ export default function LeftSidebar() {
                 const event = new CustomEvent('webtps:open-patient-selector');
                 window.dispatchEvent(event);
               }}
-              className="flex h-6 w-6 items-center justify-center rounded bg-[#242424] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="flex h-6 w-6 items-center justify-center rounded bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               title="Select patient"
               aria-label="Select patient"
             >
@@ -77,7 +77,7 @@ export default function LeftSidebar() {
             <button
               type="button"
               onClick={() => setLeftSidebarOpen(false)}
-              className="flex h-6 w-6 items-center justify-center rounded bg-[#242424] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="flex h-6 w-6 items-center justify-center rounded bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               title="Close selector"
               aria-label="Close selector"
             >
@@ -91,20 +91,20 @@ export default function LeftSidebar() {
       </div>
 
       {/* Repository worklist */}
-      <div className="flex min-h-0 flex-1 flex-col border-b border-[#2a2a2a]">
+      <div className="flex min-h-0 flex-1 flex-col border-b border-[var(--color-border)]">
         <DicomRepoPanel
           refreshRequestToken={refreshRequestToken}
           onRefreshStateChange={setRepoRefreshState}
         />
       </div>
 
-      <div className="flex items-center justify-between border-t border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2">
-        <span className="text-[10px] uppercase tracking-widest text-[#6b6b6b]">
+      <div className="flex items-center justify-between border-t border-[var(--color-border)] bg-[var(--color-base)] px-3 py-2">
+        <span className="text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">
           System
         </span>
         <Link
           to="/settings"
-          className="flex h-6 w-6 items-center justify-center rounded bg-[#242424] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="flex h-6 w-6 items-center justify-center rounded bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           title="Settings"
           aria-label="Settings"
         >

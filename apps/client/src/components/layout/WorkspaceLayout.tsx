@@ -11,12 +11,12 @@ export default function WorkspaceLayout() {
   const rightSidebarOpen = useUIStore((s) => s.rightSidebarOpen);
 
   return (
-    <div className="relative flex h-screen flex-col bg-[#0d0d0d] text-white overflow-hidden">
+    <div className="relative flex h-screen flex-col bg-[var(--color-base)] text-white overflow-hidden">
       <Toolbar />
 
       {/* Temporary workspace selector */}
       <div
-        className="absolute bottom-6 left-0 top-[68px] z-30 bg-[#1a1a1a] border-r border-[#2a2a2a] transition-all duration-150"
+        className="absolute bottom-6 left-0 top-[68px] z-30 bg-[var(--color-surface)] border-r border-[var(--color-border)] transition-all duration-150"
         style={{
           width: leftSidebarOpen ? '360px' : '0px',
           overflow: leftSidebarOpen ? 'auto' : 'hidden',
@@ -34,7 +34,7 @@ export default function WorkspaceLayout() {
 
         {/* Right sidebar — collapsible */}
         <div
-          className="flex-none bg-[#1a1a1a] border-l border-[#2a2a2a] transition-all duration-150"
+          className="flex-none bg-[var(--color-surface)] border-l border-[var(--color-border)] transition-all duration-150"
           style={{
             width: rightSidebarOpen ? '320px' : '0px',
             overflow: rightSidebarOpen ? 'auto' : 'hidden',

@@ -14,6 +14,7 @@ import {
   setQaRuleEnabled,
   type QaRuleConfig,
 } from '../core/qa/qaRuleConfig';
+import { useUIStore } from '../core/store/uiStore';
 
 interface SettingsStatus {
   tone: 'muted' | 'error';
@@ -21,6 +22,8 @@ interface SettingsStatus {
 }
 
 export default function Settings() {
+  const theme = useUIStore((s) => s.theme);
+  const setTheme = useUIStore((s) => s.setTheme);
   const [endpoint, setEndpoint] = useState(getDicomWebBaseUrl());
   const [qaRuleConfig, setQaRuleConfig] = useState<QaRuleConfig>(getQaRuleConfig());
   const [status, setStatus] = useState<SettingsStatus | null>(null);
@@ -88,18 +91,18 @@ export default function Settings() {
   const rtssRules = QA_RULE_DEFINITIONS.filter((rule) => rule.section === 'rtss');
 
   return (
-    <div className="min-h-screen bg-[#0d0d0d] text-[#e5e5e5]">
-      <header className="border-b border-[#2a2a2a] bg-[#111]">
+    <div className="min-h-screen bg-[var(--color-base)] text-[var(--color-text)]">
+      <header className="border-b border-[var(--color-border)] bg-[var(--color-header)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
               WebTPS
             </p>
-            <h1 className="mt-1 text-sm font-semibold text-[#e5e5e5]">Settings</h1>
+            <h1 className="mt-1 text-sm font-semibold text-[var(--color-text)]">Settings</h1>
           </div>
           <Link
             to="/workspace"
-            className="rounded bg-[#242424] px-3 py-1.5 text-[11px] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="rounded bg-[var(--color-elevated)] px-3 py-1.5 text-[11px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             Back to Workspace
           </Link>
@@ -107,18 +110,55 @@ export default function Settings() {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-4 px-6 py-5">
-        <section className="border border-[#2a2a2a] bg-[#1a1a1a]">
-          <div className="border-b border-[#2a2a2a] px-3 py-2">
-            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[#a0a0a0]">
+        <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
+          <div className="border-b border-[var(--color-border)] px-3 py-2">
+            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
+              Appearance
+            </h2>
+            <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+              Choose the interface theme. Viewport canvases always remain black for accurate image display.
+            </p>
+          </div>
+          <div className="px-3 py-3">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setTheme('dark')}
+                className={`h-8 rounded px-4 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                  theme === 'dark'
+                    ? 'bg-blue-900/40 text-blue-200'
+                    : 'bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                Dark
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme('light')}
+                className={`h-8 rounded px-4 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                  theme === 'light'
+                    ? 'bg-blue-900/40 text-blue-200'
+                    : 'bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                Light
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
+          <div className="border-b border-[var(--color-border)] px-3 py-2">
+            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
               DICOM Repository
             </h2>
-            <p className="mt-1 text-[11px] text-[#6b6b6b]">
+            <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
               Configure which DICOMweb repository WebTPS queries, loads from, imports into, and pushes RTSTRUCT objects to.
             </p>
           </div>
 
           <div className="grid gap-3 px-3 py-3">
-            <label htmlFor="dicomweb-endpoint" className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+            <label htmlFor="dicomweb-endpoint" className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
               DICOMweb endpoint
             </label>
             <div className="flex gap-2">
@@ -126,7 +166,7 @@ export default function Settings() {
                 id="dicomweb-endpoint"
                 value={endpoint}
                 onChange={(event) => setEndpoint(event.target.value)}
-                className="h-8 min-w-0 flex-1 rounded border border-[#3a3a3a] bg-[#111] px-2 font-mono text-[11px] text-[#e5e5e5] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="h-8 min-w-0 flex-1 rounded border border-[var(--color-border-input)] bg-[var(--color-header)] px-2 font-mono text-[11px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="/dicom-web"
               />
               <button
@@ -139,28 +179,28 @@ export default function Settings() {
               <button
                 type="button"
                 onClick={onResetEndpoint}
-                className="h-8 rounded bg-[#242424] px-3 text-[11px] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="h-8 rounded bg-[var(--color-elevated)] px-3 text-[11px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 Reset
               </button>
             </div>
-            <p className="text-[10px] text-[#6b6b6b]">
+            <p className="text-[10px] text-[var(--color-text-muted)]">
               Default: <span className="font-mono">{getDefaultDicomWebBaseUrl()}</span>
             </p>
           </div>
         </section>
 
-        <section className="border border-[#2a2a2a] bg-[#1a1a1a]">
-          <div className="border-b border-[#2a2a2a] px-3 py-2">
-            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[#a0a0a0]">
+        <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
+          <div className="border-b border-[var(--color-border)] px-3 py-2">
+            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
               Import DICOM Data
             </h2>
-            <p className="mt-1 text-[11px] text-[#6b6b6b]">
+            <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
               Import local DICOM files into the configured repository for development and review workflows.
             </p>
           </div>
           <div className="px-3 py-3">
-            <label className="inline-flex h-8 cursor-pointer items-center rounded bg-[#242424] px-3 text-[11px] text-[#e5e5e5] hover:bg-[#2e2e2e]">
+            <label className="inline-flex h-8 cursor-pointer items-center rounded bg-[var(--color-elevated)] px-3 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-hover)]">
               {isImporting ? 'Importing...' : 'Import DICOM Files'}
               <input
                 type="file"
@@ -174,21 +214,21 @@ export default function Settings() {
           </div>
         </section>
 
-        <section className="border border-[#2a2a2a] bg-[#1a1a1a]">
-          <div className="border-b border-[#2a2a2a] px-3 py-2">
+        <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
+          <div className="border-b border-[var(--color-border)] px-3 py-2">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[#a0a0a0]">
+                <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
                   QA Rules
                 </h2>
-                <p className="mt-1 text-[11px] text-[#6b6b6b]">
+                <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
                   Enable or disable contour and RTSS QA checks for this browser. Changes apply to the review workspace immediately after returning.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={onResetQaRules}
-                className="h-8 rounded bg-[#242424] px-3 text-[11px] text-[#a0a0a0] hover:bg-[#2e2e2e] hover:text-[#e5e5e5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="h-8 rounded bg-[var(--color-elevated)] px-3 text-[11px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 Reset QA Rules
               </button>
@@ -199,23 +239,23 @@ export default function Settings() {
               { label: 'Contour QA', rules: contourRules },
               { label: 'RTSS QA', rules: rtssRules },
             ].map((section) => (
-              <section key={section.label} className="border border-[#2a2a2a] bg-[#171717]">
-                <div className="border-b border-[#2a2a2a] px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b6b]">
+              <section key={section.label} className="border border-[var(--color-border)] bg-[var(--color-surface)]">
+                <div className="border-b border-[var(--color-border)] px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
                   {section.label}
                 </div>
                 <div>
                   {section.rules.map((rule) => (
                     <label
                       key={rule.id}
-                      className="grid grid-cols-[1fr_auto] gap-3 border-b border-[#2a2a2a] px-2 py-2 last:border-b-0"
+                      className="grid grid-cols-[1fr_auto] gap-3 border-b border-[var(--color-border)] px-2 py-2 last:border-b-0"
                     >
                       <span>
-                        <span className="block text-[11px] font-semibold text-[#e5e5e5]">{rule.label}</span>
-                        <span className="mt-0.5 block text-[10px] text-[#6b6b6b]">{rule.description}</span>
+                        <span className="block text-[11px] font-semibold text-[var(--color-text)]">{rule.label}</span>
+                        <span className="mt-0.5 block text-[10px] text-[var(--color-text-muted)]">{rule.description}</span>
                       </span>
                       <span className="flex items-center gap-2">
                         <span className={`text-[9px] uppercase tracking-widest ${
-                          rule.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[#6b6b6b]'
+                          rule.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[var(--color-text-muted)]'
                         }`}>
                           {rule.severity}
                         </span>
@@ -233,15 +273,15 @@ export default function Settings() {
               </section>
             ))}
           </div>
-          <div className="border-t border-[#2a2a2a] bg-[#171717] px-3 py-2">
-            <p className="text-[10px] text-[#6b6b6b]">
+          <div className="border-t border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+            <p className="text-[10px] text-[var(--color-text-muted)]">
               Custom user-authored QA rules are not implemented yet. When added, they should target a constrained rule schema rather than arbitrary scripting.
             </p>
           </div>
         </section>
 
         {status && (
-          <p className={`text-[11px] ${status.tone === 'error' ? 'text-red-400' : 'text-[#a0a0a0]'}`}>
+          <p className={`text-[11px] ${status.tone === 'error' ? 'text-red-400' : 'text-[var(--color-text-sec)]'}`}>
             {status.message}
           </p>
         )}
