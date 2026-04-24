@@ -155,13 +155,13 @@ different ports to avoid conflicting with the local dev server:
 
 | | Dev server | Deployed build |
 |--|------------|----------------|
-| Frontend | `http://127.0.0.1:3000` | `http://<workstation-ip>:3001` |
-| API | `http://127.0.0.1:4000` | `http://<workstation-ip>:4001` |
+| Frontend | `http://127.0.0.1:3000` | `http://AP-vS9RB5xoet8i.int.elekta.com:3001` |
+| API | `http://127.0.0.1:4000` | `http://AP-vS9RB5xoet8i.int.elekta.com:4001` |
 | Orthanc | `http://127.0.0.1:8042` | `http://127.0.0.1:8042` (shared) |
 
-Both can run simultaneously. The deployed build binds on `0.0.0.0` — anyone on
-the same network can reach it at the workstation's IP (`ipconfig` to find it).
-See [`docs/local_development.md`](docs/local_development.md) for PM2 setup and
+Both can run simultaneously. Anyone on the Elekta network can reach the
+deployed build at `AP-vS9RB5xoet8i.int.elekta.com`. See
+[`docs/local_development.md`](docs/local_development.md) for PM2 setup and
 first-time deploy instructions.
 
 ## Testing
