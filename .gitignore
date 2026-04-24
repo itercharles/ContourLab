@@ -45,5 +45,8 @@ Thumbs.db
 # Vite
 *.local
 
+# Claude Code local settings (may contain secrets)
+.claude/settings.local.json
+
 # Turbo
 .turbo/
