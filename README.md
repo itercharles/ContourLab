@@ -32,23 +32,33 @@ WebTPS/
 
 ### Prerequisites
 
-- Node.js 20 or newer
-- pnpm 9 or newer
-- .NET SDK 10
-- Docker Desktop or Docker Engine with Docker Compose support
-- macOS, Linux, or Windows 10/11 with PowerShell
+- **Node.js 20+** — check with `node --version`. If you use a version manager
+  (`nvm`, `fnm`, or `volta`), run `nvm install 20 && nvm use 20` (or equivalent)
+  before proceeding.
+- **pnpm 9+** — check with `pnpm --version`. Install via Corepack if missing:
+  ```bash
+  corepack enable
+  corepack prepare pnpm@latest --activate
+  ```
+- **.NET SDK 10** — required for the API (`apps/api`). Download from
+  [dot.net](https://dot.net).
+- **Docker Desktop or Docker Engine with Compose** — required to run the local
+  Orthanc DICOM repository.
 
-If pnpm is not installed, enable it through Corepack:
+On Windows, install Docker Desktop with the **WSL2 backend** enabled and ensure
+it is running before executing setup or start commands. Run all commands from
+PowerShell, Windows Terminal, or a WSL shell.
 
-```bash
-corepack enable
-corepack prepare pnpm@latest --activate
-```
+Required local ports: `3000` (frontend), `4000` (API), `8042` (Orthanc).
 
-On Windows, install Docker Desktop with the WSL2 backend enabled. Run the
-commands from PowerShell, Windows Terminal, or a WSL shell. Docker Desktop must
-be running before starting the local DICOM repository. Ports `3000`, `4000`, and
-`8042` must be available.
+> **Frontend-only mode:** If you only need the React client (no DICOM repository
+> or API), you can skip the .NET SDK and Docker requirements entirely:
+> ```bash
+> pnpm install
+> pnpm dev
+> ```
+> The app opens at `http://localhost:3000/workspace` and supports local file-drop
+> loading of DICOM files without any backend services.
 
 ### One-Time Setup
 
@@ -56,8 +66,8 @@ be running before starting the local DICOM repository. Ports `3000`, `4000`, and
 pnpm local:setup
 ```
 
-This installs JavaScript dependencies, restores the ASP.NET API, checks Docker,
-and starts the local Orthanc DICOM repository.
+Installs JavaScript dependencies, restores the ASP.NET API, checks Docker, and
+starts the local Orthanc DICOM repository.
 
 ### Start The Full Local Environment
 
@@ -65,15 +75,17 @@ and starts the local Orthanc DICOM repository.
 pnpm local:up
 ```
 
-This starts or verifies the complete development stack:
+Starts or verifies the complete development stack:
 
-- Frontend: `http://127.0.0.1:3000/workspace`
-- API: `http://127.0.0.1:4000/api/health`
-- Orthanc: `http://127.0.0.1:8042`
-- DICOMweb through the frontend proxy: `http://127.0.0.1:3000/dicom-web`
+| Service | URL |
+|---------|-----|
+| Frontend | `http://127.0.0.1:3000/workspace` |
+| API | `http://127.0.0.1:4000/api/health` |
+| Orthanc DICOM repo | `http://127.0.0.1:8042` |
+| DICOMweb (via proxy) | `http://127.0.0.1:3000/dicom-web` |
 
-Press `Ctrl+C` to stop API/frontend processes started by `local:up`. Orthanc
-keeps running with persisted Docker volume data.
+Press `Ctrl+C` to stop API/frontend processes. Orthanc keeps running with
+persisted Docker volume data.
 
 ### Check The Local Environment
 
@@ -81,8 +93,8 @@ keeps running with persisted Docker volume data.
 pnpm local:doctor
 ```
 
-This checks required commands, Docker daemon access, local ports, and HTTP
-health endpoints.
+Checks required commands, Docker daemon access, local ports, and HTTP health
+endpoints.
 
 ### Stop The Local Repository
 
@@ -90,8 +102,8 @@ health endpoints.
 pnpm local:down
 ```
 
-This stops Docker Compose services. Orthanc data remains in the Docker volume
-unless the volume is explicitly deleted.
+Stops Docker Compose services. Orthanc data remains in the Docker volume unless
+the volume is explicitly deleted.
 
 ### Manual Development Commands
 
@@ -101,12 +113,38 @@ pnpm dev          # frontend only at http://localhost:3000
 pnpm api          # API only at http://localhost:4000
 pnpm repo:up      # Orthanc DICOM repo only at http://localhost:8042
 pnpm repo:down    # stop Orthanc
+pnpm repo:logs    # stream Orthanc container logs
 ```
 
-The Vite dev server proxies `/api` to port `4000` and `/dicom-web` to the local
-Orthanc repository on port `8042`. Use the repository panel in the app to import
-DICOM instances into Orthanc for development, then query and load series from
-the repository.
+The Vite dev server proxies `/api` → port `4000` and `/dicom-web` → port `8042`.
+No `.env` file is required — all defaults work out of the box.
+
+### Importing DICOM Data
+
+The Orthanc repository ships with **no authentication** (open for local
+development). Its web UI at `http://127.0.0.1:8042` requires no login.
+
+To load DICOM data for development, import it through the WebTPS UI:
+
+1. Open `http://127.0.0.1:3000/workspace`.
+2. Click the **patient folder icon** in the left toolbar (or press the Navigator
+   button) to open the Repository panel.
+3. Click **"Open patient browser"** at the top of the panel, then click
+   **"+ Import DICOM"** in the modal header.
+4. Select a folder of `.dcm` files — the browser will recurse into
+   subdirectories automatically.
+5. After import completes, click **Refresh** (or wait for the auto-poll) and
+   the new studies appear in the patient list.
+
+Alternatively, import via **Settings → Import DICOM Data** (useful for bulk
+initial loads). DICOM data persists in a named Docker volume across restarts;
+run `pnpm repo:down && docker volume rm webtps_orthanc-db` to wipe it.
+
+Sample DICOM datasets for testing are available from:
+- [TCIA (The Cancer Imaging Archive)](https://www.cancerimagingarchive.net/) —
+  free public CT datasets
+- [OsiriX sample DICOM files](https://www.osirix-viewer.com/resources/dicom-image-library/) —
+  small pre-packaged studies
 
 More detail: [`docs/local_development.md`](docs/local_development.md).
 
