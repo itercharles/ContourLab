@@ -28,9 +28,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Add npm global bin to PATH
-        run: |
-          $npmGlobal = npm prefix -g
-          echo $npmGlobal | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        run: echo "$env:APPDATA\npm" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         shell: pwsh
 
       - name: Install JS dependencies
