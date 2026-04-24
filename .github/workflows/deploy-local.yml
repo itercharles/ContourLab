@@ -27,6 +27,10 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
+      - name: Install pm2
+        run: |
+          npm install -g pm2
+
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
 
