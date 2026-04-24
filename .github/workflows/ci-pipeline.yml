@@ -13,7 +13,7 @@ permissions:
 jobs:
   phase1-frontend:
     name: Phase 1 - Frontend
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
 
   phase2-api:
     name: Phase 2 - API
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
 
   phase3-shared-types:
     name: Phase 3 - Shared Types
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -91,7 +91,7 @@ jobs:
 
   phase4-integration-smoke:
     name: Phase 4 - Integration Smoke
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs:
       - phase1-frontend
       - phase2-api
@@ -126,10 +126,12 @@ jobs:
         run: pnpm repo:up
 
       - name: Start API
-        run: pnpm api > /tmp/webtps-api.log 2>&1 &
+        run: pnpm api > "$RUNNER_TEMP/webtps-api.log" 2>&1 &
+        shell: bash
 
       - name: Start frontend
-        run: pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
+        run: pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > "$RUNNER_TEMP/webtps-client.log" 2>&1 &
+        shell: bash
 
       - name: Verify local environment
         run: pnpm local:doctor
@@ -139,14 +141,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: webtps-api-log
-          path: /tmp/webtps-api.log
+          path: ${{ runner.temp }}/webtps-api.log
 
       - name: Upload frontend log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: webtps-client-log
-          path: /tmp/webtps-client.log
+          path: ${{ runner.temp }}/webtps-client.log
 
       - name: Stop local services
         if: always()
