@@ -131,6 +131,21 @@ jobs:
       - name: Start frontend
         run: pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
 
+      - name: Wait for API and frontend
+        run: |
+          for i in $(seq 1 30); do
+            api_ok=false
+            fe_ok=false
+            curl -sf http://127.0.0.1:4000/api/health > /dev/null 2>&1 && api_ok=true
+            curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1 && fe_ok=true
+            if $api_ok && $fe_ok; then
+              echo "API and frontend are ready"
+              break
+            fi
+            echo "Waiting for services... ($i/30) api=$api_ok frontend=$fe_ok"
+            sleep 3
+          done
+
       - name: Verify local environment
         run: pnpm local:doctor
 
