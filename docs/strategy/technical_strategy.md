@@ -75,8 +75,8 @@ Recommended next DevOps milestones after the current baseline:
 ## Testing Strategy
 
 Testing exists to protect clinical workflow reliability and satisfy IEC 62304 software verification
-requirements. There are two fundamentally different classes of tests with different purposes,
-audiences, and artifact obligations.
+and validation requirements. There are two fundamentally different classes of tests with different
+purposes, audiences, and artifact obligations.
 
 ---
 
@@ -132,27 +132,65 @@ executed in a documented environment, and retained as audit evidence.
   Requirement Specification (SYS) items
 - Corresponds to IEC 62304 §5.7 (software system testing) and IEC 82304-1 §6.2
 - DHF item type: `SWTEST`, linked to one or more `SYS-xxx` items
-- May be automated or manual; manual tests require `verified_by` and `verification_date`
+- Automated via Playwright browser tests against a running full stack
+
+**Test-CRS — Customer Requirement Validation**
+- Validates that the system satisfies Customer Requirement Specification (CRS) items and Use Cases
+  (UC) as experienced by the clinical user
+- Corresponds to IEC 62304 §5.8 (software system validation) and IEC 82304-1 §6.3
+- DHF item type: `SWTEST`, linked to one or more `CRS-xxx` or `UC-xxx` items
+- Implemented as Playwright end-to-end tests that drive the browser through complete clinical
+  workflows (e.g. patient select → image load → contour edit → structure export)
+- Test environment must record browser version, OS, and stack versions — these represent the
+  validated configuration for the release
+
+The distinction between Test-SYS and Test-CRS is one of perspective: Test-SYS checks that a
+technical system requirement is met; Test-CRS checks that a clinical user need is satisfied
+end-to-end through the actual UI.
+
+#### Browser Automation Tooling
+
+Playwright is the preferred tool for Test-SYS and Test-CRS:
+
+- Full control of Chromium/Firefox/WebKit — matches real clinical browser environments
+- Native support for WebSockets (required for real-time DICOM streaming and viewport sync)
+- Built-in video recording and trace capture for audit evidence
+- JUnit XML reporter (`@playwright/test` built-in) feeds directly into the DHF artifact pipeline
+- TypeScript-native — consistent with the rest of the stack
+
+Test files live at `apps/client/e2e/` and are excluded from the Vitest unit test run.
+
+```typescript
+// apps/client/e2e/contour-workflow.spec.ts
+test('load CT and create structure set @links:CRS-003,UC-007', async ({ page }) => {
+  await page.goto('/workspace')
+  // ... drive the clinical workflow
+})
+```
+
+CI runs Playwright tests after the integration smoke phase, against the full stack
+(`frontend + API + Orthanc`). Playwright's built-in JUnit reporter writes to
+`test-results/e2e-junit.xml`, uploaded as a separate `e2e-junit` artifact.
 
 #### Required Record Fields
 
-Each verification test execution record must include:
+Each verification/validation test execution record must include:
 
 | Field | Description |
 |---|---|
 | `test_id` | Stable identifier (e.g. `SWTEST-001`) |
-| `linked_requirements` | One or more `SRS-xxx` or `SYS-xxx` IDs |
-| `test_name` | Human-readable description of what is being verified |
-| `test_environment` | OS, browser/runtime, Node/dotnet version, key dependency versions |
-| `run_id` | CI run identifier or manual session ID |
+| `linked_requirements` | One or more `SRS-xxx`, `SYS-xxx`, `CRS-xxx`, or `UC-xxx` IDs |
+| `test_name` | Human-readable description of what is being verified or validated |
+| `test_environment` | OS, browser name+version, Node/dotnet version, key dependency versions |
+| `run_id` | CI run identifier |
 | `run_date` | ISO 8601 date of execution |
 | `result` | `PASS`, `FAIL`, or `BLOCKED` |
-| `tester` | CI system name or person name for manual tests |
+| `tester` | CI system name |
 | `notes` | Optional — deviations, known limitations, workarounds |
 
 #### Annotation Syntax
 
-Automated tests are linked to requirements via `@links` annotations in the test name:
+**Vitest (Test-SRS):** `@links` annotations in test/describe names, extracted by `verification-reporter`:
 
 ```typescript
 describe('dose normalization @links:SRS-012', () => {
@@ -160,26 +198,35 @@ describe('dose normalization @links:SRS-012', () => {
 })
 ```
 
-The `verification-reporter` extracts these annotations and emits a JUnit XML with
-`compliantflow.links` properties. Only annotated tests appear in the verification artifact.
+**Playwright (Test-SYS, Test-CRS):** `@links` annotations in test titles, extracted by a custom
+Playwright reporter (same convention, different runner):
+
+```typescript
+test('contour roundtrip @links:SYS-004,CRS-003', async ({ page }) => { ... })
+```
 
 #### Artifacts and Traceability
 
-Verification test results feed into the traceability chain:
+Verification and validation test results feed into the full traceability chain:
 
 ```
-SYS → SRS → SWDD → SWTEST (execution records)
+UC → CRS → SYS → SRS → SWDD
+              ↓     ↓
+           SWTEST (execution records, linked per level)
 ```
 
-- CI uploads `frontend-junit` artifact (JUnit XML) on every run
-- DHF traceability report (`dhf-traceability-report`) includes test coverage on main
-- Uncovered SRS or SYS items — those with no linked passing SWTEST record — are flagged
-  in the traceability check
+| Artifact | Content | Trigger |
+|---|---|---|
+| `frontend-junit` | Vitest Test-SRS results (JUnit XML) | PR + push |
+| `e2e-junit` | Playwright Test-SYS + Test-CRS results (JUnit XML) | main only |
+| `dhf-traceability-report` | Full traceability JSON incl. test coverage | main only |
 
-#### Adding a New Verification Test
+Uncovered items at any level — SRS, SYS, CRS, or UC — are flagged in the traceability check.
+
+#### Adding a New Verification or Validation Test
 
 1. Create a `SWTEST-xxx` item in WebTPS-DHF with `linked_requirements`, `test_name`,
-   `test_environment`, and initial `status: draft`
-2. Implement the test with `@links:SRS-xxx` or `@links:SYS-xxx` annotation
+   `test_environment`, and `status: draft`
+2. Implement the test with the appropriate `@links:XXX-nnn` annotation
 3. On CI pass, transition `SWTEST-xxx` to `verified`
-4. Traceability check will now show the requirement as covered
+4. Traceability check will now show the linked requirement as covered
