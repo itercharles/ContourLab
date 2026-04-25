@@ -160,7 +160,7 @@ describe('dose normalization @links:SRS-012', () => {
 })
 ```
 
-The `compliantflow-reporter` extracts these annotations and emits a JUnit XML with
+The `verification-reporter` extracts these annotations and emits a JUnit XML with
 `compliantflow.links` properties. Only annotated tests appear in the verification artifact.
 
 #### Artifacts and Traceability

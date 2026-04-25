@@ -60,7 +60,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    reporters: ['default', './compliantflow-reporter.ts'],
+    reporters: ['default', './verification-reporter.ts'],
   },
   plugins: [react()],
   worker: {

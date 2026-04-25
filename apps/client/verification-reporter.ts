@@ -1,7 +1,6 @@
 /**
- * Vitest reporter that extracts @links:SRS-xxx annotations from test/suite names
- * and emits a JUnit XML with compliantflow.links properties so CompliantFlow can
- * reconcile test results against DHF SRS items.
+ * Vitest reporter that extracts @links:SRS-xxx / @links:SYS-xxx annotations from
+ * test/suite names and emits a JUnit XML for DHF verification test evidence.
  *
  * Annotation syntax (anywhere in describe/it name):
  *   describe('inferTypeFromName @links:SRS-005', () => { ... })
@@ -69,11 +68,11 @@ function collectTests(tasks: any[], classname: string, parentLinks: string[], ou
   }
 }
 
-export default class CompliantFlowReporter implements Reporter {
+export default class VerificationReporter implements Reporter {
   private outputFile: string
 
   constructor(options: { outputFile?: string } = {}) {
-    this.outputFile = options.outputFile ?? 'test-results/compliantflow-junit.xml'
+    this.outputFile = options.outputFile ?? 'test-results/verification-junit.xml'
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -95,7 +94,7 @@ export default class CompliantFlowReporter implements Reporter {
     const lines: string[] = [
       '<?xml version="1.0" encoding="UTF-8"?>',
       `<testsuites tests="${linked.length}" failures="${failures}" skipped="${skipped}" time="${totalSec}">`,
-      `  <testsuite name="compliantflow-linked" tests="${linked.length}" failures="${failures}" skipped="${skipped}" time="${totalSec}">`,
+      `  <testsuite name="dhf-verification" tests="${linked.length}" failures="${failures}" skipped="${skipped}" time="${totalSec}">`,
     ]
 
     for (const e of linked) {
@@ -103,7 +102,7 @@ export default class CompliantFlowReporter implements Reporter {
       lines.push(
         `    <testcase name="${escapeXml(e.name)}" classname="${escapeXml(e.classname)}" time="${dur}">`,
         `      <properties>`,
-        `        <property name="compliantflow.links" value="${e.links.join(',')}"/>`,
+        `        <property name="dhf.links" value="${e.links.join(',')}"/>`,
         `      </properties>`,
       )
       if (e.status === 'fail') {

@@ -144,8 +144,8 @@ function About() {
             Compliance Standards
           </h2>
           <p className="text-sm text-gray-600 mb-4">
-            WebTPS is developed under a CompliantFlow-managed Design History File,
-            enforcing traceability and compliance with medical device software
+            WebTPS is developed under a Design History File (DHF) with full
+            requirements traceability and compliance with medical device software
             standards.
           </p>
           <div className="flex flex-wrap gap-3">

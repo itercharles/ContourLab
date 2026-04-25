@@ -4,13 +4,12 @@ Web-based Treatment Planning System for radiation therapy.
 
 ## Repositories
 
-This project uses three repositories:
+This project uses two repositories:
 
 | Repo | Purpose |
 |------|---------|
-| **WebTPS** (this repo) | Application code — React frontend, Node.js API, Python compute |
+| **WebTPS** (this repo) | Application code — React frontend, ASP.NET Core API |
 | **WebTPS-DHF** | Design History File — requirements, risks, change requests, test evidence |
-| **CompliantFlow** | Compliance analysis engine (Docker service used in CI) |
 
 ## Repository Layout
 

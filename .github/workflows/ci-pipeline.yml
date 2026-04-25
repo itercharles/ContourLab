@@ -46,7 +46,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-junit
-          path: apps/client/test-results/compliantflow-junit.xml
+          path: apps/client/test-results/verification-junit.xml
           if-no-files-found: ignore
 
       - name: Build
