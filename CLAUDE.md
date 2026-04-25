@@ -96,10 +96,25 @@ pushing, ask the user whether to open a PR or merge locally — do not decide un
 
 ## CI Phases
 
-1. Frontend: lint + typecheck + test + build
-2. API: restore + build
-3. Shared types: typecheck + build
-4. Integration: `pnpm local:doctor` smoke check
+**Development Testing** (parallel)
+- `dev-frontend` — lint · typecheck · build
+- `dev-api` — restore · build
+- `dev-shared-types` — typecheck · build
+- `dev-integration` — full stack startup · `pnpm local:doctor` smoke check
+
+**Verification Testing** (parallel, after dev builds pass)
+- `verify-srs` — Vitest with `@links` annotations → `verify-srs-junit` artifact (IEC 62304 §5.5–5.6)
+- `verify-sys` — Playwright system tests → `verify-sys-junit` artifact (IEC 62304 §5.7)
+
+**Validation Testing** (parallel, after dev builds pass)
+- `validate-crs` — Playwright clinical workflow tests → `validate-crs-junit` artifact (IEC 62304 §5.8)
+
+**Compliance Check** (after all testing passes — final gate for PRs)
+- `compliance` — IEC 62304 · IEC 82304-1 checks
+
+**Artifacts + Deploy** (main branch only, after compliance)
+- `generate-artifacts` — spec PDFs · test reports · traceability report
+- `deploy` — application deployment
 
 ## Design Rules
 
