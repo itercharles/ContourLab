@@ -63,6 +63,25 @@ jobs:
         if: steps.ctx.outputs.mode != 'cancel'
         run: npm install -g @anthropic-ai/claude-code
 
+      - name: Transition CR to implementing in DHF
+        if: steps.ctx.outputs.mode == 'new'
+        env:
+          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          CR_ID: ${{ steps.ctx.outputs.cr_id }}
+        run: |
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/itercharles/WebTPS-DHF.git" /tmp/dhf-repo
+          cd /tmp/dhf-repo
+          pip install click jinja2 markdown pydantic PyYAML gitpython -q
+          export PYTHONPATH="${PYTHONPATH}:${PWD}:${PWD}/DHF"
+          python -m utils item transition "$CR_ID" implementing --by "github-actions[bot]"
+          git config user.name "GitHub Actions [bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add DHF/items/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: transition $CR_ID to implementing [skip ci]"
+            git push
+          fi
+
       - name: Download CR spec from DHF
         if: steps.ctx.outputs.mode == 'new'
         env:
