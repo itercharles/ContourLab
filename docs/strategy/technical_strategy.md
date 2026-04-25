@@ -71,3 +71,21 @@ Recommended next DevOps milestones after the current baseline:
 - release checklist automation
 - service log aggregation / observability
 - backup / restore strategy for repository-backed test environments
+
+## Testing Strategy
+
+Testing exists to protect clinical workflow reliability, not to maximize test count.
+
+**Test layers:**
+
+1. Unit / component tests — pure logic and isolated UI behavior; every functional change touches this layer first
+2. Workspace validation — lint, typecheck, build per workspace; enforced in CI
+3. Integration smoke — runnable stack verification via `pnpm local:doctor`
+4. Workflow regression — repeatable coverage of high-value end-to-end paths (patient select → image load → RTSS load, contour edit → push, RTSTRUCT compare)
+
+**Guardrails:**
+
+- do not rely solely on manual testing for workflow changes
+- tests assert behavior, not implementation trivia
+- no flaky integration checks without deterministic setup
+- validation claims must name the commands actually run
