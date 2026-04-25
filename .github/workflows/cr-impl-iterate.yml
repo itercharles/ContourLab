@@ -1,0 +1,52 @@
+name: Iterate CR Implementation
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  iterate:
+    if: >
+      github.event.review.state == 'changes_requested' &&
+      startsWith(github.event.pull_request.head.ref, 'feat/CR-')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Collect review feedback
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/comments" > /tmp/review-comments.json
+          gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" > /tmp/reviews.json
+
+      - name: Revise implementation from feedback
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: claude-haiku-4-5-20251001
+        run: |
+          claude -p --dangerously-skip-permissions             "Revise the implementation on this branch based on the pull request review feedback in /tmp/review-comments.json and /tmp/reviews.json. Apply only the changes requested in the feedback."
+
+      - name: Commit revised implementation
+        run: |
+          git config user.name "GitHub Actions [bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --staged --quiet; then
+            git commit -m "fix: revise implementation from review feedback"
+            git push
+          fi
