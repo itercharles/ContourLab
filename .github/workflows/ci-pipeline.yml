@@ -11,166 +11,272 @@ permissions:
   actions: read
 
 jobs:
-  phase1-frontend:
-    name: Phase 1 - Frontend
+
+  # ── DEVELOPMENT TESTING ────────────────────────────────────────────────────
+  # Static analysis and compilation. Engineering feedback only — not compliance
+  # artifacts. All three jobs run in parallel.
+
+  dev-frontend:
+    name: Dev | Frontend (lint · typecheck · build)
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 9
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @webtps/client lint
+      - run: pnpm --filter @webtps/client typecheck
+      - run: pnpm --filter @webtps/client build
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+  dev-api:
+    name: Dev | API (restore · build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore apps/api/api.csproj
+      - run: dotnet build apps/api/api.csproj --configuration Release --no-restore
 
-      - name: Lint
-        run: pnpm --filter @webtps/client lint
+  dev-shared-types:
+    name: Dev | Shared Types (typecheck · build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @webtps/shared-types typecheck
+      - run: pnpm --filter @webtps/shared-types build
 
-      - name: Typecheck
-        run: pnpm --filter @webtps/client typecheck
+  dev-integration:
+    name: Dev | Integration Smoke (full stack · health check)
+    runs-on: ubuntu-latest
+    needs: [dev-frontend, dev-api, dev-shared-types]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: pnpm install --frozen-lockfile
+      - run: dotnet restore apps/api/api.csproj
+      - name: Start DICOM repository
+        run: pnpm repo:up
+      - name: Start API
+        run: pnpm api > /tmp/webtps-api.log 2>&1 &
+      - name: Start frontend
+        run: pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
+      - name: Wait for services
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4000/api/health > /dev/null 2>&1 && \
+            curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1 && \
+            echo "Services ready" && break
+            echo "Waiting... ($i/30)"
+            sleep 3
+          done
+      - name: Smoke check
+        run: pnpm local:doctor
+      - name: Stop services
+        if: always()
+        run: pnpm local:down
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-integration-logs
+          path: |
+            /tmp/webtps-api.log
+            /tmp/webtps-client.log
 
-      - name: Test
+  # ── VERIFICATION TESTING ───────────────────────────────────────────────────
+  # IEC 62304 §5.5–5.7. Formal evidence that software units and the integrated
+  # system satisfy their specified requirements. Results are DHF artifacts.
+  # Runs in parallel with validation testing, after dev builds pass.
+
+  verify-srs:
+    name: Verify | Test-SRS (Vitest · software requirements)
+    runs-on: ubuntu-latest
+    needs: [dev-frontend, dev-shared-types]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Run SRS verification tests
         run: pnpm --filter @webtps/client test
-
-      - name: Upload compliance test evidence
+      - name: Upload SRS test evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-junit
+          name: verify-srs-junit
           path: apps/client/test-results/verification-junit.xml
           if-no-files-found: ignore
 
-      - name: Build
-        run: pnpm --filter @webtps/client build
-
-  phase2-api:
-    name: Phase 2 - API
+  verify-sys:
+    name: Verify | Test-SYS (Playwright · system requirements)
     runs-on: ubuntu-latest
+    needs: [dev-frontend, dev-api, dev-shared-types]
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Restore API
-        run: dotnet restore apps/api/api.csproj
-
-      - name: Build API
-        run: dotnet build apps/api/api.csproj --configuration Release --no-restore
-
-  phase3-shared-types:
-    name: Phase 3 - Shared Types
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 9
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Typecheck shared types
-        run: pnpm --filter @webtps/shared-types typecheck
-
-      - name: Build shared types
-        run: pnpm --filter @webtps/shared-types build
-
-  phase4-integration-smoke:
-    name: Phase 4 - Integration Smoke
-    runs-on: ubuntu-latest
-    needs:
-      - phase1-frontend
-      - phase2-api
-      - phase3-shared-types
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Restore API
-        run: dotnet restore apps/api/api.csproj
-
-      - name: Start DICOM repository
-        run: pnpm repo:up
-
-      - name: Start API
-        run: pnpm api > /tmp/webtps-api.log 2>&1 &
-
-      - name: Start frontend
-        run: pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
-
-      - name: Wait for API and frontend
+      - run: pnpm install --frozen-lockfile
+      - run: dotnet restore apps/api/api.csproj
+      - name: Start full stack
         run: |
+          pnpm repo:up
+          pnpm api > /tmp/webtps-api.log 2>&1 &
+          pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
           for i in $(seq 1 30); do
-            api_ok=false
-            fe_ok=false
-            curl -sf http://127.0.0.1:4000/api/health > /dev/null 2>&1 && api_ok=true
-            curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1 && fe_ok=true
-            if $api_ok && $fe_ok; then
-              echo "API and frontend are ready"
-              break
-            fi
-            echo "Waiting for services... ($i/30) api=$api_ok frontend=$fe_ok"
+            curl -sf http://127.0.0.1:4000/api/health > /dev/null 2>&1 && \
+            curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1 && break
             sleep 3
           done
-
-      - name: Verify local environment
-        run: pnpm local:doctor
-
-      - name: Upload API log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: webtps-api-log
-          path: /tmp/webtps-api.log
-
-      - name: Upload frontend log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: webtps-client-log
-          path: /tmp/webtps-client.log
-
-      - name: Stop local services
+      - name: Run SYS verification tests
+        run: echo "Test-SYS — Playwright not yet configured"
+      - name: Stop services
         if: always()
         run: pnpm local:down
+      - name: Upload SYS test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-sys-junit
+          path: apps/client/test-results/e2e-sys-junit.xml
+          if-no-files-found: ignore
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-sys-logs
+          path: |
+            /tmp/webtps-api.log
+            /tmp/webtps-client.log
+
+  # ── VALIDATION TESTING ─────────────────────────────────────────────────────
+  # IEC 62304 §5.8. Evidence that the system satisfies customer requirements
+  # and use cases as experienced through the clinical UI. Playwright drives the
+  # browser through complete clinical workflows. Runs in parallel with
+  # verification testing, after dev builds pass.
+
+  validate-crs:
+    name: Validate | Test-CRS (Playwright · clinical workflows)
+    runs-on: ubuntu-latest
+    needs: [dev-frontend, dev-api, dev-shared-types]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: pnpm install --frozen-lockfile
+      - run: dotnet restore apps/api/api.csproj
+      - name: Start full stack
+        run: |
+          pnpm repo:up
+          pnpm api > /tmp/webtps-api.log 2>&1 &
+          pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4000/api/health > /dev/null 2>&1 && \
+            curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1 && break
+            sleep 3
+          done
+      - name: Run CRS validation tests
+        run: echo "Test-CRS — Playwright not yet configured"
+      - name: Stop services
+        if: always()
+        run: pnpm local:down
+      - name: Upload CRS test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-crs-junit
+          path: apps/client/test-results/e2e-crs-junit.xml
+          if-no-files-found: ignore
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-crs-logs
+          path: |
+            /tmp/webtps-api.log
+            /tmp/webtps-client.log
+
+  # ── COMPLIANCE CHECK ───────────────────────────────────────────────────────
+  # Runs after all development, verification, and validation phases pass.
+  # On PR: this is the final gate. On main: continues to artifact generation
+  # and deployment.
+
+  compliance:
+    name: Compliance Check (IEC 62304 · IEC 82304-1)
+    runs-on: ubuntu-latest
+    needs: [dev-integration, verify-srs, verify-sys, validate-crs]
+    steps:
+      - uses: actions/checkout@v4
+      - name: IEC 62304 compliance check
+        run: echo "IEC 62304 compliance check — placeholder"
+      - name: IEC 82304-1 compliance check
+        run: echo "IEC 82304-1 compliance check — placeholder"
+
+  # ── ARTIFACTS + DEPLOY (main only) ────────────────────────────────────────
+  # After compliance passes on main: generate all DHF documents (spec PDFs,
+  # test reports, traceability report) and deploy the application.
+  # These run in parallel with each other.
+
+  generate-artifacts:
+    name: Generate Artifacts (spec PDFs · test reports · traceability)
+    runs-on: ubuntu-latest
+    needs: [compliance]
+    if: github.ref == 'refs/heads/main' && !failure() && !cancelled()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger DHF artifact generation
+        run: echo "DHF artifact generation — coordinated via WebTPS-DHF CI"
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: [compliance]
+    if: github.ref == 'refs/heads/main' && !failure() && !cancelled()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy application
+        run: echo "Deploy — placeholder"
