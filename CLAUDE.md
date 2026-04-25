@@ -50,7 +50,7 @@ pnpm -r build                             # build all workspaces
 1. `packages/shared-types/src/index.ts` — canonical data model
 2. `WebTPS-DHF/DHF/documents/specs/architecture_specification.md.j2` — architecture baseline (software items, goals, data flow, evolution rules)
 3. `WebTPS-DHF/DHF/documents/specs/crs_specification.md.j2` — product direction, roadmap, user priorities, guardrails
-4. `docs/strategy/technical_strategy.md` — technical direction and testing strategy
+4. `WebTPS-DHF/DHF/documents/plans/development_plan.md` — technical direction, testing strategy, DevOps
 5. `.github/workflows/ci-pipeline.yml` — enforced acceptance path
 
 ## Change Workflow

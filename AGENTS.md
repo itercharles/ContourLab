@@ -8,7 +8,7 @@ Shared repository guidance lives in:
 - [`WebTPS-DHF/DHF/documents/specs/architecture_specification.md.j2`](../WebTPS-DHF/DHF/documents/specs/architecture_specification.md.j2)
 - [`WebTPS-DHF/DHF/documents/specs/crs_specification.md.j2`](../WebTPS-DHF/DHF/documents/specs/crs_specification.md.j2)
 - [`docs/strategy/product_roadmap.md`](docs/strategy/product_roadmap.md)
-- [`docs/strategy/technical_strategy.md`](docs/strategy/technical_strategy.md)
+- [`WebTPS-DHF/DHF/documents/plans/development_plan.md`](../WebTPS-DHF/DHF/documents/plans/development_plan.md)
 - [`docs/strategy/testing_strategy.md`](docs/strategy/testing_strategy.md)
 - [`AI-harness/pre-analyze.md`](AI-harness/pre-analyze.md)
 - [`AI-harness/post-implement.md`](AI-harness/post-implement.md)
