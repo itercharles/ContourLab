@@ -5,7 +5,7 @@ This file is the Codex-specific entrypoint for this repository.
 Shared repository guidance lives in:
 - [`docs/agent_environment.md`](docs/agent_environment.md)
 - [`docs/agent_workflow.md`](docs/agent_workflow.md)
-- [`docs/architecture/system_architecture.md`](docs/architecture/system_architecture.md)
+- [`WebTPS-DHF/DHF/documents/specs/architecture_specification.md.j2`](../WebTPS-DHF/DHF/documents/specs/architecture_specification.md.j2)
 - [`docs/strategy/product_strategy.md`](docs/strategy/product_strategy.md)
 - [`docs/strategy/product_roadmap.md`](docs/strategy/product_roadmap.md)
 - [`docs/strategy/technical_strategy.md`](docs/strategy/technical_strategy.md)
