@@ -49,29 +49,51 @@ pnpm -r build                             # build all workspaces
 
 1. `packages/shared-types/src/index.ts` — canonical data model
 2. `docs/architecture/system_architecture.md` — architecture baseline
-3. `docs/strategy/product_strategy.md` + `product_roadmap.md` — product direction
-4. `docs/strategy/technical_strategy.md` + `testing_strategy.md` — technical direction
+3. `docs/strategy/product_strategy.md` — product direction and roadmap
+4. `docs/strategy/technical_strategy.md` — technical direction and testing strategy
 5. `.github/workflows/ci-pipeline.yml` — enforced acceptance path
-6. `docs/process/cr_automation_workflow.md` — CR-driven delivery model
 
 ## Change Workflow
+
+Every non-trivial change starts from a CR in WebTPS-DHF and passes through three stages,
+each gated by human approval:
+
+| Stage | Where | Produced by |
+|---|---|---|
+| 1. CR PR | WebTPS-DHF | Human |
+| 2. Plan Spec PR | WebTPS-DHF | Agent (after CR PR approved) |
+| 3. Implementation PR | WebTPS | Agent (after Plan Spec approved) |
+
+### CR Status Model
+
+| Status | Meaning |
+|---|---|
+| `draft` | CR created, not yet submitted |
+| `in_review` | CR PR open, awaiting human approval |
+| `designing` | CR approved; agent generating plan spec |
+| `implementing` | Plan approved; agent implementing; Implementation PR active |
+| `completed` | Implementation merged; DHF closed out |
+| `cancelled` | CR declined |
+
+### Agent Rules
 
 1. **Pre-analyze** — run `/pre-analyze`; classify the change (docs, bugfix, feature,
    architecture); check against product/technical strategy; identify DHF impact
 2. **DHF assessment** — decide which DHF items need updating:
 
-   | Change type              | DHF items                          |
-   |--------------------------|------------------------------------|
-   | New feature / capability | UC → CRS → SYS → SRS → SWDD        |
-   | New external library     | SOUP entry (version, safety class) |
-   | Architecture decision    | ARCH / SWDD                        |
-   | Hazard identified        | RISK + RCM                         |
-   | CR implemented           | transition CR to `completed`       |
+   | Change type              | DHF items                           |
+   |--------------------------|-------------------------------------|
+   | New feature / capability | UC → CRS → SYS → SRS → SWDD         |
+   | New external library     | SOUP entry (version, safety class)  |
+   | Architecture decision    | SYSARCH / SWDD                      |
+   | Hazard identified        | RISK + RCM                          |
+   | CR implemented           | transition CR to `completed`        |
 
    Create a CR in WebTPS-DHF before starting significant work. If DHF was not updated, state why.
 
-3. **Tests** — write alongside every functional change: unit tests for pure functions, component
+3. **Tests** — write alongside every functional change: unit tests for pure logic, component
    tests for React components, regression tests for bug fixes. Colocate at `*.test.ts(x)`.
+   Add `@links:SRS-xxx` or `@links:SYS-xxx` annotations to tests that verify DHF requirements.
 4. **Design** — invoke `/ux-design` before any UI work.
 5. **Modify** — keep changes in the workspace that owns the behavior; shared types first.
 6. **Validate locally**:
@@ -84,7 +106,7 @@ pnpm -r build                             # build all workspaces
 7. **Handoff** — run `/post-implement`; open PR with CR ID in title, change summary,
    DHF files updated, validation run, manual test plan.
 
-## PR Conventions
+### PR Conventions
 
 **Never commit directly to `main`.** Always work on a branch. Before merging or
 pushing, ask the user whether to open a PR or merge locally — do not decide unilaterally.
@@ -93,6 +115,12 @@ pushing, ask the user whether to open a PR or merge locally — do not decide un
 - Title: `feat(CR-042): description` — always include CR ID
 - Body: change summary · DHF files updated (or reason not to) · validation run · manual testing remaining
 - After opening: monitor CI and review comments; every comment gets an explicit decision (fix / reply / defer / ask)
+
+### Failure and Replan
+
+- If implementation review invalidates the approved plan: return to `designing`, revise plan spec, get re-approval before continuing
+- If agent cannot produce a viable plan: surface the blocker to the human, do not enter implementation
+- Never merge without human approval; never advance stages based on AI-generated comments alone
 
 ## CI Phases
 

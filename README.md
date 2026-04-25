@@ -181,6 +181,41 @@ GitHub Actions validates:
 - Shared types typecheck and build
 - Integration smoke startup of Orthanc + API + frontend via `pnpm local:doctor`
 
+## Change Process
+
+WebTPS uses a CR-driven workflow. Every non-trivial change — new feature, architecture
+decision, external dependency — starts with a Change Request (CR) in the
+[WebTPS-DHF](https://github.com/itercharles/WebTPS-DHF) repository.
+
+### How it works
+
+1. **Open a CR PR in WebTPS-DHF** — describe the requested change. This is the human entry point.
+2. **Approve the CR PR** — triggers automated analysis. The agent reads product strategy,
+   architecture, and DHF context, then opens a Plan Spec PR in WebTPS-DHF.
+3. **Review and approve the Plan Spec PR** — triggers automated implementation. The agent
+   opens an Implementation PR in this repo.
+4. **Review the Implementation PR** — standard code review. Merge when satisfied.
+
+No stage advances without explicit human approval. The agent cannot merge PRs.
+
+### PR title format
+
+Always include the CR ID:
+
+```
+feat(CR-042): add dose normalization to structure panel
+fix(CR-031): correct version string in About page
+```
+
+### Branch naming
+
+`feature/`, `fix/`, `refactor/`, or `claude/` prefix. Never commit directly to `main`.
+
+### DHF impact
+
+If your change introduces a new capability, external library, architecture decision, or
+identified hazard — DHF items need updating. The Plan Spec PR will identify what is needed.
+
 ## Build
 
 ```bash
