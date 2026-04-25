@@ -29,9 +29,9 @@ Expected gate by class:
 
 ## 2. Product Direction Check
 
-- Is the request consistent with [docs/strategy/product_strategy.md](../../docs/strategy/product_strategy.md)?
+- Is the request consistent with [WebTPS-DHF/DHF/documents/specs/crs_specification.md.j2](../../WebTPS-DHF/DHF/documents/specs/crs_specification.md.j2)?
 - Is it aligned with the current phase in
-  [docs/strategy/product_roadmap.md](../../docs/strategy/product_roadmap.md)?
+  the roadmap in `WebTPS-DHF/DHF/documents/specs/crs_specification.md.j2` §2.7?
 - Does it strengthen the current priority, or is it pulling scope forward too
   early?
 - Should the request be narrowed because it conflicts with current product
@@ -100,7 +100,7 @@ State the following before proceeding:
 
 1. **Change scope**: What exactly will change and what will not?
 2. **Change class**: `docs/process` | `infra/devops` | `bugfix` | `feature` | `architecture`
-3. **Product fit**: Is this aligned with `docs/strategy/product_strategy.md` and the current roadmap phase?
+3. **Product fit**: Is this aligned with `WebTPS-DHF/DHF/documents/specs/crs_specification.md.j2` and the current roadmap phase?
 4. **Technical fit**: Is this aligned with `docs/strategy/technical_strategy.md`?
 5. **ADR needed**: Yes/No — if yes, what is the ADR title?
 6. **New dependency**: Yes/No — if yes, rationale and SOUP/DHF impact?

@@ -17,7 +17,7 @@ After implementation, work through each section below and state your answers out
 ## 2. Direction Review
 
 - Does the final implementation still align with
-  [docs/strategy/product_strategy.md](../../docs/strategy/product_strategy.md)?
+  `WebTPS-DHF/DHF/documents/specs/crs_specification.md.j2` (product context §2)?
 - Does it still align with
   [docs/strategy/technical_strategy.md](../../docs/strategy/technical_strategy.md)?
 - If the implementation diverged from the original plan, is that divergence
