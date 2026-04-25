@@ -51,10 +51,8 @@ jobs:
           GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
         run: |
-          gh api repos/itercharles/WebTPS-DHF/dispatches \
-            --method POST \
-            --field event_type=cr-impl-cancelled \
-            --field client_payload='{"cr_id":"'"$CR_ID"'"}'
+          echo '{"event_type":"cr-impl-cancelled","client_payload":{"cr_id":"'"$CR_ID"'"}}' | \
+            gh api repos/itercharles/WebTPS-DHF/dispatches --method POST --input -
 
       - uses: actions/setup-node@v4
         if: steps.ctx.outputs.mode != 'cancel'
@@ -64,6 +62,20 @@ jobs:
       - name: Install Claude Code
         if: steps.ctx.outputs.mode != 'cancel'
         run: npm install -g @anthropic-ai/claude-code
+
+      - name: Download CR spec from DHF
+        if: steps.ctx.outputs.mode == 'new'
+        env:
+          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          CR_ID: ${{ steps.ctx.outputs.cr_id }}
+        run: |
+          mkdir -p /tmp/dhf-context
+          gh api "repos/itercharles/WebTPS-DHF/contents/DHF/items/09_cr/$CR_ID.yaml" \
+            --jq '.content' | base64 -d > "/tmp/dhf-context/$CR_ID.yaml" 2>/dev/null || true
+          gh api "repos/itercharles/WebTPS-DHF/contents/docs/cr-specs/$CR_ID-Spec.md" \
+            --jq '.content' | base64 -d > "/tmp/dhf-context/$CR_ID-Spec.md" 2>/dev/null || true
+          echo "--- CR ---" && cat "/tmp/dhf-context/$CR_ID.yaml" || true
+          echo "--- Spec (first 30 lines) ---" && head -30 "/tmp/dhf-context/$CR_ID-Spec.md" || true
 
       - name: Read session ID for iteration
         if: steps.ctx.outputs.mode == 'iterate'
@@ -94,7 +106,16 @@ jobs:
           ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL || 'claude-haiku-4-5-20251001' }}
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
         run: |
-          PROMPT="Implement CR $CR_ID based on the approved spec and design. See docs and DHF for context."
+          PROMPT="Implement $CR_ID in this WebTPS repository.
+
+          The CR and spec are at:
+          - /tmp/dhf-context/$CR_ID.yaml  (the change request)
+          - /tmp/dhf-context/$CR_ID-Spec.md  (the approved technical spec)
+
+          Read those files first, then implement exactly what the spec describes.
+          Make all required code changes. Do not create test files unless the spec requires it.
+          Do not commit — the workflow will commit after."
+
           claude -p --dangerously-skip-permissions --output-format json "$PROMPT" > /tmp/claude-out.json 2>&1 || true
           SESSION_ID=$(python3 -c "
           import json
@@ -119,14 +140,15 @@ jobs:
         run: |
           if [ -n "$SESSION_ID" ]; then
             claude --resume "$SESSION_ID" -p --dangerously-skip-permissions \
-              "Revise the implementation based on review feedback in /tmp/review-comments.json and /tmp/reviews.json."
+              "Revise the implementation based on review feedback in /tmp/review-comments.json and /tmp/reviews.json. Do not commit."
           else
             claude -p --dangerously-skip-permissions \
-              "Revise the implementation on this branch based on review feedback in /tmp/review-comments.json and /tmp/reviews.json."
+              "Revise the implementation on this branch based on review feedback in /tmp/review-comments.json and /tmp/reviews.json. Do not commit."
           fi
 
       - name: Push implementation branch
         if: steps.ctx.outputs.mode == 'new'
+        id: push
         env:
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
           GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
@@ -136,12 +158,13 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/itercharles/WebTPS.git"
           git add -A
-          if ! git diff --staged --quiet; then
+          if git diff --staged --quiet; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No code changes made by Claude — skipping PR."
+          else
             git commit -m "feat: implement $CR_ID"
-          fi
-          AHEAD=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)
-          if [ "$AHEAD" -gt 0 ]; then
             git push --force --set-upstream origin "feat/$CR_ID"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Commit revised implementation
@@ -159,7 +182,7 @@ jobs:
           fi
 
       - name: Open implementation PR and store session ID
-        if: steps.ctx.outputs.mode == 'new'
+        if: steps.ctx.outputs.mode == 'new' && steps.push.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
