@@ -168,6 +168,9 @@ function About() {
           <p className="text-sm text-gray-400">
             WebTPS v{version} — Infrastructure Release
           </p>
+          <p className="mt-3 text-sm text-gray-400">
+            Workflow Test: CR-033
+          </p>
         </section>
       </main>
     </div>
