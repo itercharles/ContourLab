@@ -6,8 +6,8 @@ const techStack = [
   },
   {
     title: 'Backend',
-    description: 'Node.js API gateway with Python scientific compute services for dose calculation and AI inference.',
-    items: ['Node.js', 'Python', 'Express', 'ONNX Runtime'],
+    description: 'ASP.NET Core 10 Web API with Python scientific compute services for dose calculation and AI inference.',
+    items: ['ASP.NET Core 10', 'Python', 'C#', 'ONNX Runtime'],
   },
   {
     title: 'Infrastructure',
