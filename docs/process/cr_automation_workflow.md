@@ -101,57 +101,28 @@ Rules:
 
 ## CR Status Model
 
-Because the CR item itself is not used as a continuously rich dashboard, the
-status model should remain simple:
+CR items follow the global DHF lifecycle. The states relevant to the CR workflow are:
 
-- `new`
-- `analyze`
-- `developing`
-- `completed`
-- `rejected`
-
-## Status Meaning
-
-### `new`
-
-- CR has been created
-- no AI analysis has started
-- waiting for human approval to enter analysis
-
-### `analyze`
-
-- CR has been approved for analysis
-- AI is generating or revising the plan spec
-- Plan Spec PR is the active review surface
-
-### `developing`
-
-- Plan Spec PR has been approved
-- AI is implementing the approved plan
-- Implementation PR is the active review surface
-
-### `completed`
-
-- implementation has been merged
-- required DHF changes have been merged or explicitly closed out
-
-### `rejected`
-
-- CR was declined and will not proceed
+| Status | Meaning |
+|---|---|
+| `draft` | CR has been created; no AI analysis has started |
+| `in_review` | CR PR is open and awaiting human approval |
+| `designing` | CR PR approved; AI is generating or revising the plan spec |
+| `implementing` | Plan Spec PR approved; AI is implementing; Implementation PR is active |
+| `completed` | Implementation merged; required DHF changes closed out |
+| `cancelled` | CR was declined and will not proceed |
 
 ## State Transitions
 
-Allowed transitions:
-
-- `new -> analyze`
-- `analyze -> developing`
-- `developing -> completed`
-- `new -> rejected`
-- `analyze -> rejected`
+```
+draft → in_review → designing → implementing → completed
+                         ↓              ↓
+                      cancelled     cancelled
+```
 
 Exceptional transition:
 
-- `developing -> analyze`
+- `implementing → designing`
   use only when implementation review reveals that the approved plan is no
   longer valid and the plan spec must be revised
 
