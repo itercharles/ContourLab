@@ -47,8 +47,19 @@ interface UIState {
   setTheme: (t: Theme) => void;
 }
 
+function getBrowserStorage(): Storage | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const storage = window.localStorage;
+    return typeof storage?.getItem === 'function' && typeof storage?.setItem === 'function' ? storage : null;
+  } catch {
+    return null;
+  }
+}
+
 function initTheme(): Theme {
-  const saved = typeof window !== 'undefined' ? localStorage.getItem('webtps-theme') : null;
+  const saved = getBrowserStorage()?.getItem('webtps-theme') ?? null;
   const t: Theme = saved === 'light' ? 'light' : 'dark';
   if (typeof document !== 'undefined') {
     document.documentElement.dataset.theme = t;
@@ -111,8 +122,10 @@ export const useUIStore = create<UIState>()(
     setTheme: (t) =>
       set((state) => {
         state.theme = t;
-        document.documentElement.dataset.theme = t;
-        localStorage.setItem('webtps-theme', t);
+        if (typeof document !== 'undefined') {
+          document.documentElement.dataset.theme = t;
+        }
+        getBrowserStorage()?.setItem('webtps-theme', t);
       }),
   }))
 );

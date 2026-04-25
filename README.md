@@ -20,9 +20,7 @@ WebTPS/
 │   └── api/                 — ASP.NET Core API gateway (port 4000)
 ├── packages/
 │   └── shared-types/        — Canonical TypeScript data model interfaces
-├── docs/
-│   ├── agent_environment.md — Environment contract for AI agents
-│   └── agent_workflow.md    — Change workflow for AI agents
+├── docs/                    — Local development notes and ADRs
 ├── WebTPS_Plan_Spec.md      — Architecture spec and full feature roadmap
 └── .github/workflows/       — CI/CD pipeline
 ```
@@ -244,5 +242,5 @@ item. CI compliance checks run against WebTPS-DHF, not this repository.
 
 ## Agent Guidance
 
-See [`CLAUDE.md`](CLAUDE.md), [`docs/agent_environment.md`](docs/agent_environment.md),
-and [`docs/agent_workflow.md`](docs/agent_workflow.md).
+See [`CLAUDE.md`](CLAUDE.md) and the CR workflow in
+[`WebTPS-DHF/docs/cr_spec_workflow.md`](../WebTPS-DHF/docs/cr_spec_workflow.md).
