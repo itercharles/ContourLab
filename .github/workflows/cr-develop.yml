@@ -1,6 +1,6 @@
-name: WebTPS CR Implementation Automation
+name: WebTPS CR Development Automation
 
-run-name: CR implementation | ${{ github.event_name }} | ${{ github.event.pull_request.title || github.event.client_payload.cr_id || github.ref_name }}
+run-name: CR development | ${{ github.event.pull_request.title || github.event.client_payload.cr_id || github.ref_name }}
 
 on:
   repository_dispatch:
