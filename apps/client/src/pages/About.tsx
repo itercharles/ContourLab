@@ -1,3 +1,5 @@
+import { version } from '../../package.json';
+
 const techStack = [
   {
     title: 'Frontend',
@@ -164,7 +166,7 @@ function About() {
         {/* Version */}
         <section className="border-t border-gray-200 pt-8">
           <p className="text-sm text-gray-400">
-            WebTPS v0.1.0 — Infrastructure Release
+            WebTPS v{version} — Infrastructure Release
           </p>
         </section>
       </main>
