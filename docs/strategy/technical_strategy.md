@@ -74,18 +74,112 @@ Recommended next DevOps milestones after the current baseline:
 
 ## Testing Strategy
 
-Testing exists to protect clinical workflow reliability, not to maximize test count.
+Testing exists to protect clinical workflow reliability and satisfy IEC 62304 software verification
+requirements. There are two fundamentally different classes of tests with different purposes,
+audiences, and artifact obligations.
 
-**Test layers:**
+---
 
-1. Unit / component tests — pure logic and isolated UI behavior; every functional change touches this layer first
-2. Workspace validation — lint, typecheck, build per workspace; enforced in CI
-3. Integration smoke — runnable stack verification via `pnpm local:doctor`
-4. Workflow regression — repeatable coverage of high-value end-to-end paths (patient select → image load → RTSS load, contour edit → push, RTSTRUCT compare)
+### Development Tests
+
+Development tests are engineering tools. They exist to support fast feedback during implementation
+and protect against regression during refactoring. They are **not** part of the audit record.
+
+**Characteristics:**
+- Colocated with source code (`*.test.ts(x)`)
+- Run on every PR and push in CI
+- No formal test ID, no DHF linkage required
+- Results are transient — not stored as compliance artifacts
+- Failure blocks merge; passing is a prerequisite for proceeding
+
+**Layers:**
+
+| Layer | Scope | Command |
+|---|---|---|
+| Unit / component | Pure logic, isolated UI behavior | `pnpm --filter @webtps/client test` |
+| Workspace typecheck | Type correctness across workspaces | `pnpm -r typecheck` |
+| Lint | Code style and static checks | `pnpm --filter @webtps/client lint` |
+| Build | Compilation succeeds | `pnpm -r build` |
+| Integration smoke | Full stack health check | `pnpm local:doctor` |
 
 **Guardrails:**
+- Tests assert behavior, not implementation details
+- No flaky integration checks without deterministic setup
+- Do not rely solely on manual testing for workflow changes
 
-- do not rely solely on manual testing for workflow changes
-- tests assert behavior, not implementation trivia
-- no flaky integration checks without deterministic setup
-- validation claims must name the commands actually run
+---
+
+### Verification Tests
+
+Verification tests are regulatory evidence. They formally demonstrate that software units and the
+integrated system meet their specified requirements, as required by IEC 62304 §5.5 (software unit
+verification), §5.6 (software integration testing), and §5.7 (software system testing).
+
+Every verification test is a persistent DHF record that must be traceable to a requirement,
+executed in a documented environment, and retained as audit evidence.
+
+#### Test Levels
+
+**Test-SRS — Software Requirement Verification**
+- Verifies that individual software units and components satisfy Software Requirement Specification
+  (SRS) items
+- Corresponds to IEC 62304 §5.5–5.6 (unit verification and software integration)
+- DHF item type: `SWTEST`, linked to one or more `SRS-xxx` items
+- Typically automated; JUnit XML artifact is the execution record
+
+**Test-SYS — System Requirement Verification**
+- Verifies that the integrated system (frontend + API + DICOM repository) satisfies System
+  Requirement Specification (SYS) items
+- Corresponds to IEC 62304 §5.7 (software system testing) and IEC 82304-1 §6.2
+- DHF item type: `SWTEST`, linked to one or more `SYS-xxx` items
+- May be automated or manual; manual tests require `verified_by` and `verification_date`
+
+#### Required Record Fields
+
+Each verification test execution record must include:
+
+| Field | Description |
+|---|---|
+| `test_id` | Stable identifier (e.g. `SWTEST-001`) |
+| `linked_requirements` | One or more `SRS-xxx` or `SYS-xxx` IDs |
+| `test_name` | Human-readable description of what is being verified |
+| `test_environment` | OS, browser/runtime, Node/dotnet version, key dependency versions |
+| `run_id` | CI run identifier or manual session ID |
+| `run_date` | ISO 8601 date of execution |
+| `result` | `PASS`, `FAIL`, or `BLOCKED` |
+| `tester` | CI system name or person name for manual tests |
+| `notes` | Optional — deviations, known limitations, workarounds |
+
+#### Annotation Syntax
+
+Automated tests are linked to requirements via `@links` annotations in the test name:
+
+```typescript
+describe('dose normalization @links:SRS-012', () => {
+  it('normalizes to prescription point', () => { ... })
+})
+```
+
+The `compliantflow-reporter` extracts these annotations and emits a JUnit XML with
+`compliantflow.links` properties. Only annotated tests appear in the verification artifact.
+
+#### Artifacts and Traceability
+
+Verification test results feed into the traceability chain:
+
+```
+SYS → SRS → SWDD → SWTEST (execution records)
+```
+
+- CI uploads `frontend-junit` artifact (JUnit XML) on every run
+- DHF traceability report (`dhf-traceability-report`) includes test coverage on main
+- Uncovered SRS or SYS items — those with no linked passing SWTEST record — are flagged
+  in the traceability check
+
+#### Adding a New Verification Test
+
+1. Create a `SWTEST-xxx` item in WebTPS-DHF with `linked_requirements`, `test_name`,
+   `test_environment`, and initial `status: draft`
+2. Implement the test with `@links:SRS-xxx` or `@links:SYS-xxx` annotation
+3. On CI pass, transition `SWTEST-xxx` to `verified`
+4. Traceability check will now show the requirement as covered
