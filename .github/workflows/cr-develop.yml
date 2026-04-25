@@ -1,0 +1,181 @@
+name: Develop CR
+
+on:
+  repository_dispatch:
+    types: [cr-design-merged]
+  pull_request_review:
+    types: [submitted]
+  pull_request:
+    types: [closed]
+
+jobs:
+  develop:
+    if: |
+      github.event_name == 'repository_dispatch' ||
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested' && startsWith(github.event.pull_request.head.ref, 'feat/CR-')) ||
+      (github.event_name == 'pull_request' && !github.event.pull_request.merged && startsWith(github.event.pull_request.head.ref, 'feat/CR-'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine mode and CR ID
+        id: ctx
+        env:
+          EVENT: ${{ github.event_name }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          DISPATCH_CR_ID: ${{ github.event.client_payload.cr_id }}
+        run: |
+          if [ "$EVENT" = "repository_dispatch" ]; then
+            echo "mode=new" >> "$GITHUB_OUTPUT"
+            echo "cr_id=$DISPATCH_CR_ID" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT" = "pull_request" ] && [ "$MERGED" = "false" ]; then
+            CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+')
+            echo "mode=cancel" >> "$GITHUB_OUTPUT"
+            echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
+          else
+            CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+')
+            echo "mode=iterate" >> "$GITHUB_OUTPUT"
+            echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
+            echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cancel — notify WebTPS-DHF
+        if: steps.ctx.outputs.mode == 'cancel'
+        env:
+          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          CR_ID: ${{ steps.ctx.outputs.cr_id }}
+        run: |
+          gh api repos/itercharles/WebTPS-DHF/dispatches \
+            --method POST \
+            --field event_type=cr-impl-cancelled \
+            --field client_payload='{"cr_id":"'"$CR_ID"'"}'
+
+      - uses: actions/setup-node@v4
+        if: steps.ctx.outputs.mode != 'cancel'
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code
+        if: steps.ctx.outputs.mode != 'cancel'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Read session ID for iteration
+        if: steps.ctx.outputs.mode == 'iterate'
+        id: session
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.ctx.outputs.pr_number }}
+        run: |
+          SESSION_ID=$(gh pr view $PR_NUMBER --json comments \
+            --jq '[.comments[].body | select(startswith("<!-- claude-session:"))] | last | ltrimstr("<!-- claude-session: ") | rtrimstr(" -->")' \
+            2>/dev/null || echo "")
+          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Collect review feedback
+        if: steps.ctx.outputs.mode == 'iterate'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.ctx.outputs.pr_number }}
+        run: |
+          gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/comments" > /tmp/review-comments.json
+          gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/reviews" > /tmp/reviews.json
+
+      - name: Implement CR
+        if: steps.ctx.outputs.mode == 'new'
+        id: gen
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL || 'claude-haiku-4-5-20251001' }}
+          CR_ID: ${{ steps.ctx.outputs.cr_id }}
+        run: |
+          PROMPT="Implement CR $CR_ID based on the approved spec and design. See docs and DHF for context."
+          claude -p --dangerously-skip-permissions --output-format json "$PROMPT" > /tmp/claude-out.json 2>&1 || true
+          SESSION_ID=$(python3 -c "
+          import json
+          data = open('/tmp/claude-out.json').read().strip().split('\n')
+          ids = []
+          for line in data:
+              try:
+                  obj = json.loads(line)
+                  if obj.get('session_id'):
+                      ids.append(obj['session_id'])
+              except: pass
+          print(ids[-1] if ids else '')
+          " 2>/dev/null || echo "")
+          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Revise implementation
+        if: steps.ctx.outputs.mode == 'iterate'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL || 'claude-haiku-4-5-20251001' }}
+          SESSION_ID: ${{ steps.session.outputs.session_id }}
+        run: |
+          if [ -n "$SESSION_ID" ]; then
+            claude --resume "$SESSION_ID" -p --dangerously-skip-permissions \
+              "Revise the implementation based on review feedback in /tmp/review-comments.json and /tmp/reviews.json."
+          else
+            claude -p --dangerously-skip-permissions \
+              "Revise the implementation on this branch based on review feedback in /tmp/review-comments.json and /tmp/reviews.json."
+          fi
+
+      - name: Push implementation branch
+        if: steps.ctx.outputs.mode == 'new'
+        env:
+          CR_ID: ${{ steps.ctx.outputs.cr_id }}
+          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+        run: |
+          git checkout -B "feat/$CR_ID"
+          git config user.name "GitHub Actions [bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/itercharles/WebTPS.git"
+          git add -A
+          if ! git diff --staged --quiet; then
+            git commit -m "feat: implement $CR_ID"
+          fi
+          AHEAD=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)
+          if [ "$AHEAD" -gt 0 ]; then
+            git push --force --set-upstream origin "feat/$CR_ID"
+          fi
+
+      - name: Commit revised implementation
+        if: steps.ctx.outputs.mode == 'iterate'
+        env:
+          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+        run: |
+          git config user.name "GitHub Actions [bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/itercharles/WebTPS.git"
+          git add -A
+          if ! git diff --staged --quiet; then
+            git commit -m "fix: revise implementation from review feedback"
+            git push
+          fi
+
+      - name: Open implementation PR and store session ID
+        if: steps.ctx.outputs.mode == 'new'
+        env:
+          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          CR_ID: ${{ steps.ctx.outputs.cr_id }}
+          SESSION_ID: ${{ steps.gen.outputs.session_id }}
+        run: |
+          EXISTING=$(gh pr list --head "feat/$CR_ID" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -z "$EXISTING" ]; then
+            PR_URL=$(gh pr create \
+              --head "feat/$CR_ID" \
+              --base main \
+              --title "feat($CR_ID): implement approved spec" \
+              --body "Automated implementation for $CR_ID.")
+            PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          else
+            PR_NUMBER=$EXISTING
+          fi
+          if [ -n "$SESSION_ID" ]; then
+            gh pr comment $PR_NUMBER --body "<!-- claude-session: $SESSION_ID -->"
+          fi
