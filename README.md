@@ -147,8 +147,8 @@ More detail: [`docs/local_development.md`](docs/local_development.md).
 
 ## Deployed Build
 
-The GitHub Actions deploy workflow builds the app and serves it via PM2 on
-different ports to avoid conflicting with the local dev server:
+The `CI Pipeline` deploy job builds the app and serves it via PM2 on different
+ports to avoid conflicting with the local dev server:
 
 | | Dev server | Deployed build |
 |--|------------|----------------|
@@ -178,6 +178,8 @@ GitHub Actions validates:
 - ASP.NET API restore and build
 - Shared types typecheck and build
 - Integration smoke startup of Orthanc + API + frontend via `pnpm local:doctor`
+- Main-branch DHF artifact generation: specification PDFs, plan PDFs, and
+  traceability JSON report
 
 ## Change Process
 

@@ -141,8 +141,8 @@ pushing, ask the user whether to open a PR or merge locally — do not decide un
 - `compliance` — IEC 62304 · IEC 82304-1 checks
 
 **Artifacts + Deploy** (main branch only, after compliance)
-- `generate-artifacts` — spec PDFs · test reports · traceability report
-- `deploy` — application deployment
+- `generate-artifacts` — DHF spec PDFs · plan PDFs · traceability JSON report
+- `deploy` — self-hosted workstation deployment via PM2
 
 ## Design Rules
 

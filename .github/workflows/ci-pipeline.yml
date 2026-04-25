@@ -257,26 +257,178 @@ jobs:
         run: echo "IEC 82304-1 compliance check — placeholder"
 
   # ── ARTIFACTS + DEPLOY (main only) ────────────────────────────────────────
-  # After compliance passes on main: generate all DHF documents (spec PDFs,
-  # test reports, traceability report) and deploy the application.
+  # After compliance passes on main: generate DHF documents, traceability JSON,
+  # and deploy the application.
   # These run in parallel with each other.
 
   generate-artifacts:
-    name: Generate Artifacts (spec PDFs · test reports · traceability)
+    name: Generate Artifacts (spec PDFs · traceability)
     runs-on: ubuntu-latest
     needs: [compliance]
     if: github.ref == 'refs/heads/main' && !failure() && !cancelled()
     steps:
-      - uses: actions/checkout@v4
-      - name: Trigger DHF artifact generation
-        run: echo "DHF artifact generation — coordinated via WebTPS-DHF CI"
+      - name: Check out product repo
+        uses: actions/checkout@v4
+
+      - name: Check out DHF repo
+        uses: actions/checkout@v4
+        with:
+          repository: itercharles/WebTPS-DHF
+          token: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          path: dhf
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install system dependencies for PDF export
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0
+
+      - name: Install artifact generation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r dhf/requirements.txt
+
+      - name: Generate DHF specification PDFs
+        run: |
+          mkdir -p dhf-artifacts/specifications
+          cd dhf
+          PYTHONPATH=.:DHF python -m utils doc export ALL
+          find /tmp -maxdepth 1 -name "*_Specification_*.pdf" -exec cp {} "$GITHUB_WORKSPACE/dhf-artifacts/specifications/" \;
+
+      - name: Generate DHF plan PDFs
+        run: |
+          mkdir -p dhf-artifacts/plans
+          python - <<'PY'
+          import markdown
+          from pathlib import Path
+          from weasyprint import HTML
+
+          dhf_docs = Path("dhf/DHF/documents")
+          css_path = dhf_docs / "specs/styles/default.css"
+          css = css_path.read_text(encoding="utf-8") if css_path.exists() else ""
+
+          def to_pdf(md_path: Path, out_path: Path) -> None:
+              content = md_path.read_text(encoding="utf-8")
+              html = markdown.markdown(content, extensions=["tables", "fenced_code", "toc"])
+              full_html = (
+                  "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+                  f"<style>{css}</style></head><body>{html}</body></html>"
+              )
+              HTML(string=full_html).write_pdf(str(out_path))
+              print(f"{md_path} -> {out_path}")
+
+          for md in sorted((dhf_docs / "plans").glob("*.md")):
+              to_pdf(md, Path("dhf-artifacts/plans") / f"{md.stem}.pdf")
+          PY
+
+      - name: Generate traceability report
+        run: |
+          mkdir -p dhf-artifacts/traceability
+          cd dhf
+          PYTHONPATH=.:DHF python -m utils validate traceability \
+            --report "$GITHUB_WORKSPACE/dhf-artifacts/traceability/traceability_report.json"
+
+      - name: Upload DHF artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dhf-artifacts
+          path: dhf-artifacts/
 
   deploy:
     name: Deploy
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [compliance]
-    if: github.ref == 'refs/heads/main' && !failure() && !cancelled()
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !failure() && !cancelled()
     steps:
-      - uses: actions/checkout@v4
-      - name: Deploy application
-        run: echo "Deploy — placeholder"
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Diagnose runner & PM2 env
+        shell: pwsh
+        run: |
+          whoami
+          echo "HOME=$env:HOME"
+          echo "HOMEPATH=$env:HOMEPATH"
+          echo "USERPROFILE=$env:USERPROFILE"
+          echo "PM2_HOME=$env:PM2_HOME"
+
+      - name: Set HOME and PM2_HOME (Windows)
+        shell: pwsh
+        run: |
+          $userHome  = $env:USERPROFILE
+          $homedrive = Split-Path $env:USERPROFILE -Qualifier
+          $homepath  = Split-Path $env:USERPROFILE -NoQualifier
+          $pm2Home   = Join-Path $env:USERPROFILE ".pm2"
+
+          New-Item -ItemType Directory -Force $pm2Home | Out-Null
+
+          # Persist across all subsequent steps.
+          "HOME=$userHome"       | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "HOMEDRIVE=$homedrive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "HOMEPATH=$homepath"   | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "PM2_HOME=$pm2Home"    | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          Write-Output "HOME=$userHome"
+          Write-Output "PM2_HOME=$pm2Home"
+
+      - name: Add npm global bin to PATH
+        shell: pwsh
+        run: echo "$env:APPDATA\npm" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: pnpm --filter @webtps/client build
+
+      - name: Restart frontend (PM2)
+        shell: pwsh
+        env:
+          WEBTPS_API_PORT: 4001
+        run: |
+          pm2 describe webtps-client >$null 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            pm2 restart webtps-client --update-env
+          } else {
+            pm2 start "pnpm --filter @webtps/client preview --host 0.0.0.0 --port 3001" --name webtps-client
+          }
+          pm2 save
+
+      - name: Publish API
+        run: >
+          dotnet publish apps/api/api.csproj
+          --configuration Release
+          --output apps/api/publish
+
+      - name: Restart API (PM2)
+        shell: pwsh
+        run: |
+          pm2 describe webtps-api >$null 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            pm2 restart webtps-api
+          } else {
+            pm2 start "dotnet apps/api/publish/WebTPS.Api.dll --urls http://0.0.0.0:4001" --name webtps-api
+          }
+          pm2 save
+
+      - name: Ensure DICOM repository is running
+        run: pnpm repo:up
+
+      - name: Verify deployment
+        run: pnpm local:doctor

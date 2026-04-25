@@ -156,7 +156,7 @@ Download and extract a study, then import the folder through the UI steps above.
 
 ## Deployed Build (self-hosted CI/CD)
 
-The GitHub Actions deploy workflow builds the app and serves it via PM2 on
+The `CI Pipeline` deploy job builds the app and serves it via PM2 on
 **different ports** to avoid conflicting with the local dev server:
 
 | | Dev server | Deployed build |
