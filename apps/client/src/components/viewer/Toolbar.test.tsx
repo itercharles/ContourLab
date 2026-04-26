@@ -275,8 +275,8 @@ describe('Toolbar contour operations', () => {
       'Select (V)',
       'Smart Edge (S)',
       'Threshold (T)',
-      'Help',
     ]));
+    expect(disabledLabels).not.toContain('Help');
   });
 
   it('keeps patient selection out of the global title bar', () => {

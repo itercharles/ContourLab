@@ -29,8 +29,7 @@ type ToolIconName =
   | 'interpolate'
   | 'margin'
   | 'boolean'
-  | 'ai'
-  | 'info';
+  | 'ai';
 
 interface ToolRailItem {
   id: ViewerTool | string;
@@ -309,16 +308,6 @@ export default function ToolRail() {
         </div>
       ))}
       <div className="flex-1" />
-      <div className="tool-btn relative">
-        <button
-          type="button"
-          aria-label="Help"
-          disabled
-          className="flex h-7 w-7 cursor-not-allowed items-center justify-center rounded text-[var(--color-text-dim)]"
-        >
-          <ToolIcon name="info" />
-        </button>
-      </div>
     </nav>
   );
 }
