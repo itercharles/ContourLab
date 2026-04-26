@@ -25,7 +25,12 @@ def make_issue(milestone: str = "2026-W18") -> IssueContext:
     return IssueContext(
         number=123,
         title="Add weekly CR intake",
-        body="Create CR from accepted issue.",
+        body=(
+            "### Requested change\n\nCreate CR from accepted issue.\n\n"
+            "### User value / justification\n\nWeekly intake is easier.\n\n"
+            "### Acceptance criteria\n\n- CR PR is opened automatically.\n\n"
+            "### Change category\n\nFeature"
+        ),
         state="open",
         html_url="https://github.com/itercharles/WebTPS/issues/123",
         author="charles",
@@ -72,6 +77,9 @@ class IssueToCrTests(unittest.TestCase):
             self.assertEqual(result.cr_id, "CR-034")
             self.assertEqual(result.cr_path, "DHF/items/09_cr/CR-034.yaml")
             self.assertEqual(captured["target_version"], "2026-W18")
+            self.assertEqual(captured["description"], "Create CR from accepted issue.\n\nSource issue: https://github.com/itercharles/WebTPS/issues/123")
+            self.assertEqual(captured["justification"], "Weekly intake is easier.")
+            self.assertEqual(captured["content"], "- CR PR is opened automatically.")
             self.assertIn("Source issue: https://github.com/itercharles/WebTPS/issues/123", captured["description"])
 
     def test_prepare_cr_skips_existing_issue_marker(self):
@@ -116,7 +124,8 @@ class IssueToCrTests(unittest.TestCase):
         self.assertEqual(data["title"], "Add weekly CR intake")
         self.assertEqual(data["justification"], "Weekly intake is easier.")
         self.assertEqual(data["category"], "Other")
-        self.assertIn("Source issue: https://github.com/itercharles/WebTPS/issues/123", data["description"])
+        self.assertEqual(data["description"], "Create CRs.\n\nSource issue: https://github.com/itercharles/WebTPS/issues/123")
+        self.assertNotIn("### User value", data["description"])
 
 
 if __name__ == "__main__":

@@ -101,13 +101,15 @@ def extract_issue_form_field(body: str, heading: str) -> str | None:
 
 
 def build_cr_data(issue: IssueContext) -> dict[str, Any]:
-    description = f"{issue.body}\n\nSource issue: {issue.html_url}".strip()
+    requested_change = extract_issue_form_field(issue.body, "Requested change") or issue.body
+    acceptance_criteria = extract_issue_form_field(issue.body, "Acceptance criteria")
+    description = f"{requested_change}\n\nSource issue: {issue.html_url}".strip()
     justification = extract_issue_form_field(issue.body, "User value / justification") or (
         "Maintainer assigned this issue to the active weekly release milestone, "
         "indicating it is accepted for CR intake."
     )
     category = extract_issue_form_field(issue.body, "Change category") or "Feature"
-    return {
+    data = {
         "title": issue.title,
         "description": description,
         "justification": justification,
@@ -116,6 +118,9 @@ def build_cr_data(issue: IssueContext) -> dict[str, Any]:
         "target_version": issue.milestone or "",
         "category": category,
     }
+    if acceptance_criteria:
+        data["content"] = acceptance_criteria
+    return data
 
 
 def _dhf_env(dhf_repo: Path) -> dict[str, str]:
