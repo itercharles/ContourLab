@@ -242,6 +242,38 @@ jobs:
             /tmp/webtps-api.log
             /tmp/webtps-client.log
 
+  # ── TRACEABILITY GATE ─────────────────────────────────────────────────────
+  # Runs on PRs and branch pushes. This is a CI gate only: failures fail the
+  # workflow. PDF evidence is generated only on main by DHF Artifacts.
+
+  traceability:
+    name: Traceability Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out DHF repo
+        uses: actions/checkout@v4
+        with:
+          repository: itercharles/WebTPS-DHF
+          token: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          path: dhf
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install traceability dependencies
+        run: |
+          python -m pip install --upgrade pip
+          git config --global url."https://x-access-token:${{ secrets.PRODUCT_REPO_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          pip install -r dhf/requirements.txt
+
+      - name: Check DHF traceability
+        run: |
+          export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
+          compliantflow --dhf dhf/DHF validate traceability
+
   # ── ACCEPTANCE GATE ───────────────────────────────────────────────────────
   # Runs after all development, verification, and validation phases pass.
   # On PR: this is the final gate. On main: continues to artifact generation
@@ -251,19 +283,19 @@ jobs:
   compliance:
     name: Acceptance Gate (compliance placeholder)
     runs-on: ubuntu-latest
-    needs: [dev-integration, verify-srs, verify-sys, validate-crs]
+    needs: [dev-integration, verify-srs, verify-sys, validate-crs, traceability]
     steps:
       - uses: actions/checkout@v4
       - name: Acceptance gate
         run: echo "Acceptance gate — compliance checks not yet wired in"
 
   # ── ARTIFACTS + DEPLOY (main only) ────────────────────────────────────────
-  # After compliance passes on main: generate DHF documents, traceability JSON,
+  # After acceptance passes on main: generate DHF documents, traceability PDF,
   # and deploy the application.
   # These run in parallel with each other.
 
   generate-artifacts:
-    name: DHF Artifacts (spec PDFs · traceability)
+    name: DHF Artifacts (spec PDFs · traceability PDF)
     runs-on: ubuntu-latest
     needs: [compliance]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !failure() && !cancelled()
@@ -292,6 +324,7 @@ jobs:
       - name: Install artifact generation dependencies
         run: |
           python -m pip install --upgrade pip
+          git config --global url."https://x-access-token:${{ secrets.PRODUCT_REPO_TOKEN }}@github.com/".insteadOf "https://github.com/"
           pip install -r dhf/requirements.txt
 
       - name: Generate DHF specification PDFs
@@ -327,14 +360,15 @@ jobs:
               to_pdf(md, Path("dhf-artifacts/plans") / f"{md.stem}.pdf")
           PY
 
-      - name: Generate traceability report
+      - name: Generate traceability PDF report
         run: |
           mkdir -p dhf-artifacts/traceability
-          cd dhf
-          PYTHONPATH=.:DHF python -m utils validate traceability \
-            --report "$GITHUB_WORKSPACE/dhf-artifacts/traceability/traceability_report.json"
+          export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
+          compliantflow --dhf dhf/DHF report traceability UC CRS SYS SRS SWDD \
+            --output dhf-artifacts/traceability/Requirements_Traceability_Report.pdf
 
       - name: Upload DHF artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dhf-artifacts
