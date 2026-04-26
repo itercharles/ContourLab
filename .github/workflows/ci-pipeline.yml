@@ -267,10 +267,9 @@ jobs:
         env:
           PRODUCT_REPO_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
         run: |
-          echo "machine github.com login x-access-token password ${PRODUCT_REPO_TOKEN}" >> ~/.netrc
-          chmod 600 ~/.netrc
           python -m pip install --upgrade pip
-          pip install -r dhf/requirements.txt
+          sed "s|git+https://github.com/|git+https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/|g" \
+            dhf/requirements.txt | pip install -r /dev/stdin
 
       - name: Check DHF traceability
         run: |
@@ -328,10 +327,9 @@ jobs:
         env:
           PRODUCT_REPO_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
         run: |
-          echo "machine github.com login x-access-token password ${PRODUCT_REPO_TOKEN}" >> ~/.netrc
-          chmod 600 ~/.netrc
           python -m pip install --upgrade pip
-          pip install -r dhf/requirements.txt
+          sed "s|git+https://github.com/|git+https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/|g" \
+            dhf/requirements.txt | pip install -r /dev/stdin
 
       - name: Generate DHF specification PDFs
         run: |
