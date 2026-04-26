@@ -175,8 +175,12 @@ jobs:
             curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1 && break
             sleep 3
           done
+      - name: Install Playwright browsers
+        run: pnpm --filter @webtps/client exec playwright install chromium --with-deps
       - name: Run SYS verification tests
-        run: echo "Test-SYS — Playwright not yet configured"
+        run: pnpm --filter @webtps/client test:e2e:sys
+        env:
+          BASE_URL: http://127.0.0.1:3000
       - name: Stop services
         if: always()
         run: pnpm local:down
@@ -186,7 +190,7 @@ jobs:
         with:
           name: verify-sys-junit
           path: apps/client/test-results/e2e-sys-junit.xml
-          if-no-files-found: ignore
+          if-no-files-found: error
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -230,8 +234,12 @@ jobs:
             curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1 && break
             sleep 3
           done
+      - name: Install Playwright browsers
+        run: pnpm --filter @webtps/client exec playwright install chromium --with-deps
       - name: Run CRS validation tests
-        run: echo "Test-CRS — Playwright not yet configured"
+        run: pnpm --filter @webtps/client test:e2e:crs
+        env:
+          BASE_URL: http://127.0.0.1:3000
       - name: Stop services
         if: always()
         run: pnpm local:down
@@ -241,7 +249,7 @@ jobs:
         with:
           name: validate-crs-junit
           path: apps/client/test-results/e2e-crs-junit.xml
-          if-no-files-found: ignore
+          if-no-files-found: error
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
