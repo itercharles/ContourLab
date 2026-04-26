@@ -77,7 +77,7 @@ beforeEach(() => {
 // addContour
 // ---------------------------------------------------------------------------
 
-describe('ContourEngine.addContour', () => {
+describe('ContourEngine.addContour @links:SRS-008', () => {
   it('calls addContourSlice when no existing contour at that slicePosition', () => {
     const structure = makeStructure([]); // no existing contours
     const ss = makeStructureSet([structure]);
@@ -184,7 +184,7 @@ describe('ContourEngine.addContour', () => {
   });
 });
 
-describe('ContourEngine.addContours', () => {
+describe('ContourEngine.addContours @links:SRS-014', () => {
   it('adds multiple interpolated contours as one undoable structure update', () => {
     const existingSlice: ContourSlice = {
       referencedSOPInstanceUID: 'sop-0',
@@ -251,7 +251,7 @@ describe('ContourEngine.addContours', () => {
 // deleteContourOnSlice
 // ---------------------------------------------------------------------------
 
-describe('ContourEngine.deleteContourOnSlice', () => {
+describe('ContourEngine.deleteContourOnSlice @links:SRS-023', () => {
   it('returns early without pushing to UndoRedoManager when no contour exists', () => {
     const structure = makeStructure([]); // no contours at all
     const ss = makeStructureSet([structure]);

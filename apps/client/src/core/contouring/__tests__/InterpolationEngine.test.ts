@@ -20,7 +20,7 @@ function squareContour(z: number, size: number): ContourSlice {
   };
 }
 
-describe('InterpolationEngine', () => {
+describe('InterpolationEngine @links:SRS-014', () => {
   it('finds bracketing contours around a target slice', () => {
     const bounds = findInterpolationBounds([
       squareContour(0, 10),

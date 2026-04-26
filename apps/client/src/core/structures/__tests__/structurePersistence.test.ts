@@ -35,7 +35,7 @@ function makeStructureSet(): StructureSet {
   };
 }
 
-describe('structurePersistence', () => {
+describe('structurePersistence @links:SRS-009', () => {
   it('round-trips structure sets through JSON-safe payloads', () => {
     const payload = exportStructureSets([makeStructureSet()], 'ss-1', 'structure-1');
     const imported = importStructureSets(JSON.stringify(payload));

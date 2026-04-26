@@ -278,7 +278,7 @@ describe('DicomRepoPanel', () => {
     expect(screen.queryByText('Axial')).toBeNull();
   });
 
-  it('loads the latest matching RTSTRUCT when a patient is selected', async () => {
+  it('loads the latest matching RTSTRUCT when a patient is selected @links:SRS-019', async () => {
     const imported = makeStructureSet();
     imported.id = 'ss-auto';
     imported.structures[0].id = 'structure-auto';
@@ -505,7 +505,7 @@ describe('DicomRepoPanel', () => {
     expect(screen.queryByText('Boost CT ACTIVE')).toBeNull();
   });
 
-  it('keeps push changes out of the repository navigator', async () => {
+  it('keeps push changes out of the repository navigator @links:SRS-010', async () => {
     useVolumeStore.setState({
       loadedSeries: [makeLoadedSeries()],
       activeSeriesUID: 'series-1',
@@ -520,7 +520,7 @@ describe('DicomRepoPanel', () => {
     expect(screen.queryByRole('button', { name: 'Push Changes' })).toBeNull();
   });
 
-  it('loads RTSTRUCT structure sets from a double-clicked repository row', async () => {
+  it('loads RTSTRUCT structure sets from a double-clicked repository row @links:SRS-019', async () => {
     const imported = makeStructureSet();
     imported.id = 'ss-imported';
     imported.structures[0].id = 'structure-imported';
@@ -557,7 +557,8 @@ describe('DicomRepoPanel', () => {
     expect(screen.queryByText('Structure Sets / RTSS')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Show structure sets for Axial/i }));
     expect(await screen.findByText('Structure Sets / RTSS')).toBeTruthy();
-    expect(screen.getByText('LATEST')).toBeTruthy();
+    expect(screen.queryByText('LATEST')).toBeNull();
+    expect(screen.queryByText('1 VERSIONS')).toBeNull();
     expect(screen.getByText(/3 ROI/)).toBeTruthy();
     expect(screen.getByText('RTSTRUCT Thorax CT')).toBeTruthy();
 
@@ -601,7 +602,7 @@ describe('DicomRepoPanel', () => {
         source: {
           type: 'rtstruct',
           label: 'RTSTRUCT Thorax CT',
-          sopInstanceUID: 'older-sop-reference',
+          sopInstanceUID: 'current-query-sop',
           studyInstanceUID: 'study-1',
           seriesInstanceUID: 'rtss-series-1',
           importedAt: '2026-04-19T00:00:00.000Z',
@@ -633,7 +634,7 @@ describe('DicomRepoPanel', () => {
     expect(screen.getAllByText('ACTIVE').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('compares a repository RTSTRUCT with the active workspace structure set without loading it', async () => {
+  it('compares a repository RTSTRUCT with the active workspace structure set without loading it @links:SRS-015', async () => {
     const repositoryRtstruct = makeStructureSet();
     repositoryRtstruct.id = 'repo-ss';
     repositoryRtstruct.label = 'Repository Set';

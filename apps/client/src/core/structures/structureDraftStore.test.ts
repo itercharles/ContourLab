@@ -73,7 +73,7 @@ beforeEach(() => {
   });
 });
 
-describe('structureDraftStore', () => {
+describe('structureDraftStore @links:SRS-009', () => {
   it('round-trips a structure draft by series UID', async () => {
     await saveStructureDraftForSeries('series-1', [makeStructureSet()], 'ss-1', null);
 

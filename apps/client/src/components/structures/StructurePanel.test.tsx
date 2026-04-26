@@ -171,7 +171,7 @@ beforeEach(() => {
 });
 
 describe('StructurePanel local draft and structure editing interactions', () => {
-  it('auto-saves dirty structures to the local browser draft store', async () => {
+  it('auto-saves dirty structures to the local browser draft store @links:SRS-009', async () => {
     render(<StructurePanel />);
 
     await act(async () => {
@@ -213,7 +213,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     );
   });
 
-  it('shows active structure details without a redundant structure-set header and edits its color', async () => {
+  it('shows active structure details without a redundant structure-set header and edits its color @links:SRS-022', async () => {
     render(<StructurePanel />);
 
     expect(screen.queryByText('Structure Set')).toBeNull();
@@ -365,7 +365,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     );
   });
 
-  it('records structure row edits for toolbar undo and redo', async () => {
+  it('records structure row edits for toolbar undo and redo @links:SRS-007,SRS-023', async () => {
     render(<StructurePanel />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Lock PTV' }));
@@ -390,7 +390,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     );
   });
 
-  it('shows contour review count in the compact active-structure summary', () => {
+  it('shows contour review count in the compact active-structure summary @links:SRS-011', () => {
     const structureSet = makeStructureSet();
     structureSet.structures[0].contours = [
       {
@@ -419,7 +419,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.queryByText('2 slices')).toBeNull();
   });
 
-  it('shows contour QA warnings for the active structure', () => {
+  it('shows contour QA warnings for the active structure @links:SRS-013', () => {
     const structureSet = makeStructureSet();
     structureSet.structures[0].contours = [
       {
@@ -507,7 +507,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(mocks.renderViewport).toHaveBeenCalled();
   });
 
-  it('summarizes RTSS QA separately from contour geometry QA', () => {
+  it('summarizes RTSS QA separately from contour geometry QA @links:SRS-024', () => {
     const loadedSeries = makeLoadedSeries();
     loadedSeries.series.instances = [
       { sopInstanceUID: 'sop-1', instanceNumber: 1, sliceLocation: 0 },
@@ -744,7 +744,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(container.textContent).toContain('PTV − Cord');
   });
 
-  it('applies boolean subtract to the active structure', async () => {
+  it('applies boolean subtract to the active structure @links:SRS-025', async () => {
     const loadedSeries = makeLoadedSeries();
     loadedSeries.volume.dimensions = [32, 32, 2];
     loadedSeries.volume.pixelData = new Float32Array(32 * 32 * 2);
@@ -806,7 +806,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByText('Subtracted Cord.')).toBeTruthy();
   });
 
-  it('interpolates missing contour slices for the active structure', async () => {
+  it('interpolates missing contour slices for the active structure @links:SRS-014', async () => {
     const loadedSeries = makeLoadedSeries();
     loadedSeries.series.instances = [
       { sopInstanceUID: 'sop-0', instanceNumber: 1, sliceLocation: 0 },
@@ -856,7 +856,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByText('Interpolated 2 contour slices.')).toBeTruthy();
   });
 
-  it('applies a positive margin to the active structure', async () => {
+  it('applies a positive margin to the active structure @links:SRS-026', async () => {
     const loadedSeries = makeLoadedSeries();
     loadedSeries.volume.dimensions = [32, 32, 2];
     loadedSeries.volume.pixelData = new Float32Array(32 * 32 * 2);

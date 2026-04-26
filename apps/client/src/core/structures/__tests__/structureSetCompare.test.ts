@@ -12,7 +12,7 @@ function structureSet(label: string, structures: StructureSet['structures']): St
   };
 }
 
-describe('compareStructureSets', () => {
+describe('compareStructureSets @links:SRS-015', () => {
   it('summarizes added, removed, and changed structures', () => {
     const previous = structureSet('previous', [
       {

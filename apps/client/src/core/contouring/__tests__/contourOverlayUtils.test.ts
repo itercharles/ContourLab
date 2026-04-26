@@ -22,7 +22,7 @@ describe('flattenWorldPoints', () => {
   });
 });
 
-describe('getViewportTransformSignature', () => {
+describe('getViewportTransformSignature @links:SRS-012', () => {
   it('changes when pan, zoom, or canvas placement changes', () => {
     const baseViewport = {
       getCamera: () => ({

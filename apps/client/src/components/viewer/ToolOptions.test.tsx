@@ -11,7 +11,7 @@ beforeEach(() => {
   });
 });
 
-describe('ToolOptions', () => {
+describe('ToolOptions @links:SRS-027', () => {
   it('shows window level presets and updates the active preset', () => {
     render(<ToolOptions />);
 

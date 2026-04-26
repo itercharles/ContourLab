@@ -62,7 +62,7 @@ vi.mock('dcmjs', () => ({
   },
 }));
 
-describe('exportRtstructBlob', () => {
+describe('exportRtstructBlob @links:SRS-018', () => {
   it('creates a DICOM blob for a structure set', async () => {
     await expect(exportRtstructBlob(loadedSeries, structureSet)).resolves.toBeInstanceOf(Blob);
   });

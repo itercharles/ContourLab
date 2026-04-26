@@ -39,7 +39,7 @@ beforeEach(() => {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('UndoRedoManager', () => {
+describe('UndoRedoManager @links:SRS-007', () => {
   it('push executes the command immediately', () => {
     const counter = { value: 0 };
     UndoRedoManager.push(makeCounterCommand(counter));

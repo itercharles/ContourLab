@@ -12,7 +12,7 @@ beforeEach(() => {
 });
 
 describe('dicomWebClient summary parsing', () => {
-  it('uses a browser-local DICOMweb endpoint override when configured', () => {
+  it('uses a browser-local DICOMweb endpoint override when configured @links:SRS-002', () => {
     expect(getDicomWebBaseUrl()).toBe(getDefaultDicomWebBaseUrl());
 
     setDicomWebBaseUrl('/orthanc/dicom-web/');
@@ -24,13 +24,13 @@ describe('dicomWebClient summary parsing', () => {
     expect(getDicomWebBaseUrl()).toBe(getDefaultDicomWebBaseUrl());
   });
 
-  it('routes the local Orthanc development endpoint through the same-origin proxy', () => {
+  it('routes the local Orthanc development endpoint through the same-origin proxy @links:SRS-002', () => {
     setDicomWebBaseUrl('http://localhost:8042/dicom-web/');
 
     expect(getDicomWebBaseUrl()).toBe('/dicom-web');
   });
 
-  it('extracts patient, study, and series fields from DICOMweb QIDO rows', () => {
+  it('extracts patient, study, and series fields from DICOMweb QIDO rows @links:SRS-001', () => {
     const rows = [
       {
         '00100010': { Value: [{ Alphabetic: 'DOE^JANE' }] },
@@ -60,7 +60,7 @@ describe('dicomWebClient summary parsing', () => {
     ]);
   });
 
-  it('keeps planning CT series and excludes non-planning modalities or CBCT-like series', () => {
+  it('keeps planning CT series and excludes non-planning modalities or CBCT-like series @links:SRS-021', () => {
     expect(__testables__.isPlanningCtSeries({
       patientId: 'MRN-1',
       patientName: 'DOE^JANE',
@@ -98,7 +98,7 @@ describe('dicomWebClient summary parsing', () => {
     })).toBe(false);
   });
 
-  it('extracts a DICOM object from a multipart WADO-RS response', () => {
+  it('extracts a DICOM object from a multipart WADO-RS response @links:SRS-002', () => {
     const encoder = new TextEncoder();
     const payload = new Uint8Array([1, 2, 3, 4]);
     const prefix = encoder.encode(
@@ -118,7 +118,7 @@ describe('dicomWebClient summary parsing', () => {
     expect(Array.from(new Uint8Array(extracted))).toEqual([1, 2, 3, 4]);
   });
 
-  it('extracts referenced image series from RTSTRUCT metadata', () => {
+  it('extracts referenced image series from RTSTRUCT metadata @links:SRS-001', () => {
     const metadata = {
       '30060010': {
         Value: [

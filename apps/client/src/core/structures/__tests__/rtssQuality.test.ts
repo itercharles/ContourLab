@@ -37,7 +37,7 @@ function makeStructureSet(overrides: Partial<StructureSet> = {}): StructureSet {
   };
 }
 
-describe('analyzeRtssQuality', () => {
+describe('analyzeRtssQuality @links:SRS-024', () => {
   it('does not report contour geometry issues as RTSS issues', () => {
     const summary = analyzeRtssQuality(makeStructureSet({
       structures: [

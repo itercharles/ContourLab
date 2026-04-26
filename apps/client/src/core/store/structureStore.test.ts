@@ -22,7 +22,7 @@ beforeEach(() => {
   });
 });
 
-describe('structureStore dirty tracking', () => {
+describe('structureStore dirty tracking @links:SRS-010', () => {
   it('marks a series dirty when a structure set is added', () => {
     useStructureStore.getState().addStructureSet(makeStructureSet());
 

@@ -305,7 +305,7 @@ describe('Toolbar contour operations', () => {
     expect(screen.getByRole('button', { name: 'Inbox' }).getAttribute('title')).toBe('Inbox · 0 unread');
   });
 
-  it('saves active structure changes from the global title bar', async () => {
+  it('saves active structure changes from the global title bar @links:SRS-018', async () => {
     useStructureStore.getState().markSeriesDirty('series-1');
 
     renderToolbar();
