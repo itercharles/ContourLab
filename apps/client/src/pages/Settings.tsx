@@ -102,6 +102,7 @@ export default function Settings() {
           </div>
           <Link
             to="/workspace"
+            reloadDocument
             className="rounded bg-[var(--color-elevated)] px-3 py-1.5 text-[11px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             Back to Workspace

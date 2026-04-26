@@ -104,6 +104,7 @@ export default function LeftSidebar() {
         </span>
         <Link
           to="/settings"
+          reloadDocument
           className="flex h-6 w-6 items-center justify-center rounded bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           title="Settings"
           aria-label="Settings"
