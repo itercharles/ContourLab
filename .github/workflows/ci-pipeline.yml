@@ -36,7 +36,7 @@ jobs:
       - run: pnpm --filter @webtps/client build
 
   dev-api:
-    name: Dev | API (restore · build)
+    name: Dev | API (restore · build · test)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +45,15 @@ jobs:
           dotnet-version: '10.0.x'
       - run: dotnet restore apps/api/api.csproj
       - run: dotnet build apps/api/api.csproj --configuration Release --no-restore
+      - name: Run API tests
+        run: dotnet test apps/api.tests/WebTPS.Api.Tests.csproj --logger "junit;LogFilePath=../../test-results/api-junit.xml"
+      - name: Upload API test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-srs-api-junit
+          path: test-results/api-junit.xml
+          if-no-files-found: error
 
   dev-shared-types:
     name: Dev | Shared Types (typecheck · build)

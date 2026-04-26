@@ -37,3 +37,6 @@ app.MapPost("/debug/client-log", (ClientDebugLogEntry entry, ILogger<Program> lo
 app.Run();
 
 internal sealed record ClientDebugLogEntry(string Scope, string Message);
+
+// Required for WebApplicationFactory in integration tests
+public partial class Program { }

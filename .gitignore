@@ -8,6 +8,10 @@ build/
 .next/
 *.tsbuildinfo
 
+# .NET build output
+**/bin/
+**/obj/
+
 # Python
 __pycache__/
 *.py[cod]
