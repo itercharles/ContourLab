@@ -29,10 +29,22 @@ export interface DicomWebSeriesSummary {
 export interface DicomWebRtstructInstance {
   studyInstanceUID: string;
   seriesInstanceUID: string;
+  sopClassUID: string;
   sopInstanceUID: string;
   seriesDescription: string;
   seriesDate: string;
   seriesTime: string;
+  structureSetLabel: string;
+  structureSetName: string;
+  structureSetDescription: string;
+  structureSetDate: string;
+  structureSetTime: string;
+  predecessorSopClassUID?: string;
+  predecessorSopInstanceUID?: string;
+  approvalStatus?: string;
+  reviewerName?: string;
+  reviewDate?: string;
+  reviewTime?: string;
   roiCount?: number;
   referencedSeriesInstanceUIDs: string[];
 }
@@ -271,10 +283,12 @@ export async function queryRtstructInstancesForStudy(
       return metadataPayload.flatMap((dataset) => {
         const sopInstanceUID = getStringValue(dataset, '00080018');
         if (!sopInstanceUID) return [];
+        const predecessor = getRtstructPredecessorReference(dataset);
 
         return [{
           studyInstanceUID,
           seriesInstanceUID: series.seriesInstanceUID,
+          sopClassUID: getStringValue(dataset, '00080016', '1.2.840.10008.5.1.4.1.1.481.3'),
           sopInstanceUID,
           seriesDescription: series.seriesDescription,
           seriesDate: getStringValue(
@@ -287,6 +301,17 @@ export async function queryRtstructInstancesForStudy(
             '00080031',
             getStringValue(dataset, '00080033', getStringValue(dataset, '00080013'))
           ),
+          structureSetLabel: getStringValue(dataset, '30060002'),
+          structureSetName: getStringValue(dataset, '30060004'),
+          structureSetDescription: getStringValue(dataset, '30060006'),
+          structureSetDate: getStringValue(dataset, '30060008'),
+          structureSetTime: getStringValue(dataset, '30060009'),
+          predecessorSopClassUID: predecessor?.sopClassUID,
+          predecessorSopInstanceUID: predecessor?.sopInstanceUID,
+          approvalStatus: getOptionalStringValue(dataset, '300E0002'),
+          reviewerName: getPersonName(dataset, '300E0008') || undefined,
+          reviewDate: getOptionalStringValue(dataset, '300E0004'),
+          reviewTime: getOptionalStringValue(dataset, '300E0005'),
           roiCount: getSequenceLength(dataset, '30060020'),
           referencedSeriesInstanceUIDs: getRtstructReferencedSeriesInstanceUIDs(dataset),
         }];
@@ -331,6 +356,20 @@ function getRtstructReferencedSeriesInstanceUIDs(dataset: DicomWebDataset): stri
   }
 
   return Array.from(referencedSeriesUIDs);
+}
+
+function getRtstructPredecessorReference(dataset: DicomWebDataset): {
+  sopClassUID: string;
+  sopInstanceUID: string;
+} | null {
+  const predecessor = getSequenceItems(dataset, '30060018')[0];
+  if (!predecessor) return null;
+
+  const sopClassUID = getStringValue(predecessor, '00081150');
+  const sopInstanceUID = getStringValue(predecessor, '00081155');
+  if (!sopClassUID || !sopInstanceUID) return null;
+
+  return { sopClassUID, sopInstanceUID };
 }
 
 export async function retrieveDicomWebInstance(instance: DicomWebRtstructInstance): Promise<ArrayBuffer> {
@@ -407,6 +446,7 @@ export async function loadSeriesFromDicomWeb(
 export const __testables__ = {
   buildSeriesSummaries,
   extractDicomPart,
+  getRtstructPredecessorReference,
   getRtstructReferencedSeriesInstanceUIDs,
   isPlanningCtSeries,
 };
@@ -543,6 +583,11 @@ function getStringValue(dataset: DicomWebDataset, tag: string, fallback = ''): s
   }
 
   return fallback;
+}
+
+function getOptionalStringValue(dataset: DicomWebDataset, tag: string): string | undefined {
+  const value = getStringValue(dataset, tag);
+  return value || undefined;
 }
 
 function getPersonName(dataset: DicomWebDataset, tag: string): string {

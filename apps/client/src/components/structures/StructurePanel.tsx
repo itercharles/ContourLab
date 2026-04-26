@@ -24,6 +24,8 @@ import {
   analyzeRtssQuality,
   type RtssQualityIssue,
 } from '../../core/structures/rtssQuality';
+import { findRtstructHistoryGroup } from '../../core/dicom/rtstructHistory';
+import { useRtstructHistoryStore } from '../../core/store/rtstructHistoryStore';
 import { ContourEngine } from '../../core/contouring/ContourEngine';
 import { computeBooleanContoursForStructure, type BooleanOperation } from '../../core/contouring/BooleanContourEngine';
 import { interpolateMissingContoursForFrames } from '../../core/contouring/InterpolationEngine';
@@ -147,6 +149,15 @@ function formatSourceTimestamp(value: string): string {
   });
 }
 
+function formatDicomDateTime(date: string, time: string): string {
+  const datePart = date.length === 8 ? `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}` : 'unknown date';
+  const timePart = time.length >= 6
+    ? `${time.slice(0, 2)}:${time.slice(2, 4)}:${time.slice(4, 6)}`
+    : 'unknown time';
+
+  return `${datePart} ${timePart}`;
+}
+
 function formatSopTail(sopInstanceUID: string): string {
   return sopInstanceUID.split('.').at(-1) || sopInstanceUID.slice(-8) || 'unknown';
 }
@@ -168,7 +179,7 @@ interface StructureSetQualityIssue {
   issue: RtssQualityIssue;
 }
 
-type PanelTab = 'structures' | 'qa' | 'dicom';
+type PanelTab = 'structures' | 'qa' | 'history' | 'dicom';
 type QaChecklistEntry = {
   id: string;
   label: string;
@@ -392,6 +403,8 @@ export default function StructurePanel() {
   const setActiveViewport = useUIStore((s) => s.setActiveViewport);
   const activeStructureOperationPanel = useUIStore((s) => s.activeStructureOperationPanel);
   const setActiveStructureOperationPanel = useUIStore((s) => s.setActiveStructureOperationPanel);
+  const rtstructHistoryInstances = useRtstructHistoryStore((s) => s.instances);
+  const loadRtstructVersion = useRtstructHistoryStore((s) => s.loadRtstructVersion);
 
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -429,6 +442,25 @@ export default function StructurePanel() {
   const activeLoadedSeries = activeSeriesUID
     ? loadedSeries.find((series) => series.seriesUID === activeSeriesUID)
     : undefined;
+  const activeRtstructHistoryGroup = activeSeriesStructureSet?.source?.type === 'rtstruct'
+    ? findRtstructHistoryGroup(
+        rtstructHistoryInstances.filter((instance) => (
+          activeSeriesUID
+            ? (
+                instance.referencedSeriesInstanceUIDs.length > 0
+                  ? instance.referencedSeriesInstanceUIDs.includes(activeSeriesUID)
+                  : true
+              )
+            : true
+        )),
+        activeSeriesStructureSet.source.sopInstanceUID
+      )
+    : null;
+  const hasRecordedRtstructHistory =
+    Boolean(activeRtstructHistoryGroup && (
+      activeRtstructHistoryGroup.versions.length > 1 ||
+      activeRtstructHistoryGroup.hasMissingPredecessor
+    ));
   const activeStructureReviewSlices = activeStructure
     ? getReviewSlices(activeStructure.contours)
     : [];
@@ -1130,9 +1162,6 @@ export default function StructurePanel() {
         : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-sec)]'
     }`;
 
-  const disabledTabClass =
-    'h-8 cursor-not-allowed border-b-2 border-transparent px-3 text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-dim)]';
-
   return (
     <div className="flex h-full flex-col bg-[var(--color-surface)]">
       <div className="flex flex-none border-b border-[var(--color-border)] bg-[var(--color-header)]">
@@ -1150,7 +1179,11 @@ export default function StructurePanel() {
         >
           QA
         </button>
-        <button type="button" className={disabledTabClass} disabled title="Not implemented">
+        <button
+          type="button"
+          className={tabButtonClass(panelTab === 'history')}
+          onClick={() => setPanelTab('history')}
+        >
           History
         </button>
         <button
@@ -1716,6 +1749,78 @@ export default function StructurePanel() {
                 {activeStructure ? 'No contour QA issues for this structure.' : 'No active structure.'}
               </p>
             ) : null}
+          </section>
+        </div>
+      )}
+
+      {panelTab === 'history' && (
+        <div className="flex-1 overflow-y-auto px-3 py-2 text-[10px]">
+          <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
+            <div className="border-b border-[var(--color-border)] bg-[var(--color-elevated)] px-2 py-1">
+              <p className="font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+                RTSTRUCT History
+              </p>
+            </div>
+            {!activeSeriesStructureSet ? (
+              <p className="px-2 py-2 text-[var(--color-text-muted)]">No active structure set.</p>
+            ) : activeSeriesStructureSet.source?.type !== 'rtstruct' ? (
+              <p className="px-2 py-2 text-[var(--color-text-muted)]">No repository RTSTRUCT is active.</p>
+            ) : !hasRecordedRtstructHistory ? (
+              <p className="px-2 py-2 text-[var(--color-text-muted)]">
+                No recorded predecessor history for this structure set.
+              </p>
+            ) : (
+              <div>
+                {activeRtstructHistoryGroup?.versions.map((version, index) => {
+                  const isActiveVersion = activeSeriesStructureSet.source?.sopInstanceUID === version.sopInstanceUID;
+                  const label = version.structureSetName || version.structureSetLabel || version.seriesDescription || 'RTSTRUCT';
+
+                  return (
+                    <button
+                      key={version.sopInstanceUID}
+                      type="button"
+                      onClick={() => loadRtstructVersion?.(version.sopInstanceUID)}
+                      disabled={!loadRtstructVersion || isActiveVersion}
+                      className={`grid w-full grid-cols-[42px_1fr_auto] items-start gap-2 border-b border-[var(--color-border)] px-2 py-1.5 text-left last:border-b-0 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none ${
+                        isActiveVersion
+                          ? 'bg-blue-950/20 text-[var(--color-text)]'
+                          : 'text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] disabled:cursor-not-allowed disabled:opacity-60'
+                      }`}
+                      title={isActiveVersion ? 'Active in workspace' : `Load ${label}`}
+                    >
+                      <span className="rounded bg-[var(--color-elevated)] px-1.5 py-0.5 text-center font-semibold text-[var(--color-text-muted)]">
+                        {index === 0 ? 'NEW' : `V${(activeRtstructHistoryGroup?.versions.length ?? 0) - index}`}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-[11px] text-[var(--color-text)]">
+                          {label}
+                        </span>
+                        <span className="block truncate font-mono text-[9px] text-[var(--color-text-muted)]">
+                          {formatDicomDateTime(version.structureSetDate || version.seriesDate, version.structureSetTime || version.seriesTime)}
+                          {' · '}
+                          SOP …{formatSopTail(version.sopInstanceUID)}
+                          {typeof version.roiCount === 'number' ? ` · ${version.roiCount} ROI` : ''}
+                        </span>
+                        {(version.approvalStatus || version.reviewerName) && (
+                          <span className="mt-0.5 block truncate text-[9px] text-[var(--color-text-muted)]">
+                            {version.approvalStatus ?? 'UNREVIEWED'}
+                            {version.reviewerName ? ` · ${version.reviewerName}` : ''}
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-[9px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+                        {isActiveVersion ? 'Active' : 'Load'}
+                      </span>
+                    </button>
+                  );
+                })}
+                {activeRtstructHistoryGroup?.hasMissingPredecessor ? (
+                  <p className="border-t border-[var(--color-border)] px-2 py-1 text-[9px] text-[#f59e0b]">
+                    Earlier predecessor is referenced but not available in this repository query.
+                  </p>
+                ) : null}
+              </div>
+            )}
           </section>
         </div>
       )}

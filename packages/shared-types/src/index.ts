@@ -76,9 +76,16 @@ export interface Structure {
 export interface StructureSetSource {
   type: 'manual' | 'rtstruct' | 'local-draft';
   label?: string;
+  sopClassUID?: string;
   sopInstanceUID?: string;
   studyInstanceUID?: string;
   seriesInstanceUID?: string;
+  predecessorSopClassUID?: string;
+  predecessorSopInstanceUID?: string;
+  approvalStatus?: string;
+  reviewerName?: string;
+  reviewDate?: string;
+  reviewTime?: string;
   importedAt?: string;
 }
 

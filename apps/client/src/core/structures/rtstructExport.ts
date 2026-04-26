@@ -111,6 +111,13 @@ export async function exportRtstructObject(
     RTROIInterpretedType: mapRoiType(structure.type),
     ROIInterpreter: '',
   }));
+  const predecessorStructureSetSequence =
+    structureSet.source?.type === 'rtstruct' && structureSet.source.sopInstanceUID
+      ? [{
+          ReferencedSOPClassUID: structureSet.source.sopClassUID ?? RT_STRUCTURE_SET_STORAGE_UID,
+          ReferencedSOPInstanceUID: structureSet.source.sopInstanceUID,
+        }]
+      : undefined;
 
   const dataset = {
     SOPClassUID: RT_STRUCTURE_SET_STORAGE_UID,
@@ -154,6 +161,9 @@ export async function exportRtstructObject(
         ],
       },
     ],
+    ...(predecessorStructureSetSequence ? {
+      PredecessorStructureSetSequence: predecessorStructureSetSequence,
+    } : {}),
     StructureSetROISequence: structureSetROISequence,
     ROIContourSequence: roiContourSequence,
     RTROIObservationsSequence: rtRoiObservationsSequence,

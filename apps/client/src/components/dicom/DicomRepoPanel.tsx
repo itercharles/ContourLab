@@ -19,6 +19,8 @@ import {
   type StructureComparisonRow,
   type StructureSetComparison,
 } from '../../core/structures/structureSetCompare';
+import { buildRtstructHistoryGroups } from '../../core/dicom/rtstructHistory';
+import { useRtstructHistoryStore } from '../../core/store/rtstructHistoryStore';
 import { resolveScrollDeltaToSlice } from '../../core/structures/contourReview';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
@@ -319,6 +321,8 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
   const markSeriesDraftDirty = useStructureStore((s) => s.markSeriesDraftDirty);
   const repositoryDirtySeriesUIDs = useStructureStore((s) => s.repositoryDirtySeriesUIDs);
   const setLeftSidebarOpen = useUIStore((s) => s.setLeftSidebarOpen);
+  const setRtstructHistoryInstances = useRtstructHistoryStore((s) => s.setInstances);
+  const setLoadRtstructVersion = useRtstructHistoryStore((s) => s.setLoadRtstructVersion);
 
   const [series, setSeries] = useState<DicomWebSeriesSummary[]>([]);
   const [rtstructByStudy, setRtstructByStudy] = useState<Record<string, DicomWebRtstructInstance[]>>({});
@@ -436,6 +440,10 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
     (count, study) => count + (rtstructByStudy[study.studyInstanceUID]?.length ?? 0),
     0
   ) ?? 0;
+  const selectedPatientRtstructs = useMemo(
+    () => selectedPatient?.studies.flatMap((study) => rtstructByStudy[study.studyInstanceUID] ?? []) ?? [],
+    [rtstructByStudy, selectedPatient]
+  );
   useEffect(() => {
     if (selectedPatientKey && !patientGroups.some((patient) => patient.patientKey === selectedPatientKey)) {
       setSelectedPatientKey(null);
@@ -761,9 +769,16 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
           source: {
             type: 'rtstruct' as const,
             label: instance.seriesDescription || importedStructureSet.label || 'RTSTRUCT',
+            sopClassUID: instance.sopClassUID,
             sopInstanceUID: instance.sopInstanceUID,
             studyInstanceUID: instance.studyInstanceUID,
             seriesInstanceUID: instance.seriesInstanceUID,
+            predecessorSopClassUID: instance.predecessorSopClassUID,
+            predecessorSopInstanceUID: instance.predecessorSopInstanceUID,
+            approvalStatus: instance.approvalStatus,
+            reviewerName: instance.reviewerName,
+            reviewDate: instance.reviewDate,
+            reviewTime: instance.reviewTime,
             importedAt: new Date().toISOString(),
           },
         };
@@ -802,6 +817,34 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
       structureSets,
     ]
   );
+
+  useEffect(() => {
+    setRtstructHistoryInstances(selectedPatientRtstructs);
+  }, [selectedPatientRtstructs, setRtstructHistoryInstances]);
+
+  useEffect(() => {
+    setLoadRtstructVersion((sopInstanceUID: string) => {
+      const instance = Object.values(rtstructByStudy)
+        .flat()
+        .find((item) => item.sopInstanceUID === sopInstanceUID);
+      if (!instance) return;
+
+      const study = selectedPatient?.studies.find(
+        (patientStudy) => patientStudy.studyInstanceUID === instance.studyInstanceUID
+      ) ?? patientGroups
+        .flatMap((patient) => patient.studies)
+        .find((patientStudy) => patientStudy.studyInstanceUID === instance.studyInstanceUID);
+      const imageSeries = study?.series.filter((entry) => (
+        instance.referencedSeriesInstanceUIDs.length > 0
+          ? instance.referencedSeriesInstanceUIDs.includes(entry.seriesInstanceUID)
+          : true
+      )) ?? [];
+
+      void onLoadRtstruct(instance, imageSeries.length > 0 ? imageSeries : study?.series ?? []);
+    });
+
+    return () => setLoadRtstructVersion(null);
+  }, [onLoadRtstruct, patientGroups, rtstructByStudy, selectedPatient, setLoadRtstructVersion]);
 
   const fetchRtstructsForPatient = useCallback(async (patient: PatientGroup) => {
     const studyUIDs = patient.studies.map((study) => study.studyInstanceUID);
@@ -984,10 +1027,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
 
       const source = activeSeriesStructureSet.source;
       if (source?.type === 'rtstruct') {
-        return (
-          source.sopInstanceUID === instance.sopInstanceUID ||
-          source.seriesInstanceUID === instance.seriesInstanceUID
-        );
+        return source.sopInstanceUID === instance.sopInstanceUID;
       }
 
       return false;
@@ -1263,9 +1303,10 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                         ? instance.referencedSeriesInstanceUIDs.includes(entry.seriesInstanceUID)
                         : study.series.length === 1
                     ));
+                    const rtstructGroupsForImageSet = buildRtstructHistoryGroups(rtstructsForImageSet);
                     const rtstructMeta = loadingRtstructStudyUIDs.includes(study.studyInstanceUID)
                       ? 'loading RTSS'
-                      : `${rtstructsForImageSet.length} RTSS`;
+                      : `${rtstructGroupsForImageSet.length} RTSS`;
 
                     return (
                       <div key={entry.seriesInstanceUID} className="border-t border-[var(--color-border)]">
@@ -1333,20 +1374,20 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                             />
                             {loadingRtstructStudyUIDs.includes(study.studyInstanceUID) ? (
                               <p className="px-3 py-2 text-[10px] text-blue-400">Loading RTSTRUCT objects...</p>
-                            ) : rtstructsForImageSet.length === 0 ? (
+                            ) : rtstructGroupsForImageSet.length === 0 ? (
                               <p className="px-3 py-2 text-[10px] text-[var(--color-text-muted)]">No RTSTRUCT for this image set context.</p>
                             ) : (
                               <div>
-                                {rtstructsForImageSet.map((instance, index) => {
-                                  const isActiveRtstruct = isRepositoryRtstructActive(
-                                    instance,
-                                    entry.seriesInstanceUID
+                                {rtstructGroupsForImageSet.map((group) => {
+                                  const instance = group.latest;
+                                  const isActiveRtstruct = group.versions.some((version) =>
+                                    isRepositoryRtstructActive(version, entry.seriesInstanceUID)
                                   );
-                                  const isLatestRtstruct = index === 0;
+                                  const versionCount = group.versions.length;
 
                                   return (
                                     <div
-                                      key={instance.sopInstanceUID}
+                                      key={group.id}
                                       role="button"
                                       tabIndex={!importingRtstructSop ? 0 : -1}
                                       onDoubleClick={() => {
@@ -1382,18 +1423,19 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                                             ACTIVE
                                           </span>
                                         )}
-                                        {isLatestRtstruct && !isActiveRtstruct && (
+                                        {versionCount > 1 && !isActiveRtstruct && (
                                           <span className="rounded bg-[var(--color-elevated)] px-1.5 py-0.5 text-[9px] font-semibold tracking-widest text-[var(--color-text-sec)]">
-                                            LATEST
+                                            {versionCount} VERSIONS
                                           </span>
                                         )}
                                       </div>
                                       <div className="mt-0.5 flex items-center gap-2">
                                         <span className="min-w-0 flex-1 truncate text-[10px] text-[var(--color-text-muted)]" title={instance.sopInstanceUID}>
-                                          {formatDicomDateTime(instance.seriesDate, instance.seriesTime)}
+                                          {formatDicomDateTime(instance.structureSetDate || instance.seriesDate, instance.structureSetTime || instance.seriesTime)}
                                           {' · '}
                                           SOP …{formatSopTail(instance.sopInstanceUID)}
                                           {typeof instance.roiCount === 'number' ? ` · ${instance.roiCount} ROI` : ''}
+                                          {group.hasMissingPredecessor ? ' · predecessor unavailable' : ''}
                                         </span>
                                         <span className="text-[10px] text-[var(--color-text-muted)]">
                                           {importingRtstructSop === instance.sopInstanceUID
