@@ -274,7 +274,7 @@ jobs:
       - name: Check DHF traceability
         run: |
           export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
-          compliantflow --dhf dhf/DHF validate traceability
+          cd dhf && python -m utils validate traceability --fail-on-uncovered
 
   # ── ACCEPTANCE GATE ───────────────────────────────────────────────────────
   # Runs after all development, verification, and validation phases pass.
