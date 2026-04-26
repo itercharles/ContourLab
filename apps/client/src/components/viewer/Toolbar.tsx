@@ -220,6 +220,7 @@ export default function Toolbar() {
         <div className="h-4 w-px bg-[var(--color-border)]" />
         <Link
           to="/settings"
+          reloadDocument
           title="Settings"
           aria-label="Settings"
           className="flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"

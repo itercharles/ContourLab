@@ -102,7 +102,7 @@ export default class VerificationReporter implements Reporter {
       lines.push(
         `    <testcase name="${escapeXml(e.name)}" classname="${escapeXml(e.classname)}" time="${dur}">`,
         `      <properties>`,
-        `        <property name="dhf.links" value="${e.links.join(',')}"/>`,
+        `        <property name="compliantflow.links" value="${e.links.join(',')}"/>`,
         `      </properties>`,
       )
       if (e.status === 'fail') {
