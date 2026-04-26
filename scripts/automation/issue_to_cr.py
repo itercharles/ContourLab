@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import re
 import sys
@@ -79,6 +80,12 @@ def find_existing_cr_for_issue(cr_dir: Path, source_issue: str) -> str | None:
         if needle in text or quoted_needle in text:
             return path.stem
     return None
+
+
+def current_iso_week_milestone(today: dt.date | None = None) -> str:
+    current = today or dt.date.today()
+    iso_year, iso_week, _ = current.isocalendar()
+    return f"{iso_year}-W{iso_week:02d}"
 
 
 def yaml_scalar(value: str) -> str:
@@ -182,14 +189,14 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--event", type=Path, required=True)
     parser.add_argument("--comments", type=Path)
     parser.add_argument("--dhf-repo", type=Path, required=True)
-    parser.add_argument("--active-milestone", required=True)
+    parser.add_argument("--active-milestone", default=None)
     parser.add_argument("--write", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
 
     result = prepare_cr(
         load_issue_event(args.event),
-        args.active_milestone,
+        args.active_milestone or current_iso_week_milestone(),
         args.dhf_repo,
         load_comments(args.comments),
         write=args.write,

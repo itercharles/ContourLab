@@ -38,14 +38,11 @@ jobs:
 
       - name: Prepare CR from issue
         id: prepare
-        env:
-          ACTIVE_MILESTONE: ${{ vars.CR_INTAKE_MILESTONE }}
         run: |
           python scripts/automation/issue_to_cr.py \
             --event "$GITHUB_EVENT_PATH" \
             --comments /tmp/issue-comments.json \
             --dhf-repo dhf \
-            --active-milestone "$ACTIVE_MILESTONE" \
             --write \
             --output /tmp/issue-to-cr.json
           cat /tmp/issue-to-cr.json

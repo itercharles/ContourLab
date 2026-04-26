@@ -1,10 +1,12 @@
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 
 from scripts.automation.issue_to_cr import (
     IssueContext,
     build_cr_yaml,
+    current_iso_week_milestone,
     issue_has_cr_marker,
     next_cr_id,
     prepare_cr,
@@ -32,6 +34,10 @@ def make_issue(milestone: str = "2026-W18") -> IssueContext:
 
 
 class IssueToCrTests(unittest.TestCase):
+    def test_current_iso_week_milestone_uses_iso_year_and_week(self):
+        self.assertEqual(current_iso_week_milestone(date(2026, 4, 26)), "2026-W17")
+        self.assertEqual(current_iso_week_milestone(date(2027, 1, 1)), "2026-W53")
+
     def test_next_cr_id_uses_existing_dhf_items(self):
         with tempfile.TemporaryDirectory() as tmp:
             dhf = make_dhf(Path(tmp))

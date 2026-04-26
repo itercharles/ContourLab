@@ -190,7 +190,7 @@ decision, external dependency — starts with a Change Request (CR) in the
 ### How it works
 
 1. **Open an issue in WebTPS** — describe the requested change. Maintainers review
-   the issue and assign it to the active weekly milestone, e.g. `2026-W18`, when
+   the issue and assign it to the current ISO-week milestone, e.g. `2026-W18`, when
    it is accepted for the current release intake. The `issue-to-cr` workflow then
    opens the CR PR in WebTPS-DHF automatically. Maintainers may still open a CR PR
    in WebTPS-DHF directly when needed.
@@ -202,8 +202,9 @@ decision, external dependency — starts with a Change Request (CR) in the
 
 No stage advances without explicit human approval. The agent cannot merge PRs.
 
-The active weekly milestone is configured by repository variable
-`CR_INTAKE_MILESTONE` using ISO-week naming such as `2026-W18`.
+The active weekly milestone is calculated automatically by the `issue-to-cr`
+workflow using ISO-week naming such as `2026-W18`; maintainers only need to create
+that milestone in GitHub and assign accepted issues to it.
 
 ### PR title format
 
