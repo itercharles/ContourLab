@@ -274,21 +274,6 @@ jobs:
           sed "s|git+https://github.com/|git+https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/|g" \
             dhf/requirements.txt | pip install -r /dev/stdin
 
-      - name: Download SRS test evidence
-        uses: actions/download-artifact@v4
-        with:
-          name: verify-srs-junit
-          path: test-results/
-
-      - name: Import test results into DHF
-        run: |
-          export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
-          compliantflow --dhf dhf/DHF test import test-results/verification-junit.xml \
-            --tester "ci" \
-            --run-id "${{ github.run_id }}" \
-            --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --commit "${{ github.sha }}"
-
       - name: Check DHF traceability
         run: |
           export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
@@ -373,20 +358,12 @@ jobs:
           name: verify-srs-junit
           path: test-results/
 
-      - name: Import test results into DHF
-        run: |
-          export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
-          compliantflow --dhf dhf/DHF test import test-results/verification-junit.xml \
-            --tester "ci" \
-            --run-id "${{ github.run_id }}" \
-            --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --commit "${{ github.sha }}"
-
       - name: Generate traceability PDF report
         run: |
           mkdir -p dhf-artifacts/traceability
           export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
           compliantflow --dhf dhf/DHF report traceability UC CRS SYS SRS SWDD \
+            --junit test-results/verification-junit.xml \
             --output dhf-artifacts/traceability/Requirements_Traceability_Report.pdf
 
       - name: Upload DHF artifacts

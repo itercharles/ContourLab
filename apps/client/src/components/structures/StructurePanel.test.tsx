@@ -5,6 +5,7 @@ import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
 import { resetQaRuleConfig } from '../../core/qa/qaRuleConfig';
+import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import type { StructureSet } from '@webtps/shared-types';
 
 const mocks = vi.hoisted(() => ({
@@ -135,6 +136,7 @@ function makeOtherSeriesStructureSet(): StructureSet {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  UndoRedoManager.clear();
   resetQaRuleConfig();
   mocks.getViewport.mockReturnValue({
     getCamera: () => ({ focalPoint: [0, 0, 10] as [number, number, number] }),
@@ -360,6 +362,31 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     fireEvent.click(screen.getByRole('button', { name: 'Unlock PTV' }));
     await waitFor(() =>
       expect(useStructureStore.getState().structureSets[0].structures[0].isLocked).toBe(false)
+    );
+  });
+
+  it('records structure row edits for toolbar undo and redo', async () => {
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lock PTV' }));
+    await waitFor(() =>
+      expect(useStructureStore.getState().structureSets[0].structures[0].isLocked).toBe(true)
+    );
+    expect(UndoRedoManager.canUndo()).toBe(true);
+
+    act(() => {
+      UndoRedoManager.undo();
+    });
+    await waitFor(() =>
+      expect(useStructureStore.getState().structureSets[0].structures[0].isLocked).toBe(false)
+    );
+    expect(UndoRedoManager.canRedo()).toBe(true);
+
+    act(() => {
+      UndoRedoManager.redo();
+    });
+    await waitFor(() =>
+      expect(useStructureStore.getState().structureSets[0].structures[0].isLocked).toBe(true)
     );
   });
 

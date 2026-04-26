@@ -8,6 +8,7 @@ import {
   loadStructureDraftForSeries,
   saveStructureDraftForSeries,
 } from '../../core/structures/structureDraftStore';
+import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import { replaceStructureSetsForSeries } from '../../core/structures/structurePersistence';
 import {
   getReviewSlices,
@@ -55,6 +56,58 @@ function hexToRgb(value: string): [number, number, number] {
     Number.parseInt(normalized.slice(2, 4), 16),
     Number.parseInt(normalized.slice(4, 6), 16),
   ];
+}
+
+function cloneStructure(structure: Structure): Structure {
+  return {
+    ...structure,
+    color: [...structure.color] as [number, number, number],
+    contours: structure.contours.map((contour) => ({
+      ...contour,
+      points: new Float32Array(contour.points),
+    })),
+  };
+}
+
+function clonePatchValue<T>(value: T): T {
+  if (value instanceof Float32Array) return new Float32Array(value) as T;
+  if (Array.isArray(value)) return [...value] as T;
+  return value;
+}
+
+function pushStructurePatchCommand(
+  setId: string,
+  structure: Structure,
+  patch: Partial<Structure>,
+  description: string
+): void {
+  const previousPatch = Object.fromEntries(
+    Object.keys(patch).map((key) => [
+      key,
+      clonePatchValue(structure[key as keyof Structure]),
+    ])
+  ) as Partial<Structure>;
+  const store = useStructureStore.getState();
+
+  UndoRedoManager.push({
+    description,
+    execute: () => store.updateStructure(setId, structure.id, patch),
+    undo: () => store.updateStructure(setId, structure.id, previousPatch),
+  });
+}
+
+function pushStructureDeleteCommand(setId: string, structure: Structure): void {
+  const snapshot = cloneStructure(structure);
+  const store = useStructureStore.getState();
+
+  UndoRedoManager.push({
+    description: `Delete structure ${structure.name}`,
+    execute: () => store.deleteStructure(setId, structure.id),
+    undo: () => {
+      store.addStructure(setId, cloneStructure(snapshot));
+      store.setActiveStructure(snapshot.id);
+    },
+  });
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -139,8 +192,6 @@ function StructureRow({
   onSelect,
   onStatus,
 }: StructureRowProps) {
-  const updateStructure = useStructureStore((s) => s.updateStructure);
-  const deleteStructure = useStructureStore((s) => s.deleteStructure);
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState(structure.name);
 
@@ -149,17 +200,27 @@ function StructureRow({
 
   const handleVisibilityToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    updateStructure(setId, structure.id, { isVisible: !(structure.isVisible ?? true) });
+    pushStructurePatchCommand(
+      setId,
+      structure,
+      { isVisible: !(structure.isVisible ?? true) },
+      `${structure.isVisible ?? true ? 'Hide' : 'Show'} structure ${structure.name}`
+    );
   };
 
   const handleLockToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    updateStructure(setId, structure.id, { isLocked: !(structure.isLocked ?? false) });
+    pushStructurePatchCommand(
+      setId,
+      structure,
+      { isLocked: !(structure.isLocked ?? false) },
+      `${structure.isLocked ?? false ? 'Unlock' : 'Lock'} structure ${structure.name}`
+    );
   };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    deleteStructure(setId, structure.id);
+    pushStructureDeleteCommand(setId, structure);
     onStatus(`Deleted structure ${structure.name}.`);
   };
 
@@ -179,7 +240,11 @@ function StructureRow({
     }
 
     try {
-      StructureSetManager.renameStructure(setId, structure.id, nextName);
+      UndoRedoManager.push({
+        description: `Rename structure ${structure.name}`,
+        execute: () => StructureSetManager.renameStructure(setId, structure.id, nextName),
+        undo: () => StructureSetManager.renameStructure(setId, structure.id, structure.name),
+      });
       setIsRenaming(false);
       onStatus(`Renamed structure to ${nextName}.`);
     } catch (error) {
@@ -319,7 +384,6 @@ export default function StructurePanel() {
   const setActiveStructure = useStructureStore((s) => s.setActiveStructure);
   const setActiveStructureSet = useStructureStore((s) => s.setActiveStructureSet);
   const replaceStructureSets = useStructureStore((s) => s.replaceStructureSets);
-  const updateStructure = useStructureStore((s) => s.updateStructure);
   const dirtySeriesUIDs = useStructureStore((s) => s.dirtySeriesUIDs);
   const repositoryDirtySeriesUIDs = useStructureStore((s) => s.repositoryDirtySeriesUIDs);
   const markSeriesClean = useStructureStore((s) => s.markSeriesClean);
@@ -672,9 +736,12 @@ export default function StructurePanel() {
   const handleActiveStructureColorChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!activeSeriesStructureSet || !activeStructure) return;
 
-    updateStructure(activeSeriesStructureSet.id, activeStructure.id, {
-      color: hexToRgb(event.target.value),
-    });
+    pushStructurePatchCommand(
+      activeSeriesStructureSet.id,
+      activeStructure,
+      { color: hexToRgb(event.target.value) },
+      `Change ${activeStructure.name} color`
+    );
     setStatusMessage(`Updated ${activeStructure.name} color.`);
   };
 
@@ -682,9 +749,12 @@ export default function StructurePanel() {
     if (!activeSeriesStructureSet || !activeStructure) return;
 
     const nextType = event.target.value as StructureType;
-    updateStructure(activeSeriesStructureSet.id, activeStructure.id, {
-      type: nextType,
-    });
+    pushStructurePatchCommand(
+      activeSeriesStructureSet.id,
+      activeStructure,
+      { type: nextType },
+      `Change ${activeStructure.name} type`
+    );
     setIsEditingActiveType(false);
     setStatusMessage(`Updated ${activeStructure.name} type to ${nextType}.`);
   };
