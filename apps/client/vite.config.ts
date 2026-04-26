@@ -61,6 +61,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     reporters: ['default', './verification-reporter.ts'],
+    exclude: ['**/node_modules/**', '**/e2e/**'],
   },
   plugins: [react()],
   worker: {
