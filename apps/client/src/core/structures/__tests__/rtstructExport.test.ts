@@ -3,6 +3,10 @@ import { exportRtstructBlob, exportRtstructObject } from '../rtstructExport';
 import type { LoadedSeries } from '../../store/volumeStore';
 import type { StructureSet } from '@webtps/shared-types';
 
+const dicomMock = vi.hoisted(() => ({
+  writtenDatasets: [] as object[],
+}));
+
 const loadedSeries = {
   seriesUID: '1.2.3',
   cornerstoneVolumeId: 'vol-1',
@@ -56,6 +60,7 @@ vi.mock('dcmjs', () => ({
       constructor(public meta: object) {}
 
       write() {
+        dicomMock.writtenDatasets.push(this.dict);
         return new Uint8Array([1, 2, 3]).buffer;
       }
     },
@@ -63,6 +68,37 @@ vi.mock('dcmjs', () => ({
 }));
 
 describe('exportRtstructBlob @links:SRS-018', () => {
+  it('does not write a predecessor reference for a manual structure set @links:SRS-018', async () => {
+    dicomMock.writtenDatasets = [];
+
+    await exportRtstructObject(loadedSeries, structureSet);
+
+    expect(dicomMock.writtenDatasets[0]).not.toHaveProperty('PredecessorStructureSetSequence');
+  });
+
+  it('writes a standard predecessor reference for a repository RTSTRUCT revision @links:SRS-018', async () => {
+    dicomMock.writtenDatasets = [];
+    const revisionStructureSet: StructureSet = {
+      ...structureSet,
+      source: {
+        type: 'rtstruct',
+        sopClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
+        sopInstanceUID: 'rtss-previous',
+      },
+    };
+
+    await exportRtstructObject(loadedSeries, revisionStructureSet);
+
+    expect(dicomMock.writtenDatasets[0]).toMatchObject({
+      PredecessorStructureSetSequence: [
+        {
+          ReferencedSOPClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
+          ReferencedSOPInstanceUID: 'rtss-previous',
+        },
+      ],
+    });
+  });
+
   it('creates a DICOM blob for a structure set', async () => {
     await expect(exportRtstructBlob(loadedSeries, structureSet)).resolves.toBeInstanceOf(Blob);
   });

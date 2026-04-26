@@ -155,4 +155,22 @@ describe('dicomWebClient summary parsing', () => {
       'series-b',
     ]);
   });
+
+  it('extracts the standard RTSTRUCT predecessor reference from metadata @links:SRS-019', () => {
+    const metadata = {
+      '30060018': {
+        Value: [
+          {
+            '00081150': { Value: ['1.2.840.10008.5.1.4.1.1.481.3'] },
+            '00081155': { Value: ['rtss-previous'] },
+          },
+        ],
+      },
+    };
+
+    expect(__testables__.getRtstructPredecessorReference(metadata)).toEqual({
+      sopClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
+      sopInstanceUID: 'rtss-previous',
+    });
+  });
 });

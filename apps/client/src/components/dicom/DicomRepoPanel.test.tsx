@@ -589,7 +589,55 @@ describe('DicomRepoPanel', () => {
     expect(screen.getAllByText('No plans yet').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('marks the repository RTSTRUCT active when the active structure set matches the RTSTRUCT series', async () => {
+  it('groups RTSTRUCT predecessor versions under the latest structure set entry @links:SRS-019', async () => {
+    mocks.queryRtstructInstancesForStudy.mockResolvedValue([
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-series-2',
+        sopClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
+        sopInstanceUID: 'rtss-2',
+        seriesDescription: 'RTSTRUCT Latest Thorax CT',
+        seriesDate: '20260412',
+        seriesTime: '120000',
+        structureSetLabel: 'RTSS',
+        structureSetName: 'RTSTRUCT Latest Thorax CT',
+        structureSetDescription: '',
+        structureSetDate: '20260412',
+        structureSetTime: '120000',
+        predecessorSopClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
+        predecessorSopInstanceUID: 'rtss-1',
+        roiCount: 3,
+        referencedSeriesInstanceUIDs: ['series-1'],
+      },
+      {
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-series-1',
+        sopClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
+        sopInstanceUID: 'rtss-1',
+        seriesDescription: 'RTSTRUCT Thorax CT',
+        seriesDate: '20260411',
+        seriesTime: '120000',
+        structureSetLabel: 'RTSS',
+        structureSetName: 'RTSTRUCT Thorax CT',
+        structureSetDescription: '',
+        structureSetDate: '20260411',
+        structureSetTime: '120000',
+        roiCount: 2,
+        referencedSeriesInstanceUIDs: ['series-1'],
+      },
+    ]);
+
+    render(<DicomRepoPanel />);
+
+    await waitFor(() => expect(mocks.queryRtstructInstancesForStudy).toHaveBeenCalledWith('study-1'));
+    fireEvent.click(screen.getByRole('button', { name: /Show structure sets for Axial/i }));
+
+    expect(await screen.findByText('RTSTRUCT Latest Thorax CT')).toBeTruthy();
+    expect(screen.getByText('2 VERSIONS')).toBeTruthy();
+    expect(screen.queryByText('RTSTRUCT Thorax CT')).toBeNull();
+  });
+
+  it('marks the repository RTSTRUCT active when the active structure set matches the RTSTRUCT SOP @links:SRS-019', async () => {
     useVolumeStore.setState({
       loadedSeries: [makeLoadedSeries()],
       activeSeriesUID: 'series-1',

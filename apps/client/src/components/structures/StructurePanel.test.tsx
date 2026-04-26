@@ -4,6 +4,7 @@ import StructurePanel from './StructurePanel';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
+import { useRtstructHistoryStore } from '../../core/store/rtstructHistoryStore';
 import { resetQaRuleConfig } from '../../core/qa/qaRuleConfig';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import type { StructureSet } from '@webtps/shared-types';
@@ -167,6 +168,10 @@ beforeEach(() => {
     activeStructureId: 'structure-1',
     dirtySeriesUIDs: [],
     repositoryDirtySeriesUIDs: [],
+  });
+  useRtstructHistoryStore.setState({
+    instances: [],
+    loadRtstructVersion: null,
   });
 });
 
@@ -925,6 +930,113 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByText('RTSTRUCT Thorax CT')).toBeTruthy();
     expect(screen.getByText('…5')).toBeTruthy();
     expect(screen.getByText('Imported')).toBeTruthy();
+  });
+
+  it('shows an empty RTSTRUCT history state when no predecessor chain is recorded @links:SRS-019', () => {
+    const structureSet = makeStructureSet();
+    structureSet.source = {
+      type: 'rtstruct',
+      label: 'RTSTRUCT Thorax CT',
+      sopClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
+      sopInstanceUID: 'rtss-1',
+      studyInstanceUID: 'study-1',
+      seriesInstanceUID: 'rtss-series-1',
+    };
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+    useRtstructHistoryStore.setState({
+      instances: [{
+        studyInstanceUID: 'study-1',
+        seriesInstanceUID: 'rtss-series-1',
+        sopClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
+        sopInstanceUID: 'rtss-1',
+        seriesDescription: 'RTSTRUCT Thorax CT',
+        seriesDate: '20260411',
+        seriesTime: '100000',
+        structureSetLabel: 'RTSS',
+        structureSetName: 'RTSTRUCT Thorax CT',
+        structureSetDescription: '',
+        structureSetDate: '20260411',
+        structureSetTime: '100000',
+        referencedSeriesInstanceUIDs: ['series-1'],
+      }],
+      loadRtstructVersion: vi.fn(),
+    });
+
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'History' }));
+
+    expect(screen.getByText('No recorded predecessor history for this structure set.')).toBeTruthy();
+  });
+
+  it('shows predecessor history and requests loading a historical RTSTRUCT version @links:SRS-019', () => {
+    const loadRtstructVersion = vi.fn();
+    const structureSet = makeStructureSet();
+    structureSet.source = {
+      type: 'rtstruct',
+      label: 'RTSTRUCT Thorax CT',
+      sopClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
+      sopInstanceUID: 'rtss-2',
+      studyInstanceUID: 'study-1',
+      seriesInstanceUID: 'rtss-series-2',
+    };
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+    useRtstructHistoryStore.setState({
+      instances: [
+        {
+          studyInstanceUID: 'study-1',
+          seriesInstanceUID: 'rtss-series-2',
+          sopClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
+          sopInstanceUID: 'rtss-2',
+          seriesDescription: 'RTSTRUCT Thorax CT',
+          seriesDate: '20260412',
+          seriesTime: '100000',
+          structureSetLabel: 'RTSS',
+          structureSetName: 'RTSTRUCT Thorax CT',
+          structureSetDescription: '',
+          structureSetDate: '20260412',
+          structureSetTime: '100000',
+          predecessorSopClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
+          predecessorSopInstanceUID: 'rtss-1',
+          approvalStatus: 'UNAPPROVED',
+          referencedSeriesInstanceUIDs: ['series-1'],
+        },
+        {
+          studyInstanceUID: 'study-1',
+          seriesInstanceUID: 'rtss-series-1',
+          sopClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
+          sopInstanceUID: 'rtss-1',
+          seriesDescription: 'RTSTRUCT Thorax CT',
+          seriesDate: '20260411',
+          seriesTime: '100000',
+          structureSetLabel: 'RTSS',
+          structureSetName: 'RTSTRUCT Thorax CT',
+          structureSetDescription: '',
+          structureSetDate: '20260411',
+          structureSetTime: '100000',
+          approvalStatus: 'APPROVED',
+          reviewerName: 'Reviewer^One',
+          referencedSeriesInstanceUIDs: ['series-1'],
+        },
+      ],
+      loadRtstructVersion,
+    });
+
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'History' }));
+    expect(screen.getByText('APPROVED · Reviewer^One')).toBeTruthy();
+    fireEvent.click(screen.getByTitle('Load RTSTRUCT Thorax CT'));
+
+    expect(loadRtstructVersion).toHaveBeenCalledWith('rtss-1');
   });
 
   it('edits the active structure type', async () => {
