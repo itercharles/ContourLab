@@ -28,8 +28,7 @@ type ToolIconName =
   | 'threshold'
   | 'interpolate'
   | 'margin'
-  | 'boolean'
-  | 'ai';
+  | 'boolean';
 
 interface ToolRailItem {
   id: ViewerTool | string;
@@ -145,8 +144,6 @@ function ToolIcon({ name }: { name: ToolIconName }) {
       return <svg {...props}><rect x="4" y="4" width="8" height="8" rx="1" /><rect x="2" y="2" width="12" height="12" rx="1" strokeDasharray="2 1.5" /></svg>;
     case 'boolean':
       return <svg {...props}><circle cx="6" cy="8" r="4" /><circle cx="10" cy="8" r="4" /></svg>;
-    case 'ai':
-      return <svg {...props}><path d="M5 2l1 2 2 1-2 1-1 2-1-2-2-1 2-1zM11 7l.6 1.4L13 9l-1.4.6L11 11l-.6-1.4L9 9l1.4-.6z" fill="currentColor" stroke="none" /></svg>;
     default:
       return <svg {...props}><circle cx="8" cy="8" r="6" /><path d="M8 7v4M8 5v.01" /></svg>;
   }

@@ -1151,9 +1151,6 @@ export default function StructurePanel() {
           QA
         </button>
         <button type="button" className={disabledTabClass} disabled title="Not implemented">
-          AI
-        </button>
-        <button type="button" className={disabledTabClass} disabled title="Not implemented">
           History
         </button>
         <button

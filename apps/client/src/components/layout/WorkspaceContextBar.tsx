@@ -124,22 +124,6 @@ export default function WorkspaceContextBar() {
         </span>
       </div>
 
-      {/* AI CTA */}
-      <div className="flex items-center border-l border-[var(--color-border)] px-2">
-        <button
-          type="button"
-          disabled
-          title="AI auto-contour (not yet implemented)"
-          className="flex h-7 flex-none items-center gap-1.5 rounded border border-[rgba(59,130,246,0.4)] bg-gradient-to-b from-[rgba(59,130,246,0.95)] to-[#3b82f6] px-2.5 font-[inherit] text-[12px] font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.15)_inset,0_1px_2px_rgba(0,0,0,0.2)] transition-[filter] hover:brightness-110 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
-        >
-          {/* sparkle */}
-          <svg aria-hidden="true" className="flex-none" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" stroke="none">
-            <path d="M5 2l1 2 2 1-2 1-1 2-1-2-2-1 2-1zM11 7l.6 1.4L13 9l-1.4.6L11 11l-.6-1.4L9 9l1.4-.6z" />
-          </svg>
-          Run AI auto-contour
-          <span className="rounded bg-white/20 px-1 font-mono text-[10px] font-bold">A</span>
-        </button>
-      </div>
     </div>
   );
 }
