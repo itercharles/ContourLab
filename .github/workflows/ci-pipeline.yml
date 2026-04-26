@@ -136,7 +136,7 @@ jobs:
         with:
           name: verify-srs-junit
           path: apps/client/test-results/verification-junit.xml
-          if-no-files-found: ignore
+          if-no-files-found: error
 
   verify-sys:
     name: Verify | Test-SYS (Playwright · system requirements)
@@ -363,6 +363,21 @@ jobs:
           for md in sorted((dhf_docs / "plans").glob("*.md")):
               to_pdf(md, Path("dhf-artifacts/plans") / f"{md.stem}.pdf")
           PY
+
+      - name: Download SRS test evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: verify-srs-junit
+          path: test-results/
+
+      - name: Import test results into DHF
+        run: |
+          export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
+          compliantflow --dhf dhf/DHF test import test-results/verification-junit.xml \
+            --tester "ci" \
+            --run-id "${{ github.run_id }}" \
+            --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --commit "${{ github.sha }}"
 
       - name: Generate traceability PDF report
         run: |
