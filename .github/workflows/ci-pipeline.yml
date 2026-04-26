@@ -242,13 +242,16 @@ jobs:
             /tmp/webtps-api.log
             /tmp/webtps-client.log
 
-  # ── TRACEABILITY GATE ─────────────────────────────────────────────────────
-  # Runs on PRs and branch pushes. This is a CI gate only: failures fail the
-  # workflow. PDF evidence is generated only on main by DHF Artifacts.
+  # ── ACCEPTANCE GATE ───────────────────────────────────────────────────────
+  # Runs after all development, verification, and validation phases pass.
+  # Validates DHF traceability with test evidence included.
+  # On PR: this is the final gate. On main: continues to artifact generation
+  # and deployment.
 
-  traceability:
-    name: Traceability Gate
+  compliance:
+    name: Acceptance Gate (traceability + test evidence)
     runs-on: ubuntu-latest
+    needs: [dev-integration, verify-srs, verify-sys, validate-crs]
     steps:
       - name: Check out DHF repo
         uses: actions/checkout@v4
@@ -263,7 +266,7 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install traceability dependencies
+      - name: Install dependencies
         env:
           PRODUCT_REPO_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
         run: |
@@ -271,25 +274,25 @@ jobs:
           sed "s|git+https://github.com/|git+https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/|g" \
             dhf/requirements.txt | pip install -r /dev/stdin
 
+      - name: Download SRS test evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: verify-srs-junit
+          path: test-results/
+
+      - name: Import test results into DHF
+        run: |
+          export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
+          compliantflow --dhf dhf/DHF test import test-results/verification-junit.xml \
+            --tester "ci" \
+            --run-id "${{ github.run_id }}" \
+            --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --commit "${{ github.sha }}"
+
       - name: Check DHF traceability
         run: |
           export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
           cd dhf && python -m utils validate traceability --fail-on-uncovered
-
-  # ── ACCEPTANCE GATE ───────────────────────────────────────────────────────
-  # Runs after all development, verification, and validation phases pass.
-  # On PR: this is the final gate. On main: continues to artifact generation
-  # and deployment. Compliance remains a placeholder until policy checks are
-  # wired in.
-
-  compliance:
-    name: Acceptance Gate (compliance placeholder)
-    runs-on: ubuntu-latest
-    needs: [dev-integration, verify-srs, verify-sys, validate-crs, traceability]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Acceptance gate
-        run: echo "Acceptance gate — compliance checks not yet wired in"
 
   # ── ARTIFACTS + DEPLOY (main only) ────────────────────────────────────────
   # After acceptance passes on main: generate DHF documents, traceability PDF,
