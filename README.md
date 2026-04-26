@@ -179,7 +179,7 @@ GitHub Actions validates:
 - Shared types typecheck and build
 - Integration smoke startup of Orthanc + API + frontend via `pnpm local:doctor`
 - Main-branch DHF artifact generation: specification PDFs, plan PDFs, and
-  traceability JSON report
+  traceability PDF report
 
 ## Change Process
 
