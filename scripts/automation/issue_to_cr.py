@@ -7,6 +7,8 @@ import argparse
 import datetime as dt
 import json
 import re
+import os
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -72,13 +74,11 @@ def next_cr_id(cr_dir: Path) -> str:
     return f"CR-{max_id + 1:03d}"
 
 
-def find_existing_cr_for_issue(cr_dir: Path, source_issue: str) -> str | None:
-    needle = f"source_issue: {source_issue}"
-    quoted_needle = f'source_issue: "{source_issue}"'
-    for path in sorted(cr_dir.glob("CR-*.y*ml")):
-        text = path.read_text()
-        if needle in text or quoted_needle in text:
-            return path.stem
+def find_existing_cr_for_issue(items: list[dict[str, Any]], source_issue_url: str) -> str | None:
+    for item in items:
+        description = str(item.get("description") or "")
+        if source_issue_url in description:
+            return str(item.get("id") or "")
     return None
 
 
@@ -86,16 +86,6 @@ def current_iso_week_milestone(today: dt.date | None = None) -> str:
     current = today or dt.date.today()
     iso_year, iso_week, _ = current.isocalendar()
     return f"{iso_year}-W{iso_week:02d}"
-
-
-def yaml_scalar(value: str) -> str:
-    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-    return f'"{escaped}"'
-
-
-def yaml_block(value: str) -> str:
-    cleaned = value.strip() or "No issue body provided."
-    return "\n".join(f"  {line}" if line else "" for line in cleaned.splitlines())
 
 
 def extract_issue_form_field(body: str, heading: str) -> str | None:
@@ -110,29 +100,84 @@ def extract_issue_form_field(body: str, heading: str) -> str | None:
     return value or None
 
 
-def build_cr_yaml(issue: IssueContext, cr_id: str) -> str:
+def build_cr_data(issue: IssueContext) -> dict[str, Any]:
     description = f"{issue.body}\n\nSource issue: {issue.html_url}".strip()
     justification = extract_issue_form_field(issue.body, "User value / justification") or (
         "Maintainer assigned this issue to the active weekly release milestone, "
         "indicating it is accepted for CR intake."
     )
     category = extract_issue_form_field(issue.body, "Change category") or "Feature"
-    return "\n".join([
-        f"id: {cr_id}",
-        f"title: {yaml_scalar(issue.title)}",
-        "description: |-",
-        yaml_block(description),
-        "justification: |-",
-        yaml_block(justification),
-        "priority: Medium",
-        f"requested_by: {yaml_scalar(issue.author)}",
-        f"target_version: {yaml_scalar(issue.milestone or '')}",
-        f"category: {yaml_scalar(category)}",
-        "status: planned",
-        "type: CR",
-        f"source_issue: {yaml_scalar(f'itercharles/WebTPS#{issue.number}')}",
-        "",
-    ])
+    return {
+        "title": issue.title,
+        "description": description,
+        "justification": justification,
+        "priority": "Medium",
+        "requested_by": issue.author,
+        "target_version": issue.milestone or "",
+        "category": category,
+    }
+
+
+def _dhf_env(dhf_repo: Path) -> dict[str, str]:
+    env = os.environ.copy()
+    pythonpath = [str(dhf_repo / "DHF"), str(dhf_repo)]
+    if env.get("PYTHONPATH"):
+        pythonpath.append(env["PYTHONPATH"])
+    env["PYTHONPATH"] = os.pathsep.join(pythonpath)
+    return env
+
+
+def run_dhf_util(dhf_repo: Path, args: list[str]) -> str:
+    command = [
+        sys.executable,
+        "-m",
+        "utils",
+        "--dhf",
+        str(dhf_repo / "DHF"),
+        *args,
+    ]
+    result = subprocess.run(
+        command,
+        cwd=dhf_repo / "DHF",
+        env=_dhf_env(dhf_repo),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or result.stdout.strip())
+    return result.stdout
+
+
+def list_cr_items(dhf_repo: Path) -> list[dict[str, Any]]:
+    output = run_dhf_util(dhf_repo, ["item", "list", "--type", "CR"])
+    items: list[dict[str, Any]] = []
+    for line in output.splitlines():
+        line = line.strip()
+        if line.startswith("{"):
+            items.append(json.loads(line))
+    return items
+
+
+def create_cr_item(dhf_repo: Path, data: dict[str, Any]) -> dict[str, Any]:
+    output = run_dhf_util(
+        dhf_repo,
+        [
+            "item",
+            "create",
+            "--type",
+            "CR",
+            "--data",
+            json.dumps(data),
+            "--author",
+            "issue-to-cr",
+        ],
+    )
+    for line in output.splitlines():
+        line = line.strip()
+        if line.startswith("{"):
+            return json.loads(line)
+    raise RuntimeError("DHF utility did not return a created CR item.")
 
 
 def prepare_cr(
@@ -142,6 +187,8 @@ def prepare_cr(
     comments: list[dict[str, Any]],
     *,
     write: bool,
+    list_items_fn=list_cr_items,
+    create_item_fn=create_cr_item,
 ) -> CrPreparation:
     if not active_milestone:
         return CrPreparation(False, "CR_INTAKE_MILESTONE is not configured.")
@@ -154,26 +201,25 @@ def prepare_cr(
     if marker_cr:
         return CrPreparation(False, f"Issue already has CR marker {marker_cr}.", cr_id=marker_cr)
 
-    cr_dir = dhf_repo / "DHF" / "items" / "09_cr"
-    source_issue = f"itercharles/WebTPS#{issue.number}"
-    existing_cr = find_existing_cr_for_issue(cr_dir, source_issue)
+    existing_cr = find_existing_cr_for_issue(list_items_fn(dhf_repo), issue.html_url)
     if existing_cr:
-        return CrPreparation(False, f"DHF already has {existing_cr} for {source_issue}.", cr_id=existing_cr)
-
-    cr_id = next_cr_id(cr_dir)
-    cr_path = cr_dir / f"{cr_id}.yaml"
-    branch_slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", issue.title.lower()).strip("-")[:40]
-    branch = f"cr/{cr_id}-from-webtps-issue-{issue.number}" + (f"-{branch_slug}" if branch_slug else "")
+        return CrPreparation(False, f"DHF already has {existing_cr} for {issue.html_url}.", cr_id=existing_cr)
 
     if write:
-        cr_path.write_text(build_cr_yaml(issue, cr_id))
+        created = create_item_fn(dhf_repo, build_cr_data(issue))
+        cr_id = str(created["id"])
+    else:
+        cr_id = next_cr_id(dhf_repo / "DHF" / "items" / "09_cr")
+    cr_path = Path("DHF") / "items" / "09_cr" / f"{cr_id}.yaml"
+    branch_slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", issue.title.lower()).strip("-")[:40]
+    branch = f"cr/{cr_id}-from-webtps-issue-{issue.number}" + (f"-{branch_slug}" if branch_slug else "")
 
     return CrPreparation(
         True,
         "CR file prepared.",
         cr_id=cr_id,
         branch=branch,
-        cr_path=str(cr_path.relative_to(dhf_repo)),
+        cr_path=str(cr_path),
         title=f"cr({cr_id}): {issue.title}",
     )
 

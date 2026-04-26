@@ -5,7 +5,7 @@ from pathlib import Path
 
 from scripts.automation.issue_to_cr import (
     IssueContext,
-    build_cr_yaml,
+    build_cr_data,
     current_iso_week_milestone,
     issue_has_cr_marker,
     next_cr_id,
@@ -50,15 +50,29 @@ class IssueToCrTests(unittest.TestCase):
             self.assertFalse(result.should_create)
             self.assertIn("not active milestone", result.reason)
 
-    def test_prepare_cr_writes_yaml_for_active_week(self):
+    def test_prepare_cr_creates_cr_with_dhf_utility(self):
         with tempfile.TemporaryDirectory() as tmp:
             dhf = make_dhf(Path(tmp))
-            result = prepare_cr(make_issue(), "2026-W18", dhf, [], write=True)
+            captured = {}
+
+            def create_item(_dhf: Path, data: dict):
+                captured.update(data)
+                return {"id": "CR-034"}
+
+            result = prepare_cr(
+                make_issue(),
+                "2026-W18",
+                dhf,
+                [],
+                write=True,
+                list_items_fn=lambda _dhf: [],
+                create_item_fn=create_item,
+            )
             self.assertTrue(result.should_create)
             self.assertEqual(result.cr_id, "CR-034")
-            cr_text = (dhf / result.cr_path).read_text()
-            self.assertIn('source_issue: "itercharles/WebTPS#123"', cr_text)
-            self.assertIn('target_version: "2026-W18"', cr_text)
+            self.assertEqual(result.cr_path, "DHF/items/09_cr/CR-034.yaml")
+            self.assertEqual(captured["target_version"], "2026-W18")
+            self.assertIn("Source issue: https://github.com/itercharles/WebTPS/issues/123", captured["description"])
 
     def test_prepare_cr_skips_existing_issue_marker(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -68,31 +82,41 @@ class IssueToCrTests(unittest.TestCase):
             self.assertFalse(result.should_create)
             self.assertEqual(result.cr_id, "CR-034")
 
-    def test_prepare_cr_skips_existing_source_issue(self):
+    def test_prepare_cr_skips_existing_source_issue_url(self):
         with tempfile.TemporaryDirectory() as tmp:
             dhf = make_dhf(Path(tmp))
-            cr_dir = dhf / "DHF" / "items" / "09_cr"
-            (cr_dir / "CR-034.yaml").write_text('id: CR-034\nsource_issue: "itercharles/WebTPS#123"\n')
-            result = prepare_cr(make_issue(), "2026-W18", dhf, [], write=True)
+            result = prepare_cr(
+                make_issue(),
+                "2026-W18",
+                dhf,
+                [],
+                write=True,
+                list_items_fn=lambda _dhf: [
+                    {
+                        "id": "CR-034",
+                        "description": "Source issue: https://github.com/itercharles/WebTPS/issues/123",
+                    }
+                ],
+            )
             self.assertFalse(result.should_create)
             self.assertEqual(result.cr_id, "CR-034")
 
     def test_marker_detection(self):
         self.assertEqual(issue_has_cr_marker([{"body": "<!-- webtps-cr: CR-099 -->"}]), "CR-099")
 
-    def test_cr_yaml_includes_issue_context(self):
+    def test_cr_data_includes_issue_context(self):
         issue = make_issue()
         issue = IssueContext(
             **{
                 **issue.__dict__,
-                "body": "### Requested change\n\nCreate CRs.\n\n### User value / justification\n\nWeekly intake is easier.\n\n### Change category\n\nInfrastructure",
+                "body": "### Requested change\n\nCreate CRs.\n\n### User value / justification\n\nWeekly intake is easier.\n\n### Change category\n\nOther",
             }
         )
-        yaml = build_cr_yaml(issue, "CR-034")
-        self.assertIn('title: "Add weekly CR intake"', yaml)
-        self.assertIn("Weekly intake is easier.", yaml)
-        self.assertIn('category: "Infrastructure"', yaml)
-        self.assertIn("Source issue: https://github.com/itercharles/WebTPS/issues/123", yaml)
+        data = build_cr_data(issue)
+        self.assertEqual(data["title"], "Add weekly CR intake")
+        self.assertEqual(data["justification"], "Weekly intake is easier.")
+        self.assertEqual(data["category"], "Other")
+        self.assertIn("Source issue: https://github.com/itercharles/WebTPS/issues/123", data["description"])
 
 
 if __name__ == "__main__":
