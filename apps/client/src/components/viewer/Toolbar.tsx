@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
+import { useActivityStore, type ActivityItem } from '../../core/store/activityStore';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { exportRtstructObject } from '../../core/structures/rtstructExport';
@@ -8,9 +9,27 @@ import { uploadDicomBlobToRepository } from '../../core/dicom/dicomWebClient';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import WorkspaceContextBar from '../layout/WorkspaceContextBar';
 
+const ACTIVITY_TONE_CLASS: Record<ActivityItem['tone'], string> = {
+  info: 'bg-blue-500',
+  success: 'bg-emerald-500',
+  warning: 'bg-amber-500',
+  error: 'bg-red-500',
+};
+
+function formatActivityTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function Toolbar() {
   const [undoRedoRevision, setUndoRedoRevision] = useState(0);
   const [isPushingChanges, setIsPushingChanges] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const activities = useActivityStore((s) => s.activities);
+  const markAllRead = useActivityStore((s) => s.markAllRead);
+  const clearActivities = useActivityStore((s) => s.clearActivities);
+  const unreadActivityCount = activities.filter((activity) => !activity.read).length;
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
   const structureSets = useStructureStore((s) => s.structureSets);
@@ -55,6 +74,14 @@ export default function Toolbar() {
     if (UndoRedoManager.canRedo()) UndoRedoManager.redo();
   };
 
+  const toggleActivityPanel = () => {
+    const nextOpen = !activityOpen;
+    setActivityOpen(nextOpen);
+    if (nextOpen) {
+      markAllRead();
+    }
+  };
+
   const handlePushChanges = async () => {
     if (!activeLoadedSeries || !activeStructureSet || !activeSeriesUID || !isActiveSeriesRepositoryDirty) return;
 
@@ -96,7 +123,7 @@ export default function Toolbar() {
 
   return (
     <div className="flex flex-none flex-col border-b border-[var(--color-border)] bg-[var(--color-header)]">
-      <div className="flex h-9 items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-2">
+      <div className="relative flex h-9 items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-2">
         <div className="flex items-center gap-1.5 pr-1">
           <div className="grid h-5 w-5 place-items-center rounded bg-blue-600 font-mono text-[10px] font-bold text-white">
             W
@@ -207,16 +234,74 @@ export default function Toolbar() {
         {/* Inbox / notifications */}
         <button
           type="button"
-          disabled
-          title="Inbox · 0 unread"
+          onClick={toggleActivityPanel}
+          title={`Inbox · ${unreadActivityCount} unread`}
           aria-label="Inbox"
-          className="relative flex h-7 w-7 cursor-not-allowed items-center justify-center rounded text-[var(--color-text-dim)]"
+          className={`relative flex h-7 w-7 items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+            activityOpen
+              ? 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6] ring-1 ring-[rgba(59,130,246,0.35)]'
+              : 'text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)]'
+          }`}
         >
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
+          {unreadActivityCount > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
+              {unreadActivityCount > 9 ? '9+' : unreadActivityCount}
+            </span>
+          )}
         </button>
+        {activityOpen && (
+          <div className="absolute right-10 top-9 z-50 w-[360px] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] shadow-[0_12px_32px_rgba(0,0,0,0.45)]">
+            <div className="flex h-8 items-center justify-between border-b border-[var(--color-border)] px-2">
+              <h2 className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
+                Activity
+              </h2>
+              <button
+                type="button"
+                onClick={clearActivities}
+                disabled={activities.length === 0}
+                className="h-6 rounded px-2 text-[10px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:text-[var(--color-text-dim)] disabled:hover:bg-transparent"
+              >
+                Clear
+              </button>
+            </div>
+            <div className="max-h-[320px] overflow-auto">
+              {activities.length === 0 ? (
+                <div className="px-3 py-4 text-[11px] text-[var(--color-text-muted)]">
+                  No recent activity.
+                </div>
+              ) : (
+                activities.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="grid grid-cols-[auto_1fr_auto] gap-2 border-b border-[var(--color-border)] px-2 py-2 last:border-b-0"
+                  >
+                    <span className={`mt-1 h-2 w-2 rounded-full ${ACTIVITY_TONE_CLASS[activity.tone]}`} />
+                    <span className="min-w-0">
+                      <span className="block truncate text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+                        {activity.title}
+                      </span>
+                      <span className="mt-0.5 block break-words text-[11px] leading-snug text-[var(--color-text-sec)]">
+                        {activity.message}
+                      </span>
+                      {activity.detail && (
+                        <span className="mt-1 block truncate font-mono text-[10px] text-[var(--color-text-muted)]">
+                          {activity.detail}
+                        </span>
+                      )}
+                    </span>
+                    <span className="font-mono text-[10px] text-[var(--color-text-muted)]">
+                      {formatActivityTime(activity.createdAt)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
         <div className="h-4 w-px bg-[var(--color-border)]" />
         <Link
           to="/settings"

@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import Toolbar from './Toolbar';
 import ToolRail from './ToolRail';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
+import { addUserActivity, useActivityStore } from '../../core/store/activityStore';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useUIStore } from '../../core/store/uiStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
@@ -144,6 +145,7 @@ function renderToolbar() {
 beforeEach(() => {
   vi.clearAllMocks();
   UndoRedoManager.clear();
+  useActivityStore.getState().clearActivities();
   mocks.getViewport.mockReturnValue({
     getCamera: () => ({ focalPoint: [0, 0, 10] as [number, number, number] }),
     scroll: mocks.scroll,
@@ -282,6 +284,25 @@ describe('Toolbar contour operations', () => {
 
     expect(screen.queryByRole('button', { name: 'Select patient' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Settings' })).toBeTruthy();
+  });
+
+  it('opens the activity inbox from the global title bar', () => {
+    addUserActivity({
+      title: 'Assigned task',
+      message: 'Review contour changes for Ada Lovelace.',
+      detail: 'PTV review',
+      tone: 'info',
+    });
+
+    renderToolbar();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inbox' }));
+
+    expect(screen.getByRole('heading', { name: 'Activity' })).toBeTruthy();
+    expect(screen.getByText('Assigned task')).toBeTruthy();
+    expect(screen.getByText('Review contour changes for Ada Lovelace.')).toBeTruthy();
+    expect(screen.getByText('PTV review')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Inbox' }).getAttribute('title')).toBe('Inbox · 0 unread');
   });
 
   it('saves active structure changes from the global title bar', async () => {

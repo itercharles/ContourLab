@@ -11,6 +11,7 @@ import {
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useUIStore } from '../../core/store/uiStore';
+import { addUserActivity } from '../../core/store/activityStore';
 import { importRtstructArrayBuffer } from '../../core/structures/rtstructImport';
 import { replaceStructureSetsForSeries } from '../../core/structures/structurePersistence';
 import {
@@ -115,6 +116,13 @@ function compareRtstructInstances(a: DicomWebRtstructInstance, b: DicomWebRtstru
   if (timeCompare !== 0) return timeCompare;
 
   return b.sopInstanceUID.localeCompare(a.sopInstanceUID);
+}
+
+function getRtstructSignature(instances: DicomWebRtstructInstance[]): string {
+  return instances
+    .map((instance) => `${instance.sopInstanceUID}:${instance.seriesDate}:${instance.seriesTime}`)
+    .sort()
+    .join('|');
 }
 
 function compareSeriesByRecency(a: DicomWebSeriesSummary, b: DicomWebSeriesSummary): number {
@@ -412,6 +420,8 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
 
     return null;
   }, [activePatientKey, patientGroups, selectedPatientKey]);
+  const selectedPatientRef = useRef<PatientGroup | null>(null);
+  selectedPatientRef.current = selectedPatient;
   const shownPatients = filteredPatientGroups.slice(0, 12);
   const selectedPatientStudyUIDs = useMemo(
     () => selectedPatient?.studies.map((study) => study.studyInstanceUID) ?? [],
@@ -451,6 +461,14 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
       targetStudyUIDs.map(async (studyUID) => {
         try {
           const instances = await queryRtstructInstancesForStudy(studyUID);
+          const previousInstances = rtstructByStudy[studyUID] ?? [];
+          const previousSignature = getRtstructSignature(previousInstances);
+          const nextSignature = getRtstructSignature(instances);
+          const hasKnownRtstructs = previousInstances.length > 0;
+          const hasRtstructUpdate =
+            options?.force &&
+            hasKnownRtstructs &&
+            previousSignature !== nextSignature;
           setRtstructByStudy((current) => ({
             ...current,
             [studyUID]: [
@@ -462,6 +480,14 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
               ),
             ].sort(compareRtstructInstances),
           }));
+          if (hasRtstructUpdate) {
+            addUserActivity({
+              title: 'Structure set updated',
+              message: `A new or updated RTSTRUCT is available for ${selectedPatient?.patientName ?? 'the current patient'}.`,
+              detail: instances[0]?.seriesDescription || `Study ${studyUID}`,
+              tone: 'info',
+            });
+          }
           logClientDebug('DicomRepoPanel', `query:rtstruct:auto study=${studyUID} count=${instances.length}`);
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Failed to query RTSTRUCT.';
@@ -478,7 +504,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
         }
       })
     );
-  }, [rtstructByStudy]);
+  }, [rtstructByStudy, selectedPatient?.patientName]);
 
   useEffect(() => {
     if (selectedPatientStudyUIDs.length === 0) return;
@@ -518,6 +544,15 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
         });
       } else if (hasChanged) {
         setHasRepositoryUpdates(true);
+        const currentPatient = selectedPatientRef.current;
+        if (currentPatient) {
+          addUserActivity({
+            title: 'Patient images updated',
+            message: `New repository image data is available for ${currentPatient.patientName}.`,
+            detail: getPatientSite(currentPatient),
+            tone: 'info',
+          });
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to query repository.';
