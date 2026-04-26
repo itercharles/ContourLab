@@ -361,18 +361,35 @@ jobs:
               to_pdf(md, Path("dhf-artifacts/plans") / f"{md.stem}.pdf")
           PY
 
-      - name: Download SRS test evidence
+      - name: Download SRS test evidence (Vitest)
         uses: actions/download-artifact@v4
         with:
           name: verify-srs-junit
-          path: test-results/
+          path: test-results/srs/
+
+      - name: Download SYS test evidence (Playwright)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: verify-sys-junit
+          path: test-results/sys/
+
+      - name: Download CRS test evidence (Playwright)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: validate-crs-junit
+          path: test-results/crs/
 
       - name: Generate traceability PDF report
         run: |
           mkdir -p dhf-artifacts/traceability
           export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
+          JUNIT_ARGS="--junit test-results/srs/verification-junit.xml"
+          [ -f test-results/sys/e2e-sys-junit.xml ] && JUNIT_ARGS="$JUNIT_ARGS --junit test-results/sys/e2e-sys-junit.xml"
+          [ -f test-results/crs/e2e-crs-junit.xml ] && JUNIT_ARGS="$JUNIT_ARGS --junit test-results/crs/e2e-crs-junit.xml"
           compliantflow --dhf dhf/DHF report traceability UC CRS SYS SRS SWDD \
-            --junit test-results/verification-junit.xml \
+            $JUNIT_ARGS \
             --output dhf-artifacts/traceability/Requirements_Traceability_Report.pdf
 
       - name: Upload DHF artifacts
