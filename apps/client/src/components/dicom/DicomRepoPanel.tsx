@@ -421,6 +421,7 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
     return null;
   }, [activePatientKey, patientGroups, selectedPatientKey]);
   const selectedPatientRef = useRef<PatientGroup | null>(null);
+  // eslint-disable-next-line react-hooks/refs
   selectedPatientRef.current = selectedPatient;
   const shownPatients = filteredPatientGroups.slice(0, 12);
   const selectedPatientStudyUIDs = useMemo(
