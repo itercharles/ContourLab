@@ -1,0 +1,63 @@
+name: Change Request Intake
+description: Request a product, workflow, or technical change for WebTPS.
+title: "[Change]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Maintainers review issues before assigning a weekly milestone. Assigning the active weekly milestone creates a DHF CR PR automatically.
+  - type: textarea
+    id: requested_change
+    attributes:
+      label: Requested change
+      description: What should change?
+      placeholder: Describe the requested behavior or problem.
+    validations:
+      required: true
+  - type: textarea
+    id: user_value
+    attributes:
+      label: User value / justification
+      description: Why is this important?
+      placeholder: Explain the workflow, safety, clinical, or engineering value.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: What must be true for this to be accepted?
+      placeholder: |
+        - ...
+        - ...
+    validations:
+      required: false
+  - type: dropdown
+    id: change_category
+    attributes:
+      label: Change category
+      options:
+        - Feature
+        - Bugfix
+        - UX
+        - Infrastructure
+        - Documentation
+        - Workflow Test
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: affected_area
+    attributes:
+      label: Affected area
+      options:
+        - Viewer / imaging
+        - Structures / RTSTRUCT
+        - DICOM repository
+        - Planning / dose
+        - QA / validation
+        - CI / automation
+        - Documentation / DHF
+        - Other
+    validations:
+      required: true

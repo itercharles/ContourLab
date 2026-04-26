@@ -1,0 +1,123 @@
+name: WebTPS Issue to DHF CR
+
+run-name: Issue to CR | #${{ github.event.issue.number }} | ${{ github.event.issue.title }}
+
+on:
+  issues:
+    types: [milestoned]
+
+concurrency:
+  group: issue-to-cr
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-cr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out WebTPS
+        uses: actions/checkout@v4
+
+      - name: Check out DHF repo
+        uses: actions/checkout@v4
+        with:
+          repository: itercharles/WebTPS-DHF
+          token: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          path: dhf
+          fetch-depth: 0
+
+      - name: Fetch existing issue comments
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh api "repos/${{ github.repository }}/issues/${ISSUE_NUMBER}/comments?per_page=100" > /tmp/issue-comments.json
+
+      - name: Prepare CR from issue
+        id: prepare
+        env:
+          ACTIVE_MILESTONE: ${{ vars.CR_INTAKE_MILESTONE }}
+        run: |
+          python scripts/automation/issue_to_cr.py \
+            --event "$GITHUB_EVENT_PATH" \
+            --comments /tmp/issue-comments.json \
+            --dhf-repo dhf \
+            --active-milestone "$ACTIVE_MILESTONE" \
+            --write \
+            --output /tmp/issue-to-cr.json
+          cat /tmp/issue-to-cr.json
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          data = json.load(open('/tmp/issue-to-cr.json'))
+          for key, value in data.items():
+              if isinstance(value, bool):
+                  value = str(value).lower()
+              print(f"{key}={'' if value is None else value}")
+          PY
+
+      - name: Stop when issue is not ready for CR intake
+        if: steps.prepare.outputs.should_create != 'true'
+        run: echo "${{ steps.prepare.outputs.reason }}"
+
+      - name: Create DHF CR branch
+        if: steps.prepare.outputs.should_create == 'true'
+        working-directory: dhf
+        env:
+          BRANCH: ${{ steps.prepare.outputs.branch }}
+          CR_ID: ${{ steps.prepare.outputs.cr_id }}
+          CR_PATH: ${{ steps.prepare.outputs.cr_path }}
+        run: |
+          git checkout -B "$BRANCH"
+          git config user.name "GitHub Actions [bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$CR_PATH"
+          git commit -m "cr: create $CR_ID from WebTPS issue"
+          git push --force --set-upstream origin "$BRANCH"
+
+      - name: Open DHF CR PR
+        if: steps.prepare.outputs.should_create == 'true'
+        id: pr
+        working-directory: dhf
+        env:
+          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          BRANCH: ${{ steps.prepare.outputs.branch }}
+          TITLE: ${{ steps.prepare.outputs.title }}
+          CR_ID: ${{ steps.prepare.outputs.cr_id }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          MILESTONE: ${{ github.event.issue.milestone.title }}
+        run: |
+          BODY=$(cat <<EOF
+          Automated CR intake from WebTPS issue:
+
+          - Source issue: ${ISSUE_URL}
+          - Target weekly milestone: ${MILESTONE}
+
+          This PR creates ${CR_ID}. Human approval is required before CR analysis begins.
+          EOF
+          )
+          EXISTING=$(gh pr list --head "$BRANCH" --json url --jq '.[0].url' 2>/dev/null || true)
+          if [ -n "$EXISTING" ]; then
+            PR_URL="$EXISTING"
+          else
+            PR_URL=$(gh pr create --head "$BRANCH" --base main --title "$TITLE" --body "$BODY")
+          fi
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on source issue
+        if: steps.prepare.outputs.should_create == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          CR_ID: ${{ steps.prepare.outputs.cr_id }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "CR created from this issue.
+
+          CR: ${CR_ID}
+          DHF PR: ${PR_URL}
+
+          <!-- webtps-cr: ${CR_ID} -->
+          <!-- webtps-cr-pr: ${PR_URL} -->"

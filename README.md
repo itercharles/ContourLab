@@ -189,7 +189,11 @@ decision, external dependency — starts with a Change Request (CR) in the
 
 ### How it works
 
-1. **Open a CR PR in WebTPS-DHF** — describe the requested change. This is the human entry point.
+1. **Open an issue in WebTPS** — describe the requested change. Maintainers review
+   the issue and assign it to the active weekly milestone, e.g. `2026-W18`, when
+   it is accepted for the current release intake. The `issue-to-cr` workflow then
+   opens the CR PR in WebTPS-DHF automatically. Maintainers may still open a CR PR
+   in WebTPS-DHF directly when needed.
 2. **Approve the CR PR** — triggers automated analysis. The agent reads product strategy,
    architecture, and DHF context, then opens a Plan Spec PR in WebTPS-DHF.
 3. **Review and approve the Plan Spec PR** — triggers automated implementation. The agent
@@ -197,6 +201,9 @@ decision, external dependency — starts with a Change Request (CR) in the
 4. **Review the Implementation PR** — standard code review. Merge when satisfied.
 
 No stage advances without explicit human approval. The agent cannot merge PRs.
+
+The active weekly milestone is configured by repository variable
+`CR_INTAKE_MILESTONE` using ISO-week naming such as `2026-W18`.
 
 ### PR title format
 
