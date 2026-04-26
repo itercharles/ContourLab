@@ -9,8 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e:sys": "PLAYWRIGHT_JUNIT_OUTPUT_NAME=test-results/e2e-sys-junit.xml playwright test --project=sys --reporter=list,junit",
-    "test:e2e:crs": "PLAYWRIGHT_JUNIT_OUTPUT_NAME=test-results/e2e-crs-junit.xml playwright test --project=crs --reporter=list,junit",
+    "test:e2e:sys": "PLAYWRIGHT_JUNIT_OUTPUT_NAME=test-results/e2e-sys-junit.xml playwright test --project=sys",
+    "test:e2e:crs": "PLAYWRIGHT_JUNIT_OUTPUT_NAME=test-results/e2e-crs-junit.xml playwright test --project=crs",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit"
   },

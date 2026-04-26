@@ -11,6 +11,16 @@ export default defineConfig({
     baseURL,
     trace: 'on-first-retry',
   },
+  reporter: [
+    ['list'],
+    [
+      './playwright-junit-reporter.ts',
+      {
+        outputFile:
+          process.env['PLAYWRIGHT_JUNIT_OUTPUT_NAME'] ?? 'test-results/results.xml',
+      },
+    ],
+  ],
   projects: [
     {
       name: 'sys',
