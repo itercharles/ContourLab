@@ -25,7 +25,6 @@ type ToolIconName =
   | 'polygon'
   | 'eraser'
   | 'livewire'
-  | 'threshold'
   | 'interpolate'
   | 'margin'
   | 'boolean';
@@ -78,7 +77,6 @@ const TOOL_GROUPS: Array<{ id: string; items: ToolRailItem[] }> = [
       { id: 'brush', name: 'Brush', icon: 'brush', shortcut: 'B', desc: 'Paint contour with a circular brush', implemented: true },
       { id: 'eraser', name: 'Eraser', icon: 'eraser', shortcut: 'E', desc: 'Erase parts of an existing contour', implemented: true },
       { id: 'livewire', name: 'Smart Edge', icon: 'livewire', shortcut: 'S', desc: 'Snap curve to image intensity gradients', implemented: false },
-      { id: 'threshold', name: 'Threshold', icon: 'threshold', shortcut: 'T', desc: 'Fill by Hounsfield unit threshold range', implemented: false },
     ],
   },
   {
@@ -136,8 +134,6 @@ function ToolIcon({ name }: { name: ToolIconName }) {
       return <svg {...props}><path d="M3 11l5-5 4 4-5 5H4z" /><path d="M8 6l4 4M2 14h10" /></svg>;
     case 'livewire':
       return <svg {...props}><path d="M2 13c2-6 5-6 6-3s4 3 6-3" /><circle cx="2" cy="13" r="1.2" fill="currentColor" /><circle cx="14" cy="7" r="1.2" fill="currentColor" /></svg>;
-    case 'threshold':
-      return <svg {...props}><rect x="2" y="2" width="12" height="12" rx="1" /><path d="M2 8h12M5 5l2 2M9 9l2 2" /></svg>;
     case 'interpolate':
       return <svg {...props}><path d="M2 4h4M10 4h4M2 8h12M2 12h4M10 12h4" strokeDasharray="2 1.5" /></svg>;
     case 'margin':

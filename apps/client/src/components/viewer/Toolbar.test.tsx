@@ -274,7 +274,6 @@ describe('Toolbar contour operations', () => {
     expect(disabledLabels).toEqual(expect.arrayContaining([
       'Select (V)',
       'Smart Edge (S)',
-      'Threshold (T)',
     ]));
     expect(disabledLabels).not.toContain('Help');
   });
