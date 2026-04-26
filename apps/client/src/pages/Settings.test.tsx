@@ -84,4 +84,17 @@ describe('Settings', () => {
     expect((screen.getByLabelText('Duplicate ROI name QA rule') as HTMLInputElement).checked).toBe(true);
     expect(screen.getByText('QA rule configuration reset to the application default.')).toBeTruthy();
   });
+
+  it('shows product information in the about section', () => {
+    render(
+      <MemoryRouter>
+        <Settings />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('heading', { name: 'About' })).toBeTruthy();
+    expect(screen.getByText('Version')).toBeTruthy();
+    expect(screen.getByText('0.1.0')).toBeTruthy();
+    expect(screen.getByText('Contour review and RTSTRUCT round-trip')).toBeTruthy();
+  });
 });

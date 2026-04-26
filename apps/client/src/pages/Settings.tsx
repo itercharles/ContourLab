@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { version } from '../../package.json';
 import {
   getDefaultDicomWebBaseUrl,
   getDicomWebBaseUrl,
@@ -20,6 +21,12 @@ interface SettingsStatus {
   tone: 'muted' | 'error';
   message: string;
 }
+
+const ABOUT_DETAILS = [
+  { label: 'Version', value: version },
+  { label: 'Current scope', value: 'Contour review and RTSTRUCT round-trip' },
+  { label: 'DHF controls', value: 'IEC 62304, IEC 82304-1, ISO 14971' },
+];
 
 export default function Settings() {
   const theme = useUIStore((s) => s.theme);
@@ -278,6 +285,29 @@ export default function Settings() {
             <p className="text-[10px] text-[var(--color-text-muted)]">
               Custom user-authored QA rules are not implemented yet. When added, they should target a constrained rule schema rather than arbitrary scripting.
             </p>
+          </div>
+        </section>
+
+        <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
+          <div className="border-b border-[var(--color-border)] px-3 py-2">
+            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
+              About
+            </h2>
+            <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+              WebTPS is a browser-based radiation therapy contour review workspace for repository-backed DICOM workflows.
+            </p>
+          </div>
+          <div className="grid gap-2 px-3 py-3 md:grid-cols-3">
+            {ABOUT_DETAILS.map((detail) => (
+              <div key={detail.label} className="border border-[var(--color-border)] bg-[var(--color-base)] px-2 py-2">
+                <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+                  {detail.label}
+                </div>
+                <div className="mt-1 text-[11px] text-[var(--color-text)]">
+                  {detail.value}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
