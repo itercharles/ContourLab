@@ -375,6 +375,13 @@ jobs:
           name: verify-srs-junit
           path: test-results/srs/
 
+      - name: Download SRS test evidence (API .NET)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: verify-srs-api-junit
+          path: test-results/srs-api/
+
       - name: Download SYS test evidence (Playwright)
         uses: actions/download-artifact@v4
         continue-on-error: true
@@ -394,6 +401,7 @@ jobs:
           mkdir -p dhf-artifacts/traceability
           export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
           JUNIT_ARGS="--junit test-results/srs/verification-junit.xml"
+          [ -f test-results/srs-api/api-junit.xml ] && JUNIT_ARGS="$JUNIT_ARGS --junit test-results/srs-api/api-junit.xml"
           [ -f test-results/sys/e2e-sys-junit.xml ] && JUNIT_ARGS="$JUNIT_ARGS --junit test-results/sys/e2e-sys-junit.xml"
           [ -f test-results/crs/e2e-crs-junit.xml ] && JUNIT_ARGS="$JUNIT_ARGS --junit test-results/crs/e2e-crs-junit.xml"
           compliantflow --dhf dhf/DHF report traceability UC CRS SYS SRS SWDD \
