@@ -156,50 +156,50 @@ Download and extract a study, then import the folder through the UI steps above.
 
 ## Deployed Build (self-hosted CI/CD)
 
-The `CI Pipeline` deploy job builds the app and serves it via PM2 on
-**different ports** to avoid conflicting with the local dev server:
+The `CI Pipeline` deploy job runs on a Linux self-hosted runner and deploys the
+app as a Docker Compose stack. The deployed build uses **different host ports**
+to avoid conflicting with the local dev server:
 
 | | Dev server | Deployed build |
 |--|------------|----------------|
 | Frontend | `http://127.0.0.1:3000` | `http://AP-vS9RB5xoet8i.int.elekta.com:3001` |
 | API | `http://127.0.0.1:4000` | `http://AP-vS9RB5xoet8i.int.elekta.com:4001` |
-| Orthanc | `http://127.0.0.1:8042` | `http://127.0.0.1:8042` (shared) |
+| Orthanc | `http://127.0.0.1:8042` | `http://AP-vS9RB5xoet8i.int.elekta.com:8042` |
 
 Both can run at the same time with no conflicts. The deployed build binds on
 `0.0.0.0` — anyone on the Elekta network can reach it at
 `AP-vS9RB5xoet8i.int.elekta.com`.
 
-### First-time manual deploy
+The deployed stack is defined in [`../docker-compose.deploy.yml`](../docker-compose.deploy.yml):
 
-Before the automated workflow runs, seed PM2 manually once:
+- `webtps-client` serves the Vite production build through nginx on host port `3001`.
+- `webtps-api` serves ASP.NET Core on host port `4001`.
+- `webtps-orthanc` serves Orthanc on host ports `8042` and `4242`.
+- DICOM data persists in the Docker volume `webtps_orthanc-db`.
 
-```powershell
-cd C:\code\Prototype\webtps
+### First-time runner setup
 
-# Build frontend
-pnpm --filter @webtps/client build
+The Linux runner only needs Git, Docker Engine, the Docker Compose plugin, and a
+GitHub Actions self-hosted runner registered with the `self-hosted` and `linux`
+labels. Node.js, pnpm, and .NET are supplied by Docker build images.
 
-# Start frontend on port 3001, proxying API on 4001
-$env:WEBTPS_API_PORT = "4001"
-pm2 start "pnpm --filter @webtps/client preview --host 0.0.0.0 --port 3001" --name webtps-client
+Before the automated workflow runs, confirm Docker access from the runner user:
 
-# Publish and start API on port 4001
-dotnet publish apps/api/api.csproj --configuration Release --output apps/api/publish
-pm2 start "dotnet apps/api/publish/WebTPS.Api.dll --urls http://0.0.0.0:4001" --name webtps-api
-
-pm2 save
+```bash
+docker version
+docker compose version
 ```
 
-### PM2 management
+### Manual deploy and management
 
-```powershell
-pm2 list                   # show all processes and status
-pm2 logs webtps-client     # stream frontend logs
-pm2 logs webtps-api        # stream API logs
-pm2 restart webtps-client  # manual restart
-pm2 stop all               # stop deployed build (frees ports 3001/4001)
-pm2 start all              # resume deployed build
+```bash
+docker compose -f docker-compose.deploy.yml up -d --build --remove-orphans
+docker compose -f docker-compose.deploy.yml ps
+docker compose -f docker-compose.deploy.yml logs -f
+docker compose -f docker-compose.deploy.yml restart
+docker compose -f docker-compose.deploy.yml down
 ```
 
-Stopping PM2 does not affect the dev server — `pnpm dev` and `pnpm api` run
-independently on their own ports.
+`down` stops the deployed containers but preserves the Orthanc Docker volume. To
+wipe deployed DICOM data intentionally, remove `webtps_orthanc-db` after
+stopping the stack.

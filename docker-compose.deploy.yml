@@ -1,0 +1,40 @@
+services:
+  client:
+    build:
+      context: .
+      dockerfile: apps/client/Dockerfile
+    image: webtps-client:latest
+    container_name: webtps-client
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+      - dicom-repo
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: webtps-api:latest
+    container_name: webtps-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:4000
+    ports:
+      - "4001:4000"
+    restart: unless-stopped
+
+  dicom-repo:
+    image: orthancteam/orthanc:latest
+    container_name: webtps-orthanc
+    ports:
+      - "8042:8042"
+      - "4242:4242"
+    volumes:
+      - ./docker/orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
+      - orthanc-db:/var/lib/orthanc/db
+    restart: unless-stopped
+
+volumes:
+  orthanc-db:

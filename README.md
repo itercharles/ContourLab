@@ -147,19 +147,21 @@ More detail: [`docs/local_development.md`](docs/local_development.md).
 
 ## Deployed Build
 
-The `CI Pipeline` deploy job builds the app and serves it via PM2 on different
-ports to avoid conflicting with the local dev server:
+The `CI Pipeline` deploy job runs on a Linux self-hosted runner and deploys the
+app as a Docker Compose stack. The deployed stack uses different host ports to
+avoid conflicting with the local dev server:
 
 | | Dev server | Deployed build |
 |--|------------|----------------|
 | Frontend | `http://127.0.0.1:3000` | `http://AP-vS9RB5xoet8i.int.elekta.com:3001` |
 | API | `http://127.0.0.1:4000` | `http://AP-vS9RB5xoet8i.int.elekta.com:4001` |
-| Orthanc | `http://127.0.0.1:8042` | `http://127.0.0.1:8042` (shared) |
+| Orthanc | `http://127.0.0.1:8042` | `http://AP-vS9RB5xoet8i.int.elekta.com:8042` |
 
 Both can run simultaneously. Anyone on the Elekta network can reach the
 deployed build at `AP-vS9RB5xoet8i.int.elekta.com`. See
-[`docs/local_development.md`](docs/local_development.md) for PM2 setup and
-first-time deploy instructions.
+[`docker-compose.deploy.yml`](docker-compose.deploy.yml) for the deployed stack
+and [`docs/local_development.md`](docs/local_development.md) for runner setup
+and operational commands.
 
 ## Testing
 

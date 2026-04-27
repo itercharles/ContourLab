@@ -1,5 +1,5 @@
 export function logClientDebug(scope: string, message: string): void {
-  void fetch('http://localhost:4000/debug/client-log', {
+  void fetch('/debug/client-log', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
