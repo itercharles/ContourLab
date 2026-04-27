@@ -192,11 +192,14 @@ docker version
 docker compose version
 ```
 
-Create the persistent DICOM repository once:
+The CD workflow creates the data directory and starts the persistent DICOM
+repository automatically. To do the same check manually:
 
 ```bash
 mkdir -p "${WEBTPS_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}"
 docker compose -f docker-compose.deploy.yml up -d --no-recreate dicom-repo
+docker compose -f docker-compose.deploy.yml ps
+curl -sf http://127.0.0.1:8042/system
 ```
 
 ### Manual deploy and management

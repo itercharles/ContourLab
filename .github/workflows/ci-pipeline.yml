@@ -431,6 +431,13 @@ jobs:
           docker version
           docker compose version
 
+      - name: Prepare persistent DICOM data directory
+        run: |
+          WEBTPS_ORTHANC_DATA_DIR="${WEBTPS_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}"
+          mkdir -p "$WEBTPS_ORTHANC_DATA_DIR"
+          echo "WEBTPS_ORTHANC_DATA_DIR=$WEBTPS_ORTHANC_DATA_DIR" >> "$GITHUB_ENV"
+          echo "Using WEBTPS_ORTHANC_DATA_DIR=$WEBTPS_ORTHANC_DATA_DIR"
+
       - name: Ensure persistent DICOM repository
         run: docker compose -f docker-compose.deploy.yml up -d --no-recreate dicom-repo
 
