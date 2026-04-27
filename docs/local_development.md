@@ -192,8 +192,11 @@ docker version
 docker compose version
 ```
 
-The CD workflow creates the data directory and starts the persistent DICOM
-repository automatically. To do the same check manually:
+The CD workflow creates the data directory automatically. It only starts or
+updates the persistent DICOM repository when the `webtps-orthanc` container is
+missing, stopped, or running a different image ID; if the container is already
+running with the expected image, CD leaves it unchanged. To do the same check
+manually:
 
 ```bash
 mkdir -p "${WEBTPS_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}"
