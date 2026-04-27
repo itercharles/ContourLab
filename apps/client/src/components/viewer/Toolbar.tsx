@@ -16,6 +16,9 @@ const ACTIVITY_TONE_CLASS: Record<ActivityItem['tone'], string> = {
   error: 'bg-red-500',
 };
 
+const WEBTPS_ISSUES_URL = 'https://github.com/itercharles/WebTPS/issues/new';
+const WEBTPS_REPO_URL = 'https://github.com/itercharles/WebTPS';
+
 function formatActivityTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
@@ -26,6 +29,7 @@ export default function Toolbar() {
   const [undoRedoRevision, setUndoRedoRevision] = useState(0);
   const [isPushingChanges, setIsPushingChanges] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [prototypeInfoOpen, setPrototypeInfoOpen] = useState(false);
   const activities = useActivityStore((s) => s.activities);
   const markAllRead = useActivityStore((s) => s.markAllRead);
   const clearActivities = useActivityStore((s) => s.clearActivities);
@@ -130,6 +134,13 @@ export default function Toolbar() {
           </div>
           <span className="text-[12px] font-semibold tracking-tight text-[var(--color-text-bright)]">WebTPS</span>
         </div>
+        <button
+          type="button"
+          onClick={() => setPrototypeInfoOpen(true)}
+          className="h-7 rounded bg-blue-900 px-4 text-[12px] font-bold text-white ring-1 ring-blue-400/70 transition-colors hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+        >
+          Click Me
+        </button>
         <div className="flex items-center rounded border border-[var(--color-border)] bg-[var(--color-surface-alt)] p-0.5">
           <button
             type="button"
@@ -315,6 +326,89 @@ export default function Toolbar() {
             <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 1 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1A2 2 0 1 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.6 1h.1a2 2 0 1 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z" />
           </svg>
         </Link>
+        {prototypeInfoOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="prototype-info-title"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4"
+            onClick={() => setPrototypeInfoOpen(false)}
+          >
+            <div
+              className="w-full max-w-[520px] border border-blue-500/50 bg-[var(--color-surface)] text-[var(--color-text)] shadow-[0_18px_50px_rgba(0,0,0,0.55)]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-blue-500/30 bg-blue-950 px-4 py-3">
+                <h2 id="prototype-info-title" className="text-[14px] font-bold text-white">
+                  Issue-driven AI coding prototype
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setPrototypeInfoOpen(false)}
+                  aria-label="Close prototype information"
+                  className="flex h-7 w-7 items-center justify-center rounded text-blue-100 hover:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="space-y-4 px-4 py-4 text-[12px] leading-relaxed text-[var(--color-text-sec)]">
+                <p className="font-semibold text-[var(--color-text)]">
+                  This prototype is for experiencing issue-driven AI coding. It does not contain any Elekta product code.
+                </p>
+                <p>
+                  All code in this prototype, including the CI/CD workflows, was written by Claude and Codex.
+                </p>
+                <p>
+                  Repository:{' '}
+                  <a
+                    href={WEBTPS_REPO_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-blue-300 hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                  >
+                    github.com/itercharles/WebTPS
+                  </a>
+                </p>
+                <div aria-label="Issue-driven AI coding flow" className="grid grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] items-stretch gap-1 text-center text-[10px]">
+                  {[
+                    ['1', 'Open issue'],
+                    ['2', 'Maintainer review'],
+                    ['3', 'CR + design review'],
+                    ['4', 'AI implementation PR'],
+                  ].map(([step, label], index) => (
+                    <div key={step} className="contents">
+                      <div className="border border-blue-500/30 bg-blue-950/50 px-2 py-2">
+                        <span className="mb-1 inline-grid h-5 w-5 place-items-center rounded-full bg-blue-800 font-mono text-[10px] font-bold text-white">
+                          {step}
+                        </span>
+                        <span className="block font-semibold text-blue-100">{label}</span>
+                      </div>
+                      {index < 3 && (
+                        <div className="flex items-center px-0.5 text-blue-300" aria-hidden="true">
+                          →
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p>
+                  To try the flow, open a GitHub issue describing the change you want. A maintainer reviews it and assigns it to the current weekly milestone. Automation then creates a Change Request, moves it through review, and only then implements the accepted change.
+                </p>
+                <p>
+                  If you are interested in submitting an issue or trying the workflow, contact Charles Chen.
+                </p>
+                <a
+                  href={WEBTPS_ISSUES_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-8 items-center rounded bg-blue-800 px-3 text-[12px] font-bold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                >
+                  Open a WebTPS issue
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <WorkspaceContextBar />
     </div>

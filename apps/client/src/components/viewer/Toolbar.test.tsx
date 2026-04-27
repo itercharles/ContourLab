@@ -305,6 +305,25 @@ describe('Toolbar contour operations', () => {
     expect(screen.getByRole('button', { name: 'Inbox' }).getAttribute('title')).toBe('Inbox · 0 unread');
   });
 
+  it('opens the prototype issue-driven AI coding notice from the top bar CTA', () => {
+    renderToolbar();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Click Me' }));
+
+    expect(screen.getByRole('dialog', { name: 'Issue-driven AI coding prototype' })).toBeTruthy();
+    expect(screen.getByText(/does not contain any Elekta product code/i)).toBeTruthy();
+    expect(screen.getByText(/including the CI\/CD workflows, was written by Claude and Codex/i)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'github.com/itercharles/WebTPS' }).getAttribute('href')).toBe(
+      'https://github.com/itercharles/WebTPS'
+    );
+    expect(screen.getByText('Open issue')).toBeTruthy();
+    expect(screen.getByText('CR + design review')).toBeTruthy();
+    expect(screen.getByText(/contact Charles Chen/i)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Open a WebTPS issue' }).getAttribute('href')).toBe(
+      'https://github.com/itercharles/WebTPS/issues/new'
+    );
+  });
+
   it('saves active structure changes from the global title bar @links:SRS-018', async () => {
     useStructureStore.getState().markSeriesDirty('series-1');
 
