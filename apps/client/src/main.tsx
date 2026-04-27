@@ -10,7 +10,7 @@ if (import.meta.env.DEV) {
     import('./core/store/volumeStore'),
     import('./core/store/uiStore'),
   ]).then(([{ useStructureStore }, { useVolumeStore }, { useUIStore }]) => {
-    (window as Record<string, unknown>)['__webtps_stores'] = {
+    (window as unknown as Record<string, unknown>)['__webtps_stores'] = {
       structureStore: useStructureStore,
       volumeStore: useVolumeStore,
       uiStore: useUIStore,
