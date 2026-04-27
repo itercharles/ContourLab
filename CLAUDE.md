@@ -154,9 +154,10 @@ pushing, ask the user whether to open a PR or merge locally — do not decide un
 
 ## Skills
 
-- `/pre-analyze` — pre-implementation checklist before starting any change
-- `/post-implement` — post-implementation checklist before handoff
-- `/ux-design` — UX design guidance for clinical imaging components
+- `/cr-implement <CR-ID>` — **primary entry point**: read Plan Spec, implement, write tests, update DHF, open PR
+- `/traceability-check` — show which SYS/SRS/CRS items have no test coverage; suggest next tests to add
+- `/finish-branch` — validate, review DHF impact, open PR or merge
+- `/ux-design` — UX design guidance before any UI work
 - `/systematic-debugging` — structured debugging methodology
 - `/verify` — verify work is complete before claiming done
-- `/finish-branch` — complete a branch with tests, checklist, and PR options
+- `/pre-analyze` — pre-implementation checklist (use for ad-hoc changes outside the CR workflow)

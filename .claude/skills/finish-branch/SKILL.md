@@ -1,63 +1,64 @@
 ---
 name: finish-branch
-description: Complete a development branch — verify tests, check PR requirements, and offer structured completion options
+description: Complete a development branch — run validation, assess DHF impact, and open PR or merge
 ---
 
 # Finish Branch
 
-Use this when development work on a branch is done and it's time to hand off or merge.
+Use when development work on a branch is done. Works through validation, DHF review, and delivery in one pass.
 
-## Step 1: Verify Tests Pass
+## Step 1: Validate
 
-Run the full validation suite before anything else. If anything fails, stop here and fix it first.
+Run all commands relevant to the change. Do not skip any that apply.
 
-```
+```bash
 pnpm --filter @webtps/client typecheck
-pnpm --filter @webtps/client test
 pnpm --filter @webtps/client lint
-dotnet build apps/api/api.csproj --no-restore -v q
+pnpm --filter @webtps/client test
+pnpm -r typecheck                          # if shared-types changed
+dotnet build apps/api/api.csproj --configuration Release  # if API changed
 ```
 
-**Do not proceed if any command fails.**
+**Stop here if anything fails.**
 
-## Step 2: Run Post-Implement Checklist
+## Step 2: Scope and DHF Review
 
-Invoke `/post-implement` and confirm all 8 checklist items are addressed, especially:
-- DHF impact assessed and documented
-- Branch/PR requirements determined
-- Manual test plan written
+Answer these before opening a PR:
 
-## Step 3: Determine Base Branch
+- Did the implementation stay within the agreed scope?
+- Does it align with `WebTPS-DHF/DHF/documents/specs/crs_specification.md.j2` and the active roadmap phase?
+- **DHF impact**: which DHF files changed, or state explicitly why no DHF update was needed
+- **ADR**: was an architecture boundary crossed? If so, was an ADR added?
+- **SOUP**: was a new npm/NuGet/container dependency introduced? If so, was a SOUP item created?
 
-```
+## Step 3: Determine Delivery Path
+
+Check what's changed since main:
+```bash
 git log --oneline main..HEAD
 ```
 
-Identify what's been added since `main` and confirm the branch name follows convention:
-- `feature/short-description`
-- `fix/short-description`
-- `refactor/short-description`
-- `claude/short-description` (Claude-authored changes)
+Choose one:
 
-## Step 4: Choose One of Four Options
+1. **Open a PR** — required for any change that touches product behavior, UI, API, shared types, or DHF items
+2. **Merge locally** — only for docs/process changes with no DHF impact and no product behavior change
+3. **Keep branch open** — if work is incomplete
+4. **Discard** — type "discard" to confirm; irreversible
 
-Present exactly these options without elaboration:
+## Step 4: PR Description (if opening PR)
 
-1. **Merge to main locally** — for docs/process changes or tooling with no DHF impact
-2. **Push and open a Pull Request** — required for any functional change (product behavior, UI, API, shared types, DHF items)
-3. **Keep branch as-is** — leave open for later
-4. **Discard** — requires typing "discard" to confirm; irreversible
+Title format: `feat(CR-NNN): description` or `fix: description`
 
-**Any change that touches product behavior, UI, API contracts, shared types, or DHF items requires Option 2.**
+Body must include:
+- **Summary**: what changed and why (2–4 bullet points)
+- **CR**: CR ID and link, or "No CR — docs/process change"
+- **DHF files changed**: exact paths, or "No DHF update required — <reason>"
+- **Validation run**: every command executed and whether it passed
+- **Manual testing still required**: concrete steps
+- **Residual risks**: what remains incomplete or unverified
 
-## Step 5: If Opening a PR
+## Step 5: After PR is Open
 
-The PR description must include:
-- Summary of the change
-- Change class (`feature` / `bugfix` / `refactor` / `docs/process`)
-- DHF files changed, or explicit statement that no DHF update was needed
-- Validation commands run and their results
-- Manual test steps still required
-- Residual risks or follow-up items
-
-After creating the PR, note that CI and review comments must be monitored until the PR is resolved — the work is not done at PR creation.
+- Monitor CI — fix any failures on the branch
+- Address every review comment explicitly: fix / reject with reason / defer / ask
+- Work is done when the PR merges and CI passes — not at PR creation
