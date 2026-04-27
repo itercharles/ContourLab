@@ -431,8 +431,11 @@ jobs:
           docker version
           docker compose version
 
-      - name: Deploy Docker stack
-        run: docker compose -f docker-compose.deploy.yml up -d --build --remove-orphans
+      - name: Ensure persistent DICOM repository
+        run: docker compose -f docker-compose.deploy.yml up -d --no-recreate dicom-repo
+
+      - name: Deploy application containers
+        run: docker compose -f docker-compose.deploy.yml up -d --build --no-deps api client
 
       - name: Verify deployment
         run: |

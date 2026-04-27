@@ -163,6 +163,11 @@ deployed build at `AP-vS9RB5xoet8i.int.elekta.com`. See
 and [`docs/local_development.md`](docs/local_development.md) for runner setup
 and operational commands.
 
+The deploy workflow updates only the API and frontend containers. The Orthanc
+DICOM repository is a persistent service and is not recreated for each app
+release. Its database is bind-mounted from the host at
+`${WEBTPS_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}`.
+
 ## Testing
 
 ```bash

@@ -11,4 +11,5 @@ node_modules
 **/test-results
 apps/api/publish
 docker/orthanc/orthanc-db
+deploy-data
 *.log

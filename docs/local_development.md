@@ -175,7 +175,9 @@ The deployed stack is defined in [`../docker-compose.deploy.yml`](../docker-comp
 - `webtps-client` serves the Vite production build through nginx on host port `3001`.
 - `webtps-api` serves ASP.NET Core on host port `4001`.
 - `webtps-orthanc` serves Orthanc on host ports `8042` and `4242`.
-- DICOM data persists in the Docker volume `webtps_orthanc-db`.
+- DICOM data is bind-mounted from the host. By default it lives under
+  `./deploy-data/orthanc-db`; set `WEBTPS_ORTHANC_DATA_DIR` on the runner to use
+  a fixed data disk path such as `/srv/webtps/orthanc-db`.
 
 ### First-time runner setup
 
@@ -190,16 +192,31 @@ docker version
 docker compose version
 ```
 
-### Manual deploy and management
+Create the persistent DICOM repository once:
 
 ```bash
-docker compose -f docker-compose.deploy.yml up -d --build --remove-orphans
-docker compose -f docker-compose.deploy.yml ps
-docker compose -f docker-compose.deploy.yml logs -f
-docker compose -f docker-compose.deploy.yml restart
-docker compose -f docker-compose.deploy.yml down
+mkdir -p "${WEBTPS_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}"
+docker compose -f docker-compose.deploy.yml up -d --no-recreate dicom-repo
 ```
 
-`down` stops the deployed containers but preserves the Orthanc Docker volume. To
-wipe deployed DICOM data intentionally, remove `webtps_orthanc-db` after
-stopping the stack.
+### Manual deploy and management
+
+Deploying the application updates only the API and frontend containers. It does
+not recreate Orthanc or remount DICOM data:
+
+```bash
+docker compose -f docker-compose.deploy.yml up -d --build --no-deps api client
+docker compose -f docker-compose.deploy.yml ps
+docker compose -f docker-compose.deploy.yml logs -f
+docker compose -f docker-compose.deploy.yml restart api client
+```
+
+To stop the app without touching the repository:
+
+```bash
+docker compose -f docker-compose.deploy.yml stop api client
+```
+
+Avoid `docker compose down` for routine app releases because it stops the DICOM
+repository as well. To wipe deployed DICOM data intentionally, stop Orthanc and
+delete the host directory configured by `WEBTPS_ORTHANC_DATA_DIR`.

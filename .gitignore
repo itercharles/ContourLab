@@ -35,6 +35,7 @@ test-results/
 *.dcm
 *.nii
 *.nii.gz
+deploy-data/
 
 # IDE
 .vscode/
