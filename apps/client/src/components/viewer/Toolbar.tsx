@@ -378,14 +378,15 @@ export default function Toolbar() {
                 </h3>
                 <div aria-label="Issue-driven AI coding workflow" className="space-y-0">
                   {([
-                    { actor: 'human', step: '1', title: 'Open a GitHub issue', desc: 'Describe the feature, bug, or improvement you want.' },
-                    { actor: 'human', step: '2', title: 'Maintainer triage', desc: 'A maintainer reviews the issue, accepts it, and assigns it to the current milestone. Declined issues are closed with a comment.' },
-                    { actor: 'ai',    step: '3', title: 'CR + Plan Spec generated', desc: 'AI creates a Change Request in the compliance repository and produces a Plan Spec — covering scope, architecture impact, DHF items, and test strategy.' },
-                    { actor: 'human', step: '4', title: 'Spec review & approval', desc: 'Maintainer reviews the Plan Spec. Feedback is sent back to AI for revision. Implementation cannot start until the spec is approved.' },
-                    { actor: 'ai',    step: '5', title: 'Implementation PR', desc: 'AI writes code, tests, and DHF documentation updates, then opens a pull request. CI runs lint, typecheck, unit, integration, and compliance checks.' },
-                    { actor: 'human', step: '6', title: 'Code review & approval', desc: 'Maintainer reviews the PR. Review comments are fed back to AI for iteration. The AI never merges without explicit approval.' },
-                    { actor: 'ai',    step: '7', title: 'Merge & DHF close-out', desc: 'After approval, AI merges the PR, transitions the CR to completed, and deploys automatically.' },
-                  ] as const).map(({ actor, step, title, desc }, i, arr) => (
+                    { actor: 'human', step: '1', title: 'Open a GitHub issue',       desc: 'Describe the feature, bug, or improvement you want.',                                                                                    trigger: 'Assigned to milestone → auto-creates CR' },
+                    { actor: 'human', step: '2', title: 'Maintainer triage',         desc: 'A maintainer reviews the issue, accepts it, and assigns it to the current milestone. Declined issues are closed with a comment.',       trigger: 'CR merge → auto-starts Spec generation' },
+                    { actor: 'ai',    step: '3', title: 'CR + Plan Spec generated',  desc: 'AI creates a Change Request in the compliance repository and produces a Plan Spec — scope, architecture impact, DHF items affected, and test strategy.', trigger: 'Spec PR approval → auto-starts DHF update' },
+                    { actor: 'human', step: '4', title: 'Spec review & approval',    desc: 'Maintainer reviews the Plan Spec PR. Feedback loops back to AI for revision. DHF design work cannot start until the spec is approved.', trigger: 'DHF PR approval → auto-starts implementation' },
+                    { actor: 'ai',    step: '5', title: 'DHF design update',         desc: 'AI updates compliance documentation (SRS, SWDD, risk items) to reflect the approved design, then opens a DHF pull request.',            trigger: 'Code PR approval → auto-merges & deploys' },
+                    { actor: 'human', step: '6', title: 'DHF review & approval',     desc: 'Maintainer reviews the DHF changes. Feedback loops back to AI. Implementation code is only written after DHF is merged.',              trigger: 'Merge → auto-opens implementation PR' },
+                    { actor: 'ai',    step: '7', title: 'Implementation PR',         desc: 'AI writes code and tests against the merged spec and DHF items, then opens a pull request. CI runs lint, typecheck, unit, and compliance checks.', trigger: null },
+                    { actor: 'human', step: '8', title: 'Code review & approval',    desc: 'Maintainer reviews the PR. Review comments are fed back to AI for iteration. The AI never merges without explicit human approval.',     trigger: 'Approval → auto-merge, CR completed, deploy' },
+                  ] as const).map(({ actor, step, title, desc, trigger }, i, arr) => (
                     <div key={step} className="flex gap-3">
                       {/* Spine */}
                       <div className="flex flex-col items-center">
@@ -394,11 +395,13 @@ export default function Toolbar() {
                           {step}
                         </div>
                         {i < arr.length - 1 && (
-                          <div className="w-px grow bg-[var(--color-border)]" />
+                          <div className="flex w-7 flex-col items-center">
+                            <div className="w-px grow bg-[var(--color-border)]" />
+                          </div>
                         )}
                       </div>
                       {/* Content */}
-                      <div className="pb-4">
+                      <div className="pb-1">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-[var(--color-text)]">{title}</span>
                           <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide
@@ -407,6 +410,12 @@ export default function Toolbar() {
                           </span>
                         </div>
                         <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">{desc}</p>
+                        {trigger && (
+                          <p className="mt-1 text-[10px] font-medium text-emerald-400">
+                            ⚡ {trigger}
+                          </p>
+                        )}
+                        <div className="mb-3" />
                       </div>
                     </div>
                   ))}
