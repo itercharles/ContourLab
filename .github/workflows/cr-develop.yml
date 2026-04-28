@@ -124,7 +124,7 @@ jobs:
         id: gen
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL || 'claude-haiku-4-5-20251001' }}
+          ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
         run: |
           PROMPT="Implement $CR_ID in this WebTPS repository.
@@ -156,7 +156,7 @@ jobs:
         if: steps.ctx.outputs.mode == 'iterate'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL || 'claude-haiku-4-5-20251001' }}
+          ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
           SESSION_ID: ${{ steps.session.outputs.session_id }}
         run: |
           if [ -n "$SESSION_ID" ]; then
