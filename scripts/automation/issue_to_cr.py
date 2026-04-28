@@ -133,6 +133,7 @@ def _dhf_env(dhf_repo: Path) -> dict[str, str]:
 
 
 def run_dhf_util(dhf_repo: Path, args: list[str]) -> str:
+    dhf_repo = dhf_repo.resolve()  # ensure absolute so cwd change doesn't break --dhf path
     command = [
         sys.executable,
         "-m",
