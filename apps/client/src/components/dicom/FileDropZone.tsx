@@ -1,7 +1,10 @@
-import { useRef, useState, useCallback, DragEvent, ChangeEvent } from 'react';
+import { useRef, useState, useCallback, useEffect, DragEvent, ChangeEvent } from 'react';
 import { loadFiles } from '../../core/dicom/DicomLoader';
 import { buildVolume } from '../../core/dicom/VolumeBuilder';
 import { useVolumeStore } from '../../core/store/volumeStore';
+
+type ImportPhase = 'parsing' | 'building';
+interface ProgressState { phase: ImportPhase; loaded: number; total: number }
 
 /** Recursively collect all File objects from dropped FileSystemEntry items */
 async function collectFilesFromEntries(entries: FileSystemEntry[]): Promise<File[]> {
@@ -39,7 +42,15 @@ export default function FileDropZone() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
+  const [progress, setProgress] = useState<ProgressState | null>(null);
+  const [successCount, setSuccessCount] = useState<number | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    };
+  }, []);
 
   const handleFiles = useCallback(
     async (files: File[]) => {
@@ -47,17 +58,28 @@ export default function FileDropZone() {
 
       setLoading(true);
       setError(null);
-      setProgress({ loaded: 0, total: files.length });
+      setSuccessCount(null);
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      setProgress({ phase: 'parsing', loaded: 0, total: files.length });
 
       try {
         const parsedSeries = await loadFiles(files, (loaded, total) => {
-          setProgress({ loaded, total });
+          setProgress({ phase: 'parsing', loaded, total });
         });
 
-        for (const series of parsedSeries) {
-          const loadedSeries = await buildVolume(series);
+        if (parsedSeries.length === 0) {
+          setError('No valid DICOM files found');
+          return;
+        }
+
+        for (let i = 0; i < parsedSeries.length; i++) {
+          setProgress({ phase: 'building', loaded: i, total: parsedSeries.length });
+          const loadedSeries = await buildVolume(parsedSeries[i]);
           addSeries(loadedSeries);
         }
+
+        setSuccessCount(parsedSeries.length);
+        successTimerRef.current = setTimeout(() => setSuccessCount(null), 3000);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load DICOM files';
         setError(message);
@@ -75,7 +97,6 @@ export default function FileDropZone() {
       e.preventDefault();
       setIsDragOver(false);
 
-      // Use DataTransferItemList to support dropped folders (recursive)
       const items = Array.from(e.dataTransfer.items);
       if (items.length > 0 && typeof items[0].webkitGetAsEntry === 'function') {
         const files = await collectFilesFromEntries(
@@ -103,7 +124,6 @@ export default function FileDropZone() {
     (e: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files ?? []);
       void handleFiles(files);
-      // Reset so same files can be re-selected
       e.target.value = '';
     },
     [handleFiles]
@@ -112,6 +132,18 @@ export default function FileDropZone() {
   const onClick = useCallback(() => {
     if (!isLoading) inputRef.current?.click();
   }, [isLoading]);
+
+  const progressLabel =
+    progress?.phase === 'parsing'
+      ? `Parsing… ${progress.loaded}/${progress.total}`
+      : progress?.phase === 'building'
+        ? `Building volumes… ${progress.loaded + 1}/${progress.total}`
+        : null;
+
+  const progressPct =
+    progress && progress.total > 0
+      ? Math.round((progress.loaded / progress.total) * 100)
+      : 0;
 
   return (
     <div>
@@ -151,20 +183,18 @@ export default function FileDropZone() {
 
         {isLoading && progress ? (
           <div className="w-full space-y-1">
-            <p className="text-[11px] text-[var(--color-text-sec)]">
-              Loading… {progress.loaded}/{progress.total}
-            </p>
+            <p className="text-[11px] text-[var(--color-text-sec)]">{progressLabel}</p>
             <div className="w-full bg-[var(--color-border)] rounded-full h-0.5">
               <div
                 className="bg-blue-500 h-0.5 rounded-full transition-all duration-100"
-                style={{
-                  width: progress.total > 0
-                    ? `${Math.round((progress.loaded / progress.total) * 100)}%`
-                    : '0%',
-                }}
+                style={{ width: `${progressPct}%` }}
               />
             </div>
           </div>
+        ) : successCount !== null ? (
+          <p className="text-[11px] text-green-400">
+            ✓ {successCount} series loaded
+          </p>
         ) : (
           <p className={`text-[11px] leading-snug ${isDragOver ? 'text-blue-300' : 'text-[var(--color-text-muted)]'}`}>
             Drop folder or files, or click
