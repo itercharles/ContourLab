@@ -331,14 +331,16 @@ export default function Toolbar() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="prototype-info-title"
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 py-6"
             onClick={() => setPrototypeInfoOpen(false)}
           >
             <div
-              className="w-full max-w-[520px] border border-blue-500/50 bg-[var(--color-surface)] text-[var(--color-text)] shadow-[0_18px_50px_rgba(0,0,0,0.55)]"
+              className="flex w-full max-w-[660px] flex-col border border-blue-500/50 bg-[var(--color-surface)] text-[var(--color-text)] shadow-[0_18px_50px_rgba(0,0,0,0.55)]"
+              style={{ maxHeight: 'calc(100vh - 48px)' }}
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b border-blue-500/30 bg-blue-950 px-4 py-3">
+              {/* Header */}
+              <div className="flex shrink-0 items-center justify-between border-b border-blue-500/30 bg-blue-950 px-4 py-3">
                 <h2 id="prototype-info-title" className="text-[14px] font-bold text-white">
                   Issue-driven AI coding prototype
                 </h2>
@@ -351,60 +353,87 @@ export default function Toolbar() {
                   ×
                 </button>
               </div>
-              <div className="space-y-4 px-4 py-4 text-[12px] leading-relaxed text-[var(--color-text-sec)]">
+
+              {/* Scrollable body */}
+              <div className="overflow-y-auto px-4 py-4 text-[12px] leading-relaxed text-[var(--color-text-sec)]">
                 <p className="font-semibold text-[var(--color-text)]">
-                  This prototype is for experiencing issue-driven AI coding. It does not contain any Elekta product code.
+                  This prototype demonstrates issue-driven AI software development.
+                  It does not contain any Elekta product code.
                 </p>
-                <p>
-                  All code in this prototype, including the CI/CD workflows, was written by Claude and Codex.
+                <p className="mt-2">
+                  All application code, CI/CD workflows, and compliance documentation were written by AI (Claude + Codex).
+                  Humans review and approve at each gate — the AI never merges without human sign-off.
                 </p>
-                <p>
+                <p className="mt-2">
                   Repository:{' '}
-                  <a
-                    href={WEBTPS_REPO_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-semibold text-blue-300 hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-                  >
+                  <a href={WEBTPS_REPO_URL} target="_blank" rel="noreferrer"
+                    className="font-semibold text-blue-300 hover:text-blue-200">
                     github.com/itercharles/WebTPS
                   </a>
                 </p>
-                <div aria-label="Issue-driven AI coding flow" className="grid grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] items-stretch gap-1 text-center text-[10px]">
-                  {[
-                    ['1', 'Open issue'],
-                    ['2', 'Maintainer review'],
-                    ['3', 'CR + design review'],
-                    ['4', 'AI implementation PR'],
-                  ].map(([step, label], index) => (
-                    <div key={step} className="contents">
-                      <div className="border border-blue-500/30 bg-blue-950/50 px-2 py-2">
-                        <span className="mb-1 inline-grid h-5 w-5 place-items-center rounded-full bg-blue-800 font-mono text-[10px] font-bold text-white">
+
+                {/* Workflow */}
+                <h3 className="mt-4 mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                  Workflow
+                </h3>
+                <div aria-label="Issue-driven AI coding workflow" className="space-y-0">
+                  {([
+                    { actor: 'human', step: '1', title: 'Open a GitHub issue', desc: 'Describe the feature, bug, or improvement you want.' },
+                    { actor: 'human', step: '2', title: 'Maintainer triage', desc: 'A maintainer reviews the issue, accepts it, and assigns it to the current milestone. Declined issues are closed with a comment.' },
+                    { actor: 'ai',    step: '3', title: 'CR + Plan Spec generated', desc: 'AI creates a Change Request in the compliance repository and produces a Plan Spec — covering scope, architecture impact, DHF items, and test strategy.' },
+                    { actor: 'human', step: '4', title: 'Spec review & approval', desc: 'Maintainer reviews the Plan Spec. Feedback is sent back to AI for revision. Implementation cannot start until the spec is approved.' },
+                    { actor: 'ai',    step: '5', title: 'Implementation PR', desc: 'AI writes code, tests, and DHF documentation updates, then opens a pull request. CI runs lint, typecheck, unit, integration, and compliance checks.' },
+                    { actor: 'human', step: '6', title: 'Code review & approval', desc: 'Maintainer reviews the PR. Review comments are fed back to AI for iteration. The AI never merges without explicit approval.' },
+                    { actor: 'ai',    step: '7', title: 'Merge & DHF close-out', desc: 'After approval, AI merges the PR, transitions the CR to completed, and deploys automatically.' },
+                  ] as const).map(({ actor, step, title, desc }, i, arr) => (
+                    <div key={step} className="flex gap-3">
+                      {/* Spine */}
+                      <div className="flex flex-col items-center">
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold
+                          ${actor === 'ai' ? 'bg-blue-700 text-white' : 'bg-gray-700 text-gray-100'}`}>
                           {step}
-                        </span>
-                        <span className="block font-semibold text-blue-100">{label}</span>
-                      </div>
-                      {index < 3 && (
-                        <div className="flex items-center px-0.5 text-blue-300" aria-hidden="true">
-                          →
                         </div>
-                      )}
+                        {i < arr.length - 1 && (
+                          <div className="w-px grow bg-[var(--color-border)]" />
+                        )}
+                      </div>
+                      {/* Content */}
+                      <div className="pb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-[var(--color-text)]">{title}</span>
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide
+                            ${actor === 'ai' ? 'bg-blue-900 text-blue-200' : 'bg-gray-800 text-gray-300'}`}>
+                            {actor === 'ai' ? 'AI' : 'Human'}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">{desc}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
-                <p>
-                  To try the flow, open a GitHub issue describing the change you want. A maintainer reviews it and assigns it to the current weekly milestone. Automation then creates a Change Request, moves it through review, and only then implements the accepted change.
-                </p>
-                <p>
-                  If you are interested in submitting an issue or trying the workflow, contact Charles Chen.
-                </p>
-                <a
-                  href={WEBTPS_ISSUES_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-8 items-center rounded bg-blue-800 px-3 text-[12px] font-bold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-                >
-                  Open a WebTPS issue
-                </a>
+
+                {/* Access */}
+                <div className="mt-2 border border-amber-500/30 bg-amber-950/20 px-3 py-3">
+                  <p className="font-semibold text-amber-200">How to get access</p>
+                  <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+                    GitHub issue creation requires repository write access.
+                    If you do not have access, send your GitHub username to{' '}
+                    <span className="font-semibold text-[var(--color-text)]">Charles Chen</span>{' '}
+                    to be added as a collaborator.
+                  </p>
+                </div>
+
+                {/* CTA */}
+                <div className="mt-4">
+                  <a
+                    href={WEBTPS_ISSUES_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex h-8 items-center rounded bg-blue-800 px-3 text-[12px] font-bold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                  >
+                    Open a WebTPS issue →
+                  </a>
+                </div>
               </div>
             </div>
           </div>

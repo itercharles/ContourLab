@@ -312,14 +312,15 @@ describe('Toolbar contour operations', () => {
 
     expect(screen.getByRole('dialog', { name: 'Issue-driven AI coding prototype' })).toBeTruthy();
     expect(screen.getByText(/does not contain any Elekta product code/i)).toBeTruthy();
-    expect(screen.getByText(/including the CI\/CD workflows, was written by Claude and Codex/i)).toBeTruthy();
+    expect(screen.getByText(/CI\/CD workflows, and compliance documentation were written by AI/i)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'github.com/itercharles/WebTPS' }).getAttribute('href')).toBe(
       'https://github.com/itercharles/WebTPS'
     );
-    expect(screen.getByText('Open issue')).toBeTruthy();
-    expect(screen.getByText('CR + design review')).toBeTruthy();
-    expect(screen.getByText(/contact Charles Chen/i)).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Open a WebTPS issue' }).getAttribute('href')).toBe(
+    expect(screen.getByText(/Open a GitHub issue/i)).toBeTruthy();
+    expect(screen.getByText(/CR \+ Plan Spec generated/i)).toBeTruthy();
+    expect(screen.getByText(/send your GitHub username to/i)).toBeTruthy();
+    expect(screen.getByText(/How to get access/i)).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Open a WebTPS issue/i }).getAttribute('href')).toBe(
       'https://github.com/itercharles/WebTPS/issues/new'
     );
   });
