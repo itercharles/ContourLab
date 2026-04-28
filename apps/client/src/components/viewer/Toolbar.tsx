@@ -385,7 +385,9 @@ export default function Toolbar() {
                     { actor: 'ai',    step: '5', title: 'DHF design update',         desc: 'AI updates compliance documentation (SRS, SWDD, risk items) to reflect the approved design, then opens a DHF pull request.',            trigger: 'Code PR approval → auto-merges & deploys' },
                     { actor: 'human', step: '6', title: 'DHF review & approval',     desc: 'Maintainer reviews the DHF changes. Feedback loops back to AI. Implementation code is only written after DHF is merged.',              trigger: 'Merge → auto-opens implementation PR' },
                     { actor: 'ai',    step: '7', title: 'Implementation PR',         desc: 'AI writes code and tests against the merged spec and DHF items, then opens a pull request. CI runs lint, typecheck, unit, and compliance checks.', trigger: null },
-                    { actor: 'human', step: '8', title: 'Code review & approval',    desc: 'Maintainer reviews the PR. Review comments are fed back to AI for iteration. The AI never merges without explicit human approval.',     trigger: 'Approval → auto-merge, CR completed, deploy' },
+                    { actor: 'human', step: '8', title: 'Code review & approval',    desc: 'Maintainer reviews the PR. Review comments are fed back to AI for iteration. The AI never merges without explicit human approval.',     trigger: 'Approval → auto-merge, triggers CI pipeline' },
+                    { actor: 'ai',    step: '9', title: 'Traceability validation',   desc: 'CI verifies design coverage (SYS → SYSARCH), test linkage (@links annotations), and IEC 62304 / IEC 82304-1 compliance. Any gap blocks the pipeline.', trigger: 'All checks pass → auto-generates artifacts' },
+                    { actor: 'ai',    step: '10', title: 'Report generation & deploy', desc: 'DHF spec PDFs and a full traceability report are generated and archived. The application is then deployed automatically to the production server.', trigger: null },
                   ] as const).map(({ actor, step, title, desc, trigger }, i, arr) => (
                     <div key={step} className="flex gap-3">
                       {/* Spine */}
