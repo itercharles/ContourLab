@@ -30,7 +30,10 @@ jobs:
           fetch-depth: 0
 
       - name: Install DHF utility dependencies
+        env:
+          PRODUCT_REPO_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
         run: |
+          git config --global url."https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/".insteadOf "https://github.com/"
           python -m pip install --upgrade pip
           pip install -r dhf/requirements.txt
 
