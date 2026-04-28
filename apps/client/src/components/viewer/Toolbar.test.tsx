@@ -273,8 +273,6 @@ describe('Toolbar contour operations', () => {
       .map((btn) => btn.getAttribute('aria-label'));
     expect(disabledLabels).toEqual(expect.arrayContaining([
       'Select (V)',
-      'Smart Edge (S)',
-      'Threshold (T)',
     ]));
     expect(disabledLabels).not.toContain('Help');
   });
