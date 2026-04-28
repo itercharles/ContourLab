@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 from scripts.automation.issue_to_cr import (
     IssueContext,
@@ -13,12 +14,50 @@ from scripts.automation.issue_to_cr import (
 )
 
 
-def make_dhf(root: Path) -> Path:
-    dhf = root / "dhf"
-    cr_dir = dhf / "DHF" / "items" / "09_cr"
-    cr_dir.mkdir(parents=True)
-    (cr_dir / "CR-033.yaml").write_text("id: CR-033\n")
-    return dhf
+class FakeDHFAdapter:
+    def __init__(self, items: list[dict[str, Any]] | None = None, created_id: str = "CR-034"):
+        self.items = items or []
+        self.created_id = created_id
+        self.created_data: dict[str, Any] | None = None
+
+    def list_items(self, doc_type: str | None = None) -> list[dict[str, Any]]:
+        self.listed_doc_type = doc_type
+        return self.items
+
+    def create_item(
+        self,
+        doc_type: str,
+        data: dict[str, Any],
+        *,
+        author: str,
+        cr_id: str | None = None,
+    ) -> dict[str, Any]:
+        self.created_doc_type = doc_type
+        self.created_author = author
+        self.created_data = data
+        return {"id": self.created_id}
+
+    def get_item(self, item_id: str) -> dict[str, Any] | None:
+        return None
+
+    def update_item(
+        self,
+        item_id: str,
+        data: dict[str, Any],
+        *,
+        author: str,
+        cr_id: str | None = None,
+    ) -> dict[str, Any] | None:
+        return None
+
+    def transition_item(self, item_id: str, to_state: str, *, performed_by: str) -> dict[str, Any]:
+        return {}
+
+    def get_document(self, doc_id: str) -> str | None:
+        return None
+
+    def get_cr_context(self, cr_id: str) -> dict[str, Any]:
+        return {}
 
 
 def make_issue(milestone: str = "2026-W18") -> IssueContext:
@@ -43,92 +82,91 @@ class IssueToCrTests(unittest.TestCase):
         self.assertEqual(current_iso_week_milestone(date(2026, 4, 26)), "2026-W17")
         self.assertEqual(current_iso_week_milestone(date(2027, 1, 1)), "2026-W53")
 
-    def test_next_cr_id_uses_existing_dhf_items(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            dhf = make_dhf(Path(tmp))
-            self.assertEqual(next_cr_id(dhf / "DHF" / "items" / "09_cr"), "CR-034")
+    def test_next_cr_id_uses_adapter_item_results(self):
+        self.assertEqual(
+            next_cr_id([
+                {"id": "CR-001"},
+                {"id": "SYS-009"},
+                {"id": "CR-033"},
+            ]),
+            "CR-034",
+        )
 
     def test_prepare_cr_requires_active_milestone(self):
         with tempfile.TemporaryDirectory() as tmp:
-            dhf = make_dhf(Path(tmp))
-            result = prepare_cr(make_issue("2026-W19"), "2026-W18", dhf, [], write=True)
+            result = prepare_cr(
+                make_issue("2026-W19"),
+                "2026-W18",
+                Path(tmp),
+                [],
+                write=True,
+                adapter=FakeDHFAdapter(),
+            )
             self.assertFalse(result.should_create)
             self.assertIn("not active milestone", result.reason)
 
-    def test_prepare_cr_creates_cr_with_dhf_utility(self):
+    def test_prepare_cr_creates_cr_with_dhf_adapter(self):
         with tempfile.TemporaryDirectory() as tmp:
-            dhf = make_dhf(Path(tmp))
-            captured = {}
-
-            def create_item(_dhf: Path, data: dict):
-                captured.update(data)
-                return {"id": "CR-034"}
-
+            adapter = FakeDHFAdapter()
             result = prepare_cr(
                 make_issue(),
                 "2026-W18",
-                dhf,
+                Path(tmp),
                 [],
                 write=True,
-                list_items_fn=lambda _dhf: [],
-                create_item_fn=create_item,
+                adapter=adapter,
             )
             self.assertTrue(result.should_create)
             self.assertEqual(result.cr_id, "CR-034")
-            self.assertEqual(result.cr_path, "DHF/items/09_cr/CR-034.yaml")
-            self.assertEqual(captured["target_version"], "2026-W18")
-            self.assertEqual(captured["description"], "Create CR from accepted issue.\n\nSource issue: https://github.com/itercharles/WebTPS/issues/123")
-            self.assertEqual(captured["justification"], "Weekly intake is easier.")
-            self.assertEqual(captured["content"], "- CR PR is opened automatically.")
-            self.assertIn("Source issue: https://github.com/itercharles/WebTPS/issues/123", captured["description"])
+            self.assertIsNone(result.cr_path)
+            self.assertEqual(adapter.created_doc_type, "CR")
+            self.assertEqual(adapter.created_author, "issue-to-cr")
+            self.assertEqual(adapter.created_data["target_version"], "2026-W18")
+            self.assertEqual(adapter.created_data["description"], "Create CR from accepted issue.\n\nSource issue: https://github.com/itercharles/WebTPS/issues/123")
+            self.assertEqual(adapter.created_data["justification"], "Weekly intake is easier.")
+            self.assertEqual(adapter.created_data["content"], "- CR PR is opened automatically.")
+            self.assertIn("Source issue: https://github.com/itercharles/WebTPS/issues/123", adapter.created_data["description"])
 
     def test_prepare_cr_skips_existing_issue_marker_when_cr_in_dhf(self):
         with tempfile.TemporaryDirectory() as tmp:
-            dhf = make_dhf(Path(tmp))
             comments = [{"body": "Already created\n<!-- webtps-cr: CR-034 -->"}]
             # CR-034 exists in DHF → genuine skip
             result = prepare_cr(
-                make_issue(), "2026-W18", dhf, comments, write=True,
-                list_items_fn=lambda _: [{"id": "CR-034", "description": ""}],
+                make_issue(), "2026-W18", Path(tmp), comments, write=True,
+                adapter=FakeDHFAdapter([{"id": "CR-034", "description": ""}]),
             )
             self.assertFalse(result.should_create)
             self.assertEqual(result.cr_id, "CR-034")
 
     def test_prepare_cr_retries_when_marker_cr_not_in_dhf(self):
         """PR was closed without merge: marker exists but CR never landed in DHF."""
-        captured: dict = {}
-
-        def create_item(_dhf, data):
-            captured.update(data)
-            return {"id": "CR-034"}
-
         with tempfile.TemporaryDirectory() as tmp:
-            dhf = make_dhf(Path(tmp))
             comments = [{"body": "Previously attempted\n<!-- webtps-cr: CR-034 -->"}]
             # DHF has no CR-034 (PR was closed) → should retry
+            adapter = FakeDHFAdapter()
             result = prepare_cr(
-                make_issue(), "2026-W18", dhf, comments, write=True,
-                list_items_fn=lambda _: [],
-                create_item_fn=create_item,
+                make_issue(), "2026-W18", Path(tmp), comments, write=True,
+                adapter=adapter,
             )
             self.assertTrue(result.should_create)
             self.assertEqual(result.cr_id, "CR-034")
 
     def test_prepare_cr_skips_existing_source_issue_url(self):
         with tempfile.TemporaryDirectory() as tmp:
-            dhf = make_dhf(Path(tmp))
             result = prepare_cr(
                 make_issue(),
                 "2026-W18",
-                dhf,
+                Path(tmp),
                 [],
                 write=True,
-                list_items_fn=lambda _dhf: [
+                adapter=FakeDHFAdapter(
+                    [
                     {
                         "id": "CR-034",
                         "description": "Source issue: https://github.com/itercharles/WebTPS/issues/123",
                     }
-                ],
+                    ]
+                ),
             )
             self.assertFalse(result.should_create)
             self.assertEqual(result.cr_id, "CR-034")

@@ -73,12 +73,11 @@ jobs:
         env:
           BRANCH: ${{ steps.prepare.outputs.branch }}
           CR_ID: ${{ steps.prepare.outputs.cr_id }}
-          CR_PATH: ${{ steps.prepare.outputs.cr_path }}
         run: |
           git checkout -B "$BRANCH"
           git config user.name "GitHub Actions [bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "$CR_PATH"
+          git add -A
           git commit -m "cr: create $CR_ID from WebTPS issue"
           git push --force --set-upstream origin "$BRANCH"
 

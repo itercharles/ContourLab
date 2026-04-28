@@ -7,16 +7,19 @@ import argparse
 import datetime as dt
 import json
 import re
-import os
-import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from scripts.automation.dhf_adapter import DHFAdapter, make_dhf_adapter
+
 
 CR_MARKER_RE = re.compile(r"<!--\s*webtps-cr:\s*(CR-\d+)\s*-->")
-CR_FILE_RE = re.compile(r"CR-(\d+)\.ya?ml$")
+CR_ID_RE = re.compile(r"^CR-(\d+)$")
 
 
 @dataclass(frozen=True)
@@ -65,10 +68,11 @@ def issue_has_cr_marker(comments: list[dict[str, Any]]) -> str | None:
     return None
 
 
-def next_cr_id(cr_dir: Path) -> str:
+def next_cr_id(items: list[dict[str, Any]]) -> str:
+    """Return the next CR ID from adapter item-list results."""
     max_id = 0
-    for path in cr_dir.glob("CR-*.y*ml"):
-        match = CR_FILE_RE.match(path.name)
+    for item in items:
+        match = CR_ID_RE.match(str(item.get("id") or ""))
         if match:
             max_id = max(max_id, int(match.group(1)))
     return f"CR-{max_id + 1:03d}"
@@ -123,69 +127,6 @@ def build_cr_data(issue: IssueContext) -> dict[str, Any]:
     return data
 
 
-def _dhf_env(dhf_repo: Path) -> dict[str, str]:
-    env = os.environ.copy()
-    pythonpath = [str(dhf_repo / "DHF"), str(dhf_repo)]
-    if env.get("PYTHONPATH"):
-        pythonpath.append(env["PYTHONPATH"])
-    env["PYTHONPATH"] = os.pathsep.join(pythonpath)
-    return env
-
-
-def run_dhf_util(dhf_repo: Path, args: list[str]) -> str:
-    dhf_repo = dhf_repo.resolve()  # ensure absolute so cwd change doesn't break --dhf path
-    command = [
-        sys.executable,
-        "-m",
-        "utils",
-        "--dhf",
-        str(dhf_repo / "DHF"),
-        *args,
-    ]
-    result = subprocess.run(
-        command,
-        cwd=dhf_repo / "DHF",
-        env=_dhf_env(dhf_repo),
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or result.stdout.strip())
-    return result.stdout
-
-
-def list_cr_items(dhf_repo: Path) -> list[dict[str, Any]]:
-    output = run_dhf_util(dhf_repo, ["item", "list", "--type", "CR"])
-    items: list[dict[str, Any]] = []
-    for line in output.splitlines():
-        line = line.strip()
-        if line.startswith("{"):
-            items.append(json.loads(line))
-    return items
-
-
-def create_cr_item(dhf_repo: Path, data: dict[str, Any]) -> dict[str, Any]:
-    output = run_dhf_util(
-        dhf_repo,
-        [
-            "item",
-            "create",
-            "--type",
-            "CR",
-            "--data",
-            json.dumps(data),
-            "--author",
-            "issue-to-cr",
-        ],
-    )
-    for line in output.splitlines():
-        line = line.strip()
-        if line.startswith("{"):
-            return json.loads(line)
-    raise RuntimeError("DHF utility did not return a created CR item.")
-
-
 def prepare_cr(
     issue: IssueContext,
     active_milestone: str,
@@ -193,8 +134,7 @@ def prepare_cr(
     comments: list[dict[str, Any]],
     *,
     write: bool,
-    list_items_fn=list_cr_items,
-    create_item_fn=create_cr_item,
+    adapter: DHFAdapter | None = None,
 ) -> CrPreparation:
     if not active_milestone:
         return CrPreparation(False, "CR_INTAKE_MILESTONE is not configured.")
@@ -203,8 +143,9 @@ def prepare_cr(
     if issue.milestone != active_milestone:
         return CrPreparation(False, f"Issue milestone {issue.milestone!r} is not active milestone {active_milestone!r}.")
 
+    dhf_adapter = adapter or make_dhf_adapter(dhf_repo)
     marker_cr = issue_has_cr_marker(comments)
-    all_cr_items = list_items_fn(dhf_repo)
+    all_cr_items = dhf_adapter.list_items("CR")
     if marker_cr:
         # Only skip if the CR actually landed in DHF (i.e. its PR was merged).
         # If the PR was closed without merging, the YAML file never made it into
@@ -218,11 +159,10 @@ def prepare_cr(
         return CrPreparation(False, f"DHF already has {existing_cr} for {issue.html_url}.", cr_id=existing_cr)
 
     if write:
-        created = create_item_fn(dhf_repo, build_cr_data(issue))
+        created = dhf_adapter.create_item("CR", build_cr_data(issue), author="issue-to-cr")
         cr_id = str(created["id"])
     else:
-        cr_id = next_cr_id(dhf_repo / "DHF" / "items" / "09_cr")
-    cr_path = Path("DHF") / "items" / "09_cr" / f"{cr_id}.yaml"
+        cr_id = next_cr_id(all_cr_items)
     branch_slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", issue.title.lower()).strip("-")[:40]
     branch = f"cr/{cr_id}-from-webtps-issue-{issue.number}" + (f"-{branch_slug}" if branch_slug else "")
 
@@ -231,7 +171,7 @@ def prepare_cr(
         "CR file prepared.",
         cr_id=cr_id,
         branch=branch,
-        cr_path=str(cr_path),
+        cr_path=None,
         title=f"cr({cr_id}): {issue.title}",
     )
 
