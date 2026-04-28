@@ -138,18 +138,20 @@ jobs:
           Do not commit — the workflow will commit after."
 
           claude -p --dangerously-skip-permissions --output-format json "$PROMPT" > /tmp/claude-out.json 2>&1 || true
-          SESSION_ID=$(python3 -c "
-          import json
-          data = open('/tmp/claude-out.json').read().strip().split('\n')
-          ids = []
-          for line in data:
-              try:
-                  obj = json.loads(line)
-                  if obj.get('session_id'):
-                      ids.append(obj['session_id'])
-              except: pass
-          print(ids[-1] if ids else '')
-          " 2>/dev/null || echo "")
+          python3 - <<'PYEOF'
+import json
+data = open('/tmp/claude-out.json').read().strip().split('\n')
+session_id, result_body = '', 'Automated implementation for this CR.'
+for line in data:
+    try:
+        obj = json.loads(line)
+        if obj.get('session_id'): session_id = obj['session_id']
+        if obj.get('type') == 'result' and obj.get('result'): result_body = obj['result']
+    except: pass
+open('/tmp/claude-session-id.txt', 'w').write(session_id)
+open('/tmp/claude-result.txt', 'w').write(result_body[:8000])
+PYEOF
+          SESSION_ID=$(cat /tmp/claude-session-id.txt)
           echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
 
       - name: Revise implementation
@@ -210,16 +212,32 @@ jobs:
           SESSION_ID: ${{ steps.gen.outputs.session_id }}
         run: |
           EXISTING=$(gh pr list --head "feat/$CR_ID" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          PR_BODY=$(cat /tmp/claude-result.txt 2>/dev/null || echo "Automated implementation for $CR_ID.")
           if [ -z "$EXISTING" ]; then
             PR_URL=$(gh pr create \
               --head "feat/$CR_ID" \
               --base main \
               --title "feat($CR_ID): implement approved spec" \
-              --body "Automated implementation for $CR_ID.")
+              --body "$PR_BODY")
             PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
           else
             PR_NUMBER=$EXISTING
+            PR_URL="https://github.com/itercharles/WebTPS/pull/$PR_NUMBER"
           fi
           if [ -n "$SESSION_ID" ]; then
             gh pr comment $PR_NUMBER --body "<!-- claude-session: $SESSION_ID -->"
+          fi
+          # Comment on source issue
+          ISSUE_URL=$(python3 -c "
+import re
+try:
+    content = open('/tmp/dhf-context/$CR_ID.yaml').read()
+    m = re.search(r'Source issue: (https://\S+)', content)
+    print(m.group(1) if m else '')
+except: print('')
+")
+          ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
+          if [ -n "$ISSUE_NUMBER" ]; then
+            gh issue comment "$ISSUE_NUMBER" \
+              --body "**Stage: Implementation** — PR opened for review: $PR_URL"
           fi
