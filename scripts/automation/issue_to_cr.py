@@ -204,10 +204,16 @@ def prepare_cr(
         return CrPreparation(False, f"Issue milestone {issue.milestone!r} is not active milestone {active_milestone!r}.")
 
     marker_cr = issue_has_cr_marker(comments)
+    all_cr_items = list_items_fn(dhf_repo)
     if marker_cr:
-        return CrPreparation(False, f"Issue already has CR marker {marker_cr}.", cr_id=marker_cr)
+        # Only skip if the CR actually landed in DHF (i.e. its PR was merged).
+        # If the PR was closed without merging, the YAML file never made it into
+        # the DHF repository — treat it as a retry and fall through to creation.
+        cr_in_dhf = any(str(item.get("id") or "") == marker_cr for item in all_cr_items)
+        if cr_in_dhf:
+            return CrPreparation(False, f"Issue already has CR marker {marker_cr}.", cr_id=marker_cr)
 
-    existing_cr = find_existing_cr_for_issue(list_items_fn(dhf_repo), issue.html_url)
+    existing_cr = find_existing_cr_for_issue(all_cr_items, issue.html_url)
     if existing_cr:
         return CrPreparation(False, f"DHF already has {existing_cr} for {issue.html_url}.", cr_id=existing_cr)
 

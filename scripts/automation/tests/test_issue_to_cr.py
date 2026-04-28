@@ -82,12 +82,36 @@ class IssueToCrTests(unittest.TestCase):
             self.assertEqual(captured["content"], "- CR PR is opened automatically.")
             self.assertIn("Source issue: https://github.com/itercharles/WebTPS/issues/123", captured["description"])
 
-    def test_prepare_cr_skips_existing_issue_marker(self):
+    def test_prepare_cr_skips_existing_issue_marker_when_cr_in_dhf(self):
         with tempfile.TemporaryDirectory() as tmp:
             dhf = make_dhf(Path(tmp))
             comments = [{"body": "Already created\n<!-- webtps-cr: CR-034 -->"}]
-            result = prepare_cr(make_issue(), "2026-W18", dhf, comments, write=True)
+            # CR-034 exists in DHF → genuine skip
+            result = prepare_cr(
+                make_issue(), "2026-W18", dhf, comments, write=True,
+                list_items_fn=lambda _: [{"id": "CR-034", "description": ""}],
+            )
             self.assertFalse(result.should_create)
+            self.assertEqual(result.cr_id, "CR-034")
+
+    def test_prepare_cr_retries_when_marker_cr_not_in_dhf(self):
+        """PR was closed without merge: marker exists but CR never landed in DHF."""
+        captured: dict = {}
+
+        def create_item(_dhf, data):
+            captured.update(data)
+            return {"id": "CR-034"}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            dhf = make_dhf(Path(tmp))
+            comments = [{"body": "Previously attempted\n<!-- webtps-cr: CR-034 -->"}]
+            # DHF has no CR-034 (PR was closed) → should retry
+            result = prepare_cr(
+                make_issue(), "2026-W18", dhf, comments, write=True,
+                list_items_fn=lambda _: [],
+                create_item_fn=create_item,
+            )
+            self.assertTrue(result.should_create)
             self.assertEqual(result.cr_id, "CR-034")
 
     def test_prepare_cr_skips_existing_source_issue_url(self):
