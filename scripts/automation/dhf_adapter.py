@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Protocol
@@ -53,8 +54,8 @@ class DHFAdapter(Protocol):
 
 
 @dataclass(frozen=True)
-class LocalUtilsDHFAdapter:
-    """Adapter implementation backed by the current WebTPS-DHF Python utils."""
+class CompliantFlowDHFAdapter:
+    """Adapter implementation backed by CompliantFlow's DHF facade CLI."""
 
     dhf_repo: Path
     python_executable: str = sys.executable
@@ -72,16 +73,17 @@ class LocalUtilsDHFAdapter:
         env["PYTHONPATH"] = os.pathsep.join(pythonpath)
         return env
 
-    def _run_utils(self, args: list[str]) -> str:
+    def _run_compliantflow(self, args: list[str], *, allow_not_found: bool = False) -> str | None:
         command = [
             self.python_executable,
             "-m",
-            "utils",
+            "compliantflow",
             "--dhf",
             str(self.dhf_root),
+            "dhf",
             *args,
         ]
-        return self._run(command, cwd=self.dhf_root)
+        return self._run(command, cwd=self.dhf_repo.resolve(), allow_not_found=allow_not_found)
 
     def _run(self, command: list[str], *, cwd: Path, allow_not_found: bool = False) -> str | None:
         result = self.runner(
@@ -119,24 +121,11 @@ class LocalUtilsDHFAdapter:
         args = ["item", "list"]
         if doc_type:
             args.extend(["--type", doc_type])
-        output = self._run_utils(args)
+        output = self._run_compliantflow(args)
         return self._json_objects(output or "")
 
     def get_item(self, item_id: str) -> dict[str, Any] | None:
-        output = self._run(
-            [
-                self.python_executable,
-                "-m",
-                "utils",
-                "--dhf",
-                str(self.dhf_root),
-                "item",
-                "get",
-                item_id,
-            ],
-            cwd=self.dhf_root,
-            allow_not_found=True,
-        )
+        output = self._run_compliantflow(["item", "get", item_id], allow_not_found=True)
         if output is None:
             return None
         return self._first_json_object(output, f"item get {item_id}")
@@ -161,7 +150,7 @@ class LocalUtilsDHFAdapter:
         ]
         if cr_id:
             args.extend(["--cr", cr_id])
-        output = self._run_utils(args)
+        output = self._run_compliantflow(args)
         return self._first_json_object(output or "", f"item create {doc_type}")
 
     def update_item(
@@ -183,54 +172,51 @@ class LocalUtilsDHFAdapter:
         ]
         if cr_id:
             args.extend(["--cr", cr_id])
-        output = self._run_utils(args)
+        output = self._run_compliantflow(args)
         return self._first_json_object(output or "", f"item update {item_id}")
 
     def transition_item(self, item_id: str, to_state: str, *, performed_by: str) -> dict[str, Any]:
-        output = self._run_utils(["item", "transition", item_id, to_state, "--by", performed_by])
+        output = self._run_compliantflow(["item", "transition", item_id, to_state, "--by", performed_by])
         return self._first_json_object(output or "", f"item transition {item_id}")
 
     def get_document(self, doc_id: str) -> str | None:
-        code = (
-            "import sys\n"
-            "from pathlib import Path\n"
-            "from utils import LocalDHFAdapter\n"
-            "adapter = LocalDHFAdapter(Path(sys.argv[1]))\n"
-            "content = adapter.get_document(sys.argv[2])\n"
-            "if content is None:\n"
-            "    raise SystemExit(2)\n"
-            "print(content, end='')\n"
-        )
-        result = self.runner(
-            [self.python_executable, "-c", code, str(self.dhf_root), doc_id],
-            cwd=self.dhf_repo.resolve(),
-            env=self._env(),
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        if result.returncode == 0:
-            return result.stdout
-        if result.returncode == 2:
-            return self._get_legacy_cr_spec(doc_id)
-        message = (result.stderr or result.stdout).strip()
-        raise DHFAdapterError(message or f"DHF document lookup failed: {doc_id}")
-
-    def _get_legacy_cr_spec(self, doc_id: str) -> str | None:
-        path = self.dhf_repo.resolve() / "docs" / "cr-specs" / f"{doc_id}.md"
-        if not path.is_file():
+        if not doc_id.endswith("-Spec"):
             return None
-        return path.read_text(encoding="utf-8")
+        cr_id = doc_id.removesuffix("-Spec")
+        with tempfile.TemporaryDirectory() as tmp:
+            context = self._write_implementation_context(cr_id, Path(tmp))
+            return context["spec_path"].read_text(encoding="utf-8")
 
     def get_cr_context(self, cr_id: str) -> dict[str, Any]:
+        with tempfile.TemporaryDirectory() as tmp:
+            context = self._write_implementation_context(cr_id, Path(tmp))
+            return {
+                "cr": json.loads(context["cr_path"].read_text(encoding="utf-8")),
+                "spec": context["spec_path"].read_text(encoding="utf-8"),
+            }
+
+    def _write_implementation_context(self, cr_id: str, out_dir: Path) -> dict[str, Path]:
+        output = self._run_compliantflow([
+            "context",
+            "implementation",
+            "--cr",
+            cr_id,
+            "--out-dir",
+            str(out_dir),
+        ])
+        payload = self._first_json_object(output or "", f"context implementation {cr_id}")
         return {
-            "cr": self.get_item(cr_id),
-            "spec": self.get_document(f"{cr_id}-Spec"),
+            "cr_path": Path(payload["cr"]),
+            "spec_path": Path(payload["implementation_spec"]),
+            "context_path": Path(payload["context"]),
         }
 
 
+LocalUtilsDHFAdapter = CompliantFlowDHFAdapter
+
+
 def make_dhf_adapter(dhf_repo: Path, adapter_name: str | None = None) -> DHFAdapter:
-    selected = adapter_name or os.environ.get("WEBTPS_DHF_ADAPTER", "local_utils")
-    if selected == "local_utils":
-        return LocalUtilsDHFAdapter(dhf_repo)
+    selected = adapter_name or os.environ.get("WEBTPS_DHF_ADAPTER", "compliantflow")
+    if selected in {"compliantflow", "local_utils"}:
+        return CompliantFlowDHFAdapter(dhf_repo)
     raise DHFAdapterError(f"Unsupported DHF adapter: {selected}")

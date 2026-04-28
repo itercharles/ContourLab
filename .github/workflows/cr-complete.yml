@@ -46,7 +46,11 @@ jobs:
 
       - name: Install DHF utils dependencies
         if: steps.cr.outputs.skip != 'true'
-        run: pip install click jinja2 markdown pydantic PyYAML gitpython
+        env:
+          PRODUCT_REPO_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+        run: |
+          git config --global url."https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/".insteadOf "https://github.com/"
+          pip install -r dhf/requirements.txt
 
       - name: Transition CR to completed
         if: steps.cr.outputs.skip != 'true'

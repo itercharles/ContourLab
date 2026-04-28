@@ -72,7 +72,8 @@ jobs:
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
         run: |
           git clone "https://x-access-token:${GH_TOKEN}@github.com/itercharles/WebTPS-DHF.git" /tmp/dhf-repo
-          pip install click jinja2 markdown pydantic PyYAML gitpython -q
+          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+          pip install -r /tmp/dhf-repo/requirements.txt -q
           python scripts/automation/dhf_ops.py transition \
             --dhf-repo /tmp/dhf-repo \
             --item-id "$CR_ID" \

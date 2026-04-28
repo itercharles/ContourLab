@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.automation.dhf_adapter import DHFAdapterError, LocalUtilsDHFAdapter, make_dhf_adapter
+from scripts.automation.dhf_adapter import CompliantFlowDHFAdapter, DHFAdapterError, make_dhf_adapter
 
 
 class RecordingRunner:
@@ -12,10 +12,10 @@ class RecordingRunner:
 
     def __call__(self, command, **kwargs):
         self.calls.append((command, kwargs))
-        if command[:3] == ["python", "-m", "utils"]:
-            operation = command[5:]
+        if command[:3] == ["python", "-m", "compliantflow"]:
+            operation = command[6:]
             if operation[:2] == ["item", "list"]:
-                return subprocess.CompletedProcess(command, 0, '{"id":"CR-001"}\n(1 item(s))\n', "")
+                return subprocess.CompletedProcess(command, 0, '{"id":"CR-001"}\n', "")
             if operation[:2] == ["item", "get"]:
                 return subprocess.CompletedProcess(command, 0, '{"id":"CR-001"}\n', "")
             if operation[:2] == ["item", "create"]:
@@ -24,29 +24,43 @@ class RecordingRunner:
                 return subprocess.CompletedProcess(command, 0, '{"id":"CR-001","title":"Updated"}\n', "")
             if operation[:2] == ["item", "transition"]:
                 return subprocess.CompletedProcess(command, 0, '{"id":"CR-001","status":"implementing"}\n', "")
-        if command[:2] == ["python", "-c"]:
-            return subprocess.CompletedProcess(command, 0, "spec text", "")
+            if operation[:2] == ["context", "implementation"]:
+                out_dir = Path(operation[operation.index("--out-dir") + 1])
+                out_dir.mkdir(parents=True, exist_ok=True)
+                cr_id = operation[operation.index("--cr") + 1]
+                cr_path = out_dir / f"{cr_id}.json"
+                spec_path = out_dir / f"{cr_id}-Spec.md"
+                context_path = out_dir / "implementation-context.json"
+                cr_path.write_text('{"id":"CR-001"}\n', encoding="utf-8")
+                spec_path.write_text("spec text", encoding="utf-8")
+                context_path.write_text("{}\n", encoding="utf-8")
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    f'{{"cr":"{cr_path}","implementation_spec":"{spec_path}","context":"{context_path}"}}\n',
+                    "",
+                )
         return subprocess.CompletedProcess(command, 1, "", "unexpected command")
 
 
-class LocalUtilsDHFAdapterTests(unittest.TestCase):
+class CompliantFlowDHFAdapterTests(unittest.TestCase):
     def make_adapter(self, runner):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         dhf_repo = Path(tmp.name)
         (dhf_repo / "DHF").mkdir()
-        return LocalUtilsDHFAdapter(dhf_repo, python_executable="python", runner=runner)
+        return CompliantFlowDHFAdapter(dhf_repo, python_executable="python", runner=runner)
 
-    def test_list_items_runs_utils_through_adapter_boundary(self):
+    def test_list_items_runs_compliantflow_through_adapter_boundary(self):
         runner = RecordingRunner()
         adapter = self.make_adapter(runner)
 
         self.assertEqual(adapter.list_items("CR"), [{"id": "CR-001"}])
 
         command, kwargs = runner.calls[0]
-        self.assertEqual(command[:5], ["python", "-m", "utils", "--dhf", str(adapter.dhf_root)])
-        self.assertEqual(command[5:], ["item", "list", "--type", "CR"])
-        self.assertEqual(kwargs["cwd"], adapter.dhf_root)
+        self.assertEqual(command[:6], ["python", "-m", "compliantflow", "--dhf", str(adapter.dhf_root), "dhf"])
+        self.assertEqual(command[6:], ["item", "list", "--type", "CR"])
+        self.assertEqual(kwargs["cwd"], adapter.dhf_repo.resolve())
         self.assertIn(str(adapter.dhf_root), kwargs["env"]["PYTHONPATH"])
 
     def test_create_and_transition_parse_json_results(self):
@@ -70,32 +84,20 @@ class LocalUtilsDHFAdapterTests(unittest.TestCase):
         )
 
         update_command, _ = runner.calls[1]
-        self.assertEqual(update_command[5:8], ["item", "update", "CR-001"])
+        self.assertEqual(update_command[6:9], ["item", "update", "CR-001"])
         self.assertIn("--data", update_command)
         self.assertIn("--author", update_command)
 
-    def test_get_document_uses_local_utils_provider_internally(self):
+    def test_get_document_uses_compliantflow_context_provider(self):
         runner = RecordingRunner()
         adapter = self.make_adapter(runner)
 
         self.assertEqual(adapter.get_document("CR-001-Spec"), "spec text")
 
         command, kwargs = runner.calls[0]
-        self.assertEqual(command[0], "python")
-        self.assertEqual(command[1], "-c")
-        self.assertEqual(command[-2:], [str(adapter.dhf_root), "CR-001-Spec"])
+        self.assertEqual(command[:6], ["python", "-m", "compliantflow", "--dhf", str(adapter.dhf_root), "dhf"])
+        self.assertEqual(command[6:8], ["context", "implementation"])
         self.assertEqual(kwargs["cwd"], adapter.dhf_repo.resolve())
-
-    def test_get_document_falls_back_to_current_cr_spec_location(self):
-        def missing_document_runner(command, **kwargs):
-            return subprocess.CompletedProcess(command, 2, "", "")
-
-        adapter = self.make_adapter(missing_document_runner)
-        spec_dir = adapter.dhf_repo / "docs" / "cr-specs"
-        spec_dir.mkdir(parents=True)
-        (spec_dir / "CR-001-Spec.md").write_text("legacy spec", encoding="utf-8")
-
-        self.assertEqual(adapter.get_document("CR-001-Spec"), "legacy spec")
 
     def test_get_cr_context_returns_item_and_spec(self):
         runner = RecordingRunner()
@@ -117,8 +119,8 @@ class LocalUtilsDHFAdapterTests(unittest.TestCase):
 
     def test_factory_selects_local_utils_provider(self):
         with tempfile.TemporaryDirectory() as tmp:
-            adapter = make_dhf_adapter(Path(tmp), "local_utils")
-            self.assertIsInstance(adapter, LocalUtilsDHFAdapter)
+            adapter = make_dhf_adapter(Path(tmp), "compliantflow")
+            self.assertIsInstance(adapter, CompliantFlowDHFAdapter)
 
     def test_factory_rejects_unsupported_provider(self):
         with tempfile.TemporaryDirectory() as tmp:
