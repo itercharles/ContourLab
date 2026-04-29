@@ -14,6 +14,9 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Check out WebTPS
+        uses: actions/checkout@v4
+
       - name: Extract CR ID from PR title
         id: cr
         env:
@@ -43,14 +46,20 @@ jobs:
 
       - name: Install DHF utils dependencies
         if: steps.cr.outputs.skip != 'true'
-        run: pip install click jinja2 markdown pydantic PyYAML gitpython
+        env:
+          PRODUCT_REPO_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+        run: |
+          git config --global url."https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/".insteadOf "https://github.com/"
+          pip install -r dhf/requirements.txt
 
       - name: Transition CR to completed
         if: steps.cr.outputs.skip != 'true'
-        working-directory: dhf
         run: |
-          export PYTHONPATH="${PYTHONPATH}:${PWD}:${PWD}/DHF"
-          python -m utils item transition "${{ steps.cr.outputs.cr_id }}" completed --by "github-actions[bot]"
+          python scripts/automation/dhf_ops.py transition \
+            --dhf-repo dhf \
+            --item-id "${{ steps.cr.outputs.cr_id }}" \
+            --to-state completed \
+            --by "github-actions[bot]"
 
       - name: Commit and push DHF update
         if: steps.cr.outputs.skip != 'true'
@@ -58,7 +67,7 @@ jobs:
         run: |
           git config user.name "GitHub Actions [bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add DHF/items/
+          git add -A
           if ! git diff --staged --quiet; then
             git commit -m "chore: complete ${{ steps.cr.outputs.cr_id }} [skip ci]"
             git push

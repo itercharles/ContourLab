@@ -44,6 +44,13 @@ pnpm -r build                             # build all workspaces
 - **Proxy**: Vite proxies `/api` and `/ws` → `localhost:4000`; `/dicom-web` → Orthanc `localhost:8042`
 - **TypeScript**: strict mode throughout, no `any`
 - **Styling**: Tailwind only, no inline styles, dark clinical theme (see `/ux-design`)
+- **DHF CR automation boundary**: CR intake/development/completion automation and
+  agent context preparation must access DHF data through CompliantFlow's DHF
+  facade via `scripts/automation/dhf_adapter.py`. Do not add direct dependencies
+  on DHF storage paths such as `DHF/items/...` or `docs/cr-specs/...`, and do
+  not scatter direct DHF utility subprocess calls across CR automation. CI
+  compliance and artifact-generation jobs may still invoke DHF-owned
+  validation/export tools.
 
 ## Sources of Truth
 
