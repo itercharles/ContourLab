@@ -428,8 +428,13 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !failure() && !cancelled()
     steps:
       - name: Fix workspace permissions
-        # Orthanc writes DB files as root; reclaim ownership so checkout can clean the workspace.
-        run: sudo chown -R "$(whoami)" "${{ github.workspace }}" 2>/dev/null || true
+        # Orthanc writes DB files as root; sudo is not passwordless on the runner,
+        # so use an Alpine container (runs as root) to reclaim ownership.
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/ws" \
+            alpine \
+            chown -R "$(id -u):$(id -g)" /ws 2>/dev/null || true
 
       - name: Check out code
         uses: actions/checkout@v4
