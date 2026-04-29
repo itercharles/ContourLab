@@ -1,6 +1,6 @@
-name: WebTPS CR Completion Sync to DHF
+name: WebTPS CR Completion
 
-run-name: CR completion sync | #${{ github.event.pull_request.number }} | ${{ github.event.pull_request.title }}
+run-name: CR completion | #${{ github.event.pull_request.number }} | ${{ github.event.pull_request.title }}
 
 on:
   pull_request:
