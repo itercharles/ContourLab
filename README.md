@@ -252,7 +252,7 @@ python scripts/automation/dhf_ops.py transition \
   --by agent
 ```
 
-For direct inspection through CompliantFlow:
+For facade debugging from a CompliantFlow checkout, the underlying operations are:
 
 ```bash
 PYTHONPATH=.:../WebTPS-DHF/DHF \

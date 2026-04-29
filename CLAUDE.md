@@ -73,7 +73,7 @@ python scripts/automation/dhf_ops.py transition \
   --by agent
 ```
 
-From CompliantFlow directly:
+Facade contract, for debugging from a CompliantFlow checkout only:
 
 ```bash
 PYTHONPATH=.:../WebTPS-DHF/DHF \
@@ -90,11 +90,14 @@ python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf context implementation \
 
 Agent usage:
 
-- Need a requirement by ID: use `dhf item get <SYS|SRS|CRS-ID>`.
-- Need requirements of one level: use `dhf item list --type SYS`, `--type SRS`,
-  or `--type CRS`.
-- Need implementation inputs for a CR: use `dhf context implementation --cr <CR-ID>`
-  or the WebTPS `dhf_context.py cr-context` wrapper.
+- Need a requirement by ID: ask through the WebTPS adapter boundary. The
+  underlying facade operation is `dhf item get <SYS|SRS|CRS-ID>`.
+- Need requirements of one level: ask through the WebTPS adapter boundary. The
+  underlying facade operation is `dhf item list --type SYS`, `--type SRS`, or
+  `--type CRS`.
+- Need implementation inputs for a CR: use the WebTPS `dhf_context.py cr-context`
+  wrapper. The underlying facade operation is `dhf context implementation --cr
+  <CR-ID>`.
 - Need to transition a CR from WebTPS automation: use `dhf_ops.py transition`.
 - Need impact analysis, traceability assessment, or compliance evidence: keep that
   in DHF/CompliantFlow workflows; WebTPS consumes approved requirements and design
