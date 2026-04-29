@@ -29,7 +29,7 @@ If the spec does not exist or the CR is not in `implementing` state, stop and te
 
 ```bash
 cd ../WebTPS-DHF
-PYTHONPATH=.:DHF python -m utils item get <CR-ID>
+python -m dhf_util --dhf DHF item get <CR-ID>
 ```
 
 Confirm state is `implementing`. If not, do not proceed.
@@ -77,7 +77,7 @@ In `../WebTPS-DHF`, create or update the DHF items listed in the spec:
 Validate:
 ```bash
 cd ../WebTPS-DHF
-PYTHONPATH=.:DHF python -m utils validate schema
+python -m dhf_util --dhf DHF validate schema
 ```
 
 **Commit DHF changes on a separate branch in WebTPS-DHF** — do not mix DHF and product code in the same PR.
@@ -118,7 +118,7 @@ Once the Implementation PR is merged, transition the CR:
 
 ```bash
 cd ../WebTPS-DHF
-PYTHONPATH=.:DHF python -m utils item transition <CR-ID> completed --by "Claude"
+python -m dhf_util --dhf DHF item transition <CR-ID> completed --by "Claude"
 git add DHF/items/09_cr/<CR-ID>.yaml
 git commit -m "cr: close <CR-ID> — implementation merged"
 git push origin main

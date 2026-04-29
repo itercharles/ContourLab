@@ -321,7 +321,7 @@ jobs:
 
       - name: Run DHF acceptance gate
         run: |
-          export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
+          pip install -e dhf/ 2>/dev/null || true
           compliantflow --dhf dhf/DHF ci run acceptance \
             --coverage-pair UC:CRS \
             --coverage-pair CRS:SYS \
@@ -402,7 +402,7 @@ jobs:
 
       - name: Generate DHF artifacts
         run: |
-          export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
+          pip install -e dhf/ 2>/dev/null || true
           compliantflow --dhf dhf/DHF ci run artifacts \
             --out-dir dhf-artifacts \
             --traceability-type UC \

@@ -239,7 +239,6 @@ automation that reads `../WebTPS-DHF/DHF/items/...` directly.
 For WebTPS CI and agents, use the local wrappers:
 
 ```bash
-PYTHONPATH=/path/to/CompliantFlow \
 python scripts/automation/dhf_context.py cr-context \
   --dhf-repo ../WebTPS-DHF \
   --cr-id CR-034 \
@@ -255,13 +254,10 @@ python scripts/automation/dhf_ops.py transition \
 For facade debugging from a CompliantFlow checkout, the underlying operations are:
 
 ```bash
-PYTHONPATH=.:../WebTPS-DHF/DHF \
 python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item get SRS-001
 
-PYTHONPATH=.:../WebTPS-DHF/DHF \
 python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item list --type SRS
 
-PYTHONPATH=.:../WebTPS-DHF/DHF \
 python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf context implementation \
   --cr CR-034 \
   --out-dir /tmp/compliantflow-context

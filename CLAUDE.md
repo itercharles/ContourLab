@@ -60,7 +60,6 @@ reads under `../WebTPS-DHF/DHF/items/...` are only for DHF-local maintenance.
 From WebTPS automation:
 
 ```bash
-PYTHONPATH=/path/to/CompliantFlow \
 python scripts/automation/dhf_context.py cr-context \
   --dhf-repo ../WebTPS-DHF \
   --cr-id CR-034 \
@@ -76,13 +75,10 @@ python scripts/automation/dhf_ops.py transition \
 Facade contract, for debugging from a CompliantFlow checkout only:
 
 ```bash
-PYTHONPATH=.:../WebTPS-DHF/DHF \
 python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item get SRS-001
 
-PYTHONPATH=.:../WebTPS-DHF/DHF \
 python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item list --type SRS
 
-PYTHONPATH=.:../WebTPS-DHF/DHF \
 python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf context implementation \
   --cr CR-034 \
   --out-dir /tmp/compliantflow-context

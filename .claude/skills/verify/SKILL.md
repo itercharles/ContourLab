@@ -29,7 +29,7 @@ Before stating any task is done, complete all five steps:
 | API builds | `dotnet build apps/api/api.csproj --no-restore -v q` |
 | Shared types compile | `pnpm --filter @webtps/shared-types typecheck` |
 | Full stack healthy | `pnpm local:doctor` |
-| DHF schema valid | `python -m utils validate schema` (in webtps-dhf) |
+| DHF schema valid | `python -m dhf_util --dhf DHF validate schema` (in webtps-dhf) |
 
 ## What Is Not Verification
 
