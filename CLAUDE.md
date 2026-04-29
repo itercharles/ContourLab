@@ -52,6 +52,54 @@ pnpm -r build                             # build all workspaces
   compliance and artifact-generation jobs may still invoke DHF-owned
   validation/export tools.
 
+### DHF Facade API Quick Reference
+
+Use the CompliantFlow facade when an agent or CI job needs DHF data. Direct file
+reads under `../WebTPS-DHF/DHF/items/...` are only for DHF-local maintenance.
+
+From WebTPS automation:
+
+```bash
+PYTHONPATH=/path/to/CompliantFlow \
+python scripts/automation/dhf_context.py cr-context \
+  --dhf-repo ../WebTPS-DHF \
+  --cr-id CR-034 \
+  --out-dir /tmp/webtps-cr-context
+
+python scripts/automation/dhf_ops.py transition \
+  --dhf-repo ../WebTPS-DHF \
+  --item-id CR-034 \
+  --to-state completed \
+  --by agent
+```
+
+From CompliantFlow directly:
+
+```bash
+PYTHONPATH=.:../WebTPS-DHF/DHF \
+python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item get SRS-001
+
+PYTHONPATH=.:../WebTPS-DHF/DHF \
+python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item list --type SRS
+
+PYTHONPATH=.:../WebTPS-DHF/DHF \
+python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf context implementation \
+  --cr CR-034 \
+  --out-dir /tmp/compliantflow-context
+```
+
+Agent usage:
+
+- Need a requirement by ID: use `dhf item get <SYS|SRS|CRS-ID>`.
+- Need requirements of one level: use `dhf item list --type SYS`, `--type SRS`,
+  or `--type CRS`.
+- Need implementation inputs for a CR: use `dhf context implementation --cr <CR-ID>`
+  or the WebTPS `dhf_context.py cr-context` wrapper.
+- Need to transition a CR from WebTPS automation: use `dhf_ops.py transition`.
+- Need impact analysis, traceability assessment, or compliance evidence: keep that
+  in DHF/CompliantFlow workflows; WebTPS consumes approved requirements and design
+  context, it does not own DHF impact analysis output.
+
 ## Sources of Truth
 
 1. `packages/shared-types/src/index.ts` — canonical data model
