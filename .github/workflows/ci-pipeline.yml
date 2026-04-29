@@ -429,6 +429,10 @@ jobs:
     needs: [compliance]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !failure() && !cancelled()
     steps:
+      - name: Fix workspace permissions
+        # Orthanc writes DB files as root; reclaim ownership so checkout can clean the workspace.
+        run: sudo chown -R "$(whoami)" "${{ github.workspace }}" 2>/dev/null || true
+
       - name: Check out code
         uses: actions/checkout@v4
 
