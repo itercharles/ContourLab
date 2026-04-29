@@ -66,12 +66,7 @@ class CompliantFlowDHFAdapter:
         return self.dhf_repo.resolve() / "DHF"
 
     def _env(self) -> dict[str, str]:
-        env = os.environ.copy()
-        pythonpath = [str(self.dhf_root), str(self.dhf_repo.resolve())]
-        if env.get("PYTHONPATH"):
-            pythonpath.append(env["PYTHONPATH"])
-        env["PYTHONPATH"] = os.pathsep.join(pythonpath)
-        return env
+        return os.environ.copy()
 
     def _run_compliantflow(self, args: list[str], *, allow_not_found: bool = False) -> str | None:
         command = [

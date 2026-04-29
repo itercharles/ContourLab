@@ -61,7 +61,6 @@ class CompliantFlowDHFAdapterTests(unittest.TestCase):
         self.assertEqual(command[:6], ["python", "-m", "compliantflow", "--dhf", str(adapter.dhf_root), "dhf"])
         self.assertEqual(command[6:], ["item", "list", "--type", "CR"])
         self.assertEqual(kwargs["cwd"], adapter.dhf_repo.resolve())
-        self.assertIn(str(adapter.dhf_root), kwargs["env"]["PYTHONPATH"])
 
     def test_create_and_transition_parse_json_results(self):
         runner = RecordingRunner()
