@@ -429,10 +429,21 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !failure() && !cancelled()
     steps:
       - name: Fix workspace permissions
-        # Use docker exec on the already-running Orthanc container (no image pull
-        # needed) to chown its DB files back to the runner user, so checkout can
-        # wipe the workspace cleanly. No-op if the container is not yet running.
+        # Chown any root-owned files back to the runner user so checkout can
+        # wipe the workspace cleanly.
+        # 1. Stale deploy-data/orthanc-db left by old deploys that used a
+        #    workspace-local bind-mount — use docker run with the already-pulled
+        #    Orthanc image (no Hub pull needed).
+        # 2. Current Orthanc data dir via docker exec on the running container.
         run: |
+          STALE_DIR="${{ github.workspace }}/deploy-data/orthanc-db"
+          if [ -d "$STALE_DIR" ]; then
+            docker run --rm \
+              -v "$STALE_DIR:/data" \
+              --entrypoint "" \
+              orthancteam/orthanc:latest \
+              chown -R "$(id -u):$(id -g)" /data || true
+          fi
           docker exec webtps-orthanc \
             chown -R "$(id -u):$(id -g)" /var/lib/orthanc/db \
             2>/dev/null || true
