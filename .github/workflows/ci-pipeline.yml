@@ -440,13 +440,6 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Diagnose runner and Docker
-        run: |
-          whoami
-          uname -a
-          docker version
-          docker compose version
-
       - name: Prepare persistent DICOM data directory
         # Store orthanc-db in $HOME (outside the workspace) so checkout never
         # touches it and the data persists across deployments.
