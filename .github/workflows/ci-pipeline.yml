@@ -429,18 +429,16 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !failure() && !cancelled()
     steps:
       - name: Fix workspace permissions
-        # Orthanc writes DB files as root; sudo is not passwordless on the runner,
-        # so use an Alpine container (runs as root) to reclaim ownership.
+        # Use docker exec on the already-running Orthanc container (no image pull
+        # needed) to chown its DB files back to the runner user, so checkout can
+        # wipe the workspace cleanly. No-op if the container is not yet running.
         run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/ws" \
-            alpine \
-            chown -R "$(id -u):$(id -g)" /ws 2>/dev/null || true
+          docker exec webtps-orthanc \
+            chown -R "$(id -u):$(id -g)" /var/lib/orthanc/db \
+            2>/dev/null || true
 
       - name: Check out code
         uses: actions/checkout@v4
-        with:
-          clean: false
 
       - name: Diagnose runner and Docker
         run: |
@@ -450,8 +448,10 @@ jobs:
           docker compose version
 
       - name: Prepare persistent DICOM data directory
+        # Store orthanc-db in $HOME (outside the workspace) so checkout never
+        # touches it and the data persists across deployments.
         run: |
-          WEBTPS_ORTHANC_DATA_DIR="${WEBTPS_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}"
+          WEBTPS_ORTHANC_DATA_DIR="${WEBTPS_ORTHANC_DATA_DIR:-$HOME/webtps-orthanc-db}"
           mkdir -p "$WEBTPS_ORTHANC_DATA_DIR"
           echo "WEBTPS_ORTHANC_DATA_DIR=$WEBTPS_ORTHANC_DATA_DIR" >> "$GITHUB_ENV"
           echo "Using WEBTPS_ORTHANC_DATA_DIR=$WEBTPS_ORTHANC_DATA_DIR"
