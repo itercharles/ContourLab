@@ -450,9 +450,11 @@ jobs:
       - name: Prepare persistent DICOM data directory
         # Store orthanc-db in $HOME (outside the workspace) so checkout never
         # touches it and the data persists across deployments.
+        # chmod 777 ensures Orthanc can write regardless of which UID it runs as.
         run: |
           WEBTPS_ORTHANC_DATA_DIR="${WEBTPS_ORTHANC_DATA_DIR:-$HOME/webtps-orthanc-db}"
           mkdir -p "$WEBTPS_ORTHANC_DATA_DIR"
+          chmod 777 "$WEBTPS_ORTHANC_DATA_DIR"
           echo "WEBTPS_ORTHANC_DATA_DIR=$WEBTPS_ORTHANC_DATA_DIR" >> "$GITHUB_ENV"
           echo "Using WEBTPS_ORTHANC_DATA_DIR=$WEBTPS_ORTHANC_DATA_DIR"
 
