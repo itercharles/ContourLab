@@ -321,17 +321,16 @@ jobs:
       - name: Run DHF acceptance gate
         run: |
           export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
-          JUNIT_ARGS="--junit test-results/srs/verification-junit.xml"
-          [ -f test-results/srs-api/api-junit.xml ] && JUNIT_ARGS="$JUNIT_ARGS --junit test-results/srs-api/api-junit.xml"
-          [ -f test-results/sys/e2e-sys-junit.xml ] && JUNIT_ARGS="$JUNIT_ARGS --junit test-results/sys/e2e-sys-junit.xml"
-          [ -f test-results/crs/e2e-crs-junit.xml ] && JUNIT_ARGS="$JUNIT_ARGS --junit test-results/crs/e2e-crs-junit.xml"
-          compliantflow --dhf dhf/DHF ci gate acceptance \
+          compliantflow --dhf dhf/DHF ci run acceptance \
             --coverage-pair UC:CRS \
             --coverage-pair CRS:SYS \
             --coverage-pair SYS:SRS \
             --coverage-pair SRS:SWDD \
             --coverage-pair SYS:SYSARCH \
-            $JUNIT_ARGS
+            --junit-dir test-results/srs \
+            --junit-dir test-results/srs-api \
+            --junit-dir test-results/sys \
+            --junit-dir test-results/crs
 
   # ── ARTIFACTS + DEPLOY (main only) ────────────────────────────────────────
   # After acceptance passes on main: generate DHF documents, traceability PDF,
@@ -403,18 +402,17 @@ jobs:
       - name: Generate DHF artifacts
         run: |
           export PYTHONPATH="${PWD}/dhf:${PWD}/dhf/DHF"
-          JUNIT_ARGS="--junit test-results/srs/verification-junit.xml"
-          [ -f test-results/srs-api/api-junit.xml ] && JUNIT_ARGS="$JUNIT_ARGS --junit test-results/srs-api/api-junit.xml"
-          [ -f test-results/sys/e2e-sys-junit.xml ] && JUNIT_ARGS="$JUNIT_ARGS --junit test-results/sys/e2e-sys-junit.xml"
-          [ -f test-results/crs/e2e-crs-junit.xml ] && JUNIT_ARGS="$JUNIT_ARGS --junit test-results/crs/e2e-crs-junit.xml"
-          compliantflow --dhf dhf/DHF ci artifacts generate \
+          compliantflow --dhf dhf/DHF ci run artifacts \
             --out-dir dhf-artifacts \
             --traceability-type UC \
             --traceability-type CRS \
             --traceability-type SYS \
             --traceability-type SRS \
             --traceability-type SWDD \
-            $JUNIT_ARGS
+            --junit-dir test-results/srs \
+            --junit-dir test-results/srs-api \
+            --junit-dir test-results/sys \
+            --junit-dir test-results/crs
 
       - name: Upload DHF artifacts
         if: always()
