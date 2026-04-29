@@ -231,6 +231,45 @@ fix(CR-031): correct version string in About page
 If your change introduces a new capability, external library, architecture decision, or
 identified hazard — DHF items need updating. The Plan Spec PR will identify what is needed.
 
+### DHF facade usage
+
+WebTPS automation accesses DHF through the CompliantFlow facade. Do not add new
+automation that reads `../WebTPS-DHF/DHF/items/...` directly.
+
+For WebTPS CI and agents, use the local wrappers:
+
+```bash
+PYTHONPATH=/path/to/CompliantFlow \
+python scripts/automation/dhf_context.py cr-context \
+  --dhf-repo ../WebTPS-DHF \
+  --cr-id CR-034 \
+  --out-dir /tmp/webtps-cr-context
+
+python scripts/automation/dhf_ops.py transition \
+  --dhf-repo ../WebTPS-DHF \
+  --item-id CR-034 \
+  --to-state completed \
+  --by agent
+```
+
+For facade debugging from a CompliantFlow checkout, the underlying operations are:
+
+```bash
+PYTHONPATH=.:../WebTPS-DHF/DHF \
+python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item get SRS-001
+
+PYTHONPATH=.:../WebTPS-DHF/DHF \
+python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item list --type SRS
+
+PYTHONPATH=.:../WebTPS-DHF/DHF \
+python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf context implementation \
+  --cr CR-034 \
+  --out-dir /tmp/compliantflow-context
+```
+
+Impact analysis and compliance evidence remain DHF/CompliantFlow-owned outputs;
+WebTPS consumes approved requirements, design context, and implementation specs.
+
 ## Build
 
 ```bash
