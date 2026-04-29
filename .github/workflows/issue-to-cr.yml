@@ -47,10 +47,12 @@ jobs:
       - name: Prepare CR from issue
         id: prepare
         run: |
-          python scripts/automation/issue_to_cr.py \
+          pip install -e dhf/ 2>/dev/null || true
+          compliantflow cr workflow intake-github-issue \
             --event "$GITHUB_EVENT_PATH" \
             --comments /tmp/issue-comments.json \
             --dhf-repo dhf \
+            --marker-name webtps-cr \
             --write \
             --output /tmp/issue-to-cr.json
           cat /tmp/issue-to-cr.json
