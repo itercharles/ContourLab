@@ -1,6 +1,6 @@
-name: WebTPS CR Completion
+name: Complete CR In DHF
 
-run-name: CR completion | #${{ github.event.pull_request.number }} | ${{ github.event.pull_request.title }}
+run-name: CR completion | #${{ github.event.pull_request.number }}
 
 on:
   pull_request:
@@ -14,24 +14,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Check out WebTPS
-        uses: actions/checkout@v4
-
-      - name: Extract CR ID from PR title
-        id: cr
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          CR_ID=$(echo "$PR_TITLE" | grep -oE 'CR-[0-9]+' | head -n 1 || true)
-          if [ -z "$CR_ID" ]; then
-            echo "No CR ID found in PR title; skipping."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
-
       - name: Check out DHF repo
-        if: steps.cr.outputs.skip != 'true'
         uses: actions/checkout@v4
         with:
           repository: itercharles/WebTPS-DHF
@@ -39,29 +22,21 @@ jobs:
           path: dhf
 
       - name: Set up Python
-        if: steps.cr.outputs.skip != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install DHF utils dependencies
-        if: steps.cr.outputs.skip != 'true'
+      - name: Install dependencies
         env:
           PRODUCT_REPO_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
         run: |
           git config --global url."https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/".insteadOf "https://github.com/"
           pip install -r dhf/requirements.txt
 
-      - name: Complete CR in DHF
-        if: steps.cr.outputs.skip != 'true'
+      - name: Complete CR
         run: |
-          pip install -e dhf/ 2>/dev/null || true
-          cd dhf
-          git config user.name "GitHub Actions [bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          cd ..
-          compliantflow cr workflow complete \
+          compliantflow cr workflow complete-from-github-pr \
             --dhf-repo dhf \
-            --cr "${{ steps.cr.outputs.cr_id }}" \
+            --event "$GITHUB_EVENT_PATH" \
             --by "github-actions[bot]" \
             --push
