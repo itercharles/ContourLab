@@ -37,6 +37,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r dhf/requirements.txt
 
+      - name: Configure git identity for DHF commits
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Prepare CR from issue
         id: prepare
         env:
