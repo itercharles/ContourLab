@@ -74,11 +74,7 @@ jobs:
           git clone "https://x-access-token:${GH_TOKEN}@github.com/itercharles/WebTPS-DHF.git" /tmp/dhf-repo
           git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
           pip install -r /tmp/dhf-repo/requirements.txt -q
-          python scripts/automation/dhf_ops.py transition \
-            --dhf-repo /tmp/dhf-repo \
-            --item-id "$CR_ID" \
-            --to-state implementing \
-            --by "github-actions[bot]"
+          python -m dhf_util --dhf /tmp/dhf-repo/DHF item transition "$CR_ID" implementing --by "github-actions[bot]"
           cd /tmp/dhf-repo
           git config user.name "GitHub Actions [bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -93,9 +89,8 @@ jobs:
         env:
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
         run: |
-          python scripts/automation/dhf_context.py cr-context \
-            --dhf-repo /tmp/dhf-repo \
-            --cr-id "$CR_ID" \
+          python -m compliantflow --dhf /tmp/dhf-repo/DHF dhf context implementation \
+            --cr "$CR_ID" \
             --out-dir /tmp/dhf-context
           echo "--- CR ---" && cat "/tmp/dhf-context/$CR_ID.json" || true
           echo "--- Spec (first 30 lines) ---" && head -30 "/tmp/dhf-context/$CR_ID-Spec.md" || true
