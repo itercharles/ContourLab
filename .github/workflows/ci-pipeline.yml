@@ -266,7 +266,7 @@ jobs:
   # On PR: this is the final gate. On main: continues to artifact generation
   # and deployment.
 
-   compliance:
+  compliance:
     name: Test Coverage Gate (requirement → test)
     runs-on: ubuntu-latest
     needs: [dev-integration, verify-srs, verify-sys, validate-crs]
