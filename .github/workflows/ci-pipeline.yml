@@ -339,14 +339,11 @@ jobs:
   # These run in parallel with each other.
 
   generate-artifacts:
-    name: DHF Artifacts (spec PDFs · traceability PDF)
+    name: DHF Artifacts (evidence bundle)
     runs-on: ubuntu-latest
     needs: [compliance]
-    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && !cancelled()
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !cancelled()
     steps:
-      - name: Check out product repo
-        uses: actions/checkout@v4
-
       - name: Check out DHF repo
         uses: actions/checkout@v4
         with:
@@ -365,7 +362,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0
 
-      - name: Install artifact generation dependencies
+      - name: Install dependencies
         env:
           PRODUCT_REPO_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
         run: |
@@ -400,11 +397,15 @@ jobs:
           name: validate-crs-junit
           path: test-results/crs/
 
-      - name: Generate DHF artifacts
+      - name: Generate evidence bundle
         run: |
-          pip install -e dhf/ 2>/dev/null || true
-          compliantflow --dhf dhf/DHF ci run artifacts \
+          compliantflow --dhf dhf/DHF ci evidence bundle \
             --out-dir dhf-artifacts \
+            --coverage-pair UC:CRS \
+            --coverage-pair CRS:SYS \
+            --coverage-pair SYS:SRS \
+            --coverage-pair SRS:SWDD \
+            --coverage-pair SYS:SYSARCH \
             --traceability-type UC \
             --traceability-type CRS \
             --traceability-type SYS \
@@ -413,7 +414,10 @@ jobs:
             --junit-dir test-results/srs \
             --junit-dir test-results/srs-api \
             --junit-dir test-results/sys \
-            --junit-dir test-results/crs
+            --junit-dir test-results/crs \
+            --run-id "${{ github.run_id }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --commit "${{ github.sha }}"
 
       - name: Upload DHF artifacts
         if: always()
