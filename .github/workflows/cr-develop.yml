@@ -124,6 +124,7 @@ jobs:
           ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
         run: |
+          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
           PROMPT="Implement $CR_ID in this WebTPS repository.
 
           The CR and spec are at:
@@ -134,7 +135,8 @@ jobs:
           Make all required code changes. Do not create test files unless the spec requires it.
           Do not commit — the workflow will commit after."
 
-          claude -p --dangerously-skip-permissions --output-format json "$PROMPT" > /tmp/claude-out.json 2>&1 || true
+          echo "=== PROMPT ===" && echo "$PROMPT" && echo "=== CLAUDE OUTPUT ==="
+          claude -p --dangerously-skip-permissions --output-format json "$PROMPT" 2>&1 | tee /tmp/claude-out.json || true
           python3 - <<'PYEOF'
           import json
           data = open('/tmp/claude-out.json').read().strip().split('\n')
@@ -158,6 +160,7 @@ jobs:
           ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
           SESSION_ID: ${{ steps.session.outputs.session_id }}
         run: |
+          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
           if [ -n "$SESSION_ID" ]; then
             claude --resume "$SESSION_ID" -p --dangerously-skip-permissions \
               "Revise the implementation based on review feedback in /tmp/review-comments.json and /tmp/reviews.json. Do not commit."
