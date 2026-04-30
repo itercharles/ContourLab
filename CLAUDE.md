@@ -46,11 +46,10 @@ pnpm -r build                             # build all workspaces
 - **Styling**: Tailwind only, no inline styles, dark clinical theme (see `/ux-design`)
 - **DHF CR automation boundary**: CR intake/development/completion automation and
   agent context preparation must access DHF data through CompliantFlow's DHF
-  facade via `scripts/automation/dhf_adapter.py`. Do not add direct dependencies
-  on DHF storage paths such as `DHF/items/...` or `docs/cr-specs/...`, and do
-  not scatter direct DHF utility subprocess calls across CR automation. CI
-  compliance and artifact-generation jobs may still invoke DHF-owned
-  validation/export tools.
+  facade. Do not add direct dependencies on DHF storage paths such as
+  `DHF/items/...` or `docs/cr-specs/...`, and do not scatter direct DHF utility
+  subprocess calls across CR automation. CI compliance and artifact-generation
+  jobs may still invoke DHF-owned validation/export tools.
 
 ### DHF Facade API Quick Reference
 
@@ -60,15 +59,11 @@ reads under `../WebTPS-DHF/DHF/items/...` are only for DHF-local maintenance.
 From WebTPS automation:
 
 ```bash
-python scripts/automation/dhf_context.py cr-context \
-  --dhf-repo ../WebTPS-DHF \
-  --cr-id CR-034 \
+python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf context implementation \
+  --cr CR-034 \
   --out-dir /tmp/webtps-cr-context
 
-python scripts/automation/dhf_ops.py transition \
-  --dhf-repo ../WebTPS-DHF \
-  --item-id CR-034 \
-  --to-state completed \
+python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item transition CR-034 completed \
   --by agent
 ```
 
@@ -91,10 +86,10 @@ Agent usage:
 - Need requirements of one level: ask through the WebTPS adapter boundary. The
   underlying facade operation is `dhf item list --type SYS`, `--type SRS`, or
   `--type CRS`.
-- Need implementation inputs for a CR: use the WebTPS `dhf_context.py cr-context`
-  wrapper. The underlying facade operation is `dhf context implementation --cr
-  <CR-ID>`.
-- Need to transition a CR from WebTPS automation: use `dhf_ops.py transition`.
+- Need implementation inputs for a CR: call the CompliantFlow facade directly
+  with `dhf context implementation --cr <CR-ID>`.
+- Need to transition a CR from WebTPS automation: call `dhf item transition
+  <CR-ID> completed --by agent` through CompliantFlow.
 - Need impact analysis, traceability assessment, or compliance evidence: keep that
   in DHF/CompliantFlow workflows; WebTPS consumes approved requirements and design
   context, it does not own DHF impact analysis output.

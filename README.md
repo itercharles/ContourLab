@@ -236,18 +236,14 @@ identified hazard — DHF items need updating. The Plan Spec PR will identify wh
 WebTPS automation accesses DHF through the CompliantFlow facade. Do not add new
 automation that reads `../WebTPS-DHF/DHF/items/...` directly.
 
-For WebTPS CI and agents, use the local wrappers:
+For WebTPS CI and agents, call CompliantFlow directly:
 
 ```bash
-python scripts/automation/dhf_context.py cr-context \
-  --dhf-repo ../WebTPS-DHF \
-  --cr-id CR-034 \
+python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf context implementation \
+  --cr CR-034 \
   --out-dir /tmp/webtps-cr-context
 
-python scripts/automation/dhf_ops.py transition \
-  --dhf-repo ../WebTPS-DHF \
-  --item-id CR-034 \
-  --to-state completed \
+python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item transition CR-034 completed \
   --by agent
 ```
 
