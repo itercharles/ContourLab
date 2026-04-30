@@ -136,22 +136,10 @@ jobs:
           Do not commit — the workflow will commit after."
 
           echo "=== PROMPT ===" && echo "$PROMPT" && echo "=== CLAUDE OUTPUT ==="
-          claude -p --dangerously-skip-permissions --output-format json "$PROMPT" 2>&1 | tee /tmp/claude-out.json || true
-          python3 - <<'PYEOF'
-          import json
-          data = open('/tmp/claude-out.json').read().strip().split('\n')
-          session_id, result_body = '', 'Automated implementation for this CR.'
-          for line in data:
-              try:
-                  obj = json.loads(line)
-                  if obj.get('session_id'): session_id = obj['session_id']
-                  if obj.get('type') == 'result' and obj.get('result'): result_body = obj['result']
-              except: pass
-          open('/tmp/claude-session-id.txt', 'w').write(session_id)
-          open('/tmp/claude-result.txt', 'w').write(result_body[:8000])
-          PYEOF
-          SESSION_ID=$(cat /tmp/claude-session-id.txt)
+          SESSION_ID=$(uuidgen)
           echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
+          claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
+          echo "Automated implementation for $CR_ID." > /tmp/claude-result.txt
 
       - name: Revise implementation
         if: steps.ctx.outputs.mode == 'iterate'
