@@ -20,6 +20,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -233,6 +234,6 @@ jobs:
           )
           ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
           if [ -n "$ISSUE_NUMBER" ]; then
-            gh issue comment "$ISSUE_NUMBER" \
+            GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh issue comment "$ISSUE_NUMBER" \
               --body "**Stage: Implementation** — PR opened for review: $PR_URL"
           fi
