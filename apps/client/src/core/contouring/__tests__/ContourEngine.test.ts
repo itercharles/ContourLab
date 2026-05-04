@@ -77,7 +77,7 @@ beforeEach(() => {
 // addContour
 // ---------------------------------------------------------------------------
 
-describe('ContourEngine.addContour @links:SRS-008', () => {
+describe('ContourEngine.addContour @links:SRS-008,SYS-004', () => {
   it('calls addContourSlice when no existing contour at that slicePosition', () => {
     const structure = makeStructure([]); // no existing contours
     const ss = makeStructureSet([structure]);
