@@ -75,15 +75,8 @@ jobs:
           git clone "https://x-access-token:${GH_TOKEN}@github.com/itercharles/WebTPS-DHF.git" /tmp/dhf-repo
           git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
           pip install -r /tmp/dhf-repo/requirements.txt -q
-          python -m compliantflow --dhf /tmp/dhf-repo/DHF dhf item transition "$CR_ID" implementing --by "github-actions[bot]"
-          cd /tmp/dhf-repo
-          git config user.name "GitHub Actions [bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if ! git diff --staged --quiet; then
-            git commit -m "chore: transition $CR_ID to implementing [skip ci]"
-            git push
-          fi
+          python -m compliantflow --dhf /tmp/dhf-repo/DHF dhf item transition "$CR_ID" implementing \
+            --by "github-actions[bot]" --commit --push
 
       - name: Read CR context from DHF adapter
         if: steps.ctx.outputs.mode == 'new'
@@ -214,7 +207,7 @@ jobs:
             PR_URL="https://github.com/itercharles/WebTPS/pull/$PR_NUMBER"
           fi
           if [ -n "$SESSION_ID" ]; then
-            gh pr comment $PR_NUMBER --body "<!-- claude-session: $SESSION_ID -->"
+            python -m compliantflow ci claude-session put "$PR_NUMBER" "$SESSION_ID"
           fi
           # Comment on source issue
           ISSUE_URL=$(python3 - <<'PYEOF'
