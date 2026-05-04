@@ -67,7 +67,7 @@ vi.mock('dcmjs', () => ({
   },
 }));
 
-describe('exportRtstructBlob @links:SRS-018', () => {
+describe('exportRtstructBlob @links:SRS-018,SYS-006,CRS-005', () => {
   it('does not write a predecessor reference for a manual structure set @links:SRS-018', async () => {
     dicomMock.writtenDatasets = [];
 

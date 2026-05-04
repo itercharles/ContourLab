@@ -16,7 +16,7 @@ function makeContour(slicePosition: number, sopInstanceUID = `sop-${slicePositio
   };
 }
 
-describe('contour review navigation @links:SRS-011', () => {
+describe('contour review navigation @links:SRS-011,SYS-009', () => {
   it('returns unique review slices sorted by slice position', () => {
     expect(getReviewSlices([
       makeContour(10),

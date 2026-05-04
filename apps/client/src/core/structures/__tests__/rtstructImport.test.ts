@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { importRtstructDataset } from '../rtstructImport';
 
-describe('importRtstructDataset @links:SRS-019', () => {
+describe('importRtstructDataset @links:SRS-019,SYS-007,CRS-006', () => {
   it('maps RTSTRUCT ROI sequences into a WebTPS structure set', () => {
     const structureSet = importRtstructDataset(
       {
