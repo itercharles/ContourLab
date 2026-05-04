@@ -418,6 +418,18 @@ jobs:
           name: dhf-artifacts
           path: dhf-artifacts/
 
+      - name: Upload combined test evidence for CR analysis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: product-test-results
+          path: |
+            test-results/srs/
+            test-results/srs-api/
+            test-results/sys/
+            test-results/crs/
+          if-no-files-found: warn
+
   deploy:
     name: Deploy | Linux VM (Docker)
     runs-on: [self-hosted, linux]
