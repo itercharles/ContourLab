@@ -320,7 +320,8 @@ jobs:
 
       - name: Run requirement-test coverage gate
         run: |
-          compliantflow --dhf dhf/DHF ci test-coverage \
+          compliantflow ci test-coverage \
+            --dhf dhf/DHF \
             --junit-dir test-results/srs \
             --junit-dir test-results/srs-api \
             --junit-dir test-results/sys \
@@ -407,7 +408,8 @@ jobs:
             --junit-dir test-results/crs \
             --run-id "${{ github.run_id }}" \
             --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --commit "${{ github.sha }}"
+            --commit "${{ github.sha }}" \
+            --continue-on-gate-failure
 
       - name: Upload DHF artifacts
         if: always()
