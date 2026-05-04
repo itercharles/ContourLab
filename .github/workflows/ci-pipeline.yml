@@ -290,10 +290,6 @@ jobs:
           python -m pip install --upgrade pip
           sed "s|git+https://github.com/|git+https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/|g" \
             dhf/requirements.txt | pip install -r /dev/stdin
-          # Force-reinstall git deps with token to avoid stale pip cache
-          pip install --force-reinstall --no-deps \
-            "dhf_util @ git+https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/itercharles/compliantflow-dhf.git" \
-            "compliantflow @ git+https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/itercharles/CompliantFlow.git"
 
       - name: Download SRS test evidence (Vitest)
         uses: actions/download-artifact@v4
@@ -368,10 +364,6 @@ jobs:
           python -m pip install --upgrade pip
           sed "s|git+https://github.com/|git+https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/|g" \
             dhf/requirements.txt | pip install -r /dev/stdin
-          # Force-reinstall git deps with token to avoid stale pip cache
-          pip install --force-reinstall --no-deps \
-            "dhf_util @ git+https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/itercharles/compliantflow-dhf.git" \
-            "compliantflow @ git+https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/itercharles/CompliantFlow.git"
 
       - name: Download SRS test evidence (Vitest)
         uses: actions/download-artifact@v4
