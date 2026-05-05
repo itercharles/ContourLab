@@ -2,106 +2,75 @@
 
 ## Purpose
 
-This document defines the CR-driven workflow owned by `WebTPS-DHF`.
+This document defines the CR-driven workflow for WebTPS. All DHF content —
+CR items, requirements, risks, specs — lives in this repository under `DHF/`
+and `docs/cr-specs/`.
 
-`WebTPS-DHF` is the source of truth for:
+## Sources of Truth
 
-- CR item lifecycle
-- CR status labels
-- CR Spec document
-- Stage 1 analysis and plan review
-
-`WebTPS` is the source of truth for:
-
-- implementation branch and PR
-- product code and tests
-- implementation review follow-up
-
-## Repository Split
-
-### `WebTPS-DHF`
-
-Owns:
-
-- `CR PR`
-- `Plan Spec PR`
-- `docs/cr-specs/CRxxx-Spec.md`
-- `planned -> in_review -> designing -> implementing -> completed` CR states
-
-### `WebTPS`
-
-Owns:
-
-- `Implementation PR`
-- implementation code and tests
-- completion-driven sync back to the DHF CR
+- `DHF/items/` — CR lifecycle, requirement/risk/design items
+- `docs/cr-specs/` — CR specification documents (authoritative plan specs)
+- `.github/workflows/` — CR automation (cr-analyze, cr-design, cr-develop, cr-complete)
 
 ## PR Topology
 
-1. `CR PR` in `WebTPS-DHF`
-2. `Plan Spec PR` in `WebTPS-DHF`
-3. `Implementation PR` in `WebTPS`
+1. `cr/CR-NNN` — CR intake PR (human-authored)
+2. `spec/CR-NNN` — AI-generated analysis spec PR
+3. `design/CR-NNN` — AI-generated DHF design items PR
+4. `feat/CR-NNN` — AI-generated implementation PR
+
+All four PRs are in this repository.
 
 ## State Model
 
-Allowed CR states:
+| State | Meaning |
+|-------|---------|
+| `draft` | CR created, not yet submitted |
+| `in_review` | CR PR open, awaiting human approval |
+| `designing` | CR approved; agent generating plan spec |
+| `implementing` | Plan approved; agent implementing |
+| `completed` | Implementation merged; DHF closed out |
+| `cancelled` | CR declined |
 
-- `planned`
-- `in_review`
-- `designing`
-- `implementing`
-- `completed`
-- `cancelled`
+Normal flow: `draft → in_review → designing → implementing → completed`
 
-The normal flow is:
-
-- `planned -> in_review`
-- `in_review -> designing`
-- `designing -> implementing`
-- `implementing -> completed`
-
-Exceptional return:
-
-- `implementing -> designing`
-  use only when implementation feedback invalidates the approved plan and the
-  spec must be revised.
+Exceptional return: `implementing → designing` — only when implementation feedback
+invalidates the approved plan and the spec must be revised.
 
 ## Stage Ownership
 
-### Stage 1
+### Stage 1 — Analysis
 
-- source repo: `WebTPS-DHF`
-- input: approved `CR PR`
-- output: approved `Plan Spec PR`
+- Trigger: `cr/CR-NNN` PR merged
+- Workflow: `cr-analyze.yml`
+- Output: `spec/CR-NNN` PR with AI-generated analysis spec in `docs/cr-specs/`
 
-### Stage 2
+### Stage 2 — Design
 
-- source repo: `WebTPS-DHF`
-- input: approved `Plan Spec PR`
-- output: `Implementation PR` in `WebTPS`
+- Trigger: `spec/CR-NNN` PR merged
+- Workflow: `cr-design.yml`
+- Output: `design/CR-NNN` PR with updated DHF items in `DHF/items/`
 
-### Stage 3
+### Stage 3 — Implementation
 
-- source repo: `WebTPS`
-- input: implementation review feedback and CI
-- output: implementation updates or explicit replan signal
+- Trigger: `design/CR-NNN` PR merged
+- Workflow: `cr-develop.yml`
+- Output: `feat/CR-NNN` PR with product code changes
 
-### Stage 4
+### Stage 4 — Completion
 
-- source repo: `WebTPS`
-- input: merged implementation PR
-- output: CR completion sync in `WebTPS-DHF`
-
+- Trigger: `feat/CR-NNN` PR merged
+- Workflow: `cr-complete.yml`
+- Output: CR transitioned to `completed` in `DHF/items/09_cr/`
 
 ## Runtime Prerequisites
 
-`WebTPS-DHF` workflow runtime requires:
+All workflows use `GITHUB_TOKEN` — no cross-repo secrets required.
 
-- repository variables `CR_ANALYZE_MODEL` and `CR_DESIGN_MODEL`
-- secret `ANTHROPIC_API_KEY`
-- secret `PRODUCT_REPO_TOKEN` with access to both repositories
+Repository variables needed:
+- `CR_ANALYZE_MODEL` — Claude model for analysis
+- `CR_DESIGN_MODEL` — Claude model for design
+- `CR_DEVELOP_MODEL` — Claude model for implementation
 
-`WebTPS` workflow runtime requires:
-
-- repository variable `CR_DEVELOP_MODEL`
-- secrets `ANTHROPIC_API_KEY` and `PRODUCT_REPO_TOKEN`
+Secrets needed:
+- `ANTHROPIC_API_KEY`

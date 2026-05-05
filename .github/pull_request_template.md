@@ -4,7 +4,7 @@ Describe the change concisely.
 
 ## DHF Updates
 
-- List exact WebTPS-DHF files changed
+- List exact DHF/ files changed (or: `No DHF update required`)
 - Or state explicitly: `No DHF update required`
 
 ## Automated Validation

@@ -10,10 +10,10 @@ Given a CR ID, execute the full implementation cycle end-to-end.
 
 ## Step 1: Read the Plan Spec
 
-Locate and read the approved Plan Spec in the DHF repo:
+Locate and read the approved Plan Spec in this repo:
 
 ```
-../WebTPS-DHF/docs/cr-specs/<CR-ID>-Spec.md
+docs/cr-specs/<CR-ID>-Spec.md
 ```
 
 Extract:
@@ -28,8 +28,7 @@ If the spec does not exist or the CR is not in `implementing` state, stop and te
 ## Step 2: Check CR State
 
 ```bash
-cd ../WebTPS-DHF
-python -m compliantflow --dhf DHF dhf item get <CR-ID>
+medharness --dhf DHF dhf item get <CR-ID>
 ```
 
 Confirm state is `implementing`. If not, do not proceed.
@@ -68,19 +67,18 @@ Do not proceed if any command fails.
 
 ## Step 6: Update DHF Items
 
-In `../WebTPS-DHF`, create or update the DHF items listed in the spec:
+Create or update the DHF items listed in the spec directly in this repo's `DHF/items/`:
 
-- New feature: UC → CRS → SYS → SRS → SWDD (use `/req-manage` in DHF context)
+- New feature: UC → CRS → SYS → SRS → SWDD
 - New SOUP: SOUP item + `uses_soup` on affected SRS
 - Architecture decision: SYSARCH + SWDD update
 
 Validate:
 ```bash
-cd ../WebTPS-DHF
-python -m compliantflow --dhf DHF dhf validate schema
+medharness --dhf DHF dhf validate schema
 ```
 
-**Commit DHF changes on a separate branch in WebTPS-DHF** — do not mix DHF and product code in the same PR.
+**Include DHF changes in the same Implementation PR** — the single-repo model means product code and DHF items live together.
 
 ## Step 7: Open Implementation PR
 
@@ -95,7 +93,7 @@ gh pr create \
 <CR-ID> — <link to DHF CR>
 
 ## DHF items updated
-<list exact file paths, or "No DHF update required — <reason>">
+<list exact DHF/items/ file paths, or "No DHF update required — <reason>">
 
 ## Validation run
 - [ ] `pnpm --filter @webtps/client typecheck` — ✓
@@ -112,14 +110,6 @@ EOF
 )"
 ```
 
-## Step 8: Transition CR to Completed (after PR merges)
+## Step 8: CR Completes Automatically
 
-Once the Implementation PR is merged, transition the CR:
-
-```bash
-cd ../WebTPS-DHF
-python -m compliantflow --dhf DHF dhf item transition <CR-ID> completed --by "Claude"
-git add DHF/items/09_cr/<CR-ID>.yaml
-git commit -m "cr: close <CR-ID> — implementation merged"
-git push origin main
-```
+When the Implementation PR merges, `cr-complete.yml` automatically transitions the CR to `completed` and commits the state change to `DHF/items/09_cr/<CR-ID>.yaml`. No manual step needed.

@@ -23,15 +23,15 @@ This shows which DHF items are currently covered by tests and how many tests eac
 
 ```bash
 # SRS items
-grep -l "verification_method" ../WebTPS-DHF/DHF/items/03_req_srs/*.yaml \
+grep -l "verification_method" DHF/items/03_req_srs/*.yaml \
   | xargs grep -l "Test" | xargs -I{} basename {} .yaml | sort
 
 # SYS items
-grep -l "verification_method" ../WebTPS-DHF/DHF/items/02_req_sys/*.yaml \
+grep -l "verification_method" DHF/items/02_req_sys/*.yaml \
   | xargs grep -l "Test" | xargs -I{} basename {} .yaml | sort
 
 # CRS items (validation)
-ls ../WebTPS-DHF/DHF/items/01_req_crs/*.yaml \
+ls DHF/items/01_req_crs/*.yaml \
   | xargs -I{} basename {} .yaml | sort
 ```
 
