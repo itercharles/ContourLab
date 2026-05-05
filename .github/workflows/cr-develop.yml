@@ -103,12 +103,7 @@ jobs:
             --spec "docs/cr-specs/${CR_ID}-Spec.md" 2>/dev/null || echo '{}')
           echo "DHF_CONTEXT=$DHF_CONTEXT" >> "$GITHUB_ENV"
           mkdir -p /tmp/dhf-context
-          python3 - <<'PYEOF' 2>/dev/null || true
-import json, os
-d = json.loads(os.environ.get('DHF_CONTEXT', '{}'))
-spec_path = f"/tmp/dhf-context/{os.environ['CR_ID']}-Spec.md"
-open(spec_path, 'w').write(d.get('spec_text', ''))
-PYEOF
+          python3 -c "import json,os,sys; sys.stdout.write(json.loads(os.environ.get('DHF_CONTEXT','{}') or '{}').get('spec_text',''))" > "/tmp/dhf-context/$CR_ID-Spec.md" 2>/dev/null || true
           python -m medharness --dhf DHF dhf item get "$CR_ID" \
             > "/tmp/dhf-context/$CR_ID.json" 2>/dev/null || true
           echo "--- DHF_CONTEXT ---" && echo "$DHF_CONTEXT" | python3 -c \
@@ -228,18 +223,7 @@ PYEOF
           if [ -n "$SESSION_ID" ]; then
             python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID"
           fi
-          ISSUE_URL=$(python3 - <<'PYEOF'
-import json, os, re
-try:
-    path = f"/tmp/dhf-context/{os.environ['CR_ID']}.json"
-    item = json.load(open(path))
-    description = str(item.get("description") or "")
-    match = re.search(r"Source issue: (https://\S+)", description)
-    print(match.group(1) if match else "")
-except Exception:
-    print("")
-PYEOF
-          )
+          ISSUE_URL=$(python3 -c "import json,os,re; path='/tmp/dhf-context/' + os.environ.get('CR_ID','') + '.json'; item=json.load(open(path)); desc=str(item.get('description') or ''); m=re.search(r'Source issue: (https://\S+)', desc); print(m.group(1) if m else '')" 2>/dev/null || echo "")
           ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
           if [ -n "$ISSUE_NUMBER" ]; then
             gh issue comment "$ISSUE_NUMBER" \
