@@ -339,7 +339,7 @@ jobs:
     name: DHF Artifacts (evidence bundle)
     runs-on: ubuntu-latest
     needs: [compliance]
-    if: github.ref == 'refs/heads/main' && !cancelled()
+    if: github.ref == 'refs/heads/main' && !failure() && !cancelled()
     steps:
       - name: Check out DHF repo
         uses: actions/checkout@v4
