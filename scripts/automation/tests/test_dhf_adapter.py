@@ -1,125 +1,117 @@
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.automation.dhf_adapter import CompliantFlowDHFAdapter, DHFAdapterError, make_dhf_adapter
+from scripts.automation.dhf_adapter import MedHarnessDHFAdapter, DHFAdapterError, make_dhf_adapter
 
 
-class RecordingRunner:
+class StubDHFClient:
     def __init__(self):
-        self.calls = []
+        self.called = []
 
-    def __call__(self, command, **kwargs):
-        self.calls.append((command, kwargs))
-        if command[:3] == ["python", "-m", "compliantflow"]:
-            operation = command[6:]
-            if operation[:2] == ["item", "list"]:
-                return subprocess.CompletedProcess(command, 0, '{"id":"CR-001"}\n', "")
-            if operation[:2] == ["item", "get"]:
-                return subprocess.CompletedProcess(command, 0, '{"id":"CR-001"}\n', "")
-            if operation[:2] == ["item", "create"]:
-                return subprocess.CompletedProcess(command, 0, '{"id":"CR-002"}\n', "")
-            if operation[:2] == ["item", "update"]:
-                return subprocess.CompletedProcess(command, 0, '{"id":"CR-001","title":"Updated"}\n', "")
-            if operation[:2] == ["item", "transition"]:
-                return subprocess.CompletedProcess(command, 0, '{"id":"CR-001","status":"implementing"}\n', "")
-            if operation[:2] == ["context", "implementation"]:
-                out_dir = Path(operation[operation.index("--out-dir") + 1])
-                out_dir.mkdir(parents=True, exist_ok=True)
-                cr_id = operation[operation.index("--cr") + 1]
-                cr_path = out_dir / f"{cr_id}.json"
-                spec_path = out_dir / f"{cr_id}-Spec.md"
-                context_path = out_dir / "implementation-context.json"
-                cr_path.write_text('{"id":"CR-001"}\n', encoding="utf-8")
-                spec_path.write_text("spec text", encoding="utf-8")
-                context_path.write_text("{}\n", encoding="utf-8")
-                return subprocess.CompletedProcess(
-                    command,
-                    0,
-                    f'{{"cr":"{cr_path}","implementation_spec":"{spec_path}","context":"{context_path}"}}\n',
-                    "",
-                )
-        return subprocess.CompletedProcess(command, 1, "", "unexpected command")
+    def list_items(self, doc_type=None):
+        self.called.append(("list_items", doc_type))
+        return [{"id": "CR-001"}]
+
+    def get_item(self, item_id):
+        self.called.append(("get_item", item_id))
+        return {"id": item_id}
+
+    def create_item(self, doc_type, data, *, author=None, cr_id=None):
+        self.called.append(("create_item", doc_type, data, author, cr_id))
+        return {"id": "CR-002", "type": doc_type}
+
+    def update_item(self, item_id, data, *, author=None, cr_id=None):
+        self.called.append(("update_item", item_id, data, author, cr_id))
+        return {"id": item_id, "title": "Updated"}
+
+    def transition_item(self, item_id, to_state, *, performed_by=None):
+        self.called.append(("transition_item", item_id, to_state, performed_by))
+        return {"id": item_id, "status": "implementing"}
+
+    def get_document(self, doc_id):
+        self.called.append(("get_document", doc_id))
+        if doc_id.endswith("-Spec"):
+            return "spec text"
+        return None
+
+    def get_cr_context(self, cr_id):
+        self.called.append(("get_cr_context", cr_id))
+        return {"cr": {"id": cr_id}, "spec": "spec text"}
 
 
-class CompliantFlowDHFAdapterTests(unittest.TestCase):
-    def make_adapter(self, runner):
+class MedHarnessDHFAdapterTests(unittest.TestCase):
+    def make_adapter(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         dhf_repo = Path(tmp.name)
-        (dhf_repo / "DHF").mkdir()
-        return CompliantFlowDHFAdapter(dhf_repo, python_executable="python", runner=runner)
+        (dhf_repo / "DHF").mkdir(parents=True)
+        adapter = MedHarnessDHFAdapter.__new__(MedHarnessDHFAdapter)
+        client = StubDHFClient()
+        adapter._client = client
+        adapter._client_stub = client  # keep ref for test assertions
+        return adapter
 
-    def test_list_items_runs_compliantflow_through_adapter_boundary(self):
-        runner = RecordingRunner()
-        adapter = self.make_adapter(runner)
+    def test_list_items_runs_through_client(self):
+        adapter = self.make_adapter()
+        result = adapter.list_items("CR")
+        self.assertEqual(result, [{"id": "CR-001"}])
+        self.assertEqual(adapter._client_stub.called[0], ("list_items", "CR"))
 
-        self.assertEqual(adapter.list_items("CR"), [{"id": "CR-001"}])
-
-        command, kwargs = runner.calls[0]
-        self.assertEqual(command[:6], ["python", "-m", "compliantflow", "--dhf", str(adapter.dhf_root), "dhf"])
-        self.assertEqual(command[6:], ["item", "list", "--type", "CR"])
-        self.assertEqual(kwargs["cwd"], adapter.dhf_repo.resolve())
-
-    def test_create_and_transition_parse_json_results(self):
-        runner = RecordingRunner()
-        adapter = self.make_adapter(runner)
-
-        self.assertEqual(adapter.create_item("CR", {"title": "T"}, author="tester"), {"id": "CR-002"})
-        self.assertEqual(
-            adapter.transition_item("CR-001", "implementing", performed_by="tester"),
-            {"id": "CR-001", "status": "implementing"},
-        )
-
-    def test_get_and_update_item_parse_json_results(self):
-        runner = RecordingRunner()
-        adapter = self.make_adapter(runner)
-
+    def test_get_and_update_item(self):
+        adapter = self.make_adapter()
         self.assertEqual(adapter.get_item("CR-001"), {"id": "CR-001"})
         self.assertEqual(
             adapter.update_item("CR-001", {"title": "Updated"}, author="tester"),
             {"id": "CR-001", "title": "Updated"},
         )
 
-        update_command, _ = runner.calls[1]
-        self.assertEqual(update_command[6:9], ["item", "update", "CR-001"])
-        self.assertIn("--data", update_command)
-        self.assertIn("--author", update_command)
+    def test_create_and_transition(self):
+        adapter = self.make_adapter()
+        self.assertEqual(
+            adapter.create_item("CR", {"title": "T"}, author="tester"),
+            {"id": "CR-002", "type": "CR"},
+        )
+        self.assertEqual(
+            adapter.transition_item("CR-001", "implementing", performed_by="tester"),
+            {"id": "CR-001", "status": "implementing"},
+        )
 
-    def test_get_document_uses_compliantflow_context_provider(self):
-        runner = RecordingRunner()
-        adapter = self.make_adapter(runner)
-
+    def test_get_document(self):
+        adapter = self.make_adapter()
         self.assertEqual(adapter.get_document("CR-001-Spec"), "spec text")
 
-        command, kwargs = runner.calls[0]
-        self.assertEqual(command[:6], ["python", "-m", "compliantflow", "--dhf", str(adapter.dhf_root), "dhf"])
-        self.assertEqual(command[6:8], ["context", "implementation"])
-        self.assertEqual(kwargs["cwd"], adapter.dhf_repo.resolve())
-
-    def test_get_cr_context_returns_item_and_spec(self):
-        runner = RecordingRunner()
-        adapter = self.make_adapter(runner)
-
+    def test_get_cr_context(self):
+        adapter = self.make_adapter()
         self.assertEqual(
             adapter.get_cr_context("CR-001"),
             {"cr": {"id": "CR-001"}, "spec": "spec text"},
         )
 
-    def test_raises_actionable_error_on_provider_failure(self):
-        def failing_runner(command, **kwargs):
-            return subprocess.CompletedProcess(command, 1, "", "provider failed")
+    def test_raises_actionable_error(self):
+        adapter = MedHarnessDHFAdapter.__new__(MedHarnessDHFAdapter)
 
-        adapter = self.make_adapter(failing_runner)
+        class Failing:
+            def list_items(self, doc_type=None):
+                raise DHFAdapterError("provider failed")
 
+        adapter._client = Failing()
         with self.assertRaisesRegex(DHFAdapterError, "provider failed"):
             adapter.list_items("CR")
 
     def test_factory_selects_local_utils_provider(self):
         with tempfile.TemporaryDirectory() as tmp:
-            adapter = make_dhf_adapter(Path(tmp), "compliantflow")
-            self.assertIsInstance(adapter, CompliantFlowDHFAdapter)
+            dhf_repo = Path(tmp)
+            dhf = dhf_repo / "DHF"
+            dhf.mkdir(parents=True)
+            (dhf / "config").mkdir()
+            (dhf / "config" / "global.yaml").write_text("global_lifecycle:\n  states:\n    - id: planned\n      label: Planned\n")
+            (dhf / "config" / "doc_types").mkdir()
+            (dhf / "config" / "doc_types" / "cr.yaml").write_text(
+                "code: CR\nname: Change Request\nprefix: CR-\ndirectory: 09_cr\nproperties:\n  - id\n"
+            )
+            adapter = make_dhf_adapter(dhf_repo, "medharness")
+            self.assertIsInstance(adapter, MedHarnessDHFAdapter)
 
     def test_factory_rejects_unsupported_provider(self):
         with tempfile.TemporaryDirectory() as tmp:
