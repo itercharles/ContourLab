@@ -103,11 +103,12 @@ jobs:
             --spec "docs/cr-specs/${CR_ID}-Spec.md" 2>/dev/null || echo '{}')
           echo "DHF_CONTEXT=$DHF_CONTEXT" >> "$GITHUB_ENV"
           mkdir -p /tmp/dhf-context
-          python3 -c "
+          python3 - <<'PYEOF' 2>/dev/null || true
 import json, os
-d = json.loads(os.environ['DHF_CONTEXT'])
-open(f'/tmp/dhf-context/${CR_ID}-Spec.md','w').write(d.get('spec_text',''))
-" 2>/dev/null || true
+d = json.loads(os.environ.get('DHF_CONTEXT', '{}'))
+spec_path = f"/tmp/dhf-context/{os.environ['CR_ID']}-Spec.md"
+open(spec_path, 'w').write(d.get('spec_text', ''))
+PYEOF
           python -m medharness --dhf DHF dhf item get "$CR_ID" \
             > "/tmp/dhf-context/$CR_ID.json" 2>/dev/null || true
           echo "--- DHF_CONTEXT ---" && echo "$DHF_CONTEXT" | python3 -c \
