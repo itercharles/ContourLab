@@ -1,7 +1,7 @@
 /**
  * Custom Playwright reporter that extracts @links:SYS-xxx / @links:CRS-xxx annotations
- * from test/suite titles and emits a JUnit XML with compliantflow.links properties,
- * matching the format expected by `compliantflow --junit`.
+ * from test/suite titles and emits a JUnit XML with medharness.links properties,
+ * matching the format expected by `medharness --junit`.
  *
  * Annotation syntax (anywhere in describe/test title):
  *   test.describe('Workspace context @links:SYS-012,SYS-011', () => { ... })
@@ -118,7 +118,7 @@ class PlaywrightJunitReporter implements Reporter {
       lines.push(
         `    <testcase name="${escapeXml(e.testName)}" classname="${escapeXml(e.suiteName)}" time="${dur}">`,
         `      <properties>`,
-        `        <property name="compliantflow.links" value="${e.links.join(',')}"/>`,
+        `        <property name="medharness.links" value="${e.links.join(',')}"/>`,
         `      </properties>`,
       );
       if (!e.passed) {
