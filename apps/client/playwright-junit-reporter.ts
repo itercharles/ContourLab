@@ -35,6 +35,10 @@ function parseLinks(name: string): string[] {
 
 function escapeXml(s: string): string {
   return s
+    // strip ANSI escape sequences (control characters invalid in XML)
+    .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
+    // strip other control chars that are illegal in XML (keep tab, LF, CR)
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
