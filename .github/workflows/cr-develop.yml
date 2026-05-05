@@ -75,7 +75,7 @@ jobs:
           git clone "https://x-access-token:${GH_TOKEN}@github.com/itercharles/WebTPS-DHF.git" /tmp/dhf-repo
           git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
           pip install -r /tmp/dhf-repo/requirements.txt -q
-          python -m compliantflow --dhf /tmp/dhf-repo/DHF dhf item transition "$CR_ID" implementing \
+          python -m medharness --dhf /tmp/dhf-repo/DHF dhf item transition "$CR_ID" implementing \
             --by "github-actions[bot]" --commit --push
 
       - name: Read CR context from DHF adapter
@@ -83,7 +83,7 @@ jobs:
         env:
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
         run: |
-          python -m compliantflow --dhf /tmp/dhf-repo/DHF dhf context implementation \
+          python -m medharness --dhf /tmp/dhf-repo/DHF dhf context implementation \
             --cr "$CR_ID" \
             --out-dir /tmp/dhf-context
           echo "--- CR ---" && cat "/tmp/dhf-context/$CR_ID.json" || true
@@ -207,7 +207,7 @@ jobs:
             PR_URL="https://github.com/itercharles/WebTPS/pull/$PR_NUMBER"
           fi
           if [ -n "$SESSION_ID" ]; then
-            python -m compliantflow ci claude-session put "$PR_NUMBER" "$SESSION_ID"
+            python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID"
           fi
           # Comment on source issue
           ISSUE_URL=$(python3 - <<'PYEOF'

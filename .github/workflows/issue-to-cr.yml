@@ -48,7 +48,7 @@ jobs:
           GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          compliantflow cr workflow intake-github-issue-ci \
+          medharness cr workflow intake-github-issue-ci \
             --event "$GITHUB_EVENT_PATH" \
             --dhf-repo dhf \
             --source-repo "${{ github.repository }}" \

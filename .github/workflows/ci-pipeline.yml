@@ -320,7 +320,7 @@ jobs:
 
       - name: Run requirement-test coverage gate
         run: |
-          compliantflow ci test-coverage \
+          medharness ci test-coverage \
             --dhf dhf/DHF \
             --junit-dir test-results/srs \
             --junit-dir test-results/srs-api \
@@ -395,7 +395,7 @@ jobs:
 
       - name: Generate evidence bundle
         run: |
-          compliantflow --dhf dhf/DHF ci evidence bundle \
+          medharness --dhf dhf/DHF ci evidence bundle \
             --out-dir dhf-artifacts \
             --traceability-type UC \
             --traceability-type CRS \

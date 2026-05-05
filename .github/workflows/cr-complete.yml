@@ -35,7 +35,7 @@ jobs:
 
       - name: Complete CR
         run: |
-          compliantflow cr workflow complete-from-github-pr \
+          medharness cr workflow complete-from-github-pr \
             --dhf-repo dhf \
             --event "$GITHUB_EVENT_PATH" \
             --by "github-actions[bot]" \
