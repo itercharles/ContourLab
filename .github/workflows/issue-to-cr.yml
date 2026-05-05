@@ -2,6 +2,9 @@ name: WebTPS CR Issue Intake
 
 run-name: "CR Issue Intake | #${{ github.event.issue.number }} | ${{ github.event.issue.title }}"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   issues:
     types: [milestoned]

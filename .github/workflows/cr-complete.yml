@@ -2,6 +2,9 @@ name: Complete CR In DHF
 
 run-name: CR completion | #${{ github.event.pull_request.number }}
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   pull_request:
     types: [closed]

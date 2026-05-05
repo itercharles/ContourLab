@@ -2,6 +2,9 @@ name: WebTPS CR Development Automation
 
 run-name: CR development | ${{ github.event.pull_request.title || github.event.client_payload.cr_id || github.ref_name }}
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   repository_dispatch:
     types: [cr-design-merged]

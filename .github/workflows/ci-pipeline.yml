@@ -3,6 +3,9 @@ name: WebTPS Product CI/CD
 
 run-name: Product CI/CD | ${{ github.event_name }} | ${{ github.event.pull_request.title || github.event.head_commit.message || github.ref_name }}
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches: [ main, develop ]
