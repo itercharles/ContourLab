@@ -8,13 +8,13 @@ const techStack = [
   },
   {
     title: 'Backend',
-    description: 'ASP.NET Core 10 Web API with Python scientific compute services for dose calculation and AI inference.',
-    items: ['ASP.NET Core 10', 'Python', 'C#', 'ONNX Runtime'],
+    description: 'ASP.NET Core 10 Web API providing DICOM-web proxying, structure management, and real-time collaboration over WebSocket.',
+    items: ['ASP.NET Core 10', 'C#', 'WebSocket'],
   },
   {
     title: 'Infrastructure',
-    description: 'PostgreSQL for data persistence, Orthanc PACS for DICOM storage, and Redis for real-time collaboration.',
-    items: ['PostgreSQL', 'Orthanc PACS', 'Redis', 'Docker'],
+    description: 'Orthanc PACS for DICOM storage and DICOMweb access, containerised with Docker for local and production deployment.',
+    items: ['Orthanc PACS', 'Docker'],
   },
 ];
 
@@ -175,10 +175,7 @@ function About() {
         {/* Version */}
         <section className="border-t border-gray-200 pt-8">
           <p className="text-sm text-gray-400">
-            WebTPS v{version} — Infrastructure Release
-          </p>
-          <p className="mt-3 text-sm text-gray-400">
-            Workflow Test: CR-033
+            WebTPS v{version}
           </p>
         </section>
       </main>
