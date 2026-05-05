@@ -13,6 +13,7 @@ concurrency:
 permissions:
   contents: read
   issues: write
+  actions: write
 
 jobs:
   create-cr:
@@ -64,3 +65,12 @@ jobs:
       - name: Stop when issue is not ready for CR intake
         if: steps.prepare.outputs.should_create != 'true'
         run: echo "${{ steps.prepare.outputs.reason }}"
+
+      - name: Trigger CR analysis in DHF
+        if: steps.prepare.outputs.should_create == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          CR_ID: ${{ steps.prepare.outputs.cr_id }}
+        run: |
+          gh workflow run cr-analyze.yml --repo itercharles/WebTPS-DHF \
+            --field cr_id="$CR_ID"
