@@ -423,6 +423,20 @@ export default function Toolbar() {
                   ))}
                 </div>
 
+                {/* Open source tooling */}
+                <p className="mt-3 text-[11px] text-[var(--color-text-muted)]">
+                  The compliance and CR automation workflow is powered by{' '}
+                  <a
+                    href="https://github.com/itercharles/MedHarness"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-blue-300 hover:text-blue-200"
+                  >
+                    MedHarness
+                  </a>
+                  {' '}— open-source design-controlled development infrastructure for medical device teams.
+                </p>
+
                 {/* Access */}
                 <div className="mt-2 border border-amber-500/30 bg-amber-950/20 px-3 py-3">
                   <p className="font-semibold text-amber-200">How to get access</p>

@@ -2,15 +2,6 @@
 
 Web-based Treatment Planning System for radiation therapy.
 
-## Repositories
-
-This project uses two repositories:
-
-| Repo | Purpose |
-|------|---------|
-| **WebTPS** (this repo) | Application code — React frontend, ASP.NET Core API |
-| **WebTPS-DHF** | Design History File — requirements, risks, change requests, test evidence |
-
 ## Repository Layout
 
 ```
@@ -20,9 +11,14 @@ WebTPS/
 │   └── api/                 — ASP.NET Core API gateway (port 4000)
 ├── packages/
 │   └── shared-types/        — Canonical TypeScript data model interfaces
-├── docs/                    — Local development notes and ADRs
-├── WebTPS_Plan_Spec.md      — Architecture spec and full feature roadmap
-└── .github/workflows/       — CI/CD pipeline
+├── DHF/                     — Design History File (items, config, documents)
+│   ├── items/               — YAML DHF items (CR, SYS, SRS, RISK, etc.)
+│   ├── config/              — DHF configuration (change-controlled)
+│   └── documents/           — Spec and plan templates
+├── docs/cr-specs/           — CR specification documents
+├── governance/              — Compliance policies (IEC 62304, ISO 14971)
+├── docs/                    — Architecture, ADRs, local development notes
+└── .github/workflows/       — CI/CD pipeline and CR automation
 ```
 
 ## Local Setup
@@ -191,21 +187,21 @@ GitHub Actions validates:
 ## Change Process
 
 WebTPS uses a CR-driven workflow. Every non-trivial change — new feature, architecture
-decision, external dependency — starts with a Change Request (CR) in the
-[WebTPS-DHF](https://github.com/itercharles/WebTPS-DHF) repository.
+decision, external dependency — starts with a Change Request (CR) in this repository.
 
 ### How it works
 
 1. **Open an issue in WebTPS** — describe the requested change. Maintainers review
    the issue and assign it to the current ISO-week milestone, e.g. `2026-W18`, when
-   it is accepted for the current release intake. The `issue-to-cr` workflow then
-   opens the CR PR in WebTPS-DHF automatically. Maintainers may still open a CR PR
-   in WebTPS-DHF directly when needed.
+   it is accepted. The `issue-to-cr` workflow automatically opens a CR PR.
 2. **Approve the CR PR** — triggers automated analysis. The agent reads product strategy,
-   architecture, and DHF context, then opens a Plan Spec PR in WebTPS-DHF.
-3. **Review and approve the Plan Spec PR** — triggers automated implementation. The agent
-   opens an Implementation PR in this repo.
-4. **Review the Implementation PR** — standard code review. Merge when satisfied.
+   architecture, and DHF context, then opens a Spec PR in `docs/cr-specs/`.
+3. **Approve the Spec PR** — triggers automated DHF design. The agent opens a Design PR
+   updating items in `DHF/items/`.
+4. **Approve the Design PR** — triggers automated implementation. The agent opens an
+   Implementation PR in this repo.
+5. **Review the Implementation PR** — standard code review. Merge when satisfied.
+   `cr-complete.yml` closes the CR automatically on merge.
 
 No stage advances without explicit human approval. The agent cannot merge PRs.
 
@@ -231,36 +227,17 @@ fix(CR-031): correct version string in About page
 If your change introduces a new capability, external library, architecture decision, or
 identified hazard — DHF items need updating. The Plan Spec PR will identify what is needed.
 
-### DHF facade usage
+### DHF commands
 
-WebTPS automation accesses DHF through the CompliantFlow facade. Do not add new
-automation that reads `../WebTPS-DHF/DHF/items/...` directly.
-
-For WebTPS CI and agents, call CompliantFlow directly:
+DHF items live at `DHF/items/`. Use the `medharness` CLI:
 
 ```bash
-python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf context implementation \
-  --cr CR-034 \
-  --out-dir /tmp/webtps-cr-context
-
-python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item transition CR-034 completed \
-  --by agent
+medharness --dhf DHF dhf item list --type cr
+medharness --dhf DHF dhf item get CR-034
+medharness --dhf DHF dhf context for-stage develop --cr CR-034 --spec docs/cr-specs/CR-034-Spec.md
+medharness --dhf DHF dhf item transition CR-034 completed --by "agent"
+medharness --dhf DHF dhf validate schema
 ```
-
-For facade debugging from a CompliantFlow checkout, the underlying operations are:
-
-```bash
-python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item get SRS-001
-
-python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item list --type SRS
-
-python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf context implementation \
-  --cr CR-034 \
-  --out-dir /tmp/compliantflow-context
-```
-
-Impact analysis and compliance evidence remain DHF/CompliantFlow-owned outputs;
-WebTPS consumes approved requirements, design context, and implementation specs.
 
 ## Build
 
@@ -285,10 +262,10 @@ specification, technology stack decisions, and phased feature roadmap.
 ## Compliance
 
 Medical device compliance (IEC 62304, IEC 82304-1, ISO 14971) is managed in
-the **WebTPS-DHF** repository. Each application feature must trace to a DHF
-item. CI compliance checks run against WebTPS-DHF, not this repository.
+the `DHF/` directory of this repository. Governance policies live in `governance/`.
+Each application feature must trace to a DHF item.
 
 ## Agent Guidance
 
 See [`CLAUDE.md`](CLAUDE.md) and the CR workflow in
-[`WebTPS-DHF/docs/cr_spec_workflow.md`](../WebTPS-DHF/docs/cr_spec_workflow.md).
+[`docs/cr_spec_workflow.md`](docs/cr_spec_workflow.md).

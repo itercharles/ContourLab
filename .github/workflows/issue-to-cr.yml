@@ -14,34 +14,30 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
   issues: write
   actions: write
+  pull-requests: write
 
 jobs:
   create-cr:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out WebTPS
-        uses: actions/checkout@v4
-
-      - name: Check out DHF repo
+      - name: Check out repo
         uses: actions/checkout@v4
         with:
-          repository: itercharles/WebTPS-DHF
-          token: ${{ secrets.PRODUCT_REPO_TOKEN }}
-          path: dhf
+          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Install DHF utility dependencies
-        env:
-          PRODUCT_REPO_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
-        run: |
-          git config --global url."https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/".insteadOf "https://github.com/"
-          python -m pip install --upgrade pip
-          pip install -r dhf/requirements.txt
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      - name: Configure git identity for DHF commits
+      - name: Install medharness
+        run: pip install medharness
+
+      - name: Configure git identity
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -49,12 +45,12 @@ jobs:
       - name: Prepare CR from issue
         id: prepare
         env:
-          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           medharness cr workflow intake-github-issue-ci \
             --event "$GITHUB_EVENT_PATH" \
-            --dhf-repo dhf \
+            --dhf-repo . \
             --source-repo "${{ github.repository }}" \
             --marker-name webtps-cr \
             --write \
@@ -69,11 +65,11 @@ jobs:
         if: steps.prepare.outputs.should_create != 'true'
         run: echo "${{ steps.prepare.outputs.reason }}"
 
-      - name: Trigger CR analysis in DHF
+      - name: Trigger CR analysis
         if: steps.prepare.outputs.should_create == 'true'
         env:
-          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ steps.prepare.outputs.cr_id }}
         run: |
-          gh workflow run cr-analyze.yml --repo itercharles/WebTPS-DHF \
+          gh workflow run cr-analyze.yml \
             --field cr_id="$CR_ID"

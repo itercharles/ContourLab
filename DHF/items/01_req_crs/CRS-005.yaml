@@ -1,0 +1,10 @@
+id: CRS-005
+title: Clinicians shall push the active structure set to the DICOM repository
+content: |-
+  As a physician or dosimetrist, I need to save the current structure set back
+  to the DICOM repository as an RTSTRUCT object so it is available to other
+  systems and users in the clinical workflow.
+user_group: Physician / Dosimetrist
+derives_from:
+  - UC-004
+priority: Critical

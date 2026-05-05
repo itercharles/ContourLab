@@ -1,0 +1,12 @@
+id: RISK-002
+title: DICOM metadata parsing error produces incorrect image geometry
+hazard: |-
+  Incorrect parsing of ImagePositionPatient, PixelSpacing, or slice ordering
+  tags produces a volume with incorrect geometric registration, causing contours
+  drawn in image space to be mislocated in patient space.
+harm: Contours drawn on incorrectly registered images lead to wrong anatomical targeting
+severity: Critical
+probability: Low
+risk_level: High
+category: Software
+related_requirements: [SYS-001]

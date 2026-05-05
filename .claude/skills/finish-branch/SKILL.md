@@ -26,7 +26,7 @@ dotnet build apps/api/api.csproj --configuration Release  # if API changed
 Answer these before opening a PR:
 
 - Did the implementation stay within the agreed scope?
-- Does it align with `WebTPS-DHF/DHF/documents/specs/crs_specification.md.j2` and the active roadmap phase?
+- Does it align with `DHF/documents/specs/crs_specification.md.j2` and the active roadmap phase?
 - **DHF impact**: which DHF files changed, or state explicitly why no DHF update was needed
 - **ADR**: was an architecture boundary crossed? If so, was an ADR added?
 - **SOUP**: was a new npm/NuGet/container dependency introduced? If so, was a SOUP item created?

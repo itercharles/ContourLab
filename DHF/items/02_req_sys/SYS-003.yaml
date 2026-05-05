@@ -1,0 +1,12 @@
+id: SYS-003
+title: System shall support creating, editing, and deleting structures in a structure set
+content: |-
+  The system shall allow users to create structures with TG-263-compliant names,
+  assign types (GTV/CTV/PTV/OAR/EXTERNAL/AVOIDANCE/SUPPORT), set RGB colors,
+  and toggle visibility. Volume in cm3 shall be computed from contour data.
+category: Functional
+verification_method:
+  - Test
+critical_safety: false
+satisfies:
+  - CRS-002

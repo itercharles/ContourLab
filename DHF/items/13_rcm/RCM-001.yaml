@@ -1,0 +1,11 @@
+id: RCM-001
+title: Unit tests for UndoRedoManager command stack invariants
+content: |-
+  Automated unit tests shall verify: push() executes the command immediately;
+  undo() calls undo() on the last command and moves it to redoStack; redo()
+  re-executes and moves back to undoStack; stack depth is capped at 50;
+  new push() clears the redoStack; empty stack operations are no-ops.
+mitigates: [RISK-001]
+implements: [SYS-003]
+verification_method: [Test]
+residual_risk: Low

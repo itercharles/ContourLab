@@ -1,0 +1,10 @@
+id: CRS-004
+title: Clinicians shall view automated contour quality warnings for the active structure and structure set
+content: |-
+  As a physician or dosimetrist, I need to see a summary of contour quality
+  issues for each structure and for the structure set as a whole, so that I can
+  identify and correct problems before exporting to the DICOM repository.
+user_group: Physician / Dosimetrist
+derives_from:
+  - UC-003
+priority: High

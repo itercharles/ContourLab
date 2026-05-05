@@ -1,0 +1,238 @@
+id: SWDD-006
+title: Structure draft persistence and RTSTRUCT repository exchange
+content: |-
+  structureDraftStore stores serialized per-series structure draft payloads in
+  IndexedDB under the active SeriesInstanceUID. StructurePanel watches dirty
+  series state, debounces draft auto-save, and restores drafts when a matching
+  series is loaded without existing in-memory structures. structureStore tracks
+  local draft persistence state separately from repository synchronization:
+  dirtySeriesUIDs drives local browser draft save/restore behavior, while
+  repositoryDirtySeriesUIDs drives Push Changes enablement and unload warnings
+  for edits that have not yet been published to the DICOM repository.
+  DicomRepoPanel checks repositoryDirtySeriesUIDs for the active series before
+  workflow switches that could hide or replace the edited structure workspace.
+  Selecting another patient, activating a different image series, or loading a
+  repository RTSTRUCT requires explicit confirmation while unpublished changes
+  are present; canceling the confirmation keeps the current active workspace
+  and reports the reason in the repository panel status.
+
+  The Push Changes action is exposed at the far left of the central top
+  operation bar for publishing editable structure changes back to the repository
+  and remains disabled until the active image series is marked repository-dirty.
+  Structure edits mark both draft-dirty and repository-dirty state; local draft
+  auto-save clears only draft-dirty state so Push Changes remains available
+  after edits such as renaming or locking a structure. It uses
+  rtstructExport.exportRtstructObject() to create a DICOM RT Structure Set object
+  with ReferencedFrameOfReferenceSequence, RTReferencedStudySequence, and
+  RTReferencedSeriesSequence metadata pointing back to the active image series,
+  and exposes the generated StudyInstanceUID, SeriesInstanceUID, and
+  SOPInstanceUID for the active structure set, then
+  dicomWebClient.uploadDicomBlobToRepository() sends the object to the DICOMweb
+  repository using STOW-RS multipart upload. After successful upload,
+  Toolbar updates the active StructureSet source provenance to the new
+  RTSTRUCT object, clears both draft-dirty and repository-dirty state for the
+  active image series, and logs the generated SOP Instance UID. The repository
+  tree then reflects the new object through its normal refresh/polling path.
+  StructurePanel remains focused on loaded structure editing and does not expose
+  repository actions.
+
+  Toolbar is the top operation bar. It renders WorkspaceContextBar as its
+  persistent clinical context row and groups primary viewport and contour
+  controls beneath it. The View group contains zoom, pan, scroll, and a
+  Crosshair control that shows or hides MPR reference lines. The Window group
+  places the Window/Level tool next to the active preset selector. ImageViewer
+  renders a contextual ToolOptions overlay above the viewport grid when the
+  active tool has secondary controls. The Window/Level overlay shows Soft
+  Tissue, Lung, Bone, Brain, Mediastinum, and Custom presets plus the active
+  window width and level values; selecting a preset updates uiStore
+  windowLevelPreset and the existing viewport effect applies the VOI range.
+  Viewport tools use an explicit none state so clicking an already-active
+  Window/Level, Zoom, Pan, or Scroll tool clears the active tool, removes the
+  contextual overlay, and passivates the Cornerstone primary-button tool
+  binding rather than forcing the user to select a different tool.
+  Brush and Eraser overlays expose circle mode, reserved square/3D-mode
+  controls, and brushRadius adjustment. Freehand and Polygon overlays expose
+  the current New contour mode plus reserved Add/Subtract actions and the
+  close-on-start behavior indicator.
+  WorkspaceContextBar
+  reads the active LoadedSeries and active StructureSet from the Zustand stores
+  and displays the active patient, image set, RTSTRUCT or structure-set label,
+  and whether repositoryDirtySeriesUIDs contains the active SeriesInstanceUID.
+  The row is rendered inside the persistent top operation bar so this active
+  context remains visible while the left repository navigator or right
+  structure inspector are collapsed.
+  The workspace layout keeps the DICOM repository worklist in the left
+  navigation area, allows that navigation area to collapse from the top
+  operation bar, and keeps the right panel focused on active structure
+  information and review. The right StructurePanel is a compact inspector that
+  prioritizes the active structure card at the top for high-frequency review
+  and editing, keeps the Structure List in the middle for selection and
+  moves Structure Set source/provenance to the lower information area. The
+  Structure List omits a redundant "Structure Set" header in the primary
+  Structures tab and does not render a separate active StructureSet header or
+  ACTIVE badge because the loaded RTSS context is displayed in the persistent
+  top context row and DICOM information area. Routine browser-draft auto-save
+  success is logged for debugging but is not surfaced as a right-panel status
+  message; the panel continues to show actionable errors and user operation
+  feedback. Each structure category header displays its ROI count and a
+  compact add-structure control so creation is visually attached to the
+  category list rather than a separate global row. Category add controls carry
+  the category default ROI type, so Targets creates PTV structures, Organs at
+  Risk creates OAR structures, and External / Support creates EXTERNAL
+  structures even when the entered name would otherwise infer a different type.
+  Structure rows do not repeat the ROI type badge because the row is already
+  grouped under the corresponding category. The Structure List is scoped
+  to StructureSet objects whose referencedSeriesUID matches the active image
+  series, so structures from previously loaded image sets are not shown in the
+  active review workspace. StructureSetManager.syncSelectionToSeries()
+  clears activeStructureSetId and activeStructureId when the active image series
+  changes and the previous active StructureSet belongs to another series; it does
+  not implicitly activate the first StructureSet for the newly active image
+  series. Each visible StructureSet header is an explicit activation control that
+  sets activeStructureSetId and selects the first structure in that set when
+  available. Structure row selection updates both the active StructureSet and
+  active Structure, and add-structure uses the active image-series StructureSet
+  only when it is explicitly active. The active
+  structure card contains a color swatch, name, type, and compact volume and
+  contour-slice metrics without redundant lower-row repeats of type, volume,
+  slice count, display state, editability, or repository sync state. Structure
+  type is normally shown as text next to the structure name and opens a type
+  selector only through an adjacent edit affordance because type changes are
+  infrequent after structure creation; previous/next review controls live in
+  the top operation bar. The active structure card exposes inline
+  Margin, Interpolate, and Boolean operation panels for planned review and
+  correction workflows. The left ToolRail exposes these same three structure
+  operations as enabled entry points: selecting one opens the right StructurePanel,
+  focuses the axial review context, and toggles the corresponding inline
+  operation panel for the active unlocked structure. Interpolate uses the active image frame list and
+  contouring.InterpolationEngine to generate missing closed contours between
+  adjacent drawn slices, subject to a configurable maximum gap, then commits
+  the resulting slices through ContourEngine.addContours() as one undoable
+  operation. Boolean uses slice-level rasterization on the active image grid,
+  combines the active and target structure masks per slice as union,
+  intersection, or subtraction, extracts the dominant closed boundary loop for
+  each resulting slice, and commits the updated contour set through
+  ContourEngine.replaceContours() as one undoable operation. Margin uses the
+  same active image grid to rasterize each contour-bearing slice, applies a
+  positive or negative in-plane morphological offset in millimeters, extracts
+  the dominant resulting closed boundary loop, and commits the updated contour
+  set through ContourEngine.replaceContours() as one undoable operation. The active structure card also computes a contour QA summary
+  through contourQuality.analyzeContourQuality(), using the active image slice
+  spacing and active image bounds when available. The current QA checks flag
+  empty structures as informational items and warn on open contours,
+  degenerate contours, large slice gaps, abrupt adjacent-slice contour area
+  changes, abrupt adjacent-slice centroid shifts, and contours that extend
+  outside the active image bounds. To keep high-volume review findings usable,
+  StructurePanel groups contour QA items by issue type, supports warnings-only
+  vs all-issues filtering, collapses groups by default, pages large groups with
+  incremental "show more" disclosure, presents enabled QA rules with no current
+  findings as passed checklist rows with a success icon, and treats
+  slice-specific contour QA rows as direct navigation actions on the active ROI. StructurePanel
+  also aggregates these checks across the active StructureSet into an RTSS QA
+  checklist. RTSS QA shows the same pass/fail checklist treatment per enabled
+  rule before the issue list. RTSS QA rows show the ROI name and issue text; clicking a
+  slice-specific issue activates the ROI, computes the closest axial image frame
+  through contourReview.resolveScrollDeltaToSlice(), scrolls the axial viewport,
+  and sets AXIAL as the active viewport. Structure rows remain compact but show
+  visibility, ROI color, name, volume, and an always-visible lock control
+  directly in the list so routine review does not require selecting every
+  structure. Users can toggle locked/unlocked state from the row-level lock
+  control.
+
+  LeftSidebar presents the patient context in the upper-left workspace area,
+  including patient name, MRN, and active image-set label. The refresh icon is
+  colocated with this patient context and triggers DicomRepoPanel worklist
+  refresh through a parent refresh token. The select-patient command is
+  colocated with patient identity and opens DicomRepoPanel's patient browser
+  modal rather than a sidebar-sized selector. The browser is a focused
+  repository selection surface with patient search, All/New/In
+  progress/Awaiting review/Approved filter tabs, patient/MRN/treatment
+  site/study/status/assignee/last-activity columns, active-patient indication,
+  click-outside close, an explicit close control, Escape-key dismissal, and an
+  enabled Import DICOM action. The import action opens a hidden multi-file /
+  directory file input, sends the selected files through
+  dicomWebClient.uploadDicomWebStudies(), reports import progress or failure in
+  repository status, and refreshes the worklist after successful repository
+  upload.
+  Selecting a patient in the browser is a workflow-open action: DicomRepoPanel
+  resolves the newest planning CT series by study date, queries RTSTRUCT objects
+  for the patient's studies, selects the newest RTSTRUCT that references that
+  image series, then loads the image series and RTSTRUCT into the workspace. If
+  no matching RTSTRUCT exists, it loads only the newest image series. This keeps
+  image and RTSS loading as implementation details for the common clinical
+  workflow.
+  Silent repository polling compares a compact series
+  signature and enables the refresh affordance when worklist changes are
+  detected. A compact Settings icon is kept in the lower-left system area
+  because repository configuration is infrequent. This keeps patient identity
+  visible in the same region used by common TPS layouts and lets DicomRepoPanel
+  focus its vertical space on image sets, RT Structure Sets, and future plan
+  rows after patient selection.
+
+  RTSTRUCT import is exposed directly under each selected patient study in the
+  left repository worklist. DicomRepoPanel presents the left navigation as a
+  clinical data workflow focused on Image Sets and Structure Sets / RTSS only;
+  patient selection, repository refresh, endpoint selection, and local DICOM
+  import are handled outside the data tree. The Image Sets section groups CT
+  series by study with an explicit image-set row, active/loaded state, RTSS
+  count, and a compact expand control. The Structure Sets / RTSS section is
+  rendered only under an active or user-expanded image set, preventing
+  patient-level RTSS lists from appearing before the user has chosen an image
+  context. RTSS rows are filtered by referenced SeriesInstanceUID parsed from
+  ReferencedFrameOfReferenceSequence / RTReferencedStudySequence /
+  RTReferencedSeriesSequence metadata. For legacy RTSTRUCT objects without
+  referenced-series metadata, DicomRepoPanel shows them only when the study has
+  a single planning image set, avoiding ambiguous attachment in multi-image-set
+  studies. The expanded RTSS child area shows RTSTRUCT counts, newest/latest
+  state, active state, SOP suffix, timestamp, ROI count, and the reserved Plans
+  child row.
+  DicomRepoPanel automatically queries RTSTRUCT
+  instances for selected patient studies through
+  dicomWebClient.queryRtstructInstancesForStudy(), displays the structure set
+  rows inline under image sets, reserves a Plans child area under each structure
+  set row for future RTPLAN integration, polls the selected-patient RTSTRUCT
+  list in the background for repository updates, loads a double-clicked
+  RTSTRUCT row from the patient-context dropdown by activating the corresponding
+  patient and planning CT image set, marks the active repository row, records
+  RTSTRUCT source provenance on the active
+  StructureSet, retrieves the selected DICOM object through WADO-RS, and uses
+  rtstructImport.importRtstructArrayBuffer() to convert ROI, ROIContour, and
+  RTROIObservation sequences into editable WebTPS structures for the active
+  SeriesInstanceUID. Imported repository RTSTRUCT data is marked draft-dirty so
+  the browser draft can persist the loaded workspace, but it is not marked
+  repository-dirty because loading repository content does not create a change
+  that needs to be pushed. Replace mode removes existing structure sets for the
+  active series before inserting the imported set. RTSTRUCT rows are sorted
+  newest-first, mark the newest row with LATEST when it is not already active,
+  display short SOP identifiers, timestamps, and ROI counts derived from
+  metadata when present. StructurePanel source provenance displays a compact
+  SOP suffix and source timestamp for the active StructureSet.
+  RTSTRUCT rows also expose a Compare action. Compare retrieves the selected
+  repository object through retrieveDicomWebInstance(), imports it transiently
+  with rtstructImport.importRtstructArrayBuffer(), and compares it with the
+  active workspace StructureSet for the same image set using
+  structureSetCompare.compareStructureSets(). It does not replace, activate, or
+  dirty the workspace. The inline comparison summary reports added, removed, and
+  changed ROI counts plus representative volume and contour-bearing slice-count
+  deltas, and exposes each changed row as a review shortcut. When the changed
+  ROI also exists in the active workspace, selecting that row activates the ROI,
+  resolves a representative changed slice from the contour comparison result,
+  and scrolls the axial viewport to the closest image frame for review.
+
+  Settings is a standalone route for repository operations that are not part of
+  routine contour review. It reads the default DICOMweb endpoint from
+  VITE_DICOMWEB_BASE_URL or /dicom-web, allows a browser-local override through
+  dicomWebClient.setDicomWebBaseUrl(), supports reset to the default endpoint,
+  and imports local DICOM files through uploadDicomWebStudies(). Settings also
+  exposes browser-local QA rule configuration backed by qaRuleConfig so each
+  contour QA and RTSS QA rule can be enabled or disabled individually without
+  changing shared repository data. StructurePanel reads this configuration at
+  render time and passes the enabled-rule map into contourQuality and
+  rtssQuality analysis. Local
+  development Orthanc endpoints at localhost:8042/dicom-web are normalized to
+  the same-origin /dicom-web proxy so browser CORS restrictions do not block
+  QIDO-RS, WADO-RS, or STOW-RS calls. All DICOMweb query, retrieve, load,
+  import, and RTSTRUCT push calls resolve the endpoint at request time through
+  getDicomWebBaseUrl(), so changing Settings affects later repository
+  operations without rebuilding the client.
+implements: [SRS-009, SRS-010, SRS-013, SRS-015]

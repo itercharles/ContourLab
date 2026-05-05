@@ -1,0 +1,10 @@
+id: CRS-007
+title: Clinicians shall compare a repository RTSTRUCT version with the active workspace
+content: |-
+  As a physician or dosimetrist, I need to compare a repository RTSTRUCT object
+  with the current workspace structure set to understand what changed between
+  versions without disrupting my active editing session.
+user_group: Physician / Dosimetrist
+derives_from:
+  - UC-004
+priority: Medium

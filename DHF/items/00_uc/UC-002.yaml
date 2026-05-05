@@ -1,0 +1,31 @@
+id: UC-002
+title: Draw Manual Contours
+content: |-
+  A physician or dosimetrist draws and edits contours on CT slices to delineate
+  target volumes and organs at risk using freehand, polygon, brush, and other
+  contouring tools.
+
+  Actor: Physician / Dosimetrist
+
+  Preconditions:
+  - DICOM image series is loaded and displayed in the viewer
+  - An active structure set is available
+
+  Primary Flow:
+  1. User selects a contouring tool (freehand, polygon, brush, eraser, etc.)
+  2. User draws a contour on the current axial slice
+  3. System stores contour points and updates the structure set
+  4. User repeats on additional slices
+  5. System automatically preserves an editable local draft after each edit
+  6. User may undo or redo contour edits up to 50 levels via Cmd/Ctrl+Z
+  7. If the active structure is locked, system rejects contour operations and
+     indicates that the structure must be unlocked before editing
+
+  Postconditions:
+  - Structure set contains valid contour data for the drawn structures
+  - Editable draft is preserved for local restoration
+  - Locked structures are protected from contour mutations
+
+  Related use cases:
+  - UC-003: Review Structure Quality (quality review after editing)
+  - UC-004: Exchange RTSTRUCT with Repository (save and retrieve edits)

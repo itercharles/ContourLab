@@ -18,6 +18,64 @@ permissions:
 
 jobs:
 
+  # ── CR VALIDATION ─────────────────────────────────────────────────────────
+  # Phase 1: PR title must contain a CR ID (or be a chore/ci/docs prefix).
+  # All design/spec/feat branches from the CR automation satisfy this rule.
+
+  cr-validation:
+    name: CR Validation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Extract CR IDs from PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          CR_IDS=$(echo "$PR_TITLE" | grep -oE 'CR-[0-9]+' | sort -u | tr '\n' ' ' || true)
+          if [ -z "$CR_IDS" ]; then
+            if echo "$PR_TITLE" | grep -Eq '^(ci|chore|docs)(\(|:)'; then
+              echo "No CR ID — maintenance PR exempt."
+              exit 0
+            fi
+            echo "::error::No CR ID in PR title. Add e.g. 'feat(CR-042): description'"
+            exit 1
+          fi
+          echo "Found CR IDs: $CR_IDS"
+
+  # ── DHF VALIDATION ────────────────────────────────────────────────────────
+  # Phase 2: DHF schema + design traceability check.
+  # Runs on every PR so spec/CR-* and design/CR-* branches are validated.
+
+  dhf-validation:
+    name: DHF Validation (schema + traceability)
+    runs-on: ubuntu-latest
+    needs: [cr-validation]
+    if: always() && !failure() && !cancelled()
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install medharness
+        run: pip install medharness
+
+      - name: Run DHF validation
+        run: |
+          medharness ci dhf-validate \
+            --dhf DHF \
+            --run-schema \
+            --run-traceability \
+            --coverage-pair UC:CRS \
+            --coverage-pair CRS:SYS \
+            --coverage-pair SYS:SRS \
+            --coverage-pair SRS:SWDD \
+            --coverage-pair SYS:SYSARCH \
+            --coverage-pair RISK:RCM
+
   # ── DEVELOPMENT TESTING ────────────────────────────────────────────────────
   # Static analysis and compilation. Engineering feedback only — not compliance
   # artifacts. All three jobs run in parallel.
@@ -154,7 +212,9 @@ jobs:
   verify-sys:
     name: Verify | Test-SYS (Playwright · system requirements)
     runs-on: ubuntu-latest
-    needs: [dev-frontend, dev-api, dev-shared-types]
+    # SYS tests use page.route() mocks and window.__webtps_stores injection —
+    # they do not call the API or Orthanc, so only the frontend needs to run.
+    needs: [dev-frontend, dev-shared-types]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -164,30 +224,41 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
       - run: pnpm install --frozen-lockfile
-      - run: dotnet restore apps/api/api.csproj
-      - name: Start full stack
-        run: |
-          pnpm repo:up
-          pnpm api > /tmp/webtps-api.log 2>&1 &
-          pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
-          for i in $(seq 1 30); do
-            curl -sf http://127.0.0.1:4000/api/health > /dev/null 2>&1 && \
-            curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1 && break
-            sleep 3
-          done
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('apps/client/package.json') }}
+
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm --filter @webtps/client exec playwright install chromium --with-deps
+
+      - name: Install Playwright system deps (cached browser)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @webtps/client exec playwright install-deps chromium
+
+      - name: Start frontend
+        run: |
+          pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
+          for i in $(seq 1 20); do
+            curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1 && echo "Frontend ready" && break
+            sleep 2
+          done
+
       - name: Run SYS verification tests
-        run: pnpm --filter @webtps/client test:e2e:sys
+        run: |
+          pnpm --filter @webtps/client exec playwright test \
+            --project=sys \
+            --workers=2 \
+            --fully-parallel
         env:
           BASE_URL: http://127.0.0.1:3000
-      - name: Stop services
-        if: always()
-        run: pnpm local:down
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: test-results/e2e-sys-junit.xml
+
       - name: Upload SYS test evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -195,14 +266,13 @@ jobs:
           name: verify-sys-junit
           path: apps/client/test-results/e2e-sys-junit.xml
           if-no-files-found: error
+
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: verify-sys-logs
-          path: |
-            /tmp/webtps-api.log
-            /tmp/webtps-client.log
+          path: /tmp/webtps-client.log
 
   # ── VALIDATION TESTING ─────────────────────────────────────────────────────
   # IEC 62304 §5.8. Evidence that the system satisfies customer requirements
@@ -272,27 +342,18 @@ jobs:
   compliance:
     name: Test Coverage Gate (requirement → test)
     runs-on: ubuntu-latest
-    needs: [dev-integration, verify-srs, verify-sys, validate-crs]
+    needs: [dhf-validation, dev-integration, verify-srs, verify-sys, validate-crs]
     steps:
-      - name: Check out DHF repo
+      - name: Check out repo
         uses: actions/checkout@v4
-        with:
-          repository: itercharles/WebTPS-DHF
-          token: ${{ secrets.PRODUCT_REPO_TOKEN }}
-          path: dhf
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        env:
-          PRODUCT_REPO_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
-        run: |
-          python -m pip install --upgrade pip
-          sed "s|git+https://github.com/|git+https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/|g" \
-            dhf/requirements.txt | pip install -r /dev/stdin
+      - name: Install medharness
+        run: pip install medharness
 
       - name: Download SRS test evidence (Vitest)
         uses: actions/download-artifact@v4
@@ -324,7 +385,7 @@ jobs:
       - name: Run requirement-test coverage gate
         run: |
           medharness ci test-coverage \
-            --dhf dhf/DHF \
+            --dhf DHF \
             --junit-dir test-results/srs \
             --junit-dir test-results/srs-api \
             --junit-dir test-results/sys \
@@ -344,12 +405,8 @@ jobs:
     needs: [compliance]
     if: github.ref == 'refs/heads/main' && !failure() && !cancelled()
     steps:
-      - name: Check out DHF repo
+      - name: Check out repo
         uses: actions/checkout@v4
-        with:
-          repository: itercharles/WebTPS-DHF
-          token: ${{ secrets.PRODUCT_REPO_TOKEN }}
-          path: dhf
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -361,13 +418,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0
 
-      - name: Install dependencies
-        env:
-          PRODUCT_REPO_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
-        run: |
-          python -m pip install --upgrade pip
-          sed "s|git+https://github.com/|git+https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/|g" \
-            dhf/requirements.txt | pip install -r /dev/stdin
+      - name: Install medharness
+        run: pip install "medharness[docs]"
 
       - name: Download SRS test evidence (Vitest)
         uses: actions/download-artifact@v4
@@ -398,7 +450,7 @@ jobs:
 
       - name: Generate evidence bundle
         run: |
-          medharness --dhf dhf/DHF ci evidence bundle \
+          medharness --dhf DHF ci evidence bundle \
             --out-dir dhf-artifacts \
             --traceability-type UC \
             --traceability-type CRS \

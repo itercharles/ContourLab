@@ -1,0 +1,17 @@
+id: SWDD-009
+title: Structure volume calculation using the shoelace formula
+content: |-
+  computeStructureVolume(contourSlices: ContourSlice[], sliceThicknessMm: number): number
+
+  Algorithm per slice:
+  1. Extract the Float32Array of (x, y) pairs for the ContourSlice polygon.
+  2. Skip polygons with fewer than 3 points.
+  3. Apply the shoelace formula to compute the signed polygon area in mm²:
+       area = 0.5 * |Σ (x_i * y_{i+1} - x_{i+1} * y_i)|
+     where indices wrap at n.
+  4. Multiply area by sliceThicknessMm to obtain volume contribution in mm³.
+
+  Accumulate across all valid slices, divide by 1000 to convert mm³ to cm³,
+  and return the result. The function is pure, has no side effects, and is
+  tested against known polygon shapes with verified area expectations.
+implements: [SRS-006]

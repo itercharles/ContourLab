@@ -1,13 +1,17 @@
 name: WebTPS CR Development Automation
 
-run-name: CR development | ${{ github.event.pull_request.title || github.event.client_payload.cr_id || github.ref_name }}
+run-name: CR development | ${{ github.event.pull_request.title || github.event.inputs.cr_id || github.ref_name }}
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
-  repository_dispatch:
-    types: [cr-design-merged]
+  workflow_dispatch:
+    inputs:
+      cr_id:
+        description: 'CR ID (e.g. CR-030)'
+        required: true
+        type: string
   pull_request_review:
     types: [submitted]
   pull_request:
@@ -16,7 +20,7 @@ on:
 jobs:
   develop:
     if: |
-      github.event_name == 'repository_dispatch' ||
+      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested' && startsWith(github.event.pull_request.head.ref, 'feat/CR-')) ||
       (github.event_name == 'pull_request' && !github.event.pull_request.merged && startsWith(github.event.pull_request.head.ref, 'feat/CR-'))
     runs-on: ubuntu-latest
@@ -28,6 +32,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine mode and CR ID
         id: ctx
@@ -35,9 +40,9 @@ jobs:
           EVENT: ${{ github.event_name }}
           MERGED: ${{ github.event.pull_request.merged }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          DISPATCH_CR_ID: ${{ github.event.client_payload.cr_id }}
+          DISPATCH_CR_ID: ${{ github.event.inputs.cr_id }}
         run: |
-          if [ "$EVENT" = "repository_dispatch" ]; then
+          if [ "$EVENT" = "workflow_dispatch" ]; then
             echo "mode=new" >> "$GITHUB_OUTPUT"
             echo "cr_id=$DISPATCH_CR_ID" >> "$GITHUB_OUTPUT"
           elif [ "$EVENT" = "pull_request" ] && [ "$MERGED" = "false" ]; then
@@ -51,14 +56,25 @@ jobs:
             echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Cancel — notify WebTPS-DHF
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install medharness
+        run: pip install medharness
+
+      - name: Cancel — transition CR and dispatch to cr-design
         if: steps.ctx.outputs.mode == 'cancel'
         env:
-          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
         run: |
-          echo '{"event_type":"cr-impl-cancelled","client_payload":{"cr_id":"'"$CR_ID"'"}}' | \
-            gh api repos/itercharles/WebTPS-DHF/dispatches --method POST --input -
+          git checkout main
+          python -m medharness --dhf DHF dhf item transition \
+            "$CR_ID" cancelled \
+            --by "github-actions[bot]" --commit --push
+          printf '{"event_type":"cr-impl-cancelled","client_payload":{"cr_id":"%s"}}' "$CR_ID" | \
+            gh api repos/${{ github.repository }}/dispatches --method POST --input -
 
       - uses: actions/setup-node@v4
         if: steps.ctx.outputs.mode != 'cancel'
@@ -69,22 +85,12 @@ jobs:
         if: steps.ctx.outputs.mode != 'cancel'
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Clone DHF repo and install medharness
-        if: steps.ctx.outputs.mode != 'cancel'
-        env:
-          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
-        run: |
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/itercharles/WebTPS-DHF.git" /tmp/dhf-repo
-          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
-          pip install -r /tmp/dhf-repo/requirements.txt -q
-
-      - name: Transition CR to implementing in DHF
+      - name: Transition CR to implementing
         if: steps.ctx.outputs.mode == 'new'
         env:
-          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
         run: |
-          python -m medharness --dhf /tmp/dhf-repo/DHF dhf item transition "$CR_ID" implementing \
+          python -m medharness --dhf DHF dhf item transition "$CR_ID" implementing \
             --by "github-actions[bot]" --commit --push
 
       - name: Pre-compute develop context
@@ -92,17 +98,13 @@ jobs:
         env:
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
         run: |
-          DHF_CONTEXT=$(python -m medharness --dhf /tmp/dhf-repo/DHF dhf context for-stage develop \
+          DHF_CONTEXT=$(python -m medharness --dhf DHF dhf context for-stage develop \
             --cr "$CR_ID" \
-            --spec "/tmp/dhf-repo/docs/cr-specs/${CR_ID}-Spec.md" 2>/dev/null || echo '{}')
+            --spec "docs/cr-specs/${CR_ID}-Spec.md" 2>/dev/null || echo '{}')
           echo "DHF_CONTEXT=$DHF_CONTEXT" >> "$GITHUB_ENV"
           mkdir -p /tmp/dhf-context
-          python3 -c "
-import json, os
-d = json.loads(os.environ['DHF_CONTEXT'])
-open(f'/tmp/dhf-context/${CR_ID}-Spec.md','w').write(d.get('spec_text',''))
-" 2>/dev/null || true
-          python -m medharness --dhf /tmp/dhf-repo/DHF dhf item get "$CR_ID" \
+          python3 -c "import json,os,sys; sys.stdout.write(json.loads(os.environ.get('DHF_CONTEXT','{}') or '{}').get('spec_text',''))" > "/tmp/dhf-context/$CR_ID-Spec.md" 2>/dev/null || true
+          python -m medharness --dhf DHF dhf item get "$CR_ID" \
             > "/tmp/dhf-context/$CR_ID.json" 2>/dev/null || true
           echo "--- DHF_CONTEXT ---" && echo "$DHF_CONTEXT" | python3 -c \
             "import json,sys; d=json.load(sys.stdin); print(d.get('stage','?'),'|',d.get('cr',{}).get('title','?'))" || true
@@ -173,12 +175,10 @@ open(f'/tmp/dhf-context/${CR_ID}-Spec.md','w').write(d.get('spec_text',''))
         id: push
         env:
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
-          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
         run: |
           git checkout -B "feat/$CR_ID"
           git config user.name "GitHub Actions [bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/itercharles/WebTPS.git"
           git add -A
           if git diff --staged --quiet; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
@@ -191,12 +191,9 @@ open(f'/tmp/dhf-context/${CR_ID}-Spec.md','w').write(d.get('spec_text',''))
 
       - name: Commit revised implementation
         if: steps.ctx.outputs.mode == 'iterate'
-        env:
-          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
         run: |
           git config user.name "GitHub Actions [bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/itercharles/WebTPS.git"
           git add -A
           if ! git diff --staged --quiet; then
             git commit -m "fix: revise implementation from review feedback"
@@ -206,7 +203,7 @@ open(f'/tmp/dhf-context/${CR_ID}-Spec.md','w').write(d.get('spec_text',''))
       - name: Open implementation PR and store session ID
         if: steps.ctx.outputs.mode == 'new' && steps.push.outputs.has_changes == 'true'
         env:
-          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
           SESSION_ID: ${{ steps.gen.outputs.session_id }}
         run: |
@@ -221,29 +218,14 @@ open(f'/tmp/dhf-context/${CR_ID}-Spec.md','w').write(d.get('spec_text',''))
             PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
           else
             PR_NUMBER=$EXISTING
-            PR_URL="https://github.com/itercharles/WebTPS/pull/$PR_NUMBER"
+            PR_URL="https://github.com/${{ github.repository }}/pull/$PR_NUMBER"
           fi
           if [ -n "$SESSION_ID" ]; then
             python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID"
           fi
-          # Comment on source issue
-          ISSUE_URL=$(python3 - <<'PYEOF'
-          import json
-          import os
-          import re
-
-          try:
-              path = f"/tmp/dhf-context/{os.environ['CR_ID']}.json"
-              item = json.load(open(path))
-              description = str(item.get("description") or "")
-              match = re.search(r"Source issue: (https://\S+)", description)
-              print(match.group(1) if match else "")
-          except Exception:
-              print("")
-          PYEOF
-          )
+          ISSUE_URL=$(python3 -c "import json,os,re; path='/tmp/dhf-context/' + os.environ.get('CR_ID','') + '.json'; item=json.load(open(path)); desc=str(item.get('description') or ''); m=re.search(r'Source issue: (https://\S+)', desc); print(m.group(1) if m else '')" 2>/dev/null || echo "")
           ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oE '[0-9]+$')
           if [ -n "$ISSUE_NUMBER" ]; then
-            GH_TOKEN=${{ secrets.GITHUB_TOKEN }} gh issue comment "$ISSUE_NUMBER" \
+            gh issue comment "$ISSUE_NUMBER" \
               --body "**Stage: Implementation** — PR opened for review: $PR_URL"
           fi

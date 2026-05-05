@@ -1,0 +1,21 @@
+id: SRS-013
+title: Software shall summarize contour quality issues for active structures
+content: |-
+  For the active structure, the client software shall compute and display a
+  contour quality summary using available contour geometry and image slice
+  spacing. The summary shall report empty structures as informational items and
+  shall warn about open contours, degenerate contours with insufficient polygon
+  area, slice gaps larger than expected image spacing, abrupt adjacent-slice
+  contour area changes, abrupt adjacent-slice centroid shifts, and contours
+  that extend outside the active image bounds. The summary shall be visible in
+  the structure review panel without requiring a separate modal dialog. The
+  software shall provide browser-local configuration for enabling or disabling
+  individual contour QA and RTSS QA rules.
+  For the active structure set, the client software shall also aggregate
+  contour quality issues across all structures and present a compact RTSS QA
+  checklist. Selecting a checklist item with a slice position shall activate the
+  corresponding structure and navigate the axial viewport to the closest image
+  slice for that issue.
+derives_from: [SYS-010]
+verification_method: [Test, Demonstration]
+critical_safety: true

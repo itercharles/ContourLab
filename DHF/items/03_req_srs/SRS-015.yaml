@@ -1,0 +1,12 @@
+id: SRS-015
+title: Software shall compare repository RTSTRUCT versions with active workspace structures
+content: |-
+  The client software shall allow a repository RTSTRUCT object to be compared
+  with the active workspace structure set for the same image set without loading
+  or replacing the active workspace. The comparison shall summarize added,
+  removed, and changed ROI names and shall report contour-bearing slice-count and
+  volume deltas where available. The summary shall be visible inline in the
+  repository review workflow.
+derives_from: [SYS-008]
+verification_method: [Test, Demonstration]
+critical_safety: true

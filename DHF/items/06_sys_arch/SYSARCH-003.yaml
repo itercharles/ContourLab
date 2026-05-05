@@ -1,0 +1,26 @@
+id: SYSARCH-003
+title: ASP.NET Core API
+status: approved
+content: |-
+  Thin HTTP gateway providing the server-side boundary of the WebTPS system.
+  Built with ASP.NET Core 10 (C#), running on port 4000.
+
+  Current responsibilities:
+  - Health endpoint (/api/health) for infrastructure smoke checks and CI validation
+  - Future: plan storage, user session management, compute orchestration
+
+  External interfaces:
+  - HTTP REST on port 4000 (proxied via Vite /api in dev)
+  - WebSocket on port 4000 (proxied via Vite /ws in dev)
+
+  The API intentionally does not process DICOM data directly in Phase 1. DICOM
+  operations are performed by the browser client via direct DICOMweb calls to the
+  repository. The API will take on a larger role in Phase C (Planning) when
+  server-side dose computation and optimization are introduced.
+
+  Build: dotnet build apps/api/api.csproj --configuration Release
+design:
+- SYS-001
+- SYS-006
+- SYS-007
+- SYS-013

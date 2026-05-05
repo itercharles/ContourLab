@@ -1,0 +1,172 @@
+# {{ doc_type_name }} Specification
+
+---
+
+**Document Metadata**
+
+| Field | Value |
+|-------|-------|
+| **Document ID** | {{ doc_type_code }}-SPEC |
+| **Version** | {{ version }} |
+| **Generated** | {{ generation_date }} |
+| **Status** | {{ status }} |
+| **Project** | {{ project_name }} |
+
+---
+
+## 1. Introduction
+
+This document specifies the Customer Requirements for {{ project_name }}, in accordance with
+IEC 62304:2006+AMD1:2015 §5.2. It forms part of the Design History File (DHF) and provides
+traceability for regulatory compliance.
+
+Customer requirements capture what clinical users need the system to do, derived from use cases.
+They drive the system-level requirements decomposition and are the primary basis for clinical
+workflow validation (Test-CRS).
+
+### 1.1 Traceability Position
+
+```
+UC (Use Cases)
+ └── CRS (Customer Requirements)  ← this document
+      └── SYS (System Requirements)
+           └── SRS (Software Requirements)
+```
+
+---
+
+## 2. Product Context
+
+### 2.1 Product Position
+
+{{ project_name }} is a browser-based radiation therapy planning workspace. The near-term product
+is **not** a full TPS replacement. The current focus is a clinical workstation for:
+
+- DICOM repository-backed image access
+- RT Structure Set review
+- Contour correction and QA
+- Repository round-trip for RTSTRUCT publishing
+
+The product remains narrow until the review workflow is operationally stable.
+
+### 2.2 Intended Users
+
+- Radiation oncologists
+- Medical physicists
+- Dosimetrists / radiation therapy treatment planners
+
+### 2.3 Intended Environment
+
+Clinical workstation with modern browser (Chrome/Chromium), connected to a hospital
+DICOMweb-compatible PACS or DICOM repository.
+
+### 2.4 Current Phase Focus (Phase A — Contouring)
+
+User priorities for this phase:
+
+- Predictable repository-driven loading
+- Stable contour display and editing
+- Clear active patient / image / RTSS context
+- QA visibility and review ergonomics
+- Trustworthy save / push behavior
+
+### 2.5 Explicitly Deferred
+
+The following are roadmap items not in current scope:
+
+- Full RT Plan authoring
+- Optimization engine and dose calculation
+- Broad AI segmentation platform integration
+- Advanced multi-user workflow management
+
+### 2.6 Product Guardrails
+
+New requests should be challenged if they:
+
+- Bypass the repository-backed workflow in favor of direct local-file UX
+- Add workflow complexity without improving contour review reliability
+- Expose technical cache / load semantics to end users
+- Introduce planning features before review workflow hardening is complete
+- Increase UI complexity without a clinical workflow reason
+
+### 2.7 Roadmap
+
+Ordered by execution priority, not aspiration.
+
+**Phase A — Infrastructure Hardening** (current)
+- Stabilize local setup, startup, and smoke validation
+- Make CI reflect the real repository structure
+- Establish linting, test, and build baselines
+- Define product, technical, and test strategy as explicit source documents
+- Exit: setup / up / doctor reliable; CI validates frontend + API + shared types + smoke startup
+
+**Phase B — Review Workflow Hardening**
+- Improve repository loading robustness
+- Harden RTSTRUCT load / compare / push workflows
+- Improve contour QA usability and navigation
+- Reduce hidden state and stale-context bugs
+- Exit: contour review reproducible across multiple patient datasets; repository round-trip stable
+
+**Phase C — Dose Review Foundation**
+- RTDOSE ingestion and dose colorwash overlay
+- DVH and dose statistics
+- Dose review-oriented comparison workflows
+- Starts only after Phase B exit criteria are met
+
+**Phase D — Planning Foundation**
+- Planning data model refinement
+- Plan / structure / image relationships
+- Early planning review surfaces
+- Gated behind mature review and dose workflows
+
+**Ongoing (continuous)**
+- Developer ergonomics
+- CI / release engineering
+- Observability and operational diagnostics
+- Test evidence quality
+- DHF traceability discipline
+
+---
+
+## 3. Customer Requirements
+
+{% for item in items %}
+### {{ loop.index }}. {{ item.id }}: {{ item.title }}
+
+<div class="requirement-section" markdown="1">
+
+{% if item.status %}**Status**: <span class="status-{{ item.status }}">{{ item.status | upper }}</span>  {% endif %}
+{% if item.priority %}**Priority**: {{ item.priority }}  {% endif %}
+{% if item.user_group %}**User Group**: {{ item.user_group }}  {% endif %}
+
+{{ item.content }}
+
+{% if item.derives_from %}
+**Derived From:** {% for link in item.derives_from %}{{ link }}{% if not loop.last %}, {% endif %}{% endfor %}
+
+{% endif %}
+
+</div>
+
+---
+{% endfor %}
+
+## 4. Summary
+
+| Metric | Count |
+|--------|-------|
+| **Total CRS Items** | {{ items | length }} |
+| **Critical Priority** | {{ items | selectattr('priority', 'equalto', 'Critical') | list | length }} |
+| **High Priority** | {{ items | selectattr('priority', 'equalto', 'High') | list | length }} |
+| **Medium Priority** | {{ items | selectattr('priority', 'equalto', 'Medium') | list | length }} |
+
+---
+
+## 5. Document Control
+
+**Standard**: IEC 62304:2006+AMD1:2015 §5.2
+**Last Updated**: {{ generation_date }}
+
+---
+
+*Generated from DHF items in {{ project_name }}.*

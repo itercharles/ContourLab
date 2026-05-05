@@ -1,0 +1,31 @@
+id: SWDD-002
+title: DICOMweb repository loading pipeline using QIDO-RS, STOW-RS, and WADO-RS
+content: |-
+  Repository-backed DICOM loading follows this pipeline:
+  1. DicomRepoPanel queries the repository via QIDO-RS to list available
+     planning CT image series, excluding MR/PT and CBCT-like acquisition
+     series from the primary worklist, summarizes them into a searchable patient
+     selector, and keeps the persistent repository panel scoped to the current
+     patient workspace with focused study and image-set choices.
+     RTSTRUCT objects for the selected patient's studies are shown inline with
+     the study context rather than hidden behind a separate find step.
+     The title-bar refresh icon triggers an explicit repository sync; the
+     worklist also refreshes in the background at a lower frequency, with
+     selected-patient image-set updates checked more frequently than the full
+     repository worklist.
+     Patient and image-set rows display ACTIVE badges when they are the current
+     workspace context.
+     The Import Data action optionally imports development datasets into the
+     DICOM repository via STOW-RS.
+  2. dicomWebClient.loadSeriesFromDicomWeb() retrieves series metadata via
+     WADO-RS metadata, normalizes required tags, registers Cornerstone WADO-RS
+     metadata, and constructs per-instance image IDs.
+  3. VolumeBuilder.buildVolume(ParsedSeries) calls
+     volumeLoader.createAndCacheVolume() with the sorted WADO-RS image IDs and
+     returns LoadedSeries for the Zustand volumeStore.
+  4. DicomMetadataStore retains patient, study, series, and image metadata for
+     UI display, RTSTRUCT export, and viewport metadata queries.
+
+  Local development uses an Orthanc DICOMweb repository running via Docker,
+  but the client-side repository contract is vendor-neutral DICOMweb.
+implements: [SRS-001, SRS-002]

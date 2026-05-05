@@ -1,0 +1,14 @@
+id: SYS-012
+title: System shall display persistent workspace context
+content: |-
+  The system shall continuously display the active patient, active image series,
+  active RTSTRUCT or structure set source, and repository synchronization state
+  in the top operation bar throughout all clinical workflow interactions. The
+  display shall update immediately when any of these context values change.
+category: Functional
+verification_method:
+  - Test
+  - Demonstration
+critical_safety: false
+satisfies:
+  - CRS-009
