@@ -18,6 +18,64 @@ permissions:
 
 jobs:
 
+  # ── CR VALIDATION ─────────────────────────────────────────────────────────
+  # Phase 1: PR title must contain a CR ID (or be a chore/ci/docs prefix).
+  # All design/spec/feat branches from the CR automation satisfy this rule.
+
+  cr-validation:
+    name: CR Validation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Extract CR IDs from PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          CR_IDS=$(echo "$PR_TITLE" | grep -oE 'CR-[0-9]+' | sort -u | tr '\n' ' ' || true)
+          if [ -z "$CR_IDS" ]; then
+            if echo "$PR_TITLE" | grep -Eq '^(ci|chore|docs)(\(|:)'; then
+              echo "No CR ID — maintenance PR exempt."
+              exit 0
+            fi
+            echo "::error::No CR ID in PR title. Add e.g. 'feat(CR-042): description'"
+            exit 1
+          fi
+          echo "Found CR IDs: $CR_IDS"
+
+  # ── DHF VALIDATION ────────────────────────────────────────────────────────
+  # Phase 2: DHF schema + design traceability check.
+  # Runs on every PR so spec/CR-* and design/CR-* branches are validated.
+
+  dhf-validation:
+    name: DHF Validation (schema + traceability)
+    runs-on: ubuntu-latest
+    needs: [cr-validation]
+    if: always() && !failure() && !cancelled()
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install medharness
+        run: pip install medharness
+
+      - name: Run DHF validation
+        run: |
+          medharness ci dhf-validate \
+            --dhf DHF \
+            --run-schema \
+            --run-traceability \
+            --coverage-pair UC:CRS \
+            --coverage-pair CRS:SYS \
+            --coverage-pair SYS:SRS \
+            --coverage-pair SRS:SWDD \
+            --coverage-pair SYS:SYSARCH \
+            --coverage-pair RISK:RCM
+
   # ── DEVELOPMENT TESTING ────────────────────────────────────────────────────
   # Static analysis and compilation. Engineering feedback only — not compliance
   # artifacts. All three jobs run in parallel.
@@ -272,7 +330,7 @@ jobs:
   compliance:
     name: Test Coverage Gate (requirement → test)
     runs-on: ubuntu-latest
-    needs: [dev-integration, verify-srs, verify-sys, validate-crs]
+    needs: [dhf-validation, dev-integration, verify-srs, verify-sys, validate-crs]
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
