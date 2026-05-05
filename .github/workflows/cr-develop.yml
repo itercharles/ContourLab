@@ -66,27 +66,43 @@ jobs:
         if: steps.ctx.outputs.mode != 'cancel'
         run: npm install -g @anthropic-ai/claude-code
 
+      - name: Clone DHF repo and install medharness
+        if: steps.ctx.outputs.mode != 'cancel'
+        env:
+          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/itercharles/WebTPS-DHF.git" /tmp/dhf-repo
+          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+          pip install -r /tmp/dhf-repo/requirements.txt -q
+
       - name: Transition CR to implementing in DHF
         if: steps.ctx.outputs.mode == 'new'
         env:
           GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
         run: |
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/itercharles/WebTPS-DHF.git" /tmp/dhf-repo
-          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
-          pip install -r /tmp/dhf-repo/requirements.txt -q
           python -m medharness --dhf /tmp/dhf-repo/DHF dhf item transition "$CR_ID" implementing \
             --by "github-actions[bot]" --commit --push
 
-      - name: Read CR context from DHF adapter
+      - name: Pre-compute develop context
         if: steps.ctx.outputs.mode == 'new'
         env:
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
         run: |
-          python -m medharness --dhf /tmp/dhf-repo/DHF dhf context implementation \
+          DHF_CONTEXT=$(python -m medharness --dhf /tmp/dhf-repo/DHF dhf context for-stage develop \
             --cr "$CR_ID" \
-            --out-dir /tmp/dhf-context
-          echo "--- CR ---" && cat "/tmp/dhf-context/$CR_ID.json" || true
+            --spec "/tmp/dhf-repo/docs/cr-specs/${CR_ID}-Spec.md" 2>/dev/null || echo '{}')
+          echo "DHF_CONTEXT=$DHF_CONTEXT" >> "$GITHUB_ENV"
+          mkdir -p /tmp/dhf-context
+          python3 -c "
+import json, os
+d = json.loads(os.environ['DHF_CONTEXT'])
+open(f'/tmp/dhf-context/${CR_ID}-Spec.md','w').write(d.get('spec_text',''))
+" 2>/dev/null || true
+          python -m medharness --dhf /tmp/dhf-repo/DHF dhf item get "$CR_ID" \
+            > "/tmp/dhf-context/$CR_ID.json" 2>/dev/null || true
+          echo "--- DHF_CONTEXT ---" && echo "$DHF_CONTEXT" | python3 -c \
+            "import json,sys; d=json.load(sys.stdin); print(d.get('stage','?'),'|',d.get('cr',{}).get('title','?'))" || true
           echo "--- Spec (first 30 lines) ---" && head -30 "/tmp/dhf-context/$CR_ID-Spec.md" || true
 
       - name: Read session ID for iteration
@@ -96,9 +112,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.ctx.outputs.pr_number }}
         run: |
-          SESSION_ID=$(gh pr view $PR_NUMBER --json comments \
-            --jq '[.comments[].body | select(startswith("<!-- claude-session:"))] | last | ltrimstr("<!-- claude-session: ") | rtrimstr(" -->")' \
-            2>/dev/null || echo "")
+          SESSION_ID=$(python -m medharness ci claude-session get "$PR_NUMBER" 2>/dev/null || echo "")
           echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
 
       - name: Collect review feedback
@@ -117,15 +131,15 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
           CR_ID: ${{ steps.ctx.outputs.cr_id }}
+          DHF_CONTEXT: ${{ env.DHF_CONTEXT }}
         run: |
           [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
           PROMPT="Implement $CR_ID in this WebTPS repository.
 
-          The CR and spec are at:
-          - /tmp/dhf-context/$CR_ID.json  (the change request)
-          - /tmp/dhf-context/$CR_ID-Spec.md  (the approved technical spec)
+          The DHF context is in the DHF_CONTEXT env var (JSON: cr, spec_plan, affected_items).
+          The approved spec is at /tmp/dhf-context/$CR_ID-Spec.md — read it first.
 
-          Read those files first, then implement exactly what the spec describes.
+          Implement exactly what the spec describes.
           Make all required code changes. Do not create test files unless the spec requires it.
           Do not commit — the workflow will commit after."
 
