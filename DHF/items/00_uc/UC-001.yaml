@@ -1,0 +1,23 @@
+id: UC-001
+title: View DICOM Images
+content: |-
+  A radiation therapist or physician loads a planning CT image series and views
+  it in multi-planar reconstruction (axial, sagittal, coronal) with synchronized
+  crosshairs, window/level adjustment, and measurement tools.
+
+  Actor: Radiation Therapist / Physician
+
+  Preconditions:
+  - DICOM images are available in a connected DICOM repository
+
+  Primary Flow:
+  1. User opens the patient selector and selects a patient
+  2. System loads the image series via DICOMweb
+  3. System marks the active patient and image series in the repository browser
+  4. System displays axial, sagittal, and coronal views
+  5. User adjusts window/level, zooms, pans, and scrolls through slices
+  6. User may place temporary measurement annotations and remove them before continuing review
+  7. Crosshairs stay synchronized across views
+
+  Postconditions:
+  - Images are displayed with diagnostic quality in the browser

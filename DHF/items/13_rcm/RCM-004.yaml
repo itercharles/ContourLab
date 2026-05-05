@@ -1,0 +1,12 @@
+id: RCM-004
+title: Unit tests for contour review navigation
+content: |-
+  Automated unit tests shall verify that contour review navigation derives
+  unique sorted contour-bearing slices, finds previous and next review targets
+  relative to the current slice position, wraps at the first and last
+  contour-bearing slices, and exposes structure-list current-slice contour
+  indicators.
+mitigates: [RISK-001]
+implements: [SYS-009]
+verification_method: [Test]
+residual_risk: Low

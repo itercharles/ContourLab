@@ -1,0 +1,10 @@
+id: SRS-005
+title: Software shall infer structure type from name using TG-263 naming conventions
+content: |-
+  When creating a structure, if no type is explicitly provided, the software shall
+  infer the type by matching the uppercase structure name against TG-263 patterns:
+  names containing "GTV" → GTV, "CTV" → CTV, "PTV" or "ITV" → PTV,
+  "EXTERNAL" or "BODY" → EXTERNAL, "AVOID" → AVOIDANCE, otherwise → OAR.
+derives_from: [SYS-003]
+verification_method: [Test]
+critical_safety: false

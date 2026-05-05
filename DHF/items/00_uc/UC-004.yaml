@@ -1,0 +1,38 @@
+id: UC-004
+title: Exchange RTSTRUCT with Repository
+content: |-
+  A physician or dosimetrist pushes the active structure set to the DICOM
+  repository, loads an existing RTSTRUCT from the repository, or compares a
+  repository version with the current workspace.
+
+  Actor: Physician / Dosimetrist
+
+  Preconditions:
+  - A DICOMweb repository is connected and accessible
+  - An active image series is loaded
+
+  Primary Flow — Push:
+  1. User confirms the active structure set is complete
+  2. User initiates Push Changes from the top operation bar
+  3. System converts the active structure set to a DICOM RTSTRUCT object
+  4. System uploads the RTSTRUCT to the repository via STOW-RS
+  5. System clears the unsynchronized-changes state and shows the new version
+     as the active repository source
+
+  Primary Flow — Load:
+  1. User expands the image set context in the repository panel
+  2. System shows available RTSTRUCT objects in newest-first order
+  3. User selects an RTSTRUCT to load
+  4. System activates the corresponding image series, replaces in-memory
+     structures, and marks the loaded object as the active repository source
+
+  Alternate Flow — Compare:
+  1. User selects a repository RTSTRUCT to compare without loading it
+  2. System shows a diff summary: added, removed, and changed ROI names with
+     contour-slice-count and volume deltas where available
+
+  Postconditions:
+  - Repository contains the latest structure set version (Push path)
+  - Active workspace reflects the selected RTSTRUCT (Load path)
+  - Comparison summary is visible without disrupting the active workspace
+    (Compare path)

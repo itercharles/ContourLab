@@ -1,0 +1,91 @@
+# {{ doc_type_name }} Specification
+
+---
+
+**Document Metadata**
+
+| Field | Value |
+|-------|-------|
+| **Document ID** | {{ doc_type_code }}-SPEC |
+| **Version** | {{ version }} |
+| **Generated** | {{ generation_date }} |
+| **Status** | {{ status }} |
+| **Project** | {{ project_name }} |
+
+---
+
+## 1. Introduction
+
+This document specifies the {{ doc_type_name }} for {{ project_name }}, in accordance with
+IEC 62304:2006+AMD1:2015. It forms part of the Design History File (DHF) and provides
+traceability for regulatory compliance.
+
+### 1.1 Requirements Traceability Chain
+
+All requirements in {{ project_name }} are structured in a traceable hierarchy:
+
+```
+UC (Use Cases)
+ └── CRS (Customer Requirements)
+      └── SYS (System Requirements)
+           └── SRS (Software Requirements)
+                └── SWDD (Software Detailed Design)
+                     └── SWTEST (Verification / Validation Tests)
+```
+
+Each item at one level derives from one or more items at the level above.
+
+---
+
+## 2. {{ doc_type_name }} Items
+
+{% for item in items %}
+### {{ loop.index }}. {{ item.id }}: {{ item.title }}
+
+<div class="requirement-section" markdown="1">
+
+{% if item.status %}**Status**: <span class="status-{{ item.status }}">{{ item.status | upper }}</span>  {% endif %}
+{% if item.category %}**Category**: {{ item.category }}  {% endif %}
+{% if item.priority %}**Priority**: {{ item.priority }}  {% endif %}
+{% if item.verification_method %}**Verification Method**: {{ item.verification_method | join(', ') if item.verification_method is iterable and item.verification_method is not string else item.verification_method }}  {% endif %}
+{% if item.critical_safety is defined and item.critical_safety %}**Critical Safety**: Yes  {% endif %}
+
+{{ item.content }}
+
+{% if item.derives_from %}
+**Derived From:** {% for link in item.derives_from %}{{ link }}{% if not loop.last %}, {% endif %}{% endfor %}
+
+{% endif %}
+{% if item.satisfies %}
+**Satisfies:** {% for link in item.satisfies %}{{ link }}{% if not loop.last %}, {% endif %}{% endfor %}
+
+{% endif %}
+{% if item.implements %}
+**Implements:** {% for link in item.implements %}{{ link }}{% if not loop.last %}, {% endif %}{% endfor %}
+
+{% endif %}
+
+</div>
+
+---
+{% endfor %}
+
+## 3. Summary
+
+| Metric | Count |
+|--------|-------|
+| **Total Items** | {{ items | length }} |
+| **Approved** | {{ items | selectattr('status', 'equalto', 'approved') | list | length }} |
+| **Draft** | {{ items | selectattr('status', 'equalto', 'draft') | list | length }} |
+| **Retired** | {{ items | selectattr('status', 'equalto', 'retired') | list | length }} |
+
+---
+
+## 4. Document Control
+
+**Standard**: IEC 62304:2006+AMD1:2015
+**Last Updated**: {{ generation_date }}
+
+---
+
+*Generated from DHF items in {{ project_name }}.*

@@ -1,0 +1,259 @@
+# {{ doc_type_name }} Specification
+
+---
+
+**Document Metadata**
+
+| Field | Value |
+|-------|-------|
+| **Document ID** | {{ doc_type_code }}-SPEC |
+| **Version** | {{ version }} |
+| **Generated** | {{ generation_date }} |
+| **Status** | {{ status }} |
+| **Project** | {{ project_name }} |
+
+---
+
+## 1. Purpose
+
+This document defines the software architecture baseline for {{ project_name }} and identifies
+the software items that constitute the system, in accordance with IEC 62304 §5.3.
+
+It serves two roles:
+
+1. Describe the current system decomposition and the requirements allocated to each software item
+2. Constrain how the system is allowed to evolve — boundaries, responsibilities, and data flow
+
+This is not a product roadmap document. Future-oriented statements must be interpreted through
+the Product Strategy. This document may constrain how future work is implemented, but it must
+not independently expand product scope ahead of that document.
+
+---
+
+## 2. Architectural Goals
+
+The architecture must optimize for:
+
+1. Repository-backed clinical workflow
+2. Predictable contour review behavior
+3. Explicit and testable boundaries
+4. Minimal duplication of domain logic and data contracts
+5. Incremental evolution without hidden coupling
+
+---
+
+## 3. System Context
+
+{{ project_name }} sits between clinical users and a DICOMweb-capable repository.
+
+```mermaid
+flowchart LR
+  User["Clinical User"] --> Client["WebTPS Client (React / Browser)"]
+  Client --> Api["WebTPS API (ASP.NET Core)"]
+  Client --> Repo["DICOM Repository (Orthanc / DICOMweb-compatible)"]
+  Api --> Repo
+  Client --> Shared["Shared Domain Types"]
+  Api --> Shared
+```
+
+---
+
+## 4. Software Items
+
+The system is decomposed into the following software items per IEC 62304 §5.3:
+
+{% for item in items %}
+### {{ item.id }}: {{ item.title }}
+
+<div class="architecture-section" markdown="1">
+
+**Status**: <span class="status-{{ item.status }}">{{ item.status | upper }}</span>
+
+{{ item.content }}
+
+{% if item.design %}
+**Allocated System Requirements**
+
+{% for req in item.design %}
+- {{ req }}
+{% endfor %}
+{% endif %}
+
+</div>
+
+---
+{% endfor %}
+
+## 5. Runtime Topology
+
+### Local Development
+
+```mermaid
+flowchart LR
+  Browser["Browser :3000"] --> Vite["Vite Dev Server"]
+  Vite --> Client["React Client"]
+  Vite --> Api["ASP.NET Core API :4000"]
+  Vite --> Repo["Orthanc DICOMweb :8042"]
+  Api --> Repo
+```
+
+Local startup: `pnpm repo:up` → `pnpm dev` + `pnpm api` → `pnpm local:doctor`
+
+Architecture constraint: local setup must remain reproducible through documented scripts;
+startup dependencies must stay simple enough to diagnose in one pass.
+
+### CI Topology
+
+CI verifies: frontend lint · typecheck · test · build — API build — shared-types typecheck
+and build — local smoke validation via `pnpm local:doctor`.
+
+Architecture constraint: new architectural layers should not be introduced unless they can
+be validated in CI or have a deliberate plan to become CI-verifiable.
+
+---
+
+## 6. Data Flow
+
+### Image Loading
+
+1. User selects patient / image context
+2. Client queries DICOMweb repository via QIDO-RS
+3. Client retrieves series metadata and bulk data via WADO-RS
+4. Client builds browser-side renderable volume (VolumeBuilder → Cornerstone3D)
+5. Viewports render axial / sagittal / coronal views
+
+Constraint: image loading must remain repository-first; browser memory may cache loaded
+image state temporarily, but cache semantics must stay invisible to end users.
+
+### Structure Flow
+
+1. User activates a structure set associated with an image set
+2. Client imports RTSTRUCT into browser editing state
+3. Browser maintains transient draft state for editing, undo/redo, and review
+4. Push/export produces a new RTSTRUCT payload stored via STOW-RS
+
+Constraint: repository-backed RTSTRUCT is the durable source of truth; browser-local draft
+state is transient and must never be confused with durable repository state.
+
+---
+
+## 7. State Ownership
+
+### Repository-owned
+
+- Image series
+- Finalized RTSTRUCT instances
+- Future RTDOSE and planning objects
+
+### Browser-owned (transient)
+
+- Active workspace selection and loaded viewport state
+- Tool mode and window/level settings
+- Local contour draft changes before push
+- Measurement annotations
+
+### Shared-contract-owned
+
+- TypeScript interfaces in `packages/shared-types` representing cross-workspace business objects
+
+Constraint: if ownership is ambiguous, prefer explicit documentation or an ADR before adding
+another persistence path.
+
+---
+
+## 8. Evolution Rules
+
+1. **Repository-first remains primary** — direct local file support may exist for debugging,
+   but must not redefine the main product interaction model.
+
+2. **API stays thin until justified** — move logic from client to API only when there is a
+   clear need for security, orchestration, environment isolation, or long-running execution.
+
+3. **New compute services require a documented boundary** — any future dose engine, AI contour
+   service, or worker tier must be introduced through an ADR and CI/testability plan, and only
+   when that capability is in scope per product strategy.
+
+4. **Shared types remain authoritative** — new modules must not fork patient / image /
+   structure / plan contracts.
+
+5. **Architecture becomes more explicit, not more magical** — hidden event buses, implicit
+   caches, or opaque orchestration layers are not acceptable substitutes for clear boundaries.
+
+6. **Architecture does not authorize scope expansion** — if a capability is not supported by
+   current product strategy, this document should not be used to justify implementing it early.
+
+---
+
+## 9. Non-Functional Constraints
+
+Must support:
+- Deterministic local bootstrap
+- Reproducible CI validation
+- Actionable logs for startup and integration failures
+- Incremental deployment hardening without redesigning the core workflow
+
+Must avoid:
+- Hidden machine-local coupling
+- Environment-specific behavior embedded in product logic
+- Repository lock-in that breaks DICOMweb portability
+- Untestable infrastructure additions
+
+---
+
+## 10. Open Architectural Decisions
+
+These areas remain open and must be resolved through ADRs before major implementation work:
+
+- Production deployment topology
+- RTDOSE ingestion path
+- Future compute-service boundary for AI or dose operations
+- Formal persistence strategy for browser draft recovery
+
+These are architecture placeholders only; implementation timing is governed by product strategy.
+
+---
+
+## 11. Requirements Traceability
+
+The following system requirements are addressed by the software items above:
+
+{% set all_reqs = [] %}
+{% for item in items %}
+  {% if item.design %}
+    {% for req in item.design %}
+      {% if req not in all_reqs %}
+        {% set _ = all_reqs.append(req) %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
+
+| Requirement | Addressed by |
+|-------------|--------------|
+{% for req in all_reqs | sort %}
+| {{ req }} | {% for item in items %}{% if item.design and req in item.design %}{{ item.id }} {% endif %}{% endfor %} |
+{% endfor %}
+
+---
+
+## 12. Summary
+
+| Metric | Count |
+|--------|-------|
+| **Software Items** | {{ items | length }} |
+| **System Requirements Covered** | {{ all_reqs | length }} |
+
+---
+
+## 13. Document Control
+
+**Standard**: IEC 62304:2006+AMD1:2015 §5.3
+**Last Updated**: {{ generation_date }}
+
+Architecture changes that modify major system boundaries, runtime topology, state ownership
+rules, or primary data flows must be reflected here. Concrete architectural decisions must
+also be captured in an ADR.
+
+---
+
+*Generated from DHF items in {{ project_name }}.*

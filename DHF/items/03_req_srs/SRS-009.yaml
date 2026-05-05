@@ -1,0 +1,15 @@
+id: SRS-009
+title: Software shall auto-save structure drafts in browser-local storage by series UID
+content: |-
+  When contour or structure edits mark a series dirty, the client software shall
+  serialize the active series structure data and store it in browser-local
+  IndexedDB keyed by SeriesInstanceUID. When the same series is loaded again and
+  no in-memory structure data exists, the software shall attempt to restore the
+  local draft. When an active series has unpublished repository changes, the
+  client software shall display that state in the workspace context and require
+  user confirmation before selecting another patient, activating another image
+  series, or loading another RT Structure Set that would replace the current
+  structure workspace.
+derives_from: [SYS-005]
+verification_method: [Test]
+critical_safety: true

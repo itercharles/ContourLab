@@ -1,0 +1,11 @@
+id: RCM-005
+title: Unit tests for contour micro-editing and interpolation
+content: |-
+  Automated unit tests shall verify contour interpolation creates current-slice
+  and missing-slice contours from adjacent closed contours, batch interpolation
+  is committed as one undoable contour command, contour edit tools are exposed
+  in the toolbar and shortcuts, and locked structures reject contour mutations.
+mitigates: [RISK-001]
+implements: [SYS-004]
+verification_method: [Test]
+residual_risk: Low

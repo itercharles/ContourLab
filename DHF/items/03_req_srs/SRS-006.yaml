@@ -1,0 +1,11 @@
+id: SRS-006
+title: Software shall compute structure volume using the shoelace formula
+content: |-
+  Volume in cm³ shall be computed from contour data by applying the shoelace
+  formula to each ContourSlice polygon to obtain area in mm², multiplying by
+  the slice thickness in mm to obtain volume per slice in mm³, summing across
+  all slices, and dividing by 1000 to convert to cm³. Polygons with fewer
+  than 3 points shall be skipped.
+derives_from: [SYS-003]
+verification_method: [Test]
+critical_safety: false

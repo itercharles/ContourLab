@@ -1,0 +1,15 @@
+id: SRS-012
+title: Software shall keep contour overlays registered during viewport transforms
+content: |-
+  Contour overlays displayed on the axial viewport shall remain spatially
+  registered to the underlying image when the user pans, zooms, scrolls, or the
+  viewport canvas position changes. Overlay rendering shall re-project stored
+  world-coordinate contour points to viewport canvas coordinates after relevant
+  camera, zoom, or canvas geometry changes.
+  Sagittal and coronal MPR viewports shall display contour intersection lines
+  where stored axial contour polygons cross the current sagittal or coronal
+  plane. Editing interactions shall remain restricted to the axial contour
+  overlay until non-axial editing tools are explicitly implemented.
+derives_from: [SYS-002]
+verification_method: [Test, Demonstration]
+critical_safety: true

@@ -1,0 +1,18 @@
+id: SWDD-003
+title: Cornerstone3D rendering engine and viewport management
+content: |-
+  cornerstoneInit.ts: Singleton initialization guard (let initialized = false).
+  Initializes @cornerstonejs/core and @cornerstonejs/dicom-image-loader once.
+
+  ViewportManager: Wraps the Cornerstone3D RenderingEngine singleton
+  (ENGINE_ID = "webtps-rendering-engine"). Manages three viewport elements
+  (AXIAL, SAGITTAL, CORONAL). Provides enableElement(), setVolume(),
+  setWindowLevel(), resize(), and destroy().
+
+  MPRController: Creates tool group "webtps-tool-group" with all three
+  viewport IDs. Registers WindowLevel (left mouse), Zoom (right), Pan (middle),
+  StackScroll, and CrosshairsTool.
+
+  Cross-Origin isolation (COEP/COOP headers) is set in vite.config.ts for
+  dev and must be set in the production server for SharedArrayBuffer support.
+implements: [SRS-012]

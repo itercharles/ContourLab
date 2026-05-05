@@ -1,0 +1,12 @@
+id: SRS-007
+title: Software shall maintain a 50-level undo/redo stack for all contour edits
+content: |-
+  All contour add, edit, and delete operations shall be wrapped in command objects
+  implementing execute() and undo() methods. Commands shall be pushed to an undo
+  stack (max 50 entries; oldest entries discarded when full). Undo shall pop from
+  the undo stack and push to the redo stack. Redo shall pop from the redo stack
+  and push to the undo stack. Any new command shall clear the redo stack.
+  Keyboard shortcut Cmd/Ctrl+Z shall trigger undo; Cmd/Ctrl+Shift+Z shall trigger redo.
+derives_from: [SYS-004]
+verification_method: [Test]
+critical_safety: true

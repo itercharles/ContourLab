@@ -1,0 +1,15 @@
+id: SYS-009
+title: System shall provide structure contour review navigation
+content: |-
+  The system shall allow the user to navigate between contour-bearing slices for
+  the active structure using previous and next controls, targeting the axial
+  viewport and wrapping at the first or last contour slice. The structure list
+  shall show contour slice count, volume, hidden/locked state, and an indicator
+  when the active slice has a contour for each structure.
+category: Functional
+verification_method:
+  - Test
+  - Demonstration
+critical_safety: true
+satisfies:
+  - CRS-003

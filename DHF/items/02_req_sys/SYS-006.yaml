@@ -1,0 +1,18 @@
+id: SYS-006
+title: System shall upload the active structure set to the DICOM repository as RTSTRUCT
+content: |-
+  The system shall convert the active in-memory structure set for the active
+  image series into a conformant DICOM RT Structure Set object, preserving
+  study, series, frame-of-reference, and referenced SOP instance metadata, and
+  upload the object to the connected DICOMweb repository using STOW-RS. Push
+  Changes shall be available only when unsynchronized local changes exist.
+  After successful upload the system shall associate the structure set with the
+  new SOP Instance UID, clear the unsynchronized-changes state, and reflect the
+  new object as the active repository source.
+category: Functional
+verification_method:
+  - Test
+  - Demonstration
+critical_safety: true
+satisfies:
+  - CRS-005

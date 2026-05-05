@@ -1,0 +1,10 @@
+id: CRS-008
+title: Clinicians shall select a patient and study from the DICOMweb repository browser
+content: |-
+  As a radiation therapist or physician, I need to browse available patients in
+  the connected DICOM repository, search and filter by clinical identifiers, and
+  activate a patient and image series as my working context.
+user_group: Radiation Therapist / Physician
+derives_from:
+  - UC-005
+priority: Critical

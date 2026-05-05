@@ -1,0 +1,11 @@
+id: CRS-009
+title: Clinicians shall always see the active patient, image set, structure source, and sync state
+content: |-
+  As a radiation therapist or physician, I need persistent visibility of the
+  currently active patient, image series, structure set source, and repository
+  synchronization state so I always know which data I am working with.
+user_group: Radiation Therapist / Physician / Dosimetrist
+derives_from:
+  - UC-004
+  - UC-005
+priority: Critical

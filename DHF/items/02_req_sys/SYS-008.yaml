@@ -1,0 +1,16 @@
+id: SYS-008
+title: System shall compare a repository RTSTRUCT version with the active workspace
+content: |-
+  The system shall allow a repository RTSTRUCT object to be compared with the
+  active workspace structure set for the same image set without replacing the
+  active workspace. The comparison shall identify added, removed, and changed
+  ROI names and shall report contour-bearing slice-count and volume deltas where
+  available. The result shall be visible inline in the repository review
+  workflow.
+category: Functional
+verification_method:
+  - Test
+  - Demonstration
+critical_safety: false
+satisfies:
+  - CRS-007

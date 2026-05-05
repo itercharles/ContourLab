@@ -1,0 +1,102 @@
+id: SWDD-004
+title: ContourEngine and UndoRedoManager command pattern
+content: |-
+  UndoRedoManager: Singleton command stack (MAX_DEPTH = 50). Each command
+  implements { execute(), undo(), description }. push() calls execute()
+  immediately, appends to undoStack, clears redoStack. undo() pops undoStack,
+  calls undo(), pushes to redoStack. redo() pops redoStack, calls execute(),
+  pushes to undoStack. installUndoRedoKeyHandler() attaches a global keydown
+  listener for Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z.
+
+  ContourEngine: Stateless facade. addContour() checks for existing contour
+  at slicePosition — if found, wraps replace in undo command; if not found,
+  wraps add in undo command with undo that filters the slice out.
+  addContour() and deleteContourOnSlice() return false without creating an undo
+  command when the target structure is missing or locked, so toolbar,
+  keyboard, overlay, and future tool entry points share the same editability
+  guard. deleteContourOnSlice() captures removed slices and wraps delete in
+  undo command.
+
+  Toolbar owns high-frequency contour operation controls. It subscribes to
+  UndoRedoManager, exposes visible Freehand, Polygon, Brush, Eraser,
+  Interpolate, Previous, Next, Undo, Redo, and Delete Slice controls in the top
+  operation bar, and computes whether the active structure has a contour on the
+  current axial slice by matching the axial viewport focal point to the active
+  series frame metadata. Toolbar and viewerShortcuts activate
+  Cornerstone tools through the registered toolName values WindowLevel, Zoom,
+  Pan, and StackScroll rather than class-style names, so top-bar buttons and
+  keyboard shortcuts target the same Cornerstone tool group entries. Contour
+  tools are guarded by active image set, active structure set, active structure,
+  and lock state; blocked shortcuts open the right structure panel and focus the
+  axial viewport. Delete Slice calls
+  ContourEngine.deleteContourOnSlice() for the active structure's current-slice
+  contour, refreshes derived volume statistics, and focuses the axial viewport.
+  The control is disabled when the current axial slice has no active-structure
+  contour or the active structure is locked. Undo and Redo call the shared
+  command stack and expose Cmd/Ctrl+Z help text through control titles.
+
+  StructurePanel displays the active structure's editability and repository
+  synchronization status as compact status chips. Locked structures are also
+  indicated in the structure list so users can identify why contour operations
+  are blocked without relying only on toolbar messaging. The right panel
+  remains an information and review workspace: it displays the active
+  structure color, type, contour slice count, source provenance, and sync
+  state. Previous/next contour review is exposed in the top operation bar.
+
+  Contour review navigation: contourReview builds a sorted list of unique
+  contour-bearing slices for the active structure and resolves previous/next
+  targets with wraparound. resolveContourReviewScrollDelta() maps the target
+  contour slice to the closest active image frame and returns the viewport
+  scroll delta. StructurePanel displays the active structure's review count and
+  shows per-structure contour slice counts and current axial slice contour
+  indicators. Toolbar exposes button review navigation and StructurePanel keeps
+  bracket-key review navigation; both target the axial viewport.
+
+  InterpolationEngine supports review-time slice interpolation for closed
+  polygon contours. It finds adjacent lower and upper contour-bearing slices,
+  resamples both closed polygons by perimeter to a fixed point count, linearly
+  interpolates x/y points at the target z position, and returns a closed
+  ContourSlice referenced to the current image frame. Toolbar enables Interpolate
+  only when the active unlocked structure has bracketing contours and no contour
+  on the current axial slice. Toolbar also exposes Fill Gaps, which scans active
+  image frames and creates interpolated contours for missing slices between
+  adjacent contour-bearing slices. Single-slice interpolation is committed
+  through ContourEngine.addContour(); batch interpolation is committed through
+  ContourEngine.addContours() as one undoable command.
+
+  ContourOverlay stores contour and draft points in world coordinates and
+  projects them through the active Cornerstone viewport's worldToCanvas()
+  function during render. In addition to Cornerstone image-rendered and
+  camera-modified events, ContourOverlay tracks a viewport transform signature
+  consisting of camera focal point, camera position, parallel scale, zoom, and
+  canvas geometry. The signature also includes worldToCanvas() projection
+  probes from stable world points so transforms that do not surface through
+  camera or zoom fields still invalidate the overlay. A requestAnimationFrame
+  loop invalidates the overlay only when this signature changes, causing
+  contours to be re-projected during pan, zoom, scroll, and canvas layout
+  changes so the overlay remains registered to the image.
+  ContourOverlay handles contour-edit tools directly on the axial overlay:
+  freehand drag appends interpolated pointer samples, polygon click appends
+  vertices and commits with Enter or double-click, edit mode projects the active
+  current-slice contour vertices as draggable handles, supports vertex move,
+  double-click edge insertion, and Shift-click vertex deletion, brush stamps a
+  circular closed contour at the clicked canvas location using the configured
+  brush radius, and eraser deletes the active structure contour on the current
+  slice. All committed edits use ContourEngine and refresh derived volume
+  statistics.
+  The same overlay also owns temporary browser-local measurement annotations
+  for HU probe, distance, angle, and area tools. Measurement annotations are
+  selectable directly on the overlay, highlight when selected, and can be
+  removed without reloading the workspace. Delete or Backspace removes the
+  selected annotation, or the most recent annotation when none is explicitly
+  selected; Escape cancels an in-progress measurement draft and, when no draft
+  exists, removes the selected or most recent measurement annotation.
+  ImageViewer mounts ContourOverlay on axial, sagittal, and coronal viewport
+  panels. The axial overlay filters contours by the current frame or slice
+  position and renders closed polygon paths. Sagittal and coronal overlays are
+  display-only: they rasterize visible RTSS contours onto the active volume grid
+  for the current x-plane or y-plane, extract the 2D binary mask boundary, and
+  project boundary edges through the corresponding MPR viewport. Pointer events
+  remain disabled so viewport pan, zoom, and scroll stay controlled by
+  Cornerstone tools.
+implements: [SRS-007, SRS-008, SRS-011, SRS-012, SRS-014]

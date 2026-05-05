@@ -1,0 +1,10 @@
+id: CRS-001
+title: Clinicians shall view CT/MRI images in axial, sagittal, and coronal planes
+content: |-
+  As a radiation therapist or physician, I need to view loaded CT or MRI DICOM
+  images in at least three orthogonal planes (axial, sagittal, coronal) with
+  synchronized crosshairs, window/level adjustment, and slice navigation.
+user_group: Radiation Therapist / Physician
+derives_from:
+  - UC-001
+priority: Critical

@@ -1,0 +1,16 @@
+id: SYS-011
+title: System shall provide patient and study selection from the DICOMweb repository
+content: |-
+  The system shall present a patient browser showing available patients from the
+  connected DICOMweb repository with name, MRN, study context, last activity,
+  and active-patient indication. The browser shall support search and filter by
+  clinical identifiers. Selecting a patient shall automatically activate the
+  newest planning CT series and retrieve the newest matching RTSTRUCT when one
+  is available.
+category: Functional
+verification_method:
+  - Test
+  - Demonstration
+critical_safety: false
+satisfies:
+  - CRS-008
