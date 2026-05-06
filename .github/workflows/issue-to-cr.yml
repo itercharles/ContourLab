@@ -23,21 +23,19 @@ jobs:
   create-cr:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install medharness
         run: pip install medharness
 
-      - name: Configure git identity
+      - name: Configure git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -54,9 +52,6 @@ jobs:
             --source-repo "${{ github.repository }}" \
             --marker-name webtps-cr \
             --write \
-            --create-branch \
-            --open-pr \
-            --comment-source-issue \
             --output /tmp/issue-to-cr.json \
             --github-output "$GITHUB_OUTPUT"
           cat /tmp/issue-to-cr.json
@@ -65,8 +60,45 @@ jobs:
         if: steps.prepare.outputs.should_create != 'true'
         run: echo "${{ steps.prepare.outputs.reason }}"
 
-      - name: Wait for CR PR merge before analysis
+      - name: Create stage labels
         if: steps.prepare.outputs.should_create == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "CR intake created a CR branch/PR."
-          echo "Analysis starts when that CR intake PR is merged into main."
+          gh label create "cr:stage/cr"     --color "0075ca" --description "CR stage: awaiting CR review"     2>/dev/null || true
+          gh label create "cr:stage/spec"   --color "e4e669" --description "CR stage: awaiting spec review"   2>/dev/null || true
+          gh label create "cr:stage/design" --color "d93f0b" --description "CR stage: awaiting design review" 2>/dev/null || true
+          gh label create "cr:stage/code"   --color "0e8a16" --description "CR stage: awaiting code review"   2>/dev/null || true
+
+      - name: Open feat branch and Draft PR
+        if: steps.prepare.outputs.should_create == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          BRANCH="feat/$CR_ID"
+
+          git checkout -b "$BRANCH"
+          git add DHF/items/
+          git commit -m "cr: intake $CR_ID"
+          git push --set-upstream origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --head "$BRANCH" \
+            --base main \
+            --draft \
+            --title "feat($CR_ID): ${{ github.event.issue.title }}" \
+            --body "Closes #${{ github.event.issue.number }}
+
+**Stage 1 of 4 — CR Review**
+Review the CR definition in \`DHF/items/09_cr/$CR_ID.yaml\`, then approve to trigger AI spec generation." \
+            --label "cr:stage/cr")
+
+          python -m medharness --dhf DHF dhf item transition "$CR_ID" in_review \
+            --by "github-actions[bot]" --commit --push
+
+          gh issue comment "${{ github.event.issue.number }}" \
+            --body "CR intake complete: **$CR_ID** — review PR: $PR_URL
+
+<!-- webtps-cr: $CR_ID -->
+<!-- webtps-cr-pr: $PR_URL -->"

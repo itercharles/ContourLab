@@ -1,0 +1,423 @@
+name: WebTPS CR Lifecycle
+
+run-name: "CR lifecycle | ${{ github.event.pull_request.head.ref || inputs.cr_id }} | ${{ github.event.review.state || inputs.stage || (github.event.pull_request.merged == true && 'merged' || 'closed') }}"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      cr_id:
+        description: 'CR ID (e.g. CR-034)'
+        required: true
+        type: string
+      stage:
+        description: 'Stage to re-run'
+        required: true
+        type: choice
+        options: [cr, spec, design, code]
+
+concurrency:
+  group: cr-lifecycle-${{ github.event.pull_request.number || inputs.cr_id }}
+  cancel-in-progress: true
+
+jobs:
+  advance:
+    if: |
+      startsWith(github.event.pull_request.head.ref, 'feat/CR-') ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.head.ref || format('feat/{0}', inputs.cr_id) }}
+
+      - name: Determine stage and mode
+        id: ctx
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EVENT="${{ github.event_name }}"
+
+          # Manual re-run: look up the open PR for the branch
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            CR_ID="${{ inputs.cr_id }}"
+            STAGE="${{ inputs.stage }}"
+            PR_NUMBER=$(gh pr list --head "feat/$CR_ID" --json number --jq '.[0].number' 2>/dev/null || echo "")
+            if [ -z "$PR_NUMBER" ]; then
+              echo "ERROR: no open PR found for feat/$CR_ID" >&2
+              exit 1
+            fi
+            echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
+            echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+            echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+            echo "mode=advance" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CR_ID=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'CR-[0-9]+')
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          MERGED="${{ github.event.pull_request.merged }}"
+          REVIEW_STATE="${{ github.event.review.state }}"
+
+          echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+          # Merged is handled by cr-complete.yml
+          if [ "$EVENT" = "pull_request" ] && [ "$MERGED" = "true" ]; then
+            echo "mode=noop" >> "$GITHUB_OUTPUT"
+            echo "stage=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Closed without merging = cancel
+          if [ "$EVENT" = "pull_request" ] && [ "$MERGED" = "false" ]; then
+            echo "mode=cancel" >> "$GITHUB_OUTPUT"
+            echo "stage=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          STAGE=$(gh pr view "$PR_NUMBER" --json labels \
+            --jq '.labels[].name | select(startswith("cr:stage/")) | ltrimstr("cr:stage/")' \
+            | head -1)
+
+          if [ -z "$STAGE" ]; then
+            echo "ERROR: could not determine stage — no cr:stage/* label on PR $PR_NUMBER" >&2
+            exit 1
+          fi
+          echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+
+          if [ "$REVIEW_STATE" = "approved" ]; then
+            echo "mode=advance" >> "$GITHUB_OUTPUT"
+          elif [ "$REVIEW_STATE" = "changes_requested" ]; then
+            echo "mode=iterate" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=noop" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.ctx.outputs.mode != 'noop'
+        with:
+          python-version: '3.11'
+
+      - name: Install medharness
+        if: steps.ctx.outputs.mode != 'noop'
+        run: pip install medharness
+
+      - name: Cancel CR
+        if: steps.ctx.outputs.mode == 'cancel'
+        run: |
+          CR_ID="${{ steps.ctx.outputs.cr_id }}"
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          git checkout main
+          # CR YAML only exists on the feature branch — bring it to main so the
+          # transition can be committed and pushed there.
+          git checkout "$BRANCH" -- "DHF/items/09_cr/$CR_ID.yaml"
+          python -m medharness --dhf DHF dhf item transition \
+            "$CR_ID" cancelled \
+            --by "github-actions[bot]" --commit --push
+
+      - uses: actions/setup-node@v4
+        if: steps.ctx.outputs.mode == 'advance' || steps.ctx.outputs.mode == 'iterate'
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code
+        if: steps.ctx.outputs.mode == 'advance' || steps.ctx.outputs.mode == 'iterate'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Read session ID
+        if: steps.ctx.outputs.mode == 'iterate'
+        id: session
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SESSION_ID=$(python -m medharness ci claude-session get "${{ steps.ctx.outputs.pr_number }}" 2>/dev/null || echo "")
+          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Collect review feedback
+        if: steps.ctx.outputs.mode == 'iterate'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/pulls/${{ steps.ctx.outputs.pr_number }}/comments" > /tmp/review-comments.json
+          gh api "repos/${{ github.repository }}/pulls/${{ steps.ctx.outputs.pr_number }}/reviews" > /tmp/reviews.json
+
+      # CR YAML is human-authored — no AI revision path at this stage.
+      - name: Explain no-op for cr stage iteration
+        if: steps.ctx.outputs.mode == 'iterate' && steps.ctx.outputs.stage == 'cr'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ steps.ctx.outputs.pr_number }}" \
+            --body "The CR YAML (\`DHF/items/09_cr/${{ steps.ctx.outputs.cr_id }}.yaml\`) is human-authored — there is no AI revision path at this stage. Please update it manually and re-approve."
+
+      # ── SPEC ────────────────────────────────────────────────────────────────
+
+      - name: Fetch test evidence
+        if: steps.ctx.outputs.mode == 'advance' && steps.ctx.outputs.stage == 'cr'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+        run: |
+          mkdir -p /tmp/test-artifacts
+          RUN_ID=$(gh run list --workflow ci-pipeline.yml --status success --limit 1 \
+            --json databaseId --jq '.[0].databaseId' 2>/dev/null || echo "")
+          [ -n "$RUN_ID" ] && gh run download "$RUN_ID" --name product-test-results \
+            --dir /tmp/test-artifacts 2>/dev/null || true
+
+      - name: Generate spec
+        if: steps.ctx.outputs.mode == 'advance' && steps.ctx.outputs.stage == 'cr'
+        id: gen_spec
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_ANALYZE_MODEL }}
+          CR_ID: ${{ steps.ctx.outputs.cr_id }}
+        run: |
+          DHF_CONTEXT=$(python -m medharness --dhf DHF dhf context for-stage analyze \
+            --cr "$CR_ID" 2>/dev/null || echo '{}')
+          export DHF_CONTEXT
+          mkdir -p docs/cr-specs
+          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
+          PROMPT=$(sed "s/{{cr_id}}/$CR_ID/g" .github/prompts/cr-analyze.md)
+          SESSION_ID=$(uuidgen)
+          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
+          claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
+
+      - name: Revise spec
+        if: steps.ctx.outputs.mode == 'iterate' && steps.ctx.outputs.stage == 'spec'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_ANALYZE_MODEL }}
+          SESSION_ID: ${{ steps.session.outputs.session_id }}
+        run: |
+          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
+          if [ -n "$SESSION_ID" ]; then
+            claude --resume "$SESSION_ID" -p --dangerously-skip-permissions \
+              "Revise the CR spec based on the review feedback in /tmp/review-comments.json and /tmp/reviews.json. Update docs/cr-specs/ only if changes are warranted."
+          else
+            claude -p --dangerously-skip-permissions \
+              "Revise the CR spec on this branch based on review feedback in /tmp/review-comments.json and /tmp/reviews.json. Update docs/cr-specs/ only if changes are warranted."
+          fi
+
+      - name: Commit spec
+        if: (steps.ctx.outputs.mode == 'advance' && steps.ctx.outputs.stage == 'cr') || (steps.ctx.outputs.mode == 'iterate' && steps.ctx.outputs.stage == 'spec')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ steps.ctx.outputs.cr_id }}
+          PR_NUMBER: ${{ steps.ctx.outputs.pr_number }}
+          MODE: ${{ steps.ctx.outputs.mode }}
+          SESSION_ID: ${{ steps.gen_spec.outputs.session_id || steps.session.outputs.session_id }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/cr-specs/ DHF/items/
+          COMMITTED=false
+          if ! git diff --staged --quiet; then
+            git commit -m "docs: spec for $CR_ID"
+            git push
+            COMMITTED=true
+          fi
+          if [ "$MODE" = "advance" ]; then
+            # Advance only if this run committed something, or if the spec file
+            # already exists on the branch from a prior run (workflow_dispatch re-run).
+            SPEC_EXISTS=$(git diff origin/main -- "docs/cr-specs/${CR_ID}-Spec.md" | grep -c "^+" || echo "0")
+            if [ "$COMMITTED" = "true" ] || [ "$SPEC_EXISTS" -gt "0" ]; then
+              gh pr edit "$PR_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/spec"
+            else
+              gh pr comment "$PR_NUMBER" \
+                --body "⚠️ Spec generation produced no output for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: cr) and check Claude logs."
+              exit 1
+            fi
+          fi
+          [ -n "$SESSION_ID" ] && python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID" || true
+
+      # ── DESIGN ──────────────────────────────────────────────────────────────
+
+      - name: Validate spec
+        if: steps.ctx.outputs.mode == 'advance' && steps.ctx.outputs.stage == 'spec'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ steps.ctx.outputs.cr_id }}
+          PR_NUMBER: ${{ steps.ctx.outputs.pr_number }}
+        run: |
+          if ! python -m medharness ci validate-spec \
+            --cr "$CR_ID" \
+            --spec "docs/cr-specs/${CR_ID}-Spec.md" \
+            --dhf DHF; then
+            gh pr comment "$PR_NUMBER" --body \
+              "**Spec validation failed** for $CR_ID. Submit \`changes_requested\` to trigger a revision, then re-approve once the spec is updated."
+            exit 1
+          fi
+
+      - name: Generate design
+        if: steps.ctx.outputs.mode == 'advance' && steps.ctx.outputs.stage == 'spec'
+        id: gen_design
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
+          CR_ID: ${{ steps.ctx.outputs.cr_id }}
+        run: |
+          DHF_CONTEXT=$(python -m medharness --dhf DHF dhf context for-stage design \
+            --cr "$CR_ID" \
+            --spec "docs/cr-specs/${CR_ID}-Spec.md" 2>/dev/null || echo '{}')
+          export DHF_CONTEXT
+          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
+          PROMPT=$(sed "s/{{cr_id}}/$CR_ID/g" .github/prompts/cr-design.md)
+          SESSION_ID=$(uuidgen)
+          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
+          claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
+          python -m medharness --dhf DHF dhf item transition "$CR_ID" designing \
+            --by "github-actions[bot]" \
+            || echo "WARN: 'designing' transition failed — CR may already be in this state"
+
+      - name: Revise design
+        if: steps.ctx.outputs.mode == 'iterate' && steps.ctx.outputs.stage == 'design'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
+          SESSION_ID: ${{ steps.session.outputs.session_id }}
+        run: |
+          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
+          if [ -n "$SESSION_ID" ]; then
+            claude --resume "$SESSION_ID" -p --dangerously-skip-permissions \
+              "Revise the DHF design items on this branch based on review feedback in /tmp/review-comments.json and /tmp/reviews.json."
+          else
+            claude -p --dangerously-skip-permissions \
+              "Revise the DHF design items on this branch based on review feedback in /tmp/review-comments.json and /tmp/reviews.json."
+          fi
+
+      - name: Commit design
+        if: (steps.ctx.outputs.mode == 'advance' && steps.ctx.outputs.stage == 'spec') || (steps.ctx.outputs.mode == 'iterate' && steps.ctx.outputs.stage == 'design')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ steps.ctx.outputs.cr_id }}
+          PR_NUMBER: ${{ steps.ctx.outputs.pr_number }}
+          MODE: ${{ steps.ctx.outputs.mode }}
+          SESSION_ID: ${{ steps.gen_design.outputs.session_id || steps.session.outputs.session_id }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add DHF/
+          COMMITTED=false
+          if ! git diff --staged --quiet; then
+            git commit -m "feat: design $CR_ID"
+            git push
+            COMMITTED=true
+          fi
+          if [ "$MODE" = "advance" ]; then
+            # Advance only if design items were written this run or in a prior run.
+            # Exclude the CR YAML (committed at intake) to avoid false positives.
+            DESIGN_EXISTS=$(git diff origin/main -- DHF/ \
+              | grep -v "^diff.*DHF/items/09_cr/$CR_ID.yaml" \
+              | grep -c "^+" || echo "0")
+            if [ "$COMMITTED" = "true" ] || [ "$DESIGN_EXISTS" -gt "0" ]; then
+              gh pr edit "$PR_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design"
+            else
+              gh pr comment "$PR_NUMBER" \
+                --body "⚠️ Design generation produced no output for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: spec) and check Claude logs."
+              exit 1
+            fi
+          fi
+          [ -n "$SESSION_ID" ] && python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID" || true
+
+      # ── CODE ────────────────────────────────────────────────────────────────
+
+      - name: Generate implementation
+        if: steps.ctx.outputs.mode == 'advance' && steps.ctx.outputs.stage == 'design'
+        id: gen_code
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
+          CR_ID: ${{ steps.ctx.outputs.cr_id }}
+        run: |
+          DHF_CONTEXT=$(python -m medharness --dhf DHF dhf context for-stage develop \
+            --cr "$CR_ID" \
+            --spec "docs/cr-specs/${CR_ID}-Spec.md" 2>/dev/null || echo '{}')
+          export DHF_CONTEXT
+          mkdir -p /tmp/dhf-context
+          python3 -c "
+          import json, os, sys
+          d = json.loads(os.environ.get('DHF_CONTEXT', '{}') or '{}')
+          sys.stdout.write(d.get('spec_text', ''))
+          " > "/tmp/dhf-context/$CR_ID-Spec.md" 2>/dev/null || true
+          python -m medharness --dhf DHF dhf item get "$CR_ID" \
+            > "/tmp/dhf-context/$CR_ID.json" 2>/dev/null || true
+          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
+          PROMPT=$(sed "s/{{cr_id}}/$CR_ID/g" .github/prompts/cr-develop.md)
+          SESSION_ID=$(uuidgen)
+          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
+          claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
+          python -m medharness --dhf DHF dhf item transition "$CR_ID" implementing \
+            --by "github-actions[bot]" \
+            || echo "WARN: 'implementing' transition failed — CR may already be in this state"
+
+      - name: Revise implementation
+        if: steps.ctx.outputs.mode == 'iterate' && steps.ctx.outputs.stage == 'code'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
+          SESSION_ID: ${{ steps.session.outputs.session_id }}
+        run: |
+          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
+          if [ -n "$SESSION_ID" ]; then
+            claude --resume "$SESSION_ID" -p --dangerously-skip-permissions \
+              "Revise the implementation based on review feedback in /tmp/review-comments.json and /tmp/reviews.json. Do not commit."
+          else
+            claude -p --dangerously-skip-permissions \
+              "Revise the implementation on this branch based on review feedback in /tmp/review-comments.json and /tmp/reviews.json. Do not commit."
+          fi
+
+      - name: Commit implementation and mark ready
+        if: (steps.ctx.outputs.mode == 'advance' && steps.ctx.outputs.stage == 'design') || (steps.ctx.outputs.mode == 'iterate' && steps.ctx.outputs.stage == 'code')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ steps.ctx.outputs.cr_id }}
+          PR_NUMBER: ${{ steps.ctx.outputs.pr_number }}
+          MODE: ${{ steps.ctx.outputs.mode }}
+          SESSION_ID: ${{ steps.gen_code.outputs.session_id || steps.session.outputs.session_id }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          COMMITTED=false
+          if ! git diff --staged --quiet; then
+            git commit -m "feat: implement $CR_ID"
+            git push
+            COMMITTED=true
+          fi
+          if [ "$MODE" = "advance" ]; then
+            # Advance only if code was written this run or in a prior run.
+            # Exclude DHF and cr-specs — those are not implementation output.
+            CODE_EXISTS=$(git diff origin/main -- . \
+              ':(exclude)DHF/' ':(exclude)docs/cr-specs/' \
+              | grep -c "^+" || echo "0")
+            if [ "$COMMITTED" = "true" ] || [ "$CODE_EXISTS" -gt "0" ]; then
+              gh pr edit "$PR_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code"
+              gh pr ready "$PR_NUMBER"
+            else
+              gh pr comment "$PR_NUMBER" \
+                --body "⚠️ Implementation produced no code changes for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: design) and check Claude logs."
+              exit 1
+            fi
+          fi
+          [ -n "$SESSION_ID" ] && python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID" || true
+
+      - name: Comment ready to merge
+        if: steps.ctx.outputs.mode == 'advance' && steps.ctx.outputs.stage == 'code'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ steps.ctx.outputs.pr_number }}" \
+            --body "All stages complete — ready to merge."
