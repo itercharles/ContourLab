@@ -131,7 +131,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.ctx.outputs.mode == 'advance' || steps.ctx.outputs.mode == 'iterate'
         with:
-          node-version: '24'
+          node-version: '20'
 
       - name: Install Claude Code
         if: steps.ctx.outputs.mode == 'advance' || steps.ctx.outputs.mode == 'iterate'
@@ -153,6 +153,15 @@ jobs:
         run: |
           gh api "repos/${{ github.repository }}/pulls/${{ steps.ctx.outputs.pr_number }}/comments" > /tmp/review-comments.json
           gh api "repos/${{ github.repository }}/pulls/${{ steps.ctx.outputs.pr_number }}/reviews" > /tmp/reviews.json
+
+      # CR YAML is human-authored — no AI revision path at this stage.
+      - name: Explain no-op for cr stage iteration
+        if: steps.ctx.outputs.mode == 'iterate' && steps.ctx.outputs.stage == 'cr'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ steps.ctx.outputs.pr_number }}" \
+            --body "The CR YAML (\`DHF/items/09_cr/${{ steps.ctx.outputs.cr_id }}.yaml\`) is human-authored — there is no AI revision path at this stage. Please update it manually and re-approve."
 
       # ── SPEC ────────────────────────────────────────────────────────────────
 
@@ -225,7 +234,7 @@ jobs:
             # already exists on the branch from a prior run (workflow_dispatch re-run).
             SPEC_EXISTS=$(git diff origin/main -- "docs/cr-specs/${CR_ID}-Spec.md" | grep -c "^+" || echo "0")
             if [ "$COMMITTED" = "true" ] || [ "$SPEC_EXISTS" -gt "0" ]; then
-              gh issue edit "$PR_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/spec"
+              gh pr edit "$PR_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/spec"
             else
               gh pr comment "$PR_NUMBER" \
                 --body "⚠️ Spec generation produced no output for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: cr) and check Claude logs."
@@ -270,7 +279,8 @@ jobs:
           echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
           claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
           python -m medharness --dhf DHF dhf item transition "$CR_ID" designing \
-            --by "github-actions[bot]" || true
+            --by "github-actions[bot]" \
+            || echo "WARN: 'designing' transition failed — CR may already be in this state"
 
       - name: Revise design
         if: steps.ctx.outputs.mode == 'iterate' && steps.ctx.outputs.stage == 'design'
@@ -313,7 +323,7 @@ jobs:
               | grep -v "^diff.*DHF/items/09_cr/$CR_ID.yaml" \
               | grep -c "^+" || echo "0")
             if [ "$COMMITTED" = "true" ] || [ "$DESIGN_EXISTS" -gt "0" ]; then
-              gh issue edit "$PR_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design"
+              gh pr edit "$PR_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design"
             else
               gh pr comment "$PR_NUMBER" \
                 --body "⚠️ Design generation produced no output for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: spec) and check Claude logs."
@@ -350,7 +360,8 @@ jobs:
           echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
           claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
           python -m medharness --dhf DHF dhf item transition "$CR_ID" implementing \
-            --by "github-actions[bot]" || true
+            --by "github-actions[bot]" \
+            || echo "WARN: 'implementing' transition failed — CR may already be in this state"
 
       - name: Revise implementation
         if: steps.ctx.outputs.mode == 'iterate' && steps.ctx.outputs.stage == 'code'
@@ -393,7 +404,7 @@ jobs:
               ':(exclude)DHF/' ':(exclude)docs/cr-specs/' \
               | grep -c "^+" || echo "0")
             if [ "$COMMITTED" = "true" ] || [ "$CODE_EXISTS" -gt "0" ]; then
-              gh issue edit "$PR_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code"
+              gh pr edit "$PR_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code"
               gh pr ready "$PR_NUMBER"
             else
               gh pr comment "$PR_NUMBER" \
