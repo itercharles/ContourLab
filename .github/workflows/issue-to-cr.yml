@@ -65,11 +65,8 @@ jobs:
         if: steps.prepare.outputs.should_create != 'true'
         run: echo "${{ steps.prepare.outputs.reason }}"
 
-      - name: Trigger CR analysis
+      - name: Wait for CR PR merge before analysis
         if: steps.prepare.outputs.should_create == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ steps.prepare.outputs.cr_id }}
         run: |
-          gh workflow run cr-analyze.yml \
-            --field cr_id="$CR_ID"
+          echo "CR intake created a CR branch/PR."
+          echo "Analysis starts when that CR intake PR is merged into main."
