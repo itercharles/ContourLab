@@ -65,6 +65,33 @@ jobs:
         if: steps.prepare.outputs.should_create != 'true'
         run: echo "${{ steps.prepare.outputs.reason }}"
 
+      - name: Create CR PR when intake did not open one
+        if: steps.prepare.outputs.should_create == 'true' && steps.prepare.outputs.pr_url == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_BRANCH: ${{ steps.prepare.outputs.branch }}
+          CR_TITLE: ${{ steps.prepare.outputs.title }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          EXISTING_PR=$(gh pr list \
+            --head "$CR_BRANCH" \
+            --state all \
+            --json url \
+            --jq '.[0].url // ""')
+
+          if [ -n "$EXISTING_PR" ]; then
+            PR_URL="$EXISTING_PR"
+          else
+            PR_URL=$(gh pr create \
+              --head "$CR_BRANCH" \
+              --base main \
+              --title "$CR_TITLE" \
+              --body "CR intake PR for issue #$ISSUE_NUMBER.")
+          fi
+
+          gh issue comment "$ISSUE_NUMBER" \
+            --body "CR PR created: $PR_URL"
+
       - name: Wait for CR PR merge before analysis
         if: steps.prepare.outputs.should_create == 'true'
         run: |
