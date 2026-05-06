@@ -45,8 +45,8 @@ jobs:
       - name: Prepare CR from issue
         id: prepare
         env:
-          GH_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           medharness cr workflow intake-github-issue-ci \
             --event "$GITHUB_EVENT_PATH" \
