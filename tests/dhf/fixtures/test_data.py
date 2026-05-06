@@ -279,7 +279,6 @@ def create_test_dhf() -> Path:
 
     (test_dir / "documents" / "specs").mkdir(parents=True)
     (test_dir / "documents" / "plans").mkdir(parents=True)
-    (test_dir.parent / "governance").mkdir(parents=True)
 
     # Create a test document for document_content checks
     test_plan = test_dir / "documents" / "plans" / "test_plan.md"
@@ -384,137 +383,6 @@ def get_test_dataset() -> List[Dict]:
     ]
 
 
-def populate_governance(test_dhf_root: Path):
-    """Create governance directory with IEC 62304 test policies."""
-    governance_dir = test_dhf_root.parent / "governance"
-    governance_dir.mkdir(parents=True, exist_ok=True)
-
-    iec_62304_policy = {
-        'id': 'IEC_62304',
-        'title': 'IEC 62304 Medical Device Software',
-        'type': 'standard',
-        'version': '2015',
-        'policies': [
-            {
-                'id': '5.1.1',
-                'section': '5.1.1',
-                'text': 'All software requirements shall be traceable to system requirements',
-                'status': 'approved'
-            },
-            {
-                'id': '5.1.3',
-                'section': '5.1.3',
-                'text': 'All software requirements shall have verification criteria',
-                'status': 'approved'
-            },
-            {
-                'id': '5.3.1',
-                'section': '5.3.1',
-                'text': 'Software architecture shall be documented',
-                'status': 'approved'
-            },
-            {
-                'id': '5.5.2',
-                'section': '5.5.2',
-                'text': 'All software units shall be tested',
-                'status': 'approved'
-            },
-            {
-                'id': '6.2.1',
-                'section': '6.2.1',
-                'text': 'Change requests shall track affected items',
-                'status': 'approved'
-            },
-            {
-                'id': 'TEST.doc_content',
-                'section': 'TEST',
-                'text': 'A test plan document shall describe testing procedures',
-                'status': 'approved',
-                'automation': {
-                    'check': 'document_content',
-                    'params': {
-                        'doc_id': 'test_plan',
-                        'keywords': ['testing', 'verification'],
-                    }
-                }
-            },
-            {
-                'id': 'TEST.attr_value',
-                'section': 'TEST',
-                'text': 'SRS items shall derive from SYS',
-                'status': 'approved',
-                'automation': {
-                    'check': 'attribute_value',
-                    'params': {
-                        'type_code': 'SRS',
-                        'attribute': 'title',
-                        'expected_value': 'Item Persistence and Versioning',
-                    }
-                }
-            },
-            {
-                'id': 'TEST.no_open_defects',
-                'section': 'TEST',
-                'text': 'No Critical or High severity defects shall be open at release.',
-                'status': 'approved',
-                'automation': {
-                    'check': 'no_open_defects',
-                    'params': {
-                        'severity_threshold': ['Critical', 'High'],
-                    }
-                }
-            },
-        ]
-    }
-
-    with open(governance_dir / "IEC_62304.yaml", 'w') as f:
-        yaml.dump(iec_62304_policy, f, default_flow_style=False, sort_keys=False)
-
-    print(f"[OK] Created governance policies: IEC_62304.yaml with {len(iec_62304_policy['policies'])} policies")
-
-    iso_14971_policy = {
-        'id': 'ISO_14971',
-        'title': 'ISO 14971 Risk Management',
-        'type': 'standard',
-        'version': '2019',
-        'policies': [
-            {
-                'id': '7.2.a',
-                'section': '7.2',
-                'text': 'Risk control measures shall be implemented.',
-                'status': 'approved',
-                'automation': {
-                    'check': 'attribute_value',
-                    'params': {
-                        'type_code': 'RCM',
-                        'attribute': 'implementation_status',
-                        'expected_value': 'Implemented',
-                    },
-                },
-            },
-            {
-                'id': '7.6.b',
-                'section': '7.6',
-                'text': 'Risk control measures shall be verified as effective.',
-                'status': 'approved',
-                'automation': {
-                    'check': 'attribute_value',
-                    'params': {
-                        'type_code': 'RCM',
-                        'attribute': 'verification_status',
-                        'expected_value': 'Verified',
-                    },
-                },
-            },
-        ],
-    }
-
-    with open(governance_dir / "ISO_14971.yaml", 'w') as f:
-        yaml.dump(iso_14971_policy, f, default_flow_style=False, sort_keys=False)
-
-    print(f"[OK] Created governance policies: ISO_14971.yaml with {len(iso_14971_policy['policies'])} policies")
-
-
 def populate_test_dhf(test_dhf_root: Path):
     """
     Populate test DHF with minimal dataset.
@@ -531,8 +399,6 @@ def populate_test_dhf(test_dhf_root: Path):
     from utils.local_adapter import LocalDHFAdapter
 
     print(f"\n[DATA] Populating test DHF with test data...")
-
-    populate_governance(test_dhf_root)
 
     config = ProjectConfig.load(test_dhf_root / "config")
     saver = ItemSaver(test_dhf_root / "items", git_repo=None, project_config=config)

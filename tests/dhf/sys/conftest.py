@@ -27,13 +27,7 @@ def test_dhf_root():
 
     yield test_dir
 
-    # Cleanup (remove project root, which contains DHF/ and governance/ siblings)
+    # Cleanup the temporary project root created for this test fixture.
     project_root = test_dir.parent
     if project_root.exists():
         shutil.rmtree(project_root)
-
-
-@pytest.fixture(scope="function")
-def governance_dir(test_dhf_root):
-    """Return the governance directory for the test DHF."""
-    return test_dhf_root.parent / "governance"

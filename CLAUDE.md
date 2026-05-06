@@ -19,7 +19,6 @@ DHF/items/             — YAML DHF items by type (CR, SYS, SRS, RISK, etc.)
 DHF/config/            — DHF configuration (change-controlled)
 DHF/documents/         — Spec and plan templates
 docs/cr-specs/         — CR specification documents (authoritative plan specs)
-governance/            — Compliance policies (IEC 62304, ISO 14971)
 tests/dhf/             — DHF Python tests
 .github/workflows/     — CI pipeline and CR automation
 .github/prompts/       — AI prompt templates for CR workflows

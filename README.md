@@ -16,7 +16,6 @@ WebTPS/
 │   ├── config/              — DHF configuration (change-controlled)
 │   └── documents/           — Spec and plan templates
 ├── docs/cr-specs/           — CR specification documents
-├── governance/              — Compliance policies (IEC 62304, ISO 14971)
 ├── docs/                    — Architecture, ADRs, local development notes
 └── .github/workflows/       — CI/CD pipeline and CR automation
 ```
@@ -262,8 +261,8 @@ specification, technology stack decisions, and phased feature roadmap.
 ## Compliance
 
 Medical device compliance (IEC 62304, IEC 82304-1, ISO 14971) is managed in
-the `DHF/` directory of this repository. Governance policies live in `governance/`.
-Each application feature must trace to a DHF item.
+the `DHF/` directory of this repository. Each application feature must trace
+to a DHF item.
 
 ## Agent Guidance
 

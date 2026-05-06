@@ -547,6 +547,12 @@ jobs:
 
       - name: Verify deployment
         run: |
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4001/api/health > /dev/null 2>&1 && \
+            curl -sf http://127.0.0.1:3001/ > /dev/null 2>&1 && echo "Services ready" && break
+            echo "Waiting for services... ($i/30)"
+            sleep 3
+          done
           curl -sf http://127.0.0.1:3001/ > /tmp/webtps-client.html
           curl -sf http://127.0.0.1:4001/api/health > /tmp/webtps-api-health.json
           curl -sf http://127.0.0.1:8042/system > /tmp/webtps-orthanc-system.json
