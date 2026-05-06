@@ -1,0 +1,44 @@
+id: SWDD-010
+title: Dark-mode color tokens defined in apps/client/src/index.css
+content: |-
+  WebTPS theming is implemented as CSS custom properties in
+  `apps/client/src/index.css`. The dark theme is the default (`:root`) and
+  is also re-asserted under the `[data-theme="dark"]` selector so theme
+  switching can be added without restructuring tokens.
+
+  Token families:
+  - Surfaces: `--color-base`, `--color-surface`, `--color-elevated`,
+    `--color-header`, `--color-tooltip-bg`
+  - Text: `--color-text` (primary body), `--color-text-bright`
+    (emphasised), `--color-text-sec` (secondary body), `--color-text-muted`
+    (muted body / metadata), `--color-text-dim` (least-emphasised; large
+    text and helper labels only)
+  - Borders / inputs: `--color-border`, `--color-border-input`
+
+  Tailwind utility classes consume these tokens via the theme extension
+  in `apps/client/tailwind.config.ts`. Components shall reference tokens
+  through Tailwind utilities or `var(--color-*)`; no component shall
+  hard-code hex literals or use `text-gray-*` for text content. Any
+  pre-existing component that does so and fails contrast shall be
+  migrated to a token reference at the same time the token is updated.
+
+  Dark-mode token values shall be authored such that, for every
+  (text-token, surface-token) pair currently composed in the rendered
+  UI, the WCAG 2.1 §1.4.3 relative-luminance contrast ratio is:
+  - ≥ 4.5:1 for body / small text pairs
+  - ≥ 3:1 for large-text pairs and non-text UI control glyphs
+
+  Lightness of `--color-text-sec`, `--color-text-muted`, and
+  `--color-text-dim` shall be raised within the existing cool-gray family
+  (do not introduce new hues, do not move to pure white) until every
+  in-use pair passes its threshold. `--color-text` and
+  `--color-text-bright` shall be left at current values if already
+  passing.
+
+  Verification helper: a small relative-luminance contrast routine
+  (≈ 10 lines of standard WCAG arithmetic) shall be implemented inline
+  in the Vitest test that drives token coverage. Avoid introducing a
+  third-party WCAG/contrast or axe-core dependency for this CR — the
+  math is small and a new dev dependency would require a SOUP entry
+  out of proportion to the change.
+implements: [SRS-018]

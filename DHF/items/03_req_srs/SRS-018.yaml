@@ -1,0 +1,49 @@
+id: SRS-018
+title: Software shall set dark-mode color tokens to satisfy WCAG AA contrast against every surface they render on
+content: |-
+  In `apps/client/src/index.css`, the dark-mode CSS custom property block
+  (`:root, [data-theme="dark"]`) shall define text and surface tokens such
+  that, for every (text-token, surface-token) pair actually composed at
+  runtime in the WebTPS UI, the relative luminance contrast ratio computed
+  per WCAG 2.1 §1.4.3 satisfies:
+
+    - ≥ 4.5:1 for tokens used as body or small text
+    - ≥ 3:1 for tokens used only for large text (≥ 18pt regular or ≥ 14pt
+      bold) or for non-text UI control glyphs (icon strokes, borders that
+      convey state, focus rings)
+
+  Specifically:
+  - `--color-text-sec`, `--color-text-muted`, and `--color-text-dim` shall
+    be lifted to meet ≥ 4.5:1 against `--color-base`, `--color-surface`,
+    `--color-elevated`, `--color-header`, and `--color-tooltip-bg` on every
+    surface where the token is currently used for body or small text.
+  - `--color-text` and `--color-text-bright` shall continue to meet
+    ≥ 4.5:1 against the same surfaces; values shall be left unchanged if
+    already passing.
+  - `--color-border` and `--color-border-input` shall meet ≥ 3:1 against
+    the surface they sit on; values shall be raised only if currently
+    failing.
+  - No hex literal or `text-gray-*` Tailwind utility shall bypass the
+    theme tokens for text content. If any component does so today and
+    fails contrast, the offending site shall be migrated to the token in
+    the same change.
+  - The visual character of the GitHub-dark inspired palette shall be
+    preserved — changes shall raise lightness within the existing cool-gray
+    family rather than introduce new hues or saturation.
+
+  Verification: a Vitest unit test (table-driven) shall enumerate every
+  in-use (text-token, surface-token) pair, parse the dark-mode CSS variable
+  values from `index.css`, compute the WCAG relative luminance contrast
+  ratio, and assert ≥ 4.5:1 for body-text pairs and ≥ 3:1 for large-text
+  / control-glyph pairs. The contrast math shall be implemented inline in
+  the test (≈ 10 lines of standard relative-luminance arithmetic) to
+  avoid a new third-party dependency.
+
+  A Playwright validation test (`apps/client/e2e/crs/`) shall load the app
+  in dark mode, sample `getComputedStyle` color/background pairs on the
+  patient browser, structure list, top operation bar, tool-rail tooltip,
+  and QA checklist, apply the same contrast helper, and assert no body or
+  large-text pair falls below its threshold.
+derives_from: [SYS-014]
+verification_method: [Test]
+critical_safety: false

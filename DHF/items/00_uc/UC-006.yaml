@@ -1,0 +1,39 @@
+id: UC-006
+title: Use Clinical UI in Reduced-Lighting Environment
+content: |-
+  A radiation therapist, physician, or dosimetrist uses WebTPS in a clinical
+  environment with reduced ambient lighting (treatment vault control rooms,
+  contouring stations, after-hours plan review) and relies on the dark theme
+  to read patient identifiers, structure metadata, contour quality findings,
+  and tool labels without visual strain or misreading.
+
+  Actor: Radiation Therapist / Physician / Dosimetrist
+
+  Preconditions:
+  - WebTPS is running in dark theme (default for the clinical workstation)
+  - User is performing any clinical workflow (image review, contouring, QA,
+    repository exchange)
+
+  Primary Flow:
+  1. User opens WebTPS in dark theme on a clinical workstation
+  2. System renders all UI text — patient list, structure list, top operation
+     bar, tool rail labels and tooltips, QA checklist, dialog messages — at
+     legible contrast against panel, surface, elevated, header, and tooltip
+     backgrounds
+  3. User reads patient identifiers, structure names, contour quality
+     warnings, and control labels without leaning in, increasing brightness,
+     or switching to light mode
+  4. User completes the in-progress clinical workflow (UC-001 through UC-005)
+     without misreading any text or status indicator due to insufficient
+     contrast
+
+  Postconditions:
+  - User has read and acted on UI information correctly
+  - No clinical decision is delayed or misinformed by unreadable UI
+
+  Related use cases:
+  - UC-001 View DICOM Images
+  - UC-002 Draw Manual Contours
+  - UC-003 Review Structure Quality
+  - UC-004 Exchange RTSTRUCT with Repository
+  - UC-005 Select Patient and Study

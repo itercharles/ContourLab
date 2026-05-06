@@ -1,0 +1,24 @@
+id: CRS-011
+title: Clinicians shall be able to read all UI text comfortably in dark mode
+content: |-
+  As a radiation therapist, physician, or dosimetrist using WebTPS in dark
+  mode, I need every text element — primary, secondary, muted, and dim — to
+  be clearly readable against every background surface it appears on
+  (panel, surface, elevated, header, tooltip), so I can identify patients,
+  structures, quality findings, and tool labels reliably during clinical
+  work without straining or switching themes.
+
+  Acceptance:
+  - Body text contrast meets or exceeds WCAG 2.1 AA (≥ 4.5:1) on every
+    surface where it is rendered.
+  - Large-text and non-text UI control glyphs (icons, focus rings,
+    borders that convey state) meet or exceed WCAG 2.1 AA (≥ 3:1).
+  - Visual character remains comparable to GitHub's dark theme — cool gray
+    palette, no pure white, no high-saturation colors introduced for the
+    sole purpose of meeting contrast.
+
+  Source: GitHub issue #31, CR-003 (supersedes cancelled CR-001).
+user_group: Radiation Therapist / Physician / Dosimetrist
+derives_from:
+  - UC-006
+priority: Medium

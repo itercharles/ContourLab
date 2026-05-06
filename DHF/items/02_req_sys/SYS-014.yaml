@@ -1,0 +1,29 @@
+id: SYS-014
+title: System shall meet WCAG 2.1 AA contrast for all text and essential UI controls in dark mode
+content: |-
+  When rendered in the dark theme, the system shall present:
+  - Body text (`--color-text`, `--color-text-bright`, `--color-text-sec`,
+    `--color-text-muted`, `--color-text-dim`, link text, status text) at a
+    contrast ratio ≥ 4.5:1 against every background surface on which it is
+    composed (`--color-base`, `--color-surface`, `--color-elevated`,
+    `--color-header`, `--color-tooltip-bg`, and any other dark-mode
+    background tokens that carry text).
+  - Large-text labels (≥ 18pt regular or ≥ 14pt bold) and non-text UI
+    control glyphs that convey information or state (icon-only buttons,
+    focus rings, input borders, toggle indicators) at a contrast ratio
+    ≥ 3:1 against their adjacent backgrounds.
+  - A visual style that remains consistent with the existing GitHub-dark
+    inspired palette — adjustments shall lift lightness of dim/muted/
+    secondary text tokens rather than introducing new hues, saturation
+    spikes, or pure white.
+
+  Out of scope for this requirement: light theme contrast (already
+  acceptable), decorative graphics that do not carry information, and
+  disabled-control glyphs (governed separately).
+category: Usability
+verification_method:
+  - Test
+  - Inspection
+critical_safety: false
+satisfies:
+  - CRS-011
