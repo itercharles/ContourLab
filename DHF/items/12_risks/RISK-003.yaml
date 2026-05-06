@@ -1,0 +1,12 @@
+id: RISK-003
+title: Volume calculation error causes incorrect dose planning input
+hazard: |-
+  The shoelace formula implementation contains an error (e.g. incorrect polygon
+  winding, off-by-one in point indexing) that produces an incorrect structure
+  volume, which could influence clinical decisions about plan acceptability.
+harm: Clinician accepts a plan based on incorrect structure volume metrics
+severity: Moderate
+probability: Low
+risk_level: Medium
+category: Software
+related_requirements: [SYS-003]

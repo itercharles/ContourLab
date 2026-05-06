@@ -1,0 +1,13 @@
+id: SRS-008
+title: Software shall replace existing contour on a slice when a new contour is drawn
+content: |-
+  When a contour is added to a slice that already has a contour, the existing
+  contour shall be replaced (not appended). The replacement shall be wrapped in
+  an undo command that restores the previous contour on undo. The previous
+  contour's Float32Array points shall be deep-copied before being captured in
+  the undo closure. If the selected structure is locked, the software shall
+  reject contour add, replace, and delete operations before creating an undo
+  command or mutating contour data.
+derives_from: [SYS-004]
+verification_method: [Test]
+critical_safety: true

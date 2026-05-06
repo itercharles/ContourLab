@@ -1,0 +1,10 @@
+id: CRS-003
+title: Clinicians shall navigate contour-bearing slices by structure
+content: |-
+  As a physician or dosimetrist, I need to step through the axial slices that
+  contain contours for the active structure so I can review and correct each
+  contour slice without manually scrolling.
+user_group: Physician / Dosimetrist / Radiation Therapist
+derives_from:
+  - UC-003
+priority: High

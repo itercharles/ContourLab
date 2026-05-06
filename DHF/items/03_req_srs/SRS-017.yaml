@@ -1,0 +1,11 @@
+id: SRS-017
+title: Software shall expose a GET /api/health endpoint returning service name and status
+content: |-
+  The ASP.NET Core API shall expose an HTTP GET endpoint at /api/health that
+  returns a JSON response containing at minimum the service name and a status
+  indicator. This endpoint enables CI smoke checks and local developer health
+  verification without requiring authentication.
+derives_from:
+  - SYS-013
+verification_method: [Test]
+critical_safety: false

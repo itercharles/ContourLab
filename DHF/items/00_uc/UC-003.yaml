@@ -1,0 +1,29 @@
+id: UC-003
+title: Review Structure Quality
+content: |-
+  A physician or dosimetrist reviews the quality of contours in the active
+  structure set using automated QA analysis and slice-level navigation.
+
+  Actor: Physician / Dosimetrist / Radiation Therapist
+
+  Preconditions:
+  - DICOM image series is loaded and displayed in the viewer
+  - At least one structure is present in the active structure set
+
+  Primary Flow:
+  1. User selects a structure from the structure list
+  2. System displays contour quality warnings for the active structure, including
+     open contours, degenerate contours, slice gaps, abrupt area or centroid
+     changes, and contours extending outside image bounds
+  3. User selects a quality issue from the checklist
+  4. System navigates the axial viewport to the relevant image slice and
+     activates the corresponding structure
+  5. User uses previous/next navigation to traverse contour-bearing slices for
+     the active structure
+  6. System jumps the axial viewport to the adjacent contour-bearing slice
+  7. User reviews the RTSS-level QA checklist aggregated across all structures
+  8. User corrects identified issues using contouring tools (see UC-002)
+
+  Postconditions:
+  - All quality issues have been reviewed and addressed or accepted
+  - Structure set is ready for repository exchange

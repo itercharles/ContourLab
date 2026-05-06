@@ -15,31 +15,26 @@ jobs:
     if: ${{ github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
-      - name: Check out DHF repo
+      - name: Check out repo
         uses: actions/checkout@v4
         with:
-          repository: itercharles/WebTPS-DHF
-          token: ${{ secrets.PRODUCT_REPO_TOKEN }}
-          path: dhf
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        env:
-          PRODUCT_REPO_TOKEN: ${{ secrets.PRODUCT_REPO_TOKEN }}
-        run: |
-          git config --global url."https://x-access-token:${PRODUCT_REPO_TOKEN}@github.com/".insteadOf "https://github.com/"
-          pip install -r dhf/requirements.txt
+      - name: Install medharness
+        run: pip install medharness
 
       - name: Complete CR
         run: |
           medharness cr workflow complete-from-github-pr \
-            --dhf-repo dhf \
+            --dhf-repo . \
             --event "$GITHUB_EVENT_PATH" \
             --by "github-actions[bot]" \
             --push

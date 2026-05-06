@@ -5,8 +5,8 @@
 WebTPS is a web-based radiation therapy Treatment Planning System — React frontend,
 ASP.NET Core 10 API, shared TypeScript domain types, and local DICOM tooling (Orthanc via Docker).
 
-Compliance and traceability (requirements, change requests, risks) live in the **WebTPS-DHF**
-repository — a separate workflow from application code. Do not update DHF items in this repo.
+Compliance and traceability (requirements, change requests, risks) live in the **`DHF/`** directory
+of this repository — single-repo layout managed by MedHarness.
 
 ## Repo Layout
 
@@ -14,13 +14,19 @@ repository — a separate workflow from application code. Do not update DHF item
 apps/client/           — React 18 + TypeScript (Vite, port 3000)
 apps/api/              — ASP.NET Core 10 API (C#, port 4000)
 packages/shared-types/ — Canonical TypeScript domain model (zero runtime deps)
-docs/                  — Architecture, strategy, process docs
-.github/workflows/     — CI pipeline
+DHF/                   — Design History File (items, config, documents, test-results)
+DHF/items/             — YAML DHF items by type (CR, SYS, SRS, RISK, etc.)
+DHF/config/            — DHF configuration (change-controlled)
+DHF/documents/         — Spec and plan templates
+docs/cr-specs/         — CR specification documents (authoritative plan specs)
+tests/dhf/             — DHF Python tests
+.github/workflows/     — CI pipeline and CR automation
+.github/prompts/       — AI prompt templates for CR workflows
 ```
 
 ## Toolchain
 
-Node.js ≥20, pnpm ≥9, .NET SDK 10
+Node.js ≥20, pnpm ≥9, .NET SDK 10, Python ≥3.11
 
 ## Key Commands
 
@@ -35,6 +41,14 @@ pnpm --filter @webtps/client test         # frontend tests
 pnpm --filter @webtps/client typecheck    # typecheck frontend
 pnpm -r typecheck                         # typecheck all workspaces
 pnpm -r build                             # build all workspaces
+
+# DHF operations (Python)
+pip install medharness                    # one-time setup (or: pip install -r requirements.txt)
+medharness --dhf DHF dhf item list --type cr          # list all CRs
+medharness --dhf DHF dhf item get CR-NNN              # get CR details
+medharness --dhf DHF dhf item transition CR-NNN <state> --by "Author"
+medharness --dhf DHF dhf validate schema              # validate all item YAMLs
+medharness --dhf DHF dhf doc generate ALL             # regenerate spec documents
 ```
 
 ## Key Conventions
@@ -44,74 +58,44 @@ pnpm -r build                             # build all workspaces
 - **Proxy**: Vite proxies `/api` and `/ws` → `localhost:4000`; `/dicom-web` → Orthanc `localhost:8042`
 - **TypeScript**: strict mode throughout, no `any`
 - **Styling**: Tailwind only, no inline styles, dark clinical theme (see `/ux-design`)
-- **DHF CR automation boundary**: CR intake/development/completion automation and
-  agent context preparation must access DHF data through CompliantFlow's DHF
-  facade. Do not add direct dependencies on DHF storage paths such as
-  `DHF/items/...` or `docs/cr-specs/...`, and do not scatter direct DHF utility
-  subprocess calls across CR automation. CI compliance and artifact-generation
-  jobs may still invoke DHF-owned validation/export tools.
+- **DHF**: DHF items live at `DHF/items/`. Use `medharness --dhf DHF dhf ...` commands. CR specs
+  live at `docs/cr-specs/`. Do not scatter direct DHF file reads across automation — use the
+  `medharness` CLI facade.
 
 ### DHF Facade API Quick Reference
 
-Use the CompliantFlow facade when an agent or CI job needs DHF data. Direct file
-reads under `../WebTPS-DHF/DHF/items/...` are only for DHF-local maintenance.
-
-From WebTPS automation:
-
 ```bash
-python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf context implementation \
-  --cr CR-034 \
-  --out-dir /tmp/webtps-cr-context
+# Get DHF context for a CR stage
+medharness --dhf DHF dhf context for-stage analyze --cr CR-034
+medharness --dhf DHF dhf context for-stage design --cr CR-034 --spec docs/cr-specs/CR-034-Spec.md
+medharness --dhf DHF dhf context for-stage develop --cr CR-034 --spec docs/cr-specs/CR-034-Spec.md
 
-python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item transition CR-034 completed \
-  --by agent
+# Transition a CR
+medharness --dhf DHF dhf item transition CR-034 completed --by "agent"
+
+# List and inspect items
+medharness --dhf DHF dhf item get SRS-001
+medharness --dhf DHF dhf item list --type SRS
 ```
-
-Facade contract, for debugging from a CompliantFlow checkout only:
-
-```bash
-python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item get SRS-001
-
-python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf item list --type SRS
-
-python -m compliantflow --dhf ../WebTPS-DHF/DHF dhf context implementation \
-  --cr CR-034 \
-  --out-dir /tmp/compliantflow-context
-```
-
-Agent usage:
-
-- Need a requirement by ID: ask through the WebTPS adapter boundary. The
-  underlying facade operation is `dhf item get <SYS|SRS|CRS-ID>`.
-- Need requirements of one level: ask through the WebTPS adapter boundary. The
-  underlying facade operation is `dhf item list --type SYS`, `--type SRS`, or
-  `--type CRS`.
-- Need implementation inputs for a CR: call the CompliantFlow facade directly
-  with `dhf context implementation --cr <CR-ID>`.
-- Need to transition a CR from WebTPS automation: call `dhf item transition
-  <CR-ID> completed --by agent` through CompliantFlow.
-- Need impact analysis, traceability assessment, or compliance evidence: keep that
-  in DHF/CompliantFlow workflows; WebTPS consumes approved requirements and design
-  context, it does not own DHF impact analysis output.
 
 ## Sources of Truth
 
 1. `packages/shared-types/src/index.ts` — canonical data model
-2. `WebTPS-DHF/DHF/documents/specs/architecture_specification.md.j2` — architecture baseline (software items, goals, data flow, evolution rules)
-3. `WebTPS-DHF/DHF/documents/specs/crs_specification.md.j2` — product direction, roadmap, user priorities, guardrails
-4. `WebTPS-DHF/DHF/documents/plans/development_plan.md` — technical direction, testing strategy, DevOps
-5. `.github/workflows/ci-pipeline.yml` — enforced acceptance path
+2. `DHF/documents/specs/` — specification templates (architecture, CRS, etc.)
+3. `DHF/documents/plans/development_plan.md` — technical direction, testing strategy, DevOps
+4. `.github/workflows/ci-pipeline.yml` — enforced acceptance path
 
 ## Change Workflow
 
-Every non-trivial change starts from a CR in WebTPS-DHF and passes through three stages,
+Every non-trivial change starts from a CR in this repo and passes through four stages,
 each gated by human approval:
 
-| Stage | Where | Produced by |
+| Stage | Branch | Produced by |
 |---|---|---|
-| 1. CR PR | WebTPS-DHF | Human |
-| 2. Plan Spec PR | WebTPS-DHF | Agent (after CR PR approved) |
-| 3. Implementation PR | WebTPS | Agent (after Plan Spec approved) |
+| 1. CR PR | `cr/CR-NNN` | Human |
+| 2. Spec PR | `spec/CR-NNN` | Agent (after CR PR approved) |
+| 3. Design PR | `design/CR-NNN` | Agent (after Spec PR approved) |
+| 4. Implementation PR | `feat/CR-NNN` | Agent (after Design PR approved) |
 
 ### CR Status Model
 
@@ -138,7 +122,7 @@ each gated by human approval:
    | Hazard identified        | RISK + RCM                          |
    | CR implemented           | transition CR to `completed`        |
 
-   Create a CR in WebTPS-DHF before starting significant work. If DHF was not updated, state why.
+   Create a CR before starting significant work. If DHF was not updated, state why.
 
 3. **Tests** — write alongside every functional change: unit tests for pure logic, component
    tests for React components, regression tests for bug fixes. Colocate at `*.test.ts(x)`.
@@ -151,6 +135,7 @@ each gated by human approval:
    pnpm --filter @webtps/client lint && pnpm --filter @webtps/client typecheck
    dotnet build apps/api/api.csproj --configuration Release   # API changes
    pnpm -r typecheck                                           # data model changes
+   medharness --dhf DHF dhf validate schema                   # DHF item changes
    ```
 7. **Handoff** — run `/post-implement`; open PR with CR ID in title, change summary,
    DHF files updated, validation run, manual test plan.
@@ -160,7 +145,7 @@ each gated by human approval:
 **Never commit directly to `main`.** Always work on a branch. Before merging or
 pushing, ask the user whether to open a PR or merge locally — do not decide unilaterally.
 
-- Branch: `feature/`, `fix/`, `refactor/`, or `claude/`
+- Branch: `feature/`, `fix/`, `refactor/`, `cr/CR-NNN`, `spec/CR-NNN`, `design/CR-NNN`, or `feat/CR-NNN`
 - Title: `feat(CR-042): description` — always include CR ID
 - Body: change summary · DHF files updated (or reason not to) · validation run · manual testing remaining
 - After opening: monitor CI and review comments; every comment gets an explicit decision (fix / reply / defer / ask)
@@ -187,11 +172,11 @@ pushing, ask the user whether to open a PR or merge locally — do not decide un
 - `validate-crs` — Playwright clinical workflow tests → `validate-crs-junit` artifact (IEC 62304 §5.8)
 
 **Compliance Check** (after all testing passes — final gate for PRs)
-- `compliance` — IEC 62304 · IEC 82304-1 checks
+- `compliance` — requirement-to-test coverage gate (SRS, SYS, CRS)
 
 **Artifacts + Deploy** (main branch only, after compliance)
-- `generate-artifacts` — DHF spec PDFs · plan PDFs · traceability PDF report
-- `deploy` — self-hosted workstation deployment via PM2
+- `generate-artifacts` — DHF spec PDFs · traceability PDF · evidence bundle
+- `deploy` — self-hosted workstation deployment via Docker
 
 ## Design Rules
 

@@ -1,0 +1,17 @@
+id: SRS-001
+title: Software shall extract required image metadata from DICOMweb metadata responses
+content: |-
+  The client software shall extract patient name (0010,0010), patient ID
+  (0010,0020), study instance UID (0020,000D), series instance UID (0020,000E),
+  SOP instance UID (0008,0018), image position patient (0020,0032), pixel
+  spacing (0028,0030), and instance number (0020,0013) from DICOMweb QIDO-RS
+  and WADO-RS metadata responses. Series metadata rows missing mandatory study
+  or series identifiers shall be skipped. The repository worklist shall retain
+  planning CT series and exclude non-planning modalities and CBCT-like
+  acquisition series from primary image-set selection. Patient selection shall
+  be exposed through a dedicated selector so the primary repository panel can
+  remain scoped to the current patient workspace. Patient and image-set rows
+  shall indicate whether the item is active in the current workspace.
+derives_from: [SYS-001]
+verification_method: [Test]
+critical_safety: false

@@ -1,0 +1,44 @@
+id: SYSARCH-001
+title: Browser Client
+status: approved
+content: |-
+  The primary software item running in the clinical user's browser. Responsible for
+  all user interaction, DICOM rendering, contouring workflow, and local state management.
+
+  Technology stack:
+  - React 18 + TypeScript (strict) + Vite — component framework and build tooling
+  - Cornerstone3D — GPU-accelerated DICOM rendering via WebGL (axial/sagittal/coronal MPR)
+  - Zustand + Immer — reactive state management (volumeStore, structureStore, uiStore)
+  - Tailwind CSS — dark clinical UI theme
+
+  Key sub-components:
+  - ViewportManager: manages Cornerstone3D rendering contexts and MPR layout
+  - MPRController: coordinates multi-planar reconstruction across viewports
+  - ContourEngine: freehand, polygon, brush, and eraser contouring tools; undo/redo
+  - DICOMweb client: QIDO-RS (query), WADO-RS (retrieve), STOW-RS (store) via /dicom-web proxy
+  - IndexedDB adapter: browser-local auto-save of in-progress structure set drafts
+
+  External interfaces:
+  - /dicom-web/* → Orthanc DICOMweb (proxied by Vite in dev, reverse proxy in prod)
+  - /api/* → ASP.NET Core API (proxied by Vite in dev)
+  - /ws → WebSocket for real-time updates (proxied)
+
+  Data flows:
+  - Image loading: QIDO-RS query → WADO-RS metadata → Cornerstone image IDs →
+    VolumeBuilder → Cornerstone3D volume → ViewportManager.setVolume() → GPU render
+  - Contouring: user gesture → ContourEngine.addContour() → UndoRedoManager →
+    structureStore → React re-render
+  - Draft persistence: structureStore dirty → IndexedDB auto-save → restore on reload
+  - Structure upload: active RTSTRUCT → STOW-RS to DICOM repository
+design:
+- SYS-002
+- SYS-003
+- SYS-004
+- SYS-005
+- SYS-006
+- SYS-007
+- SYS-008
+- SYS-009
+- SYS-010
+- SYS-011
+- SYS-012

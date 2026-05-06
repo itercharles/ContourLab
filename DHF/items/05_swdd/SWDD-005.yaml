@@ -1,0 +1,11 @@
+id: SWDD-005
+title: ASP.NET Core 10 Web API backend
+content: |-
+  The backend is an ASP.NET Core 10 Web API project at apps/api/. It runs on
+  port 4000 (http). CORS is configured to allow http://localhost:3000 in
+  Development. The Vite dev server proxies /api/* requests to localhost:4000.
+
+  Controllers/HealthController.cs provides GET /api/health returning
+  { status, service, timestamp }. Additional controllers will be added for
+  DICOM series management, plan persistence, and dose calculation in future phases.
+implements: [SRS-017]

@@ -1,0 +1,23 @@
+id: SRS-011
+title: Software shall support contour review navigation by structure
+content: |-
+  For the active structure, the client software shall display the number of
+  unique contour-bearing slices and provide previous/next review navigation.
+  The structure list shall also show each structure type, volume, contour slice
+  count, hidden/locked state when applicable, and indicate when a structure has
+  contour data on the current axial slice. Review navigation shall be available
+  through visible controls and keyboard shortcuts, target the axial viewport,
+  choose the adjacent contour-bearing slice relative to the current axial slice
+  position, wrap at the first or last contour slice, and use the active image
+  series slice metadata to scroll to the closest matching image slice. The top
+  operation bar shall expose visible Previous and Next contour review controls
+  near the contour editing tools. The top operation bar shall also expose
+  visible Delete Slice, Undo, and Redo controls for contour editing. Delete
+  Slice shall remove the active structure contour on the current axial slice
+  when present, remain disabled when no current-slice contour exists, and remain
+  disabled for locked structures. After a current-slice contour delete, the Undo
+  control shall be enabled when the undo stack is non-empty and shall
+  communicate the Cmd+Z shortcut through control help text.
+derives_from: [SYS-009]
+verification_method: [Test, Demonstration]
+critical_safety: true

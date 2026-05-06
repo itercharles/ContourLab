@@ -1,0 +1,11 @@
+id: RCM-002
+title: Unit tests for DICOM tag parsing and slice sorting
+content: |-
+  Automated unit tests shall verify correct extraction of geometry tags from
+  representative DICOM datasets including edge cases: missing optional tags,
+  single-instance series, negative z-coordinates, and non-unit pixel spacing.
+  Slice ordering shall be verified for both instance-number and z-position sorting.
+mitigates: [RISK-002]
+implements: [SYS-001]
+verification_method: [Test]
+residual_risk: Low

@@ -1,0 +1,17 @@
+id: SYS-001
+title: System shall load DICOM CT series from a DICOMweb repository
+content: |-
+  The system shall query a DICOMweb-compatible repository for available
+  planning CT image series, excluding non-planning modalities and CBCT-like
+  acquisition series from the primary worklist, retrieve series instance
+  metadata, and assemble the selected series into a 3D volume with correct
+  slice ordering, pixel spacing, and image position patient metadata. The
+  viewer shall use DICOMweb as the primary image acquisition mechanism rather
+  than directly opening local image files in the browser.
+category: Functional
+verification_method:
+  - Test
+  - Demonstration
+critical_safety: false
+satisfies:
+  - CRS-001

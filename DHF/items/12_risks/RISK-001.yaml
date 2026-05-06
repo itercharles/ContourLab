@@ -1,0 +1,12 @@
+id: RISK-001
+title: Incorrect contour saved due to undo/redo state corruption
+hazard: |-
+  A software defect in the undo/redo stack causes a contour edit to be applied
+  incorrectly or not at all, resulting in a saved contour that does not reflect
+  the clinician's intent.
+harm: Incorrect target or OAR contour used for treatment planning, leading to geographic miss or OAR overdose
+severity: Critical
+probability: Low
+risk_level: High
+category: Software
+related_requirements: [SYS-004]
