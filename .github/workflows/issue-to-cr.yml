@@ -95,7 +95,7 @@ Review the CR definition in \`DHF/items/09_cr/$CR_ID.yaml\`, then approve to tri
             --label "cr:stage/cr")
 
           python -m medharness --dhf DHF dhf item transition "$CR_ID" in_review \
-            --by "github-actions[bot]"
+            --by "github-actions[bot]" --commit --push
 
           gh issue comment "${{ github.event.issue.number }}" \
             --body "CR intake complete: **$CR_ID** — review PR: $PR_URL

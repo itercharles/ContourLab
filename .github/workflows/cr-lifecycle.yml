@@ -118,9 +118,14 @@ jobs:
       - name: Cancel CR
         if: steps.ctx.outputs.mode == 'cancel'
         run: |
+          CR_ID="${{ steps.ctx.outputs.cr_id }}"
+          BRANCH="${{ github.event.pull_request.head.ref }}"
           git checkout main
+          # CR YAML only exists on the feature branch — bring it to main so the
+          # transition can be committed and pushed there.
+          git checkout "$BRANCH" -- "DHF/items/09_cr/$CR_ID.yaml"
           python -m medharness --dhf DHF dhf item transition \
-            "${{ steps.ctx.outputs.cr_id }}" cancelled \
+            "$CR_ID" cancelled \
             --by "github-actions[bot]" --commit --push
 
       - uses: actions/setup-node@v4
@@ -209,12 +214,23 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/cr-specs/ DHF/items/
+          COMMITTED=false
           if ! git diff --staged --quiet; then
             git commit -m "docs: spec for $CR_ID"
             git push
+            COMMITTED=true
           fi
           if [ "$MODE" = "advance" ]; then
-            gh issue edit "$PR_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/spec"
+            # Advance only if this run committed something, or if the spec file
+            # already exists on the branch from a prior run (workflow_dispatch re-run).
+            SPEC_EXISTS=$(git diff origin/main -- "docs/cr-specs/${CR_ID}-Spec.md" | grep -c "^+" || echo "0")
+            if [ "$COMMITTED" = "true" ] || [ "$SPEC_EXISTS" -gt "0" ]; then
+              gh issue edit "$PR_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/spec"
+            else
+              gh pr comment "$PR_NUMBER" \
+                --body "⚠️ Spec generation produced no output for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: cr) and check Claude logs."
+              exit 1
+            fi
           fi
           [ -n "$SESSION_ID" ] && python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID" || true
 
@@ -284,12 +300,25 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add DHF/
+          COMMITTED=false
           if ! git diff --staged --quiet; then
             git commit -m "feat: design $CR_ID"
             git push
+            COMMITTED=true
           fi
           if [ "$MODE" = "advance" ]; then
-            gh issue edit "$PR_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design"
+            # Advance only if design items were written this run or in a prior run.
+            # Exclude the CR YAML (committed at intake) to avoid false positives.
+            DESIGN_EXISTS=$(git diff origin/main -- DHF/ \
+              | grep -v "^diff.*DHF/items/09_cr/$CR_ID.yaml" \
+              | grep -c "^+" || echo "0")
+            if [ "$COMMITTED" = "true" ] || [ "$DESIGN_EXISTS" -gt "0" ]; then
+              gh issue edit "$PR_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design"
+            else
+              gh pr comment "$PR_NUMBER" \
+                --body "⚠️ Design generation produced no output for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: spec) and check Claude logs."
+              exit 1
+            fi
           fi
           [ -n "$SESSION_ID" ] && python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID" || true
 
@@ -351,13 +380,26 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
+          COMMITTED=false
           if ! git diff --staged --quiet; then
             git commit -m "feat: implement $CR_ID"
             git push
+            COMMITTED=true
           fi
           if [ "$MODE" = "advance" ]; then
-            gh issue edit "$PR_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code"
-            gh pr ready "$PR_NUMBER"
+            # Advance only if code was written this run or in a prior run.
+            # Exclude DHF and cr-specs — those are not implementation output.
+            CODE_EXISTS=$(git diff origin/main -- . \
+              ':(exclude)DHF/' ':(exclude)docs/cr-specs/' \
+              | grep -c "^+" || echo "0")
+            if [ "$COMMITTED" = "true" ] || [ "$CODE_EXISTS" -gt "0" ]; then
+              gh issue edit "$PR_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code"
+              gh pr ready "$PR_NUMBER"
+            else
+              gh pr comment "$PR_NUMBER" \
+                --body "⚠️ Implementation produced no code changes for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: design) and check Claude logs."
+              exit 1
+            fi
           fi
           [ -n "$SESSION_ID" ] && python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID" || true
 
