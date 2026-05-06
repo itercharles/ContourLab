@@ -34,7 +34,34 @@ justification:
 - `/soup-impact`: SOUP and dependency impact.
 - `/test-impact`: development, verification, validation, and manual test impact.
 
-The spec must use this structure:
+The spec file MUST begin with a YAML front-matter block, followed by the markdown sections.
+The front-matter is machine-read by CI validation — missing or wrong fields will fail the build.
+
+```
+---
+cr_id: "{{cr_id}}"
+direction_fit: in-scope        # one of: in-scope | scope-expansion | out-of-scope
+affected_items:                # DHF item IDs this CR touches; use [] if none
+  - SYS-001
+test_plan:
+  auto_covered:                # SRS/SYS items covered by existing automated tests
+    - SRS-001
+  needs_new_tc:                # items requiring new test cases
+    - SRS-002
+  must_be_manual:              # items that can only be verified manually
+    []
+---
+```
+
+`direction_fit` meanings:
+- `in-scope`: fits the current product roadmap without extending scope
+- `scope-expansion`: adds capability beyond the current roadmap
+- `out-of-scope`: conflicts with or is outside the product strategy
+
+`affected_items` must reference IDs that already exist in DHF (SYS-NNN, SRS-NNN, CRS-NNN, RISK-NNN, etc.).
+Use `[]` if no existing items are affected.
+
+The markdown sections follow the front-matter block:
 
 1. `Summary`
 2. `Implementation Plan`
