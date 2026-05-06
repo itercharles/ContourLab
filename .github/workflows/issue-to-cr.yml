@@ -83,22 +83,26 @@ jobs:
           git commit -m "cr: intake $CR_ID"
           git push --set-upstream origin "$BRANCH"
 
+          {
+            echo "Closes #${{ github.event.issue.number }}"
+            echo ""
+            echo "**Stage 1 of 4 — CR Review**"
+            echo "Review the CR definition in \`DHF/items/09_cr/$CR_ID.yaml\`, then approve to trigger AI spec generation."
+          } > /tmp/pr-body.md
           PR_URL=$(gh pr create \
             --head "$BRANCH" \
             --base main \
             --draft \
             --title "feat($CR_ID): ${{ github.event.issue.title }}" \
-            --body "Closes #${{ github.event.issue.number }}
-
-**Stage 1 of 4 — CR Review**
-Review the CR definition in \`DHF/items/09_cr/$CR_ID.yaml\`, then approve to trigger AI spec generation." \
+            --body-file /tmp/pr-body.md \
             --label "cr:stage/cr")
 
           python -m medharness --dhf DHF dhf item transition "$CR_ID" in_review \
             --by "github-actions[bot]" --commit --push
 
-          gh issue comment "${{ github.event.issue.number }}" \
-            --body "CR intake complete: **$CR_ID** — review PR: $PR_URL
-
-<!-- webtps-cr: $CR_ID -->
-<!-- webtps-cr-pr: $PR_URL -->"
+          {
+            echo "CR intake complete: **$CR_ID** — review PR: $PR_URL"
+            echo ""
+            echo "<!-- webtps-cr: $CR_ID -->"
+            echo "<!-- webtps-cr-pr: $PR_URL -->"
+          } | gh issue comment "${{ github.event.issue.number }}" --body-file -
