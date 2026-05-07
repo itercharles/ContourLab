@@ -3,6 +3,9 @@ name: test-impact
 description: Analyze which development, verification, validation, and manual tests a Change Request requires
 ---
 
+> **Primarily CI-invoked** — the CR lifecycle workflow runs this automatically during spec and design generation. Invoke manually only to review or fix DHF impact outside the automated pipeline.
+
+
 # Test Impact
 
 Use this skill during CR analysis and CR design to decide the smallest sufficient

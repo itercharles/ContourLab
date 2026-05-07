@@ -3,6 +3,9 @@ name: req-manage
 description: Analyze and manage UC, CRS, SYS, and SRS requirement coverage and traceability
 ---
 
+> **Primarily CI-invoked** — the CR lifecycle workflow runs this automatically during spec and design generation. Invoke manually only to review or fix DHF impact outside the automated pipeline.
+
+
 # req-manage skill
 
 ## Purpose

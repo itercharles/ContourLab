@@ -3,6 +3,9 @@ name: product-impact
 description: Analyze whether a Change Request aligns with WebTPS product direction and whether UC or CRS items need updates
 ---
 
+> **Primarily CI-invoked** — the CR lifecycle workflow runs this automatically during spec and design generation. Invoke manually only to review or fix DHF impact outside the automated pipeline.
+
+
 # Product Impact
 
 Use this skill during CR analysis and CR design before deciding whether DHF

@@ -3,6 +3,9 @@ name: architecture-impact
 description: Analyze whether a Change Request requires SYSARCH items or architecture specification updates
 ---
 
+> **Primarily CI-invoked** — the CR lifecycle workflow runs this automatically during spec and design generation. Invoke manually only to review or fix DHF impact outside the automated pipeline.
+
+
 # Architecture Impact
 
 Use this skill during CR analysis and CR design when a change may affect WebTPS

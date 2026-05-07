@@ -3,6 +3,9 @@ name: soup-impact
 description: Analyze whether a Change Request affects third-party software or SOUP records
 ---
 
+> **Primarily CI-invoked** — the CR lifecycle workflow runs this automatically during spec and design generation. Invoke manually only to review or fix DHF impact outside the automated pipeline.
+
+
 # SOUP Impact
 
 Use this skill during CR analysis and CR design when a change may add, remove,

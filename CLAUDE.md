@@ -191,7 +191,6 @@ pushing, ask the user whether to open a PR or merge locally — do not decide un
 **CR workflow**
 - `/cr-implement <CR-ID>` — **primary entry point**: read Plan Spec, implement, write tests, update DHF, open PR
 - `/cr-status` — list all CRs and their current lifecycle states
-- `/cr-create` — guided wizard to create a new CR item in the DHF
 
 **DHF impact analysis** (use during CR analysis and design)
 - `/product-impact` — UC and CRS alignment with product direction
