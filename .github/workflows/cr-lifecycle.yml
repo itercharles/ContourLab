@@ -381,11 +381,10 @@ jobs:
           [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
           PROMPT=$(sed "s/{{cr_id}}/$CR_ID/g" .github/prompts/cr-design.md)
           claude -p --dangerously-skip-permissions "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
-      - name: Commit and advance to design review
+      - name: Commit design
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
           SKIP_DESIGN: ${{ steps.design_check.outputs.skip }}
         run: |
           git config user.name "github-actions[bot]"
@@ -395,6 +394,34 @@ jobs:
             git commit -m "feat: design $CR_ID"
             git push
           fi
+      - name: Validate DHF traceability
+        if: steps.design_check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          if ! python -m medharness ci dhf-validate \
+            --dhf DHF \
+            --run-schema \
+            --run-traceability \
+            --coverage-pair UC:CRS \
+            --coverage-pair CRS:SYS \
+            --coverage-pair SYS:SRS \
+            --coverage-pair SRS:SWDD \
+            --coverage-pair SYS:SYSARCH \
+            --coverage-pair RISK:RCM; then
+            gh pr comment "$PR_NUMBER" \
+              --body "⚠️ DHF traceability check failed after design generation for $CR_ID. Correct the DHF items and re-approve to retry."
+            exit 1
+          fi
+      - name: Advance to design review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+          SKIP_DESIGN: ${{ steps.design_check.outputs.skip }}
+        run: |
           if [ "$SKIP_DESIGN" = "true" ]; then
             gh pr comment "$PR_NUMBER" \
               --body "No DHF items affected by $CR_ID — design stage skipped. Approve to proceed to implementation."
@@ -504,7 +531,7 @@ jobs:
           [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
           PROMPT=$(sed "s/{{cr_id}}/$CR_ID/g" .github/prompts/cr-develop.md)
           claude -p --dangerously-skip-permissions "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
-      - name: Commit and mark ready for review
+      - name: Commit implementation
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
@@ -522,16 +549,57 @@ jobs:
           CODE_EXISTS=$(git diff origin/main -- . \
             ':(exclude)DHF/' ':(exclude)docs/cr-specs/' \
             | grep -c "^+" || echo "0")
-          if [ "$COMMITTED" = "true" ] || [ "$CODE_EXISTS" -gt "0" ]; then
-            gh pr edit "$PR_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code"
-            gh pr ready "$PR_NUMBER"
-            ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
-            [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code" 2>/dev/null || true
-          else
+          if [ "$COMMITTED" != "true" ] && [ "$CODE_EXISTS" = "0" ]; then
             gh pr comment "$PR_NUMBER" \
               --body "⚠️ Implementation produced no code changes for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: design) and check Claude logs."
             exit 1
           fi
+      - name: Wait for CI to pass
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+          BRANCH: ${{ needs.detect.outputs.branch }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+        run: |
+          # Wait for ci-pipeline.yml to be queued (GitHub takes a few seconds)
+          RUN_ID=""
+          for attempt in $(seq 1 18); do
+            RUN_ID=$(gh run list \
+              --repo "${{ github.repository }}" \
+              --workflow ci-pipeline.yml \
+              --branch "$BRANCH" \
+              --event pull_request \
+              --limit 1 \
+              --json databaseId,status \
+              --jq 'map(select(.status != "completed")) | .[0].databaseId // empty' \
+              2>/dev/null || echo "")
+            [ -n "$RUN_ID" ] && break
+            echo "Waiting for CI run to appear... ($attempt/18)"
+            sleep 10
+          done
+          if [ -z "$RUN_ID" ]; then
+            gh pr comment "$PR_NUMBER" \
+              --body "⚠️ Could not find a running CI pipeline for $CR_ID — stage not advanced. Check Actions and re-trigger via workflow_dispatch (stage: design)."
+            exit 1
+          fi
+          echo "Watching CI run $RUN_ID..."
+          if ! gh run watch "$RUN_ID" \
+            --repo "${{ github.repository }}" \
+            --exit-status; then
+            RUN_URL="https://github.com/${{ github.repository }}/actions/runs/$RUN_ID"
+            gh pr comment "$PR_NUMBER" \
+              --body "⚠️ CI pipeline failed for $CR_ID — stage not advanced. See [CI run]($RUN_URL) for details. Fix the failures and re-trigger via workflow_dispatch (stage: design)."
+            exit 1
+          fi
+      - name: Advance to code review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          gh pr edit "$PR_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code"
+          gh pr ready "$PR_NUMBER"
+          ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
+          [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code" 2>/dev/null || true
 
   # ── CODE: REVISE ──────────────────────────────────────────────────────────
 
