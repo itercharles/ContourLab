@@ -377,11 +377,10 @@ export default function Toolbar() {
                 </h3>
                 {(() => {
                   const steps: Array<{ actor: 'human' | 'ai' | 'auto'; stage: string; desc: string; trigger: string | null }> = [
-                    { actor: 'human', stage: 'open',      desc: 'human submit & triage',                          trigger: 'on milestone assign' },
-                    { actor: 'auto',  stage: 'triaged',   desc: 'CR PR auto-opened',                               trigger: 'on approval' },
-                    { actor: 'ai',    stage: 'analyze',   desc: 'AI to analyze request and generate plan',          trigger: 'on approval' },
-                    { actor: 'ai',    stage: 'design',    desc: 'AI to update the DHF',                             trigger: 'on approval' },
-                    { actor: 'ai',    stage: 'implement', desc: 'AI to generate code',                              trigger: 'on approval + CI' },
+                    { actor: 'human', stage: 'open',      desc: 'human submit & triage',                          trigger: 'triage' },
+                    { actor: 'ai',    stage: 'analyze',   desc: 'AI to analyze request and generate plan',          trigger: 'approve' },
+                    { actor: 'ai',    stage: 'design',    desc: 'AI to update the DHF',                             trigger: 'approve' },
+                    { actor: 'ai',    stage: 'implement', desc: 'AI to generate code',                              trigger: 'approve + CI' },
                     { actor: 'auto',  stage: 'deployed',  desc: 'CI auto test · report · deploy',                   trigger: null },
                   ];
                   return (
@@ -392,7 +391,7 @@ export default function Toolbar() {
                             <div className="flex w-14 shrink-0 flex-col items-center">
                               <div className="h-[14px]" />
                               <div className="h-px w-full bg-[var(--color-border)]" />
-                              <p className="mt-1 text-center text-[8px] leading-tight text-emerald-400">
+                              <p className="mt-1 text-center text-[10px] leading-tight text-emerald-400">
                                 {steps[i - 1].trigger}
                               </p>
                             </div>

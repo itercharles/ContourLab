@@ -314,7 +314,7 @@ describe('Toolbar contour operations', () => {
     expect(screen.getByRole('link', { name: 'github.com/itercharles/WebTPS' }).getAttribute('href')).toBe(
       'https://github.com/itercharles/WebTPS'
     );
-    expect(screen.getByText('triaged')).toBeTruthy();
+    expect(screen.getByText('analyze')).toBeTruthy();
     expect(screen.getByText(/CI auto test/i)).toBeTruthy();
     expect(screen.getByText(/send your GitHub username to/i)).toBeTruthy();
     expect(screen.getByText(/How to get access/i)).toBeTruthy();
