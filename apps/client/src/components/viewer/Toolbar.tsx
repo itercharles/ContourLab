@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import { useActivityStore, type ActivityItem } from '../../core/store/activityStore';
@@ -334,7 +334,7 @@ export default function Toolbar() {
             onClick={() => setPrototypeInfoOpen(false)}
           >
             <div
-              className="flex w-full max-w-[660px] flex-col border border-blue-500/50 bg-[var(--color-surface)] text-[var(--color-text)] shadow-[0_18px_50px_rgba(0,0,0,0.55)]"
+              className="flex w-full max-w-[820px] flex-col border border-blue-500/50 bg-[var(--color-surface)] text-[var(--color-text)] shadow-[0_18px_50px_rgba(0,0,0,0.55)]"
               style={{ maxHeight: 'calc(100vh - 48px)' }}
               onClick={(event) => event.stopPropagation()}
             >
@@ -372,59 +372,55 @@ export default function Toolbar() {
                 </p>
 
                 {/* Workflow */}
-                <h3 className="mt-4 mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                <h3 className="mt-4 mb-3 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
                   Workflow
                 </h3>
-                <div aria-label="Issue-driven AI coding workflow" className="space-y-0">
-                  {([
-                    { actor: 'human', step: '1',  title: 'Open a GitHub issue',              trigger: null },
-                    { actor: 'human', step: '2',  title: 'Maintainer triage',                trigger: 'Assign to milestone → CR PR auto-opened' },
-                    { actor: 'auto',  step: '3',  title: 'CR pull request auto-opened',      trigger: 'CR PR merged → agent generates Plan Spec' },
-                    { actor: 'ai',    step: '4',  title: 'Plan Spec generated',              trigger: null },
-                    { actor: 'human', step: '5',  title: 'Spec review & approval',           trigger: 'Spec PR merged → agent generates DHF design' },
-                    { actor: 'ai',    step: '6',  title: 'DHF design update',                trigger: null },
-                    { actor: 'human', step: '7',  title: 'DHF review & approval',            trigger: 'Design PR merged → agent opens implementation PR' },
-                    { actor: 'ai',    step: '8',  title: 'Implementation PR',                trigger: null },
-                    { actor: 'human', step: '9',  title: 'Code review & approval',           trigger: 'PR merged → CI validates, generates artifacts & deploys' },
-                    { actor: 'auto',  step: '10', title: 'CI validation, report & deploy',   trigger: null },
-                  ] as const).map(({ actor, step, title, trigger }, i, arr) => (
-                    <div key={step} className="flex gap-3">
-                      {/* Spine */}
-                      <div className="flex flex-col items-center">
-                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
-                          actor === 'ai'    ? 'bg-blue-700 text-white' :
-                          actor === 'auto'  ? 'bg-emerald-900 text-emerald-300' :
-                                             'bg-gray-700 text-gray-100'
-                        }`}>
-                          {step}
-                        </div>
-                        {i < arr.length - 1 && (
-                          <div className="flex w-7 flex-col items-center">
-                            <div className="w-px grow bg-[var(--color-border)]" />
+                {([
+                  [
+                    { actor: 'human', step: '1',  title: 'Open a GitHub issue',   trigger: null },
+                    { actor: 'human', step: '2',  title: 'Maintainer triage',      trigger: 'Milestone → CR PR auto-opened' },
+                    { actor: 'auto',  step: '3',  title: 'CR PR auto-opened',      trigger: 'CR merged → Plan Spec' },
+                    { actor: 'ai',    step: '4',  title: 'Plan Spec generated',    trigger: null },
+                    { actor: 'human', step: '5',  title: 'Spec review & approval', trigger: 'Spec merged → DHF design' },
+                  ],
+                  [
+                    { actor: 'ai',    step: '6',  title: 'DHF design update',      trigger: null },
+                    { actor: 'human', step: '7',  title: 'DHF review & approval',  trigger: 'Design merged → impl PR' },
+                    { actor: 'ai',    step: '8',  title: 'Implementation PR',      trigger: null },
+                    { actor: 'auto',  step: '9',  title: 'CI validation',          trigger: null },
+                    { actor: 'human', step: '10', title: 'Code review & approval', trigger: 'Approval → merge & deploy' },
+                  ],
+                ] as Array<Array<{ actor: 'human' | 'ai' | 'auto'; step: string; title: string; trigger: string | null }>>).map((row, rowIdx) => (
+                  <div key={rowIdx} className={rowIdx > 0 ? 'mt-5' : undefined}>
+                    <div className="flex items-start" aria-label={`Workflow steps ${rowIdx === 0 ? '1–5' : '6–10'}`}>
+                      {row.map(({ actor, step, title, trigger }, i) => (
+                        <Fragment key={step}>
+                          {i > 0 && <div className="mt-[14px] h-px w-4 shrink-0 bg-[var(--color-border)]" />}
+                          <div className="flex min-w-0 flex-1 flex-col items-center gap-1 text-center">
+                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                              actor === 'ai'   ? 'bg-blue-700 text-white' :
+                              actor === 'auto' ? 'bg-emerald-900 text-emerald-300' :
+                                               'bg-gray-700 text-gray-100'
+                            }`}>
+                              {step}
+                            </div>
+                            <p className="text-[11px] font-semibold leading-tight text-[var(--color-text)]">{title}</p>
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                              actor === 'ai'   ? 'bg-blue-900 text-blue-200' :
+                              actor === 'auto' ? 'bg-emerald-950 text-emerald-400' :
+                                               'bg-gray-800 text-gray-300'
+                            }`}>
+                              {actor === 'ai' ? 'AI' : actor === 'auto' ? 'Auto' : 'Human'}
+                            </span>
+                            {trigger && (
+                              <p className="text-[10px] font-medium leading-tight text-emerald-400">⚡ {trigger}</p>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      {/* Content */}
-                      <div className="pb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-[var(--color-text)]">{title}</span>
-                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                            actor === 'ai'   ? 'bg-blue-900 text-blue-200' :
-                            actor === 'auto' ? 'bg-emerald-950 text-emerald-400' :
-                                              'bg-gray-800 text-gray-300'
-                          }`}>
-                            {actor === 'ai' ? 'AI' : actor === 'auto' ? 'Auto' : 'Human'}
-                          </span>
-                        </div>
-                        {trigger && (
-                          <p className="mt-1 text-[10px] font-medium text-emerald-400">
-                            ⚡ {trigger}
-                          </p>
-                        )}
-                      </div>
+                        </Fragment>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
 
                 {/* Open source tooling */}
                 <p className="mt-3 text-[11px] text-[var(--color-text-muted)]">
