@@ -83,6 +83,8 @@ jobs:
   dev-frontend:
     name: Dev | Frontend (lint · typecheck · build)
     runs-on: ubuntu-latest
+    needs: [cr-validation]
+    if: always() && !failure() && !cancelled()
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -100,6 +102,8 @@ jobs:
   dev-api:
     name: Dev | API (restore · build · test)
     runs-on: ubuntu-latest
+    needs: [cr-validation]
+    if: always() && !failure() && !cancelled()
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -120,6 +124,8 @@ jobs:
   dev-shared-types:
     name: Dev | Shared Types (typecheck · build)
     runs-on: ubuntu-latest
+    needs: [cr-validation]
+    if: always() && !failure() && !cancelled()
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -298,20 +304,39 @@ jobs:
           dotnet-version: '10.0.x'
       - run: pnpm install --frozen-lockfile
       - run: dotnet restore apps/api/api.csproj
-      - name: Start full stack
+
+      - name: Start full stack (background)
         run: |
           pnpm repo:up
           pnpm api > /tmp/webtps-api.log 2>&1 &
           pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('apps/client/package.json') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @webtps/client exec playwright install chromium --with-deps
+
+      - name: Install Playwright system deps (cached browser)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @webtps/client exec playwright install-deps chromium
+
+      - name: Wait for full stack
+        run: |
           for i in $(seq 1 30); do
             curl -sf http://127.0.0.1:4000/api/health > /dev/null 2>&1 && \
             curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1 && break
+            echo "Waiting... ($i/30)"
             sleep 3
           done
-      - name: Install Playwright browsers
-        run: pnpm --filter @webtps/client exec playwright install chromium --with-deps
+
       - name: Run CRS validation tests
-        run: pnpm --filter @webtps/client test:e2e:crs
+        run: pnpm --filter @webtps/client test:e2e:crs -- --workers=2 --fully-parallel
         env:
           BASE_URL: http://127.0.0.1:3000
       - name: Stop services
