@@ -12,12 +12,22 @@ Inputs:
 
 Task:
 1. Read the CR and repository context.
-2. Read the custom checklist and incorporate it into the generated spec.
-3. Produce a concise technical implementation spec at `docs/cr-specs/{{cr_id}}-Spec.md`.
+2. **Before writing `affected_items`**, run the following command to enumerate all valid
+   DHF item IDs:
+
+       python -m medharness --dhf DHF dhf item list
+
+   This prints one JSON object per line. Each object contains at minimum:
+   `{ "id": "SYS-001", "type": "SYS", "title": "..." }`.
+   Only reference `id` values that appear in this output. If a needed item does not yet
+   exist, write `affected_items: []` and describe the gap in `DHF Impact` prose — the
+   design phase will create it.
+3. Read the custom checklist and incorporate it into the generated spec.
+4. Produce a concise technical implementation spec at `docs/cr-specs/{{cr_id}}-Spec.md`.
    Use a plan-style output: short sections, direct bullets, and only the analysis
    needed to implement and review the change.
-4. Do not modify other files in this step.
-5. Do not edit the CR item YAML or any CR lifecycle/status fields. CR state
+5. Do not modify other files in this step.
+6. Do not edit the CR item YAML or any CR lifecycle/status fields. CR state
    transitions are performed only by the DHF utility in the workflow.
 
 For small or mechanical changes, keep the spec short. Do not enumerate hundreds

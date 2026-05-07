@@ -218,19 +218,50 @@ jobs:
             --json databaseId --jq '.[0].databaseId' 2>/dev/null || echo "")
           [ -n "$RUN_ID" ] && gh run download "$RUN_ID" --name product-test-results \
             --dir /tmp/test-artifacts 2>/dev/null || true
+      - name: Fetch DHF context
+        env:
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+        run: |
+          python -m medharness --dhf DHF dhf context for-stage analyze \
+            --cr "$CR_ID" > /tmp/dhf-context.json 2>/dev/null \
+            || echo '{}' > /tmp/dhf-context.json
+
       - name: Generate spec
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_ANALYZE_MODEL }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
-          DHF_CONTEXT=$(python -m medharness --dhf DHF dhf context for-stage analyze \
-            --cr "$CR_ID" 2>/dev/null || echo '{}')
-          export DHF_CONTEXT
           mkdir -p docs/cr-specs
           [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
           PROMPT=$(sed "s/{{cr_id}}/$CR_ID/g" .github/prompts/cr-analyze.md)
           claude -p --dangerously-skip-permissions "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
+
+      - name: Self-correct spec (validate + fix)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_ANALYZE_MODEL }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+        run: |
+          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
+          VALIDATION=$(python -m medharness ci validate-spec \
+            --cr "$CR_ID" \
+            --spec "docs/cr-specs/${CR_ID}-Spec.md" \
+            --dhf DHF 2>&1 || true)
+          if echo "$VALIDATION" | grep -q "FAIL"; then
+            echo "Spec has errors — asking Claude to fix:"
+            echo "$VALIDATION"
+            claude -p --dangerously-skip-permissions \
+              "The spec at docs/cr-specs/${CR_ID}-Spec.md failed validation. Errors:
+
+${VALIDATION}
+
+Fix only the front-matter fields that caused errors. Do not change the markdown content." \
+              2>&1 | tee /tmp/claude-fix.txt || true
+          else
+            echo "Spec valid — no self-correction needed."
+          fi
+
       - name: Commit and advance to spec review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
