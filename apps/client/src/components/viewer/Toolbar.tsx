@@ -427,17 +427,6 @@ export default function Toolbar() {
                   {' '}— open-source design-controlled development infrastructure for medical device teams.
                 </p>
 
-                {/* Access */}
-                <div className="mt-2 border border-amber-500/30 bg-amber-950/20 px-3 py-3">
-                  <p className="font-semibold text-amber-200">How to get access</p>
-                  <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
-                    GitHub issue creation requires repository write access.
-                    If you do not have access, send your GitHub username to{' '}
-                    <span className="font-semibold text-[var(--color-text)]">Charles Chen</span>{' '}
-                    to be added as a collaborator.
-                  </p>
-                </div>
-
                 {/* CTA */}
                 <div className="mt-4">
                   <Link
