@@ -14,8 +14,16 @@ Task:
 2. Update or create the relevant DHF items under `DHF/items/` using the
    appropriate skill for each document category.
 3. If the CR calls for generating specification documents, create or update them under `DHF/documents/specs/` or `DHF/documents/plans/`.
-4. Do not modify files outside `DHF/`.
-5. Do not edit the CR item YAML or any CR lifecycle/status fields. CR state
+4. After writing or updating DHF items, run the following command to validate
+   traceability and check for orphan items or broken coverage chains:
+
+       python -m medharness --dhf DHF dhf validate traceability
+
+   Read the output. If it reports orphan items or uncovered coverage pairs that
+   your changes introduced, fix them before finishing. Repeat until the output
+   shows no new gaps.
+5. Do not modify files outside `DHF/`.
+6. Do not edit the CR item YAML or any CR lifecycle/status fields. CR state
    transitions are performed only by the DHF utility in the workflow.
 
 Use these skills for design edits:
