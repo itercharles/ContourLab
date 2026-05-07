@@ -16,7 +16,6 @@ const ACTIVITY_TONE_CLASS: Record<ActivityItem['tone'], string> = {
   error: 'bg-red-500',
 };
 
-const WEBTPS_ISSUES_URL = 'https://github.com/itercharles/WebTPS/issues/new';
 const WEBTPS_REPO_URL = 'https://github.com/itercharles/WebTPS';
 
 function formatActivityTime(value: string): string {
@@ -450,14 +449,14 @@ export default function Toolbar() {
 
                 {/* CTA */}
                 <div className="mt-4">
-                  <a
-                    href={WEBTPS_ISSUES_URL}
-                    target="_blank"
-                    rel="noreferrer"
+                  <Link
+                    to="/issues"
+                    reloadDocument
+                    onClick={() => setPrototypeInfoOpen(false)}
                     className="inline-flex h-8 items-center rounded bg-blue-800 px-3 text-[12px] font-bold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
                   >
-                    Open a WebTPS issue →
-                  </a>
+                    Submit or track an issue →
+                  </Link>
                 </div>
               </div>
             </div>

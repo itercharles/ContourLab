@@ -53,7 +53,7 @@ public sealed class GitHubService
 
         var issues = JsonSerializer.Deserialize<GitHubIssueJson[]>(
             await response.Content.ReadAsStringAsync(), JsonOptions) ?? [];
-        return issues.Select(MapToItem).ToList();
+        return issues.Where(i => i.PullRequest is null).Select(MapToItem).ToList();
     }
 
     private void EnsureToken()
@@ -84,11 +84,12 @@ public sealed class GitHubService
     {
         foreach (var label in labels)
         {
-            if (label == "cr:stage/code") return "implementing";
-            if (label is "cr:stage/spec" or "cr:stage/design") return "designing";
-            if (label == "cr:stage/cr") return "in_review";
+            if (label == "cr:stage/code") return "implement";
+            if (label == "cr:stage/design") return "design";
+            if (label == "cr:stage/spec") return "analyze";
+            if (label == "cr:stage/cr") return "triaged";
         }
-        return "submitted";
+        return "open";
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -106,7 +107,8 @@ internal sealed record GitHubIssueJson(
     string HtmlUrl,
     DateTimeOffset CreatedAt,
     string State,
-    IReadOnlyList<GitHubLabelJson> Labels
+    IReadOnlyList<GitHubLabelJson> Labels,
+    object? PullRequest = null  // present on PRs, null on plain issues
 );
 
 internal sealed record GitHubLabelJson(string Name);

@@ -137,13 +137,13 @@ describe('Issues page — status board', () => {
     await waitFor(() => expect(screen.getByText('No open issues found.')).toBeTruthy());
   });
 
-  it('renders issue rows with number, title, and stage chip', async () => {
+  it('renders issue rows with number, title, and pipeline stepper', async () => {
     vi.stubGlobal('fetch', mockFetch({
       ok: true,
       data: {
         items: [
-          { number: 10, title: 'Low contrast in dark mode', stage: 'in_review', priority: 'high', createdAt: '2026-01-01T00:00:00Z', htmlUrl: 'https://github.com/itercharles/WebTPS/issues/10' },
-          { number: 24, title: 'Add dose volume histogram', stage: 'implementing', priority: 'medium', createdAt: '2026-02-01T00:00:00Z', htmlUrl: 'https://github.com/itercharles/WebTPS/issues/24' },
+          { number: 10, title: 'Low contrast in dark mode', stage: 'triaged', priority: 'high', createdAt: '2026-01-01T00:00:00Z', htmlUrl: 'https://github.com/itercharles/WebTPS/issues/10' },
+          { number: 24, title: 'Add dose volume histogram', stage: 'implement', priority: 'medium', createdAt: '2026-02-01T00:00:00Z', htmlUrl: 'https://github.com/itercharles/WebTPS/issues/24' },
         ],
       },
     }));
@@ -152,8 +152,8 @@ describe('Issues page — status board', () => {
 
     await waitFor(() => expect(screen.getByText('Low contrast in dark mode')).toBeTruthy());
     expect(screen.getByText('Add dose volume histogram')).toBeTruthy();
-    expect(screen.getByText('In Review')).toBeTruthy();
-    expect(screen.getByText('Implementing')).toBeTruthy();
+    expect(screen.getByText('triaged', { selector: 'span[aria-current="step"]' })).toBeTruthy();
+    expect(screen.getByText('implement', { selector: 'span[aria-current="step"]' })).toBeTruthy();
   });
 
   it('shows inline error when GET /api/issues returns 503', async () => {
@@ -173,16 +173,18 @@ describe('Issues page — status board', () => {
   });
 });
 
-describe('stage label mapping', () => {
-  const cases: Array<[string, string]> = [
-    ['submitted',    'Submitted'],
-    ['in_review',    'In Review'],
-    ['designing',    'Designing'],
-    ['implementing', 'Implementing'],
-    ['completed',    'Completed'],
+describe('pipeline stage rendering', () => {
+  const cases: Array<[string]> = [
+    ['open'],
+    ['triaged'],
+    ['analyze'],
+    ['design'],
+    ['implement'],
+    ['deployed'],
+    ['declined'],
   ];
 
-  it.each(cases)('stage "%s" renders label "%s"', async (stage, label) => {
+  it.each(cases)('stage "%s" marks correct step as current', async (stage) => {
     vi.stubGlobal('fetch', mockFetch({
       ok: true,
       data: {
@@ -192,6 +194,8 @@ describe('stage label mapping', () => {
 
     render(<MemoryRouter><Issues /></MemoryRouter>);
 
-    await waitFor(() => expect(screen.getByText(label)).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByText(stage, { selector: 'span[aria-current="step"]' })).toBeTruthy()
+    );
   });
 });

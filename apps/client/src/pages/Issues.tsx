@@ -21,20 +21,62 @@ interface SubmitState {
   htmlUrl?: string;
 }
 
-const STAGE_META: Record<string, { label: string; className: string }> = {
-  submitted:    { label: 'Submitted',    className: 'bg-gray-700/60 text-gray-300' },
-  in_review:    { label: 'In Review',    className: 'bg-blue-900/60 text-blue-300' },
-  designing:    { label: 'Designing',    className: 'bg-purple-900/60 text-purple-300' },
-  implementing: { label: 'Implementing', className: 'bg-amber-900/60 text-amber-300' },
-  completed:    { label: 'Completed',    className: 'bg-green-900/60 text-green-300' },
-};
+const PIPELINE = ['open', 'triaged', 'analyze', 'design', 'implement', 'deployed'] as const;
 
-function StageChip({ stage }: { stage: string }) {
-  const meta = STAGE_META[stage] ?? { label: stage, className: 'bg-gray-700/60 text-gray-300' };
+function PipelineStepper({ stage }: { stage: string }) {
+  const isDeclined = stage === 'declined';
+  const currentIdx = isDeclined ? -1 : PIPELINE.indexOf(stage as typeof PIPELINE[number]);
+
   return (
-    <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${meta.className}`}>
-      {meta.label}
-    </span>
+    <div className="flex items-start py-0.5">
+      {PIPELINE.map((s, i) => {
+        const done = !isDeclined && i < currentIdx;
+        const current = !isDeclined && i === currentIdx;
+        return (
+          <div key={s} className="flex items-start">
+            {i > 0 && (
+              <div
+                className={`mt-[5px] h-px w-5 shrink-0 ${
+                  done || current ? 'bg-blue-600' : 'bg-[var(--color-border)]'
+                }`}
+              />
+            )}
+            <div className="flex w-9 flex-col items-center gap-0.5">
+              <div
+                className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                  done
+                    ? 'bg-blue-500'
+                    : current
+                    ? 'bg-blue-400 ring-2 ring-blue-400/30 ring-offset-1 ring-offset-[var(--color-surface)]'
+                    : 'border border-[var(--color-border)] bg-[var(--color-header)]'
+                }`}
+              />
+              <span
+                aria-current={current ? 'step' : undefined}
+                className={`text-center text-[8px] leading-tight ${
+                  current
+                    ? 'font-semibold text-blue-300'
+                    : done
+                    ? 'text-[var(--color-text-muted)]'
+                    : 'text-[var(--color-border)]'
+                }`}
+              >
+                {s}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+      {isDeclined && (
+        <div className="ml-2 flex items-center gap-1">
+          <div className="h-px w-4 bg-red-800" />
+          <div className="flex flex-col items-center gap-0.5">
+            <div className="h-2.5 w-2.5 rounded-full bg-red-500" />
+            <span aria-current="step" className="text-[8px] font-semibold text-red-400">declined</span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -239,15 +281,15 @@ export default function Issues() {
           </form>
         </section>
 
-        {/* CR status board */}
+        {/* Issue status board */}
         <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
           <div className="flex items-center justify-between border-b border-[var(--color-border)] px-3 py-2">
             <div>
               <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
-                Change Request Status
+                Issue Status
               </h2>
               <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
-                All open issues and their current pipeline stage.
+                All open issues and their current position in the pipeline.
               </p>
             </div>
             <button
@@ -271,36 +313,32 @@ export default function Issues() {
               <tr className="border-b border-[var(--color-border)]">
                 <th className="w-12 px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">#</th>
                 <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Title</th>
-                <th className="w-32 px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Stage</th>
-                <th className="w-24 px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Priority</th>
-                <th className="w-28 px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Submitted</th>
+                <th className="w-80 px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Status</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 Array.from({ length: 3 }).map((_, i) => (
                   <tr key={i} className="border-b border-[var(--color-border)] last:border-b-0">
-                    <td className="px-3 py-2"><div className="h-3 w-8 animate-pulse rounded bg-[var(--color-elevated)]" /></td>
-                    <td className="px-3 py-2"><div className="h-3 w-48 animate-pulse rounded bg-[var(--color-elevated)]" /></td>
-                    <td className="px-3 py-2"><div className="h-3 w-20 animate-pulse rounded bg-[var(--color-elevated)]" /></td>
-                    <td className="px-3 py-2"><div className="h-3 w-14 animate-pulse rounded bg-[var(--color-elevated)]" /></td>
-                    <td className="px-3 py-2"><div className="h-3 w-20 animate-pulse rounded bg-[var(--color-elevated)]" /></td>
+                    <td className="px-3 py-2.5"><div className="h-3 w-8 animate-pulse rounded bg-[var(--color-elevated)]" /></td>
+                    <td className="px-3 py-2.5"><div className="h-3 w-48 animate-pulse rounded bg-[var(--color-elevated)]" /></td>
+                    <td className="px-3 py-2.5"><div className="h-3 w-64 animate-pulse rounded bg-[var(--color-elevated)]" /></td>
                   </tr>
                 ))
               )}
               {!loading && items.length === 0 && !loadError && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-4 text-center text-[11px] text-[var(--color-text-muted)]">
+                  <td colSpan={3} className="px-3 py-4 text-center text-[11px] text-[var(--color-text-muted)]">
                     No open issues found.
                   </td>
                 </tr>
               )}
               {!loading && items.map((item) => (
                 <tr key={item.number} className="border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-elevated)]/30">
-                  <td className="px-3 py-2 font-mono text-[11px] text-[var(--color-text-muted)]">
+                  <td className="px-3 py-2.5 font-mono text-[11px] text-[var(--color-text-muted)]">
                     {item.number}
                   </td>
-                  <td className="px-3 py-2 text-[11px] text-[var(--color-text)]">
+                  <td className="px-3 py-2.5 text-[11px] text-[var(--color-text)]">
                     <a
                       href={item.htmlUrl}
                       target="_blank"
@@ -310,14 +348,8 @@ export default function Issues() {
                       {item.title}
                     </a>
                   </td>
-                  <td className="px-3 py-2">
-                    <StageChip stage={item.stage} />
-                  </td>
-                  <td className="px-3 py-2 text-[11px] capitalize text-[var(--color-text-sec)]">
-                    {item.priority}
-                  </td>
-                  <td className="px-3 py-2 text-[11px] text-[var(--color-text-muted)]">
-                    {new Date(item.createdAt).toLocaleDateString()}
+                  <td className="px-3 py-1.5">
+                    <PipelineStepper stage={item.stage} />
                   </td>
                 </tr>
               ))}
