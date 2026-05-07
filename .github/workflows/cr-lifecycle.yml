@@ -173,6 +173,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr comment "${{ needs.detect.outputs.pr_number }}" \
+            --repo "${{ github.repository }}" \
             --body "The CR YAML (\`DHF/items/09_cr/${{ needs.detect.outputs.cr_id }}.yaml\`) is human-authored — there is no AI revision path at this stage. Please update it manually and re-approve."
 
   # ── SPEC: GENERATE ────────────────────────────────────────────────────────
@@ -589,4 +590,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr comment "${{ needs.detect.outputs.pr_number }}" \
+            --repo "${{ github.repository }}" \
             --body "All stages complete — ready to merge."
