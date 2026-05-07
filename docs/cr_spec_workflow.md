@@ -80,12 +80,14 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
 |-------|---------|
 | `draft` | CR created, not yet submitted |
 | `in_review` | Draft PR open, spec/design/code under review |
-| `designing` | Spec approved; AI generating design |
-| `implementing` | Design approved; AI generating code |
 | `completed` | Implementation merged; DHF closed out |
 | `cancelled` | PR closed without merging |
 
-Normal flow: `draft → in_review → designing → implementing → completed`
+Normal flow: `draft → in_review → completed`
+
+Intermediate states (`designing`, `implementing`) are not used — the CR stays
+`in_review` throughout all AI generation stages and transitions directly to
+`completed` on merge.
 
 ## Manual Re-run
 
@@ -97,7 +99,8 @@ Inputs:
 - `cr_id`: e.g. `CR-034`
 - `stage`: the stage to re-run (`cr`, `spec`, `design`, or `code`)
 
-The workflow looks up the open `feat/CR-NNN` PR and forces `mode=advance` for that stage.
+The workflow looks up the open `feat/CR-NNN` PR and runs the generate job for
+that stage (`Generate Spec`, `Generate Design`, or `Generate Code`).
 
 ## Runtime Prerequisites
 
