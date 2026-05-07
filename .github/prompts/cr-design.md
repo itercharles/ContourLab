@@ -11,19 +11,49 @@ Inputs:
 
 Task:
 1. Read the CR item, the approved spec, and the repository context.
-2. Update or create the relevant DHF items under `DHF/items/` using the
-   appropriate skill for each document category.
-3. If the CR calls for generating specification documents, create or update them under `DHF/documents/specs/` or `DHF/documents/plans/`.
-4. After writing or updating DHF items, run the following command to validate
-   traceability and check for orphan items or broken coverage chains:
+2. For each DHF item type you plan to touch, enumerate existing items first:
+
+       python -m medharness --dhf DHF dhf item list --type <TYPE>
+
+   Use this to detect conflicts and duplicates before writing anything.
+
+3. Create or update DHF items exclusively through the medharness CLI —
+   do NOT write YAML files directly:
+
+   ```
+   # Create
+   python -m medharness --dhf DHF dhf item create \
+     --type <TYPE> --data '<JSON>' --author "github-actions[bot]" --cr "{{cr_id}}"
+
+   # Update
+   python -m medharness --dhf DHF dhf item update <ITEM_ID> \
+     --data '<JSON>' --author "github-actions[bot]" --cr "{{cr_id}}"
+   ```
+
+   IDs are assigned by medharness on creation.
+
+4. Before creating any item, list existing items of that type and apply these
+   quality rules to everything you write:
+   - **No conflict** — must not contradict any existing item at the same or adjacent level
+   - **Hierarchy** — each item is a proper specialisation of its parent (UC→CRS→SYS→SRS→SWDD); do not skip levels
+   - **Atomicity** — one requirement per item; no compound "and" requirements
+   - **Verifiability** — no vague terms ("fast", "easy", "appropriate"); state a measurable criterion
+   - **No duplication** — update an existing item rather than creating an overlapping one
+   - **Downward completeness** — child items together fully address the parent intent
+
+5. If the CR calls for specification documents, create or update them under
+   `DHF/documents/specs/` or `DHF/documents/plans/` (direct file writes are
+   permitted for documents, not for DHF items).
+
+6. After all items are written, validate traceability:
 
        python -m medharness --dhf DHF dhf validate traceability
 
-   Read the output. If it reports orphan items or uncovered coverage pairs that
-   your changes introduced, fix them before finishing. Repeat until the output
-   shows no new gaps.
-5. Do not modify files outside `DHF/`.
-6. Do not edit the CR item YAML or any CR lifecycle/status fields. CR state
+   If the output reports orphan items or uncovered coverage pairs introduced
+   by your changes, fix them and re-validate. Repeat until clean.
+
+7. Do not modify files outside `DHF/`.
+8. Do not edit the CR item YAML or any CR lifecycle/status fields. CR state
    transitions are performed only by the DHF utility in the workflow.
 
 Use these skills for design edits:
