@@ -336,9 +336,14 @@ jobs:
           done
 
       - name: Run CRS validation tests
-        run: pnpm --filter @webtps/client test:e2e:crs -- --workers=2 --fully-parallel
+        run: |
+          pnpm --filter @webtps/client exec playwright test \
+            --project=crs \
+            --workers=2 \
+            --fully-parallel
         env:
           BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: test-results/e2e-crs-junit.xml
       - name: Stop services
         if: always()
         run: pnpm local:down
