@@ -1,13 +1,22 @@
 ---
 cr_id: "CR-006"
 direction_fit: in-scope
-affected_items: []
+affected_items:
+  - CRS-020
 test_plan:
   auto_covered: []
-  needs_new_tc: []
+  needs_new_tc:
+    - CRS-020: Maximize viewport via right-click context menu
+    - CRS-020: Restore normal layout from maximized state
+    - CRS-020: Context menu display on viewport right-click
+    - CRS-020: Exit button functionality and visibility in maximized mode
+    - CRS-020: Verify other panels (sidebar, toolbar, status bar) remain visible when maximized
+    - CRS-020: Switch between maximized views without exiting
   must_be_manual:
-    - Right-click context menu display on viewport
-    - View maximization and restoration
+    - Right-click context menu interaction on all viewport types (Axial, Sagittal, Coronal)
+    - View maximization and restoration end-to-end workflow
+    - Verify viewer tools (zoom, pan, scroll, window level) function in maximized mode
+    - Verify crosshairs and measurements display correctly in maximized mode
 ---
 
 # CR-006: Maximize a View
@@ -90,67 +99,72 @@ Create a simple floating context menu (no new file needed if inline is acceptabl
 ## DHF Impact
 
 - **Product Impact**: Not required — adds a UI control for existing views without changing clinical workflow or use cases
-- **Requirements Impact**: Not required — no new functional requirements; this is a UI enhancement to existing views
+- **Requirements Impact**: **Required** — create new CRS-020 "Maximize and Restore Viewport View" that formulates the requirement for context menu-driven view maximization
 - **Architecture Impact**: Not required — no architectural changes; state management and component structure remain the same
-- **Risk Impact**: Not required — no new clinical risk; rightclick menu is a standard UI pattern
+- **Risk Impact**: Not required — no new clinical risk; right-click menu is a standard UI pattern
 - **SOUP Impact**: Not required — no new dependencies
-- **Test Impact**: Required — add component tests for context menu display, viewport maximization/restoration, and exit button functionality
+- **Test Impact**: **Required** — add component tests for context menu display, viewport maximization/restoration, and exit button functionality; implement automated verification tests linked to CRS-020
 
 ## Verification
 
-### Automated Tests
+### Automated Tests (Verification per IEC 62304 §5.5–5.6)
 
-1. **ViewportPanel context menu tests** (`apps/client/src/components/viewer/ImageViewer.test.tsx`):
+Tests are annotated with `@links:CRS-020` to establish traceability to the requirement.
+
+1. **ViewportPanel context menu tests** (`apps/client/src/components/viewer/ImageViewer.test.tsx`) — @links:CRS-020:
    - Test that right-click on a viewport renders the context menu
    - Test that clicking "Full Screen" calls `setMaximizedViewport` with the correct orientation
    - Test that clicking "Restore" calls `clearMaximizedViewport`
    - Test that context menu is dismissed on click outside or Escape key
-   - Test that only one option ("Restore") is shown when viewport is already maximized
+   - Test that the correct menu option is shown based on viewport state (Full Screen vs. Restore)
 
-2. **ImageViewer layout tests**:
+2. **ImageViewer layout tests** — @links:CRS-020:
    - Test that grid layout renders normally when `maximizedViewport` is null
    - Test that only the maximized viewport renders when `maximizedViewport` is set
    - Test that exit button is rendered in maximized mode and not in normal mode
    - Test that clicking exit button restores normal layout
+   - Test that other panels (sidebar, toolbar, status bar) remain visible when a viewport is maximized
+   - Test that switching from one maximized viewport to another works correctly
 
-3. **UIStore tests**:
-   - Test that `setMaximizedViewport` updates state correctly
+3. **UIStore tests** — @links:CRS-020:
+   - Test that `setMaximizedViewport` updates state correctly for each orientation
    - Test that `clearMaximizedViewport` resets state to null
+   - Test that state transitions work correctly when switching between viewports
 
-**Run**: `pnpm --filter @webtps/client test` and verify all tests pass
+**Run**: `pnpm --filter @webtps/client test` and verify all tests pass and traceability links are recognized by the CI compliance gate
 
-### Manual Testing
+### Manual Testing (System Acceptance per IEC 62304 §5.7)
 
-1. **Context menu display**:
+1. **Context menu display** — @links:CRS-020:
    - Load a DICOM series
    - Right-click on the Axial viewport
    - Verify a context menu appears with "Full Screen" and "Restore" options (or only "Full Screen" if not yet maximized)
    - Right-click on Sagittal and Coronal; verify menu appears for each
 
-2. **View maximization**:
+2. **View maximization** — @links:CRS-020:
    - Right-click Axial and select "Full Screen"
    - Verify Axial fills the entire viewer area
    - Verify left sidebar, right sidebar, toolbar, and status bar are still visible
    - Verify other views (Sagittal, Coronal, 3D) are hidden
    - Verify an exit button is visible (top-right corner)
 
-3. **Restore via button**:
+3. **Restore via button** — @links:CRS-020:
    - Click the exit/restore button
    - Verify the normal 2×2 grid layout is restored
    - Verify all four panels (Axial, Sagittal, Coronal, 3D) are visible again
 
-4. **Restore via menu**:
+4. **Restore via menu** — @links:CRS-020:
    - Maximize Coronal
    - Right-click the maximized viewport
    - Verify the context menu shows "Restore" option
    - Click "Restore"
    - Verify normal layout is restored
 
-5. **Switch between maximized views**:
+5. **Switch between maximized views** — @links:CRS-020:
    - Maximize Axial, then without exiting, right-click and select "Full Screen" on Sagittal
    - Verify the layout changes to show Sagittal instead (no flickering)
 
-6. **Regression testing**:
+6. **Regression testing** — @links:CRS-020:
    - Verify normal 2×2 layout is unchanged when no viewport is maximized
    - Verify zoom, pan, scroll, and other viewer tools work in maximized mode
    - Verify window level presets apply correctly in maximized view
