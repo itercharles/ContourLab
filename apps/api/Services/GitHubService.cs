@@ -44,7 +44,7 @@ public sealed class GitHubService
         var client = _httpClientFactory.CreateClient("github");
 
         var request = new HttpRequestMessage(HttpMethod.Get,
-            $"/repos/{_repo}/issues?state=open&labels=cr%3Afeedback&per_page=50");
+            $"/repos/{_repo}/issues?state=all&labels=cr%3Afeedback&per_page=50&sort=created&direction=desc");
         AddAuthHeaders(request);
 
         var response = await client.SendAsync(request);
@@ -73,7 +73,7 @@ public sealed class GitHubService
     private static GitHubIssueItem MapToItem(GitHubIssueJson issue)
     {
         var labelNames = issue.Labels.Select(l => l.Name).ToList();
-        var stage = DetermineStage(labelNames);
+        var stage = issue.State == "closed" ? "deployed" : DetermineStage(labelNames);
         var priority = labelNames
             .FirstOrDefault(l => l.StartsWith("priority:", StringComparison.Ordinal))
             ?.Replace("priority:", "", StringComparison.Ordinal) ?? "medium";
