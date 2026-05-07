@@ -32,16 +32,7 @@ Task:
 
    IDs are assigned by medharness on creation.
 
-4. Before creating any item, list existing items of that type and apply these
-   quality rules to everything you write:
-   - **No conflict** — must not contradict any existing item at the same or adjacent level
-   - **Hierarchy** — each item is a proper specialisation of its parent (UC→CRS→SYS→SRS→SWDD); do not skip levels
-   - **Atomicity** — one requirement per item; no compound "and" requirements
-   - **Verifiability** — no vague terms ("fast", "easy", "appropriate"); state a measurable criterion
-   - **No duplication** — update an existing item rather than creating an overlapping one
-   - **Downward completeness** — child items together fully address the parent intent
-
-5. If the CR calls for specification documents, create or update them under
+4. If the CR calls for specification documents, create or update them under
    `DHF/documents/specs/` or `DHF/documents/plans/` (direct file writes are
    permitted for documents, not for DHF items).
 
@@ -56,15 +47,15 @@ Task:
 8. Do not edit the CR item YAML or any CR lifecycle/status fields. CR state
    transitions are performed only by the DHF utility in the workflow.
 
-Use these skills for design edits:
-- `/product-impact`: UC and CRS updates or creation.
-- `/req-manage`: CRS, SYS, SRS, and SWDD requirement/design traceability updates.
-- `/architecture-impact`: SYSARCH and architecture specification updates.
-- `/risk-impact`: RISK and RCM updates.
-- `/soup-impact`: SOUP item updates for dependency changes.
-- `/test-impact`: test strategy/design updates, including required Test-SRS,
-  Test-SYS, Test-CRS, and manual checks. Do not create SWTEST YAML unless a
-  SWTEST doc type exists in `DHF/config/doc_types/`.
+For each area of impact, read the corresponding skill file and follow its
+rules, quality checklist, and CLI workflow:
+
+- UC and CRS: read `.claude/skills/product-impact/SKILL.md`
+- CRS, SYS, SRS, SWDD: read `.claude/skills/req-manage/SKILL.md`
+- SYSARCH: read `.claude/skills/architecture-impact/SKILL.md`
+- RISK and RCM: read `.claude/skills/risk-impact/SKILL.md`
+- SOUP: read `.claude/skills/soup-impact/SKILL.md`
+- Test design: read `.claude/skills/test-impact/SKILL.md`
 
 The design updates must:
 - Trace back to the CR and spec

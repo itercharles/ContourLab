@@ -5,8 +5,13 @@ You are working in the DHF repository for WebTPS.
 Inputs:
 - CR item: `DHF/items/09_cr/{{cr_id}}.yaml`
 - Custom checklist: `.github/prompts/cr-analyze-checklist.md`
-- Impact skills: `/product-impact`, `/req-manage`, `/architecture-impact`,
-  `/risk-impact`, `/soup-impact`, `/test-impact`
+- Impact skills (read each file to apply its analysis rules):
+  - `.claude/skills/product-impact/SKILL.md`
+  - `.claude/skills/req-manage/SKILL.md`
+  - `.claude/skills/architecture-impact/SKILL.md`
+  - `.claude/skills/risk-impact/SKILL.md`
+  - `.claude/skills/soup-impact/SKILL.md`
+  - `.claude/skills/test-impact/SKILL.md`
 - Product repo: `itercharles/WebTPS`
 - Repository context: `CLAUDE.md`, `README.md`, and `docs/cr_spec_workflow.md`
 
@@ -34,14 +39,14 @@ For small or mechanical changes, keep the spec short. Do not enumerate hundreds
 of speculative risks, files, or test permutations. Prefer "No DHF item changes
 expected" or "No open questions" when that is the accurate answer.
 
-The `DHF Impact` section must explicitly use the impact skills and state each
-area as `Required`, `Not required`, or `Follow-up needed` with a one-sentence
+The `DHF Impact` section must read each skill file listed in Inputs and state
+each area as `Required`, `Not required`, or `Follow-up needed` with a one-sentence
 justification:
-- `/product-impact`: product direction, UC, and CRS alignment.
-- `/req-manage`: requirements impact across CRS, SYS, and SRS.
-- `/architecture-impact`: SYSARCH and architecture specification impact.
-- `/risk-impact`: RISK and RCM impact.
-- `/soup-impact`: SOUP and dependency impact.
+- `.claude/skills/product-impact/SKILL.md`: product direction, UC, and CRS alignment.
+- `.claude/skills/req-manage/SKILL.md`: requirements impact across CRS, SYS, and SRS.
+- `.claude/skills/architecture-impact/SKILL.md`: SYSARCH and architecture specification impact.
+- `.claude/skills/risk-impact/SKILL.md`: RISK and RCM impact.
+- `.claude/skills/soup-impact/SKILL.md`: SOUP and dependency impact.
 - `/test-impact`: development, verification, validation, and manual test impact.
 
 The spec file MUST begin with a YAML front-matter block, followed by the markdown sections.
