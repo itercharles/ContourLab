@@ -315,7 +315,7 @@ describe('Toolbar contour operations', () => {
       'https://github.com/itercharles/WebTPS'
     );
     expect(screen.getByText(/Open a GitHub issue/i)).toBeTruthy();
-    expect(screen.getByText(/CR \+ Plan Spec generated/i)).toBeTruthy();
+    expect(screen.getByText(/Plan Spec generated/i)).toBeTruthy();
     expect(screen.getByText(/send your GitHub username to/i)).toBeTruthy();
     expect(screen.getByText(/How to get access/i)).toBeTruthy();
     expect(screen.getByRole('link', { name: /Submit or track an issue/i }).getAttribute('href')).toBe(

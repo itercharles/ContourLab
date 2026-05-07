@@ -377,17 +377,17 @@ export default function Toolbar() {
                 </h3>
                 <div aria-label="Issue-driven AI coding workflow" className="space-y-0">
                   {([
-                    { actor: 'human', step: '1', title: 'Open a GitHub issue',       desc: 'Describe the feature, bug, or improvement you want.',                                                                                    trigger: 'Assigned to milestone → auto-creates CR' },
-                    { actor: 'human', step: '2', title: 'Maintainer triage',         desc: 'A maintainer reviews the issue, accepts it, and assigns it to the current milestone. Declined issues are closed with a comment.',       trigger: 'CR merge → auto-starts Spec generation' },
-                    { actor: 'ai',    step: '3', title: 'CR + Plan Spec generated',  desc: 'AI creates a Change Request in the compliance repository and produces a Plan Spec — scope, architecture impact, DHF items affected, and test strategy.', trigger: 'Spec PR approval → auto-starts DHF update' },
-                    { actor: 'human', step: '4', title: 'Spec review & approval',    desc: 'Maintainer reviews the Plan Spec PR. Feedback loops back to AI for revision. DHF design work cannot start until the spec is approved.', trigger: 'DHF PR approval → auto-starts implementation' },
-                    { actor: 'ai',    step: '5', title: 'DHF design update',         desc: 'AI updates compliance documentation (SRS, SWDD, risk items) to reflect the approved design, then opens a DHF pull request.',            trigger: 'Code PR approval → auto-merges & deploys' },
-                    { actor: 'human', step: '6', title: 'DHF review & approval',     desc: 'Maintainer reviews the DHF changes. Feedback loops back to AI. Implementation code is only written after DHF is merged.',              trigger: 'Merge → auto-opens implementation PR' },
-                    { actor: 'ai',    step: '7', title: 'Implementation PR',         desc: 'AI writes code and tests against the merged spec and DHF items, then opens a pull request. CI runs lint, typecheck, unit, and compliance checks.', trigger: null },
-                    { actor: 'human', step: '8', title: 'Code review & approval',    desc: 'Maintainer reviews the PR. Review comments are fed back to AI for iteration. The AI never merges without explicit human approval.',     trigger: 'Approval → auto-merge, triggers CI pipeline' },
-                    { actor: 'ai',    step: '9', title: 'Traceability validation',   desc: 'CI verifies design coverage (SYS → SYSARCH), test linkage (@links annotations), and IEC 62304 / IEC 82304-1 compliance. Any gap blocks the pipeline.', trigger: 'All checks pass → auto-generates artifacts' },
-                    { actor: 'ai',    step: '10', title: 'Report generation & deploy', desc: 'DHF spec PDFs and a full traceability report are generated and archived. The application is then deployed automatically to the production server.', trigger: null },
-                  ] as const).map(({ actor, step, title, desc, trigger }, i, arr) => (
+                    { actor: 'human', step: '1',  title: 'Open a GitHub issue',        trigger: 'Assign to milestone → CR pull request auto-opened' },
+                    { actor: 'human', step: '2',  title: 'Maintainer triage',           trigger: 'CR PR merged → agent generates Plan Spec' },
+                    { actor: 'ai',    step: '3',  title: 'Plan Spec generated',         trigger: null },
+                    { actor: 'human', step: '4',  title: 'Spec review & approval',      trigger: 'Spec PR merged → agent generates DHF design' },
+                    { actor: 'ai',    step: '5',  title: 'DHF design update',           trigger: null },
+                    { actor: 'human', step: '6',  title: 'DHF review & approval',       trigger: 'Design PR merged → agent opens implementation PR' },
+                    { actor: 'ai',    step: '7',  title: 'Implementation PR',           trigger: null },
+                    { actor: 'human', step: '8',  title: 'Code review & approval',      trigger: 'PR merged → CI validates, generates artifacts & deploys' },
+                    { actor: 'ai',    step: '9',  title: 'Traceability & compliance',   trigger: null },
+                    { actor: 'ai',    step: '10', title: 'Report generation & deploy',  trigger: null },
+                  ] as const).map(({ actor, step, title, trigger }, i, arr) => (
                     <div key={step} className="flex gap-3">
                       {/* Spine */}
                       <div className="flex flex-col items-center">
@@ -402,7 +402,7 @@ export default function Toolbar() {
                         )}
                       </div>
                       {/* Content */}
-                      <div className="pb-1">
+                      <div className="pb-3">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-[var(--color-text)]">{title}</span>
                           <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide
@@ -410,13 +410,11 @@ export default function Toolbar() {
                             {actor === 'ai' ? 'AI' : 'Human'}
                           </span>
                         </div>
-                        <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">{desc}</p>
                         {trigger && (
                           <p className="mt-1 text-[10px] font-medium text-emerald-400">
                             ⚡ {trigger}
                           </p>
                         )}
-                        <div className="mb-3" />
                       </div>
                     </div>
                   ))}
