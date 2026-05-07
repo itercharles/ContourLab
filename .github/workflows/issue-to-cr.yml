@@ -81,7 +81,7 @@ jobs:
           git checkout -b "$BRANCH"
           git add DHF/items/
           git commit -m "cr: intake $CR_ID"
-          git push --set-upstream origin "$BRANCH"
+          git push --force-with-lease --set-upstream origin "$BRANCH"
 
           {
             echo "Closes #${{ github.event.issue.number }}"
@@ -89,13 +89,14 @@ jobs:
             echo "**Stage 1 of 4 — CR Review**"
             echo "Review the CR definition in \`DHF/items/09_cr/$CR_ID.yaml\`, then approve to trigger AI spec generation."
           } > /tmp/pr-body.md
-          PR_URL=$(gh pr create \
-            --head "$BRANCH" \
-            --base main \
-            --draft \
-            --title "feat($CR_ID): ${{ github.event.issue.title }}" \
-            --body-file /tmp/pr-body.md \
-            --label "cr:stage/cr")
+          PR_URL=$(gh pr view "$BRANCH" --json url -q '.url' 2>/dev/null || \
+            gh pr create \
+              --head "$BRANCH" \
+              --base main \
+              --draft \
+              --title "feat($CR_ID): ${{ github.event.issue.title }}" \
+              --body-file /tmp/pr-body.md \
+              --label "cr:stage/cr")
 
           python -m medharness --dhf DHF dhf item transition "$CR_ID" in_review \
             --by "github-actions[bot]" --commit --push
