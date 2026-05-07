@@ -256,7 +256,7 @@ jobs:
   # ── SPEC: REVISE ──────────────────────────────────────────────────────────
 
   revise-spec:
-    needs: [detect]
+    needs: [detect, gen-spec]
     if: needs.detect.outputs.action == 'revise-spec'
     name: "Revise Spec (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
@@ -325,7 +325,7 @@ jobs:
   # ── DESIGN: GENERATE ──────────────────────────────────────────────────────
 
   gen-design:
-    needs: [detect]
+    needs: [detect, revise-spec]
     if: needs.detect.outputs.action == 'gen-design'
     name: "Generate Design (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
@@ -409,7 +409,7 @@ jobs:
   # ── DESIGN: REVISE ────────────────────────────────────────────────────────
 
   revise-design:
-    needs: [detect]
+    needs: [detect, gen-design]
     if: needs.detect.outputs.action == 'revise-design'
     name: "Revise Design (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
@@ -478,7 +478,7 @@ jobs:
   # ── CODE: GENERATE ────────────────────────────────────────────────────────
 
   gen-code:
-    needs: [detect]
+    needs: [detect, revise-design]
     if: needs.detect.outputs.action == 'gen-code'
     name: "Generate Code (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
@@ -557,7 +557,7 @@ jobs:
   # ── CODE: REVISE ──────────────────────────────────────────────────────────
 
   revise-code:
-    needs: [detect]
+    needs: [detect, gen-code]
     if: needs.detect.outputs.action == 'revise-code'
     name: "Revise Code (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
@@ -626,7 +626,7 @@ jobs:
   # ── CODE: APPROVED → READY TO MERGE ──────────────────────────────────────
 
   code-approved:
-    needs: [detect]
+    needs: [detect, revise-code]
     if: needs.detect.outputs.action == 'code-approved'
     name: "Code Approved — Ready to Merge"
     runs-on: ubuntu-latest
