@@ -61,7 +61,7 @@ jobs:
           if [ "$EVENT" = "workflow_dispatch" ]; then
             CR_ID="${{ inputs.cr_id }}"
             STAGE="${{ inputs.stage }}"
-            PR_NUMBER=$(gh pr list --head "feat/$CR_ID" --json number --jq '.[0].number' 2>/dev/null || echo "")
+            PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" --head "feat/$CR_ID" --json number --jq '.[0].number' 2>/dev/null || echo "")
             if [ -z "$PR_NUMBER" ]; then
               echo "ERROR: no open PR found for feat/$CR_ID" >&2
               exit 1
@@ -99,7 +99,7 @@ jobs:
             exit 0
           fi
 
-          STAGE=$(gh pr view "$PR_NUMBER" --json labels \
+          STAGE=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json labels \
             --jq '.labels[].name | select(startswith("cr:stage/")) | ltrimstr("cr:stage/")' \
             | head -1)
 
