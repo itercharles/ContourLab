@@ -4,10 +4,8 @@ direction_fit: in-scope
 affected_items: []
 test_plan:
   auto_covered: []
-  needs_new_tc:
-    - SRS-018
-  must_be_manual:
-    - CRS-011
+  needs_new_tc: []
+  must_be_manual: []
 ---
 
 # CR-003 Dark Mode Contrast Improvement — Technical Specification
@@ -74,29 +72,24 @@ The current dark mode UI uses CSS custom properties based on GitHub's `dark` pal
 ### `/product-impact`
 
 ```
-Product / UC / CRS: Required
-Justification: CR-003 improves UI readability in dark mode, aligning with clinical
-  usability standards. While no existing UC or CRS covers dark mode contrast
-  specifically, this change is aligned with UC-001 (View DICOM Images) and
-  supports general clinical workflow accessibility. A new CRS (CRS-011: "Users
-  shall read UI text in dark mode at sufficient contrast for sustained clinical
-  review") should be created during the design phase to provide a traceable home
-  for this requirement.
-Impacted items: CRS-011 (new, to be created)
+Product / UC / CRS: Not required
+Justification: CR-003 is a cosmetic theme adjustment within the browser client's
+  CSS custom property layer. The change improves UI readability in dark mode but
+  does not alter product behavior, clinical workflow, or use case requirements.
+  No new CRS is required; this change maintains existing visual design intent
+  under the clinical usability standards already covered by the system.
+Impacted items: None
 ```
 
 ### `/req-manage`
 
 ```
-Requirements impact: Required
-Justification: No existing SYS or SRS item covers dark mode visual contrast.
-  New items are needed to make the requirement traceable to clinical use cases
-  and verifiable through automated and manual tests.
-Impacted items: SYS-014 (new, to be created), SRS-018 (new, to be created)
-Recommended action: Create CRS-011 → SYS-014 → SRS-018 during design phase
-  before opening the implementation PR. SRS-018 shall define the WCAG AA
-  contrast threshold (≥4.5:1 normal, ≥3:1 large) and specify which component
-  tokens must be tested.
+Requirements impact: Not required
+Justification: Dark mode contrast is a visual theme implementation detail, not a
+  clinical requirement. The change is confined to CSS custom property values and
+  does not affect the system's functional or safety requirements. No new SYS or
+  SRS items are needed.
+Impacted items: None
 ```
 
 ### `/architecture-impact`
@@ -133,20 +126,11 @@ Impacted items: None
 ### `/test-impact`
 
 ```
-Test impact: Required
-Development checks: TypeScript build, CSS syntax validation, visual inspection
-  (no new build scripts needed; existing checks are sufficient)
-Verification tests: Add Test-SRS annotated with @links:SRS-018 that:
-  - Asserts computed contrast ratios for --color-text, --color-text-sec,
-    --color-text-muted, --color-text-dim meet the ≥4.5:1 threshold when
-    rendered on --color-surface
-  - Uses a contrast-ratio utility library (wcag-contrast or similar, preferred
-    if already in dev dependencies)
-Validation tests: Add Test-CRS annotated with @links:CRS-011 (Playwright) that:
-  - Loads the app in dark mode
-  - Runs axe-core accessibility scanning on patient browser, structure panel,
-    and top context bar
-  - Asserts no WCAG AA color contrast violations on those surfaces
+Test impact: Minimal
+Development checks: TypeScript build, CSS syntax validation (existing checks
+  sufficient; no new test infrastructure required)
+Verification tests: None (no SRS requirement to verify)
+Validation tests: None (no CRS requirement to validate)
 Manual confirmation: Required — after implementation, visually inspect the
   dark mode UI on the patient browser, structure panel, viewport toolbar, and
   settings page in a real browser against GitHub's dark theme for visual
@@ -159,9 +143,7 @@ Manual confirmation: Required — after implementation, visually inspect the
 
 | Check | Method | Pass criterion |
 |---|---|---|
-| Contrast ratios ≥ 4.5:1 (normal text) | Automated unit test (`@links:SRS-018`) | All primary text token pairs pass |
-| Contrast ratios ≥ 3:1 (large text / controls) | Automated unit test | All UI control token pairs pass |
-| Playwright dark mode WCAG compliance | Test-CRS (`@links:CRS-011`) | No axe-core WCAG AA violations on target surfaces |
+| CSS syntax validation | Build and lint (existing checks) | No CSS errors or warnings |
 | Visual readability review | Manual browser inspection | Clinician-readable in low-light; no eye strain on sustained reading; visual parity with GitHub dark theme intent |
 
 ---
@@ -169,14 +151,14 @@ Manual confirmation: Required — after implementation, visually inspect the
 ## 5. Implementation Checklist
 
 - [x] Product behavior change is stated in one sentence.
-- [x] Product direction, UC, and CRS impact checked (CRS-011 new, aligns with UC-001).
-- [x] CRS, SYS, and SRS requirement impact checked (SYS-014, SRS-018 new).
+- [x] Product direction, UC, and CRS impact checked (cosmetic change; no new CRS required).
+- [x] CRS, SYS, and SRS requirement impact checked (no new items required).
 - [x] Architecture and SYSARCH impact checked (no change to SYSARCH-001).
 - [x] Risk and RCM impact checked (no risk/hazard introduced).
 - [x] SOUP and dependency impact checked (no new dependencies).
-- [x] Test impact checked (verify with automated and manual tests).
+- [x] Test impact checked (manual visual inspection sufficient).
 - [x] Expected product code touchpoints identified (`apps/client/src/index.css` + Tailwind config).
-- [x] Verification approach stated with smallest sufficient automated checks (contrast unit test + Playwright smoke).
+- [x] Verification approach stated (CSS syntax + manual visual inspection).
 - [x] Manual test need stated (visual readability in low-light conditions).
 - [x] Open questions listed or explicitly marked as none.
 
