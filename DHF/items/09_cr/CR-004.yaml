@@ -1,0 +1,28 @@
+id: CR-004
+title: Add in-app Issues page for submitting and monitoring change requests
+type: CR
+description: |
+  Add a dedicated /issues page to WebTPS that allows clinical users to submit
+  bug reports and feature requests directly from the application, and view the
+  current pipeline stage of all open change requests.
+
+  The page includes a submit form (title, description, priority, category) that
+  creates a GitHub issue via a new API proxy endpoint. Submitted issues feed the
+  existing issue-to-cr.yml workflow. The status board shows all open issues with
+  their cr:stage/* label mapped to a human-readable pipeline stage
+  (Submitted → In Review → Designing → Implementing → Completed).
+
+  Source: feat/issues-page PR #44
+justification: >
+  Clinical users have no in-app mechanism to report issues or track the status
+  of change requests. This closes the feedback loop without requiring direct
+  GitHub access.
+priority: Medium
+requested_by: itercharles
+target_version: 2026-W20
+category: Feature
+content: >
+  Submit form + CR status board accessible from the LeftSidebar footer.
+  Backend proxy to GitHub Issues API; GITHUB_TOKEN injected at deploy time
+  via ISSUES_TOKEN repository secret.
+status: implementing
