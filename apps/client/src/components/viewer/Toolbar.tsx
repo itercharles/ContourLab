@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import { useActivityStore, type ActivityItem } from '../../core/store/activityStore';
@@ -16,7 +16,6 @@ const ACTIVITY_TONE_CLASS: Record<ActivityItem['tone'], string> = {
   error: 'bg-red-500',
 };
 
-const WEBTPS_ISSUES_URL = 'https://github.com/itercharles/WebTPS/issues/new';
 const WEBTPS_REPO_URL = 'https://github.com/itercharles/WebTPS';
 
 function formatActivityTime(value: string): string {
@@ -335,7 +334,7 @@ export default function Toolbar() {
             onClick={() => setPrototypeInfoOpen(false)}
           >
             <div
-              className="flex w-full max-w-[660px] flex-col border border-blue-500/50 bg-[var(--color-surface)] text-[var(--color-text)] shadow-[0_18px_50px_rgba(0,0,0,0.55)]"
+              className="flex w-full max-w-[820px] flex-col border border-blue-500/50 bg-[var(--color-surface)] text-[var(--color-text)] shadow-[0_18px_50px_rgba(0,0,0,0.55)]"
               style={{ maxHeight: 'calc(100vh - 48px)' }}
               onClick={(event) => event.stopPropagation()}
             >
@@ -373,55 +372,47 @@ export default function Toolbar() {
                 </p>
 
                 {/* Workflow */}
-                <h3 className="mt-4 mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                <h3 className="mt-4 mb-3 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
                   Workflow
                 </h3>
-                <div aria-label="Issue-driven AI coding workflow" className="space-y-0">
-                  {([
-                    { actor: 'human', step: '1', title: 'Open a GitHub issue',       desc: 'Describe the feature, bug, or improvement you want.',                                                                                    trigger: 'Assigned to milestone → auto-creates CR' },
-                    { actor: 'human', step: '2', title: 'Maintainer triage',         desc: 'A maintainer reviews the issue, accepts it, and assigns it to the current milestone. Declined issues are closed with a comment.',       trigger: 'CR merge → auto-starts Spec generation' },
-                    { actor: 'ai',    step: '3', title: 'CR + Plan Spec generated',  desc: 'AI creates a Change Request in the compliance repository and produces a Plan Spec — scope, architecture impact, DHF items affected, and test strategy.', trigger: 'Spec PR approval → auto-starts DHF update' },
-                    { actor: 'human', step: '4', title: 'Spec review & approval',    desc: 'Maintainer reviews the Plan Spec PR. Feedback loops back to AI for revision. DHF design work cannot start until the spec is approved.', trigger: 'DHF PR approval → auto-starts implementation' },
-                    { actor: 'ai',    step: '5', title: 'DHF design update',         desc: 'AI updates compliance documentation (SRS, SWDD, risk items) to reflect the approved design, then opens a DHF pull request.',            trigger: 'Code PR approval → auto-merges & deploys' },
-                    { actor: 'human', step: '6', title: 'DHF review & approval',     desc: 'Maintainer reviews the DHF changes. Feedback loops back to AI. Implementation code is only written after DHF is merged.',              trigger: 'Merge → auto-opens implementation PR' },
-                    { actor: 'ai',    step: '7', title: 'Implementation PR',         desc: 'AI writes code and tests against the merged spec and DHF items, then opens a pull request. CI runs lint, typecheck, unit, and compliance checks.', trigger: null },
-                    { actor: 'human', step: '8', title: 'Code review & approval',    desc: 'Maintainer reviews the PR. Review comments are fed back to AI for iteration. The AI never merges without explicit human approval.',     trigger: 'Approval → auto-merge, triggers CI pipeline' },
-                    { actor: 'ai',    step: '9', title: 'Traceability validation',   desc: 'CI verifies design coverage (SYS → SYSARCH), test linkage (@links annotations), and IEC 62304 / IEC 82304-1 compliance. Any gap blocks the pipeline.', trigger: 'All checks pass → auto-generates artifacts' },
-                    { actor: 'ai',    step: '10', title: 'Report generation & deploy', desc: 'DHF spec PDFs and a full traceability report are generated and archived. The application is then deployed automatically to the production server.', trigger: null },
-                  ] as const).map(({ actor, step, title, desc, trigger }, i, arr) => (
-                    <div key={step} className="flex gap-3">
-                      {/* Spine */}
-                      <div className="flex flex-col items-center">
-                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold
-                          ${actor === 'ai' ? 'bg-blue-700 text-white' : 'bg-gray-700 text-gray-100'}`}>
-                          {step}
-                        </div>
-                        {i < arr.length - 1 && (
-                          <div className="flex w-7 flex-col items-center">
-                            <div className="w-px grow bg-[var(--color-border)]" />
+                {(() => {
+                  const steps: Array<{ actor: 'human' | 'ai' | 'auto'; stage: string; desc: string; trigger: string | null }> = [
+                    { actor: 'human', stage: 'open',      desc: 'human submit & triage',                          trigger: 'on milestone assign' },
+                    { actor: 'auto',  stage: 'triaged',   desc: 'CR PR auto-opened',                               trigger: 'on approval' },
+                    { actor: 'ai',    stage: 'analyze',   desc: 'AI to analyze request and generate plan',          trigger: 'on approval' },
+                    { actor: 'ai',    stage: 'design',    desc: 'AI to update the DHF',                             trigger: 'on approval' },
+                    { actor: 'ai',    stage: 'implement', desc: 'AI to generate code',                              trigger: 'on approval + CI' },
+                    { actor: 'auto',  stage: 'deployed',  desc: 'CI auto test · report · deploy',                   trigger: null },
+                  ];
+                  return (
+                    <div className="flex items-start" aria-label="Issue-driven AI coding workflow">
+                      {steps.map(({ actor, stage, desc }, i) => (
+                        <Fragment key={stage}>
+                          {i > 0 && (
+                            <div className="flex w-14 shrink-0 flex-col items-center">
+                              <div className="h-[14px]" />
+                              <div className="h-px w-full bg-[var(--color-border)]" />
+                              <p className="mt-1 text-center text-[8px] leading-tight text-emerald-400">
+                                {steps[i - 1].trigger}
+                              </p>
+                            </div>
+                          )}
+                          <div className="flex min-w-0 flex-1 flex-col items-center gap-1 text-center">
+                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                              actor === 'ai'   ? 'bg-blue-700 text-white' :
+                              actor === 'auto' ? 'bg-emerald-900 text-emerald-300' :
+                                               'bg-gray-700 text-gray-100'
+                            }`}>
+                              {i + 1}
+                            </div>
+                            <p className="text-[11px] font-semibold text-[var(--color-text)]">{stage}</p>
+                            <p className="text-[10px] leading-tight text-[var(--color-text-muted)]">{desc}</p>
                           </div>
-                        )}
-                      </div>
-                      {/* Content */}
-                      <div className="pb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-[var(--color-text)]">{title}</span>
-                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide
-                            ${actor === 'ai' ? 'bg-blue-900 text-blue-200' : 'bg-gray-800 text-gray-300'}`}>
-                            {actor === 'ai' ? 'AI' : 'Human'}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 text-[11px] text-[var(--color-text-muted)]">{desc}</p>
-                        {trigger && (
-                          <p className="mt-1 text-[10px] font-medium text-emerald-400">
-                            ⚡ {trigger}
-                          </p>
-                        )}
-                        <div className="mb-3" />
-                      </div>
+                        </Fragment>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
 
                 {/* Open source tooling */}
                 <p className="mt-3 text-[11px] text-[var(--color-text-muted)]">
@@ -450,14 +441,14 @@ export default function Toolbar() {
 
                 {/* CTA */}
                 <div className="mt-4">
-                  <a
-                    href={WEBTPS_ISSUES_URL}
-                    target="_blank"
-                    rel="noreferrer"
+                  <Link
+                    to="/issues"
+                    reloadDocument
+                    onClick={() => setPrototypeInfoOpen(false)}
                     className="inline-flex h-8 items-center rounded bg-blue-800 px-3 text-[12px] font-bold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
                   >
-                    Open a WebTPS issue →
-                  </a>
+                    Submit or track an issue →
+                  </Link>
                 </div>
               </div>
             </div>

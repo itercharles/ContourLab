@@ -3,6 +3,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
+builder.Services.AddHttpClient("github", c =>
+{
+    c.BaseAddress = new Uri("https://api.github.com");
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("webtps-api/1.0");
+});
+builder.Services.AddScoped<WebTPS.Api.Services.GitHubService>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("LocalCors", policy =>
