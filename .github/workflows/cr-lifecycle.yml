@@ -257,7 +257,7 @@ jobs:
 
   revise-spec:
     needs: [detect, gen-spec]
-    if: needs.detect.outputs.action == 'revise-spec'
+    if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-spec'
     name: "Revise Spec (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
     permissions:
@@ -326,7 +326,7 @@ jobs:
 
   gen-design:
     needs: [detect, revise-spec]
-    if: needs.detect.outputs.action == 'gen-design'
+    if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-design'
     name: "Generate Design (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
     permissions:
@@ -410,7 +410,7 @@ jobs:
 
   revise-design:
     needs: [detect, gen-design]
-    if: needs.detect.outputs.action == 'revise-design'
+    if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-design'
     name: "Revise Design (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
     permissions:
@@ -479,7 +479,7 @@ jobs:
 
   gen-code:
     needs: [detect, revise-design]
-    if: needs.detect.outputs.action == 'gen-code'
+    if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-code'
     name: "Generate Code (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
     permissions:
@@ -558,7 +558,7 @@ jobs:
 
   revise-code:
     needs: [detect, gen-code]
-    if: needs.detect.outputs.action == 'revise-code'
+    if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-code'
     name: "Revise Code (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
     permissions:
@@ -627,7 +627,7 @@ jobs:
 
   code-approved:
     needs: [detect, revise-code]
-    if: needs.detect.outputs.action == 'code-approved'
+    if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'code-approved'
     name: "Code Approved — Ready to Merge"
     runs-on: ubuntu-latest
     permissions:
