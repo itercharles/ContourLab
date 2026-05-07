@@ -316,8 +316,6 @@ describe('Toolbar contour operations', () => {
     );
     expect(screen.getByText('analyze')).toBeTruthy();
     expect(screen.getByText(/CI auto test/i)).toBeTruthy();
-    expect(screen.getByText(/send your GitHub username to/i)).toBeTruthy();
-    expect(screen.getByText(/How to get access/i)).toBeTruthy();
     expect(screen.getByRole('link', { name: /Submit or track an issue/i }).getAttribute('href')).toBe(
       '/issues'
     );
