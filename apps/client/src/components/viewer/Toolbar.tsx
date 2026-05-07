@@ -377,22 +377,25 @@ export default function Toolbar() {
                 </h3>
                 <div aria-label="Issue-driven AI coding workflow" className="space-y-0">
                   {([
-                    { actor: 'human', step: '1',  title: 'Open a GitHub issue',        trigger: 'Assign to milestone → CR pull request auto-opened' },
-                    { actor: 'human', step: '2',  title: 'Maintainer triage',           trigger: 'CR PR merged → agent generates Plan Spec' },
-                    { actor: 'ai',    step: '3',  title: 'Plan Spec generated',         trigger: null },
-                    { actor: 'human', step: '4',  title: 'Spec review & approval',      trigger: 'Spec PR merged → agent generates DHF design' },
-                    { actor: 'ai',    step: '5',  title: 'DHF design update',           trigger: null },
-                    { actor: 'human', step: '6',  title: 'DHF review & approval',       trigger: 'Design PR merged → agent opens implementation PR' },
-                    { actor: 'ai',    step: '7',  title: 'Implementation PR',           trigger: null },
-                    { actor: 'human', step: '8',  title: 'Code review & approval',      trigger: 'PR merged → CI validates, generates artifacts & deploys' },
-                    { actor: 'ai',    step: '9',  title: 'Traceability & compliance',   trigger: null },
-                    { actor: 'ai',    step: '10', title: 'Report generation & deploy',  trigger: null },
+                    { actor: 'human', step: '1',  title: 'Open a GitHub issue',              trigger: null },
+                    { actor: 'human', step: '2',  title: 'Maintainer triage',                trigger: 'Assign to milestone → CR PR auto-opened' },
+                    { actor: 'auto',  step: '3',  title: 'CR pull request auto-opened',      trigger: 'CR PR merged → agent generates Plan Spec' },
+                    { actor: 'ai',    step: '4',  title: 'Plan Spec generated',              trigger: null },
+                    { actor: 'human', step: '5',  title: 'Spec review & approval',           trigger: 'Spec PR merged → agent generates DHF design' },
+                    { actor: 'ai',    step: '6',  title: 'DHF design update',                trigger: null },
+                    { actor: 'human', step: '7',  title: 'DHF review & approval',            trigger: 'Design PR merged → agent opens implementation PR' },
+                    { actor: 'ai',    step: '8',  title: 'Implementation PR',                trigger: null },
+                    { actor: 'human', step: '9',  title: 'Code review & approval',           trigger: 'PR merged → CI validates, generates artifacts & deploys' },
+                    { actor: 'auto',  step: '10', title: 'CI validation, report & deploy',   trigger: null },
                   ] as const).map(({ actor, step, title, trigger }, i, arr) => (
                     <div key={step} className="flex gap-3">
                       {/* Spine */}
                       <div className="flex flex-col items-center">
-                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold
-                          ${actor === 'ai' ? 'bg-blue-700 text-white' : 'bg-gray-700 text-gray-100'}`}>
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                          actor === 'ai'    ? 'bg-blue-700 text-white' :
+                          actor === 'auto'  ? 'bg-emerald-900 text-emerald-300' :
+                                             'bg-gray-700 text-gray-100'
+                        }`}>
                           {step}
                         </div>
                         {i < arr.length - 1 && (
@@ -405,9 +408,12 @@ export default function Toolbar() {
                       <div className="pb-3">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-[var(--color-text)]">{title}</span>
-                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide
-                            ${actor === 'ai' ? 'bg-blue-900 text-blue-200' : 'bg-gray-800 text-gray-300'}`}>
-                            {actor === 'ai' ? 'AI' : 'Human'}
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                            actor === 'ai'   ? 'bg-blue-900 text-blue-200' :
+                            actor === 'auto' ? 'bg-emerald-950 text-emerald-400' :
+                                              'bg-gray-800 text-gray-300'
+                          }`}>
+                            {actor === 'ai' ? 'AI' : actor === 'auto' ? 'Auto' : 'Human'}
                           </span>
                         </div>
                         {trigger && (
