@@ -18,6 +18,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:4000
+      GITHUB_TOKEN: ${ISSUES_TOKEN}
     ports:
       - "4001:4000"
     restart: unless-stopped

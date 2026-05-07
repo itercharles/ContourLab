@@ -543,6 +543,8 @@ jobs:
           docker compose -f docker-compose.deploy.yml up -d dicom-repo
 
       - name: Deploy application containers
+        env:
+          ISSUES_TOKEN: ${{ secrets.ISSUES_TOKEN }}
         run: docker compose -f docker-compose.deploy.yml up -d --build --no-deps api client
 
       - name: Verify deployment
