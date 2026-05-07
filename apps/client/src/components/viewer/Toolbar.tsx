@@ -375,52 +375,34 @@ export default function Toolbar() {
                 <h3 className="mt-4 mb-3 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
                   Workflow
                 </h3>
-                {([
-                  [
-                    { actor: 'human', step: '1',  title: 'Open a GitHub issue',   trigger: null },
-                    { actor: 'human', step: '2',  title: 'Maintainer triage',      trigger: 'Milestone → CR PR auto-opened' },
-                    { actor: 'auto',  step: '3',  title: 'CR PR auto-opened',      trigger: 'CR merged → Plan Spec' },
-                    { actor: 'ai',    step: '4',  title: 'Plan Spec generated',    trigger: null },
-                    { actor: 'human', step: '5',  title: 'Spec review & approval', trigger: 'Spec merged → DHF design' },
-                  ],
-                  [
-                    { actor: 'ai',    step: '6',  title: 'DHF design update',      trigger: null },
-                    { actor: 'human', step: '7',  title: 'DHF review & approval',  trigger: 'Design merged → impl PR' },
-                    { actor: 'ai',    step: '8',  title: 'Implementation PR',      trigger: null },
-                    { actor: 'auto',  step: '9',  title: 'CI validation',          trigger: null },
-                    { actor: 'human', step: '10', title: 'Code review & approval', trigger: 'Approval → merge & deploy' },
-                  ],
-                ] as Array<Array<{ actor: 'human' | 'ai' | 'auto'; step: string; title: string; trigger: string | null }>>).map((row, rowIdx) => (
-                  <div key={rowIdx} className={rowIdx > 0 ? 'mt-5' : undefined}>
-                    <div className="flex items-start" aria-label={`Workflow steps ${rowIdx === 0 ? '1–5' : '6–10'}`}>
-                      {row.map(({ actor, step, title, trigger }, i) => (
-                        <Fragment key={step}>
-                          {i > 0 && <div className="mt-[14px] h-px w-4 shrink-0 bg-[var(--color-border)]" />}
-                          <div className="flex min-w-0 flex-1 flex-col items-center gap-1 text-center">
-                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
-                              actor === 'ai'   ? 'bg-blue-700 text-white' :
-                              actor === 'auto' ? 'bg-emerald-900 text-emerald-300' :
-                                               'bg-gray-700 text-gray-100'
-                            }`}>
-                              {step}
-                            </div>
-                            <p className="text-[11px] font-semibold leading-tight text-[var(--color-text)]">{title}</p>
-                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                              actor === 'ai'   ? 'bg-blue-900 text-blue-200' :
-                              actor === 'auto' ? 'bg-emerald-950 text-emerald-400' :
-                                               'bg-gray-800 text-gray-300'
-                            }`}>
-                              {actor === 'ai' ? 'AI' : actor === 'auto' ? 'Auto' : 'Human'}
-                            </span>
-                            {trigger && (
-                              <p className="text-[10px] font-medium leading-tight text-emerald-400">⚡ {trigger}</p>
-                            )}
-                          </div>
-                        </Fragment>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                <div className="flex items-start" aria-label="Issue-driven AI coding workflow">
+                  {([
+                    { actor: 'human', stage: 'open',      desc: 'human submit & triage',                        trigger: 'Milestone → CR PR auto-opened' },
+                    { actor: 'auto',  stage: 'triaged',   desc: 'CR PR auto-opened',                             trigger: 'Approved → analyze' },
+                    { actor: 'ai',    stage: 'analyze',   desc: 'AI generate · human review',                    trigger: 'Approved → design' },
+                    { actor: 'ai',    stage: 'design',    desc: 'AI generate · CI coverage · human review',       trigger: 'Approved → implement' },
+                    { actor: 'ai',    stage: 'implement', desc: 'AI generate · CI auto test · human review',      trigger: 'Approval → merge & deploy' },
+                    { actor: 'auto',  stage: 'deployed',  desc: 'CI auto',                                        trigger: null },
+                  ] as Array<{ actor: 'human' | 'ai' | 'auto'; stage: string; desc: string; trigger: string | null }>).map(({ actor, stage, desc, trigger }, i) => (
+                    <Fragment key={stage}>
+                      {i > 0 && <div className="mt-[14px] h-px w-4 shrink-0 bg-[var(--color-border)]" />}
+                      <div className="flex min-w-0 flex-1 flex-col items-center gap-1 text-center">
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                          actor === 'ai'   ? 'bg-blue-700 text-white' :
+                          actor === 'auto' ? 'bg-emerald-900 text-emerald-300' :
+                                           'bg-gray-700 text-gray-100'
+                        }`}>
+                          {i + 1}
+                        </div>
+                        <p className="text-[11px] font-semibold text-[var(--color-text)]">{stage}</p>
+                        <p className="text-[10px] leading-tight text-[var(--color-text-muted)]">{desc}</p>
+                        {trigger && (
+                          <p className="text-[10px] font-medium leading-tight text-emerald-400">⚡ {trigger}</p>
+                        )}
+                      </div>
+                    </Fragment>
+                  ))}
+                </div>
 
                 {/* Open source tooling */}
                 <p className="mt-3 text-[11px] text-[var(--color-text-muted)]">
