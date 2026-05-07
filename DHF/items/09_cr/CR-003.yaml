@@ -1,0 +1,15 @@
+id: CR-003
+title: The contrast between the text an background in the dark mode should be increased.
+type: CR
+description: 'The contrast between the text an background in the dark mode should
+  be increased.
+
+
+  Source issue: https://github.com/itercharles/WebTPS/issues/42'
+justification: Low contrast causes difficulties reading text in dark mode.
+priority: Medium
+requested_by: itercharles
+target_version: 2026-W19
+category: Feature
+content: similar contrast with Github webpage in dark mode.
+status: in_review

@@ -9,12 +9,12 @@
   --color-surface-alt:  #0d1117;
   --color-elevated:     #21262d;
   --color-hover:        #1c2128;
-  --color-border:       #30363d;
+  --color-border:       #444c56;
   --color-border-input: #3d444d;
-  --color-text:         #e6edf3;
+  --color-text:         #c9d1d9;
   --color-text-bright:  #f0f6fc;
   --color-text-sec:     #8b949e;
-  --color-text-muted:   #7d8590;
+  --color-text-muted:   #8b949e;
   --color-text-dim:     #6e7681;
   --color-tooltip-bg:   #1f2328;
   --color-viewport:     #000000;
