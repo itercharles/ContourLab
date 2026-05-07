@@ -342,7 +342,24 @@ jobs:
               "**Spec validation failed** for $CR_ID. Submit \`changes_requested\` to trigger a revision, then re-approve once the spec is updated."
             exit 1
           fi
+      - name: Check if design needed
+        id: design_check
+        env:
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+        run: |
+          AFFECTED=$(awk '
+            /^affected_items:/ { found=1; next }
+            found && /^  - /  { count++ }
+            found && /^[a-z]/ { found=0 }
+            END { print count+0 }
+          ' "docs/cr-specs/${CR_ID}-Spec.md")
+          if [ "$AFFECTED" = "0" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Generate design
+        if: steps.design_check.outputs.skip != 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
@@ -360,26 +377,20 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+          SKIP_DESIGN: ${{ steps.design_check.outputs.skip }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add DHF/
-          COMMITTED=false
           if ! git diff --staged --quiet; then
             git commit -m "feat: design $CR_ID"
             git push
-            COMMITTED=true
           fi
-          DESIGN_EXISTS=$(git diff origin/main -- DHF/ \
-            | grep -v "^diff.*DHF/items/09_cr/$CR_ID.yaml" \
-            | grep -c "^+" || echo "0")
-          if [ "$COMMITTED" = "true" ] || [ "$DESIGN_EXISTS" -gt "0" ]; then
-            gh pr edit "$PR_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design"
-          else
+          if [ "$SKIP_DESIGN" = "true" ]; then
             gh pr comment "$PR_NUMBER" \
-              --body "⚠️ Design generation produced no output for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: spec) and check Claude logs."
-            exit 1
+              --body "No DHF items affected by $CR_ID — design stage skipped. Approve to proceed to implementation."
           fi
+          gh pr edit "$PR_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design"
 
   # ── DESIGN: REVISE ────────────────────────────────────────────────────────
 
