@@ -142,7 +142,7 @@ describe('Issues page — status board', () => {
       ok: true,
       data: {
         items: [
-          { number: 10, title: 'Low contrast in dark mode', stage: 'triaged', priority: 'high', createdAt: '2026-01-01T00:00:00Z', htmlUrl: 'https://github.com/itercharles/WebTPS/issues/10' },
+          { number: 10, title: 'Low contrast in dark mode', stage: 'analyze', priority: 'high', createdAt: '2026-01-01T00:00:00Z', htmlUrl: 'https://github.com/itercharles/WebTPS/issues/10' },
           { number: 24, title: 'Add dose volume histogram', stage: 'implement', priority: 'medium', createdAt: '2026-02-01T00:00:00Z', htmlUrl: 'https://github.com/itercharles/WebTPS/issues/24' },
         ],
       },
@@ -153,7 +153,7 @@ describe('Issues page — status board', () => {
     await waitFor(() => expect(screen.getByText('Low contrast in dark mode')).toBeTruthy());
     expect(screen.getByText('Add dose volume histogram')).toBeTruthy();
     const currentStages = screen.getAllByTestId('current-stage').map(el => el.textContent);
-    expect(currentStages).toContain('triaged');
+    expect(currentStages).toContain('analyze');
     expect(currentStages).toContain('implement');
   });
 
@@ -177,7 +177,6 @@ describe('Issues page — status board', () => {
 describe('pipeline stage rendering', () => {
   const cases: Array<[string]> = [
     ['open'],
-    ['triaged'],
     ['analyze'],
     ['design'],
     ['implement'],

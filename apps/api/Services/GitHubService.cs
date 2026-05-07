@@ -87,7 +87,7 @@ public sealed class GitHubService
             if (label == "cr:stage/code") return "implement";
             if (label == "cr:stage/design") return "design";
             if (label == "cr:stage/spec") return "analyze";
-            if (label == "cr:stage/cr") return "triaged";
+            if (label == "cr:stage/cr") return "open";
         }
         return "open";
     }

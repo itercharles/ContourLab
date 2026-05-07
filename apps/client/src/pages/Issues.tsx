@@ -21,7 +21,7 @@ interface SubmitState {
   htmlUrl?: string;
 }
 
-const PIPELINE = ['open', 'triaged', 'analyze', 'design', 'implement', 'deployed'] as const;
+const PIPELINE = ['open', 'analyze', 'design', 'implement', 'deployed'] as const;
 
 function PipelineHeader() {
   return (
