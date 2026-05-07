@@ -152,8 +152,9 @@ describe('Issues page — status board', () => {
 
     await waitFor(() => expect(screen.getByText('Low contrast in dark mode')).toBeTruthy());
     expect(screen.getByText('Add dose volume histogram')).toBeTruthy();
-    expect(screen.getByText('triaged', { selector: 'span[aria-current="step"]' })).toBeTruthy();
-    expect(screen.getByText('implement', { selector: 'span[aria-current="step"]' })).toBeTruthy();
+    const currentStages = screen.getAllByTestId('current-stage').map(el => el.textContent);
+    expect(currentStages).toContain('triaged');
+    expect(currentStages).toContain('implement');
   });
 
   it('shows inline error when GET /api/issues returns 503', async () => {
@@ -194,8 +195,9 @@ describe('pipeline stage rendering', () => {
 
     render(<MemoryRouter><Issues /></MemoryRouter>);
 
-    await waitFor(() =>
-      expect(screen.getByText(stage, { selector: 'span[aria-current="step"]' })).toBeTruthy()
-    );
+    await waitFor(() => {
+      const el = screen.getByTestId('current-stage');
+      expect(el.textContent).toBe(stage);
+    });
   });
 });

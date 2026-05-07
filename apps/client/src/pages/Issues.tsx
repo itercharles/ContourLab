@@ -23,25 +23,40 @@ interface SubmitState {
 
 const PIPELINE = ['open', 'triaged', 'analyze', 'design', 'implement', 'deployed'] as const;
 
+function PipelineHeader() {
+  return (
+    <div className="flex items-center">
+      {PIPELINE.map((s, i) => (
+        <div key={s} className="flex items-center">
+          {i > 0 && <div className="w-5" />}
+          <div className="flex w-9 justify-center">
+            <span className="text-[9px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{s}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PipelineStepper({ stage }: { stage: string }) {
   const isDeclined = stage === 'declined';
   const currentIdx = isDeclined ? -1 : PIPELINE.indexOf(stage as typeof PIPELINE[number]);
 
   return (
-    <div className="flex items-start py-0.5">
+    <div className="flex items-center py-1">
       {PIPELINE.map((s, i) => {
         const done = !isDeclined && i < currentIdx;
         const current = !isDeclined && i === currentIdx;
         return (
-          <div key={s} className="flex items-start">
+          <div key={s} className="flex items-center">
             {i > 0 && (
               <div
-                className={`mt-[5px] h-px w-5 shrink-0 ${
+                className={`h-px w-5 shrink-0 ${
                   done || current ? 'bg-blue-600' : 'bg-[var(--color-border)]'
                 }`}
               />
             )}
-            <div className="flex w-9 flex-col items-center gap-0.5">
+            <div className="flex w-9 justify-center">
               <div
                 className={`h-2.5 w-2.5 shrink-0 rounded-full ${
                   done
@@ -50,29 +65,20 @@ function PipelineStepper({ stage }: { stage: string }) {
                     ? 'bg-blue-400 ring-2 ring-blue-400/30 ring-offset-1 ring-offset-[var(--color-surface)]'
                     : 'border border-[var(--color-border)] bg-[var(--color-header)]'
                 }`}
-              />
-              <span
-                aria-current={current ? 'step' : undefined}
-                className={`text-center text-[8px] leading-tight ${
-                  current
-                    ? 'font-semibold text-blue-300'
-                    : done
-                    ? 'text-[var(--color-text-muted)]'
-                    : 'text-[var(--color-border)]'
-                }`}
               >
-                {s}
-              </span>
+                {current && <span className="sr-only" data-testid="current-stage">{s}</span>}
+              </div>
             </div>
           </div>
         );
       })}
       {isDeclined && (
-        <div className="ml-2 flex items-center gap-1">
+        <div className="ml-1 flex items-center">
           <div className="h-px w-4 bg-red-800" />
-          <div className="flex flex-col items-center gap-0.5">
-            <div className="h-2.5 w-2.5 rounded-full bg-red-500" />
-            <span aria-current="step" className="text-[8px] font-semibold text-red-400">declined</span>
+          <div className="flex w-9 justify-center">
+            <div className="h-2.5 w-2.5 rounded-full bg-red-500">
+              <span className="sr-only" data-testid="current-stage">declined</span>
+            </div>
           </div>
         </div>
       )}
@@ -313,7 +319,7 @@ export default function Issues() {
               <tr className="border-b border-[var(--color-border)]">
                 <th className="w-12 px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">#</th>
                 <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Title</th>
-                <th className="w-80 px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Status</th>
+                <th className="w-80 px-3 py-2 text-left"><PipelineHeader /></th>
               </tr>
             </thead>
             <tbody>
