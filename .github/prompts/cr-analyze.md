@@ -58,8 +58,9 @@ test_plan:
 - `scope-expansion`: adds capability beyond the current roadmap
 - `out-of-scope`: conflicts with or is outside the product strategy
 
-`affected_items` must reference IDs that already exist in DHF (SYS-NNN, SRS-NNN, CRS-NNN, RISK-NNN, etc.).
-Use `[]` if no existing items are affected.
+`affected_items` must reference IDs that **already exist** in DHF (SYS-NNN, SRS-NNN, CRS-NNN, RISK-NNN, etc.).
+Use `[]` if no existing items are affected. Do NOT invent new IDs — if the CR requires a new DHF item
+(e.g. a new CRS), note it in `DHF Impact` prose and leave `affected_items: []`; the design phase will create it.
 
 The markdown sections follow the front-matter block:
 

@@ -1,17 +1,16 @@
 ---
 cr_id: "CR-006"
 direction_fit: in-scope
-affected_items:
-  - CRS-020
+affected_items: []
 test_plan:
   auto_covered: []
   needs_new_tc:
-    - CRS-020: Maximize viewport via right-click context menu
-    - CRS-020: Restore normal layout from maximized state
-    - CRS-020: Context menu display on viewport right-click
-    - CRS-020: Exit button functionality and visibility in maximized mode
-    - CRS-020: Verify other panels (sidebar, toolbar, status bar) remain visible when maximized
-    - CRS-020: Switch between maximized views without exiting
+    - Maximize viewport via right-click context menu (new CRS item to be created in design)
+    - Restore normal layout from maximized state
+    - Context menu display on viewport right-click
+    - Exit button functionality and visibility in maximized mode
+    - Verify other panels (sidebar, toolbar, status bar) remain visible when maximized
+    - Switch between maximized views without exiting
   must_be_manual:
     - Right-click context menu interaction on all viewport types (Axial, Sagittal, Coronal)
     - View maximization and restoration end-to-end workflow
