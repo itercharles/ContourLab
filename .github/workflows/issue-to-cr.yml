@@ -99,6 +99,8 @@ jobs:
               --body-file /tmp/pr-body.md \
               --label "cr:stage/cr")
 
+          gh issue edit "${{ github.event.issue.number }}" --add-label "cr:stage/cr"
+
           python -m medharness --dhf DHF dhf item transition "$CR_ID" in_review \
             --by "github-actions[bot]" --commit --push
 

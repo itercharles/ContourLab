@@ -44,7 +44,7 @@ public sealed class GitHubService
         var client = _httpClientFactory.CreateClient("github");
 
         var request = new HttpRequestMessage(HttpMethod.Get,
-            $"/repos/{_repo}/issues?state=open&per_page=50");
+            $"/repos/{_repo}/issues?state=open&labels=cr%3Afeedback&per_page=50");
         AddAuthHeaders(request);
 
         var response = await client.SendAsync(request);

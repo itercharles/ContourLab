@@ -50,6 +50,7 @@ jobs:
       cr_id: ${{ steps.ctx.outputs.cr_id }}
       pr_number: ${{ steps.ctx.outputs.pr_number }}
       branch: ${{ steps.ctx.outputs.branch }}
+      issue_number: ${{ steps.ctx.outputs.issue_number }}
     steps:
       - name: Determine action
         id: ctx
@@ -88,6 +89,11 @@ jobs:
           echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+          ISSUE_NUMBER=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" \
+            --json closingIssuesReferences \
+            --jq '.closingIssuesReferences[0].number // empty' 2>/dev/null || echo "")
+          echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
 
           if [ "$EVENT" = "pull_request" ] && [ "$MERGED" = "true" ]; then
             echo "action=noop" >> "$GITHUB_OUTPUT"
@@ -243,6 +249,8 @@ jobs:
           SPEC_EXISTS=$(git diff origin/main -- "docs/cr-specs/${CR_ID}-Spec.md" | grep -c "^+" || echo "0")
           if [ "$COMMITTED" = "true" ] || [ "$SPEC_EXISTS" -gt "0" ]; then
             gh pr edit "$PR_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/spec"
+            ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
+            [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/spec" 2>/dev/null || true
           else
             gh pr comment "$PR_NUMBER" \
               --body "⚠️ Spec generation produced no output for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: cr) and check Claude logs."
@@ -392,6 +400,8 @@ jobs:
               --body "No DHF items affected by $CR_ID — design stage skipped. Approve to proceed to implementation."
           fi
           gh pr edit "$PR_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design"
+          ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
+          [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design" 2>/dev/null || true
 
   # ── DESIGN: REVISE ────────────────────────────────────────────────────────
 
@@ -515,6 +525,8 @@ jobs:
           if [ "$COMMITTED" = "true" ] || [ "$CODE_EXISTS" -gt "0" ]; then
             gh pr edit "$PR_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code"
             gh pr ready "$PR_NUMBER"
+            ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
+            [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code" 2>/dev/null || true
           else
             gh pr comment "$PR_NUMBER" \
               --body "⚠️ Implementation produced no code changes for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: design) and check Claude logs."
