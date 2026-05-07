@@ -70,6 +70,7 @@ lifecycle:
     to_state: implementing
     label: Start Implementation
   - from_states:
+    - in_review
     - implementing
     to_state: completed
     label: Complete
