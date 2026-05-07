@@ -74,6 +74,7 @@ jobs:
         if: steps.prepare.outputs.should_create == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
           CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
           BRANCH="feat/$CR_ID"
@@ -94,7 +95,7 @@ jobs:
               --head "$BRANCH" \
               --base main \
               --draft \
-              --title "feat($CR_ID): ${{ github.event.issue.title }}" \
+              --title "feat($CR_ID): $ISSUE_TITLE" \
               --body-file /tmp/pr-body.md \
               --label "cr:stage/cr")
 
