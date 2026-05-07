@@ -212,7 +212,6 @@ jobs:
           [ -n "$RUN_ID" ] && gh run download "$RUN_ID" --name product-test-results \
             --dir /tmp/test-artifacts 2>/dev/null || true
       - name: Generate spec
-        id: gen_spec
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_ANALYZE_MODEL }}
@@ -224,15 +223,12 @@ jobs:
           mkdir -p docs/cr-specs
           [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
           PROMPT=$(sed "s/{{cr_id}}/$CR_ID/g" .github/prompts/cr-analyze.md)
-          SESSION_ID=$(uuidgen)
-          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
-          claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
+          claude -p --dangerously-skip-permissions "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
       - name: Commit and advance to spec review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-          SESSION_ID: ${{ steps.gen_spec.outputs.session_id }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -251,7 +247,6 @@ jobs:
               --body "⚠️ Spec generation produced no output for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: cr) and check Claude logs."
             exit 1
           fi
-          [ -n "$SESSION_ID" ] && python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID" || true
 
   # ── SPEC: REVISE ──────────────────────────────────────────────────────────
 
@@ -279,13 +274,6 @@ jobs:
           node-version: '20'
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
-      - name: Read session ID
-        id: session
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          SESSION_ID=$(python -m medharness ci claude-session get "${{ needs.detect.outputs.pr_number }}" 2>/dev/null || echo "")
-          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
       - name: Collect review feedback
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -296,22 +284,15 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_ANALYZE_MODEL }}
-          SESSION_ID: ${{ steps.session.outputs.session_id }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
           [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
-          if [ -n "$SESSION_ID" ]; then
-            claude --resume "$SESSION_ID" -p --dangerously-skip-permissions \
-              "Revise the CR spec based on the review feedback in /tmp/review-comments.json and /tmp/reviews.json. Update docs/cr-specs/ only if changes are warranted."
-          else
-            claude -p --dangerously-skip-permissions \
-              "Revise the CR spec on this branch based on review feedback in /tmp/review-comments.json and /tmp/reviews.json. Update docs/cr-specs/ only if changes are warranted."
-          fi
+          claude -p --dangerously-skip-permissions \
+            "Read docs/cr-specs/${CR_ID}-Spec.md (the current spec on this branch), then read /tmp/review-comments.json and /tmp/reviews.json. Revise the spec based on the review feedback. Update docs/cr-specs/ only if changes are warranted."
       - name: Commit revision
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-          SESSION_ID: ${{ steps.session.outputs.session_id }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -320,7 +301,6 @@ jobs:
             git commit -m "docs: revise spec for $CR_ID"
             git push
           fi
-          [ -n "$SESSION_ID" ] && python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID" || true
 
   # ── DESIGN: GENERATE ──────────────────────────────────────────────────────
 
@@ -363,7 +343,6 @@ jobs:
             exit 1
           fi
       - name: Generate design
-        id: gen_design
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
@@ -375,15 +354,12 @@ jobs:
           export DHF_CONTEXT
           [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
           PROMPT=$(sed "s/{{cr_id}}/$CR_ID/g" .github/prompts/cr-design.md)
-          SESSION_ID=$(uuidgen)
-          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
-          claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
+          claude -p --dangerously-skip-permissions "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
       - name: Commit and advance to design review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-          SESSION_ID: ${{ steps.gen_design.outputs.session_id }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -404,7 +380,6 @@ jobs:
               --body "⚠️ Design generation produced no output for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: spec) and check Claude logs."
             exit 1
           fi
-          [ -n "$SESSION_ID" ] && python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID" || true
 
   # ── DESIGN: REVISE ────────────────────────────────────────────────────────
 
@@ -432,13 +407,6 @@ jobs:
           node-version: '20'
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
-      - name: Read session ID
-        id: session
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          SESSION_ID=$(python -m medharness ci claude-session get "${{ needs.detect.outputs.pr_number }}" 2>/dev/null || echo "")
-          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
       - name: Collect review feedback
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -449,22 +417,15 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
-          SESSION_ID: ${{ steps.session.outputs.session_id }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
           [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
-          if [ -n "$SESSION_ID" ]; then
-            claude --resume "$SESSION_ID" -p --dangerously-skip-permissions \
-              "Revise the DHF design items on this branch based on review feedback in /tmp/review-comments.json and /tmp/reviews.json."
-          else
-            claude -p --dangerously-skip-permissions \
-              "Revise the DHF design items on this branch based on review feedback in /tmp/review-comments.json and /tmp/reviews.json."
-          fi
+          claude -p --dangerously-skip-permissions \
+            "Read the DHF design items in DHF/ related to $CR_ID, then read /tmp/review-comments.json and /tmp/reviews.json. Revise the design items based on the review feedback."
       - name: Commit revision
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-          SESSION_ID: ${{ steps.session.outputs.session_id }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -473,7 +434,6 @@ jobs:
             git commit -m "feat: revise design $CR_ID"
             git push
           fi
-          [ -n "$SESSION_ID" ] && python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID" || true
 
   # ── CODE: GENERATE ────────────────────────────────────────────────────────
 
@@ -502,7 +462,6 @@ jobs:
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
       - name: Generate implementation
-        id: gen_code
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
@@ -522,15 +481,12 @@ jobs:
             > "/tmp/dhf-context/$CR_ID.json" 2>/dev/null || true
           [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
           PROMPT=$(sed "s/{{cr_id}}/$CR_ID/g" .github/prompts/cr-develop.md)
-          SESSION_ID=$(uuidgen)
-          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
-          claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
+          claude -p --dangerously-skip-permissions "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
       - name: Commit and mark ready for review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-          SESSION_ID: ${{ steps.gen_code.outputs.session_id }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -552,7 +508,6 @@ jobs:
               --body "⚠️ Implementation produced no code changes for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: design) and check Claude logs."
             exit 1
           fi
-          [ -n "$SESSION_ID" ] && python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID" || true
 
   # ── CODE: REVISE ──────────────────────────────────────────────────────────
 
@@ -580,13 +535,6 @@ jobs:
           node-version: '20'
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
-      - name: Read session ID
-        id: session
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          SESSION_ID=$(python -m medharness ci claude-session get "${{ needs.detect.outputs.pr_number }}" 2>/dev/null || echo "")
-          echo "session_id=$SESSION_ID" >> "$GITHUB_OUTPUT"
       - name: Collect review feedback
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -597,22 +545,15 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
-          SESSION_ID: ${{ steps.session.outputs.session_id }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
           [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
-          if [ -n "$SESSION_ID" ]; then
-            claude --resume "$SESSION_ID" -p --dangerously-skip-permissions \
-              "Revise the implementation based on review feedback in /tmp/review-comments.json and /tmp/reviews.json. Do not commit."
-          else
-            claude -p --dangerously-skip-permissions \
-              "Revise the implementation on this branch based on review feedback in /tmp/review-comments.json and /tmp/reviews.json. Do not commit."
-          fi
+          claude -p --dangerously-skip-permissions \
+            "Read the implementation on this branch for $CR_ID, then read /tmp/review-comments.json and /tmp/reviews.json. Revise the implementation based on the review feedback. Do not commit."
       - name: Commit revision
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-          SESSION_ID: ${{ steps.session.outputs.session_id }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -621,7 +562,6 @@ jobs:
             git commit -m "fix: revise implementation $CR_ID"
             git push
           fi
-          [ -n "$SESSION_ID" ] && python -m medharness ci claude-session put "$PR_NUMBER" "$SESSION_ID" || true
 
   # ── CODE: APPROVED → READY TO MERGE ──────────────────────────────────────
 
