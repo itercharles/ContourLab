@@ -192,7 +192,6 @@ pushing, ask the user whether to open a PR or merge locally — do not decide un
 - `/cr-status` — list all CRs and their current lifecycle states
 
 **DHF operations**
-- `/dhf-validate` — schema validation + traceability check
 - `/doc-generate` — regenerate all DHF specification documents
 - `/traceability-check` — show which SYS/SRS/CRS items have no test coverage; suggest next tests
 
