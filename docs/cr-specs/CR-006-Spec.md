@@ -5,12 +5,8 @@ affected_items: []
 test_plan:
   auto_covered: []
   needs_new_tc:
-    - Maximize viewport via right-click context menu (new CRS item to be created in design)
-    - Restore normal layout from maximized state
-    - Context menu display on viewport right-click
-    - Exit button functionality and visibility in maximized mode
-    - Verify other panels (sidebar, toolbar, status bar) remain visible when maximized
-    - Switch between maximized views without exiting
+    - SRS-018
+    - SRS-019
   must_be_manual:
     - Right-click context menu interaction on all viewport types (Axial, Sagittal, Coronal)
     - View maximization and restoration end-to-end workflow
@@ -97,27 +93,29 @@ Create a simple floating context menu (no new file needed if inline is acceptabl
 
 ## DHF Impact
 
-- **Product Impact**: Not required — adds a UI control for existing views without changing clinical workflow or use cases
-- **Requirements Impact**: **Required** — create new CRS-020 "Maximize and Restore Viewport View" that formulates the requirement for context menu-driven view maximization
-- **Architecture Impact**: Not required — no architectural changes; state management and component structure remain the same
-- **Risk Impact**: Not required — no new clinical risk; right-click menu is a standard UI pattern
-- **SOUP Impact**: Not required — no new dependencies
-- **Test Impact**: **Required** — add component tests for context menu display, viewport maximization/restoration, and exit button functionality; implement automated verification tests linked to CRS-020
+| Area | Required | Justification |
+|------|----------|---------------|
+| **Product / UC / CRS** | Follow-up needed | Viewport maximization is a new user-facing capability. Existing UC/CRS items do not cover this feature. Design phase will create a new CRS item for "users shall maximize a viewport via context menu." |
+| **Requirements / SYS / SRS** | Follow-up needed | Design phase will create new SRS items (SRS-018: viewport state management; SRS-019: context menu interaction). No SYS items required — system boundary unchanged. |
+| **Architecture / SYSARCH** | Not required | Viewport maximization is a client-side UI layout feature confined to the Browser Client (SYSARCH-001). No system boundaries, data flows, or deployment changes. |
+| **Risk / RISK / RCM** | Not required | No new hazards introduced. UI layout changes do not affect clinical data integrity, DICOM processing, contour storage, or safety controls. Right-click menu is a standard UI pattern with no safety implications. |
+| **SOUP / Dependencies** | Not required | No new external libraries required. Implementation uses existing React, Tailwind, and Cornerstone3D capabilities. |
+| **Test Impact** | Required | Add component tests for context menu display, viewport state transitions, layout switching, and exit button functionality; implement automated verification tests for new SRS items. |
 
 ## Verification
 
 ### Automated Tests (Verification per IEC 62304 §5.5–5.6)
 
-Tests are annotated with `@links:CRS-020` to establish traceability to the requirement.
+Tests will be annotated with `@links:SRS-018` (viewport state management) and `@links:SRS-019` (context menu interaction) to establish traceability.
 
-1. **ViewportPanel context menu tests** (`apps/client/src/components/viewer/ImageViewer.test.tsx`) — @links:CRS-020:
+1. **ViewportPanel context menu tests** (`apps/client/src/components/viewer/ImageViewer.test.tsx`) — @links:SRS-019:
    - Test that right-click on a viewport renders the context menu
    - Test that clicking "Full Screen" calls `setMaximizedViewport` with the correct orientation
    - Test that clicking "Restore" calls `clearMaximizedViewport`
    - Test that context menu is dismissed on click outside or Escape key
    - Test that the correct menu option is shown based on viewport state (Full Screen vs. Restore)
 
-2. **ImageViewer layout tests** — @links:CRS-020:
+2. **ImageViewer layout tests** — @links:SRS-018:
    - Test that grid layout renders normally when `maximizedViewport` is null
    - Test that only the maximized viewport renders when `maximizedViewport` is set
    - Test that exit button is rendered in maximized mode and not in normal mode
@@ -125,7 +123,7 @@ Tests are annotated with `@links:CRS-020` to establish traceability to the requi
    - Test that other panels (sidebar, toolbar, status bar) remain visible when a viewport is maximized
    - Test that switching from one maximized viewport to another works correctly
 
-3. **UIStore tests** — @links:CRS-020:
+3. **UIStore tests** — @links:SRS-018:
    - Test that `setMaximizedViewport` updates state correctly for each orientation
    - Test that `clearMaximizedViewport` resets state to null
    - Test that state transitions work correctly when switching between viewports
@@ -134,36 +132,36 @@ Tests are annotated with `@links:CRS-020` to establish traceability to the requi
 
 ### Manual Testing (System Acceptance per IEC 62304 §5.7)
 
-1. **Context menu display** — @links:CRS-020:
+1. **Context menu display**:
    - Load a DICOM series
    - Right-click on the Axial viewport
    - Verify a context menu appears with "Full Screen" and "Restore" options (or only "Full Screen" if not yet maximized)
    - Right-click on Sagittal and Coronal; verify menu appears for each
 
-2. **View maximization** — @links:CRS-020:
+2. **View maximization**:
    - Right-click Axial and select "Full Screen"
    - Verify Axial fills the entire viewer area
    - Verify left sidebar, right sidebar, toolbar, and status bar are still visible
    - Verify other views (Sagittal, Coronal, 3D) are hidden
    - Verify an exit button is visible (top-right corner)
 
-3. **Restore via button** — @links:CRS-020:
+3. **Restore via button**:
    - Click the exit/restore button
    - Verify the normal 2×2 grid layout is restored
    - Verify all four panels (Axial, Sagittal, Coronal, 3D) are visible again
 
-4. **Restore via menu** — @links:CRS-020:
+4. **Restore via menu**:
    - Maximize Coronal
    - Right-click the maximized viewport
    - Verify the context menu shows "Restore" option
    - Click "Restore"
    - Verify normal layout is restored
 
-5. **Switch between maximized views** — @links:CRS-020:
+5. **Switch between maximized views**:
    - Maximize Axial, then without exiting, right-click and select "Full Screen" on Sagittal
    - Verify the layout changes to show Sagittal instead (no flickering)
 
-6. **Regression testing** — @links:CRS-020:
+6. **Regression testing**:
    - Verify normal 2×2 layout is unchanged when no viewport is maximized
    - Verify zoom, pan, scroll, and other viewer tools work in maximized mode
    - Verify window level presets apply correctly in maximized view
