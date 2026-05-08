@@ -561,27 +561,18 @@ jobs:
           BRANCH: ${{ needs.detect.outputs.branch }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
-          # Wait for ci-pipeline.yml to be queued (GitHub takes a few seconds)
-          RUN_ID=""
-          for attempt in $(seq 1 18); do
-            RUN_ID=$(gh run list \
-              --repo "${{ github.repository }}" \
-              --workflow ci-pipeline.yml \
-              --branch "$BRANCH" \
-              --event pull_request \
-              --limit 1 \
-              --json databaseId,status \
-              --jq 'map(select(.status != "completed")) | .[0].databaseId // empty' \
-              2>/dev/null || echo "")
-            [ -n "$RUN_ID" ] && break
-            echo "Waiting for CI run to appear... ($attempt/18)"
-            sleep 10
-          done
-          if [ -z "$RUN_ID" ]; then
-            gh pr comment "$PR_NUMBER" \
-              --body "⚠️ Could not find a running CI pipeline for $CR_ID — stage not advanced. Check Actions and re-trigger via workflow_dispatch (stage: design)."
-            exit 1
-          fi
+          gh workflow run ci-pipeline.yml \
+            --repo "${{ github.repository }}" \
+            --ref "$BRANCH"
+          sleep 8
+          RUN_ID=$(gh run list \
+            --repo "${{ github.repository }}" \
+            --workflow ci-pipeline.yml \
+            --branch "$BRANCH" \
+            --event workflow_dispatch \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
           echo "Watching CI run $RUN_ID..."
           if ! gh run watch "$RUN_ID" \
             --repo "${{ github.repository }}" \
