@@ -65,7 +65,7 @@ export function isPortOpen(port, host = '127.0.0.1', timeoutMs = 500) {
   });
 }
 
-export async function fetchStatus(url, timeoutMs = 1000) {
+export async function fetchStatus(url, timeoutMs = 5000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {

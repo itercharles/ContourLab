@@ -166,13 +166,14 @@ jobs:
         run: pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
       - name: Wait for services
         run: |
-          for i in $(seq 1 30); do
-            curl -sf http://127.0.0.1:4000/api/health > /dev/null 2>&1 && \
-            curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1 && \
-            echo "Services ready" && break
-            echo "Waiting... ($i/30)"
+          for i in $(seq 1 40); do
+            curl -sf --max-time 10 http://127.0.0.1:4000/api/health > /dev/null 2>&1 && \
+            curl -sf --max-time 10 http://127.0.0.1:3000/ > /dev/null 2>&1 && \
+            echo "Services ready" && exit 0
+            echo "Waiting... ($i/40)"
             sleep 3
           done
+          echo "Services failed to become ready" && exit 1
       - name: Smoke check
         run: pnpm local:doctor
       - name: Stop services
