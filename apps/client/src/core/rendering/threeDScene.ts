@@ -35,6 +35,10 @@ export interface ThreeDScene {
 
 const CT_ISO_THRESHOLD_HU = 250;
 const CT_DOWNSAMPLE_STRIDE = 2;
+interface ScenePropHandle {
+  actor: ReturnType<typeof vtkActor.newInstance>;
+  dispose: () => void;
+}
 
 export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   const renderer = vtkRenderer.newInstance({
@@ -56,30 +60,49 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   renderer.addActor(axesActor);
   renderer.getActiveCamera().setParallelProjection(false);
   resizeScene(container, openGLRenderWindow, renderWindow);
+  let disposableProps: ScenePropHandle[] = [];
+  let hasFramedContent = false;
+
+  const clearDisposableProps = () => {
+    for (const prop of disposableProps) {
+      renderer.removeActor(prop.actor);
+      prop.dispose();
+    }
+    disposableProps = [];
+  };
 
   return {
     renderSnapshot(snapshot) {
-      renderer.removeAllViewProps();
-      renderer.addActor(axesActor);
+      clearDisposableProps();
 
       let ctReady = false;
       if (snapshot.volume && snapshot.showCtSurface && snapshot.volume.pixelData.length > 0) {
-        const ctActor = createCtActor(snapshot.volume);
-        if (ctActor) {
-          renderer.addActor(ctActor);
+        const ctProp = createCtActor(snapshot.volume);
+        if (ctProp) {
+          renderer.addActor(ctProp.actor);
+          disposableProps.push(ctProp);
           ctReady = true;
         }
       }
 
       let structureCount = 0;
       for (const layer of snapshot.structures) {
-        const actor = createStructureActor(layer.structure, snapshot.volume, layer.opacity ?? 0.72);
-        if (!actor) continue;
-        renderer.addActor(actor);
+        const structureProp = createStructureActor(
+          layer.structure,
+          snapshot.volume,
+          layer.opacity ?? 0.72
+        );
+        if (!structureProp) continue;
+        renderer.addActor(structureProp.actor);
+        disposableProps.push(structureProp);
         structureCount += 1;
       }
 
-      renderer.resetCamera();
+      const hasSceneContent = ctReady || structureCount > 0;
+      if (hasSceneContent && !hasFramedContent) {
+        renderer.resetCamera();
+      }
+      hasFramedContent = hasSceneContent;
       renderWindow.render();
       return { ctReady, structureCount };
     },
@@ -88,10 +111,13 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
     },
     resetCamera() {
       renderer.resetCamera();
+      hasFramedContent = true;
       renderWindow.render();
     },
     destroy() {
+      clearDisposableProps();
       interactor.unbindEvents();
+      renderer.removeActor(axesActor);
       renderWindow.removeView(openGLRenderWindow);
       openGLRenderWindow.delete();
       renderer.delete();
@@ -113,7 +139,7 @@ function resizeScene(
   renderWindow.render();
 }
 
-function createCtActor(volume: Volume) {
+function createCtActor(volume: Volume): ScenePropHandle | null {
   const sourceVolume = downsampleVolume(volume, CT_DOWNSAMPLE_STRIDE);
   const imageData = vtkImageData.newInstance();
   imageData.setDimensions(...sourceVolume.dimensions);
@@ -142,10 +168,22 @@ function createCtActor(volume: Volume) {
   actor.getProperty().setColor(0.85, 0.87, 0.92);
   actor.getProperty().setOpacity(0.18);
   actor.getProperty().setInterpolationToPhong();
-  return actor;
+  return {
+    actor,
+    dispose: () => {
+      actor.delete();
+      mapper.delete();
+      marchingCubes.delete();
+      imageData.delete();
+    },
+  };
 }
 
-function createStructureActor(structure: Structure, volume: Volume | null, opacity: number) {
+function createStructureActor(
+  structure: Structure,
+  volume: Volume | null,
+  opacity: number
+): ScenePropHandle | null {
   if (!volume || !hasRenderableContours(structure)) return null;
   const maskVolume = buildStructureMaskVolume(structure, volume);
   if (!maskVolume) return null;
@@ -182,5 +220,13 @@ function createStructureActor(structure: Structure, volume: Volume | null, opaci
   );
   actor.getProperty().setOpacity(opacity);
   actor.getProperty().setInterpolationToPhong();
-  return actor;
+  return {
+    actor,
+    dispose: () => {
+      actor.delete();
+      mapper.delete();
+      marchingCubes.delete();
+      imageData.delete();
+    },
+  };
 }

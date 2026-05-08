@@ -69,6 +69,45 @@ describe('threeDGeometry @links:SRS-028,SRS-029', () => {
     expect(mask?.scalars.some((value) => value === 1)).toBe(true);
   });
 
+  it('preserves holes for nested contours on the same slice', () => {
+    const hollowStructure: Structure = {
+      ...structure,
+      contours: [
+        {
+          referencedSOPInstanceUID: 'sop-outer',
+          slicePosition: 30,
+          isClosed: true,
+          points: new Float32Array([
+            11, 21, 30,
+            15, 21, 30,
+            15, 25, 30,
+            11, 25, 30,
+          ]),
+        },
+        {
+          referencedSOPInstanceUID: 'sop-inner',
+          slicePosition: 30,
+          isClosed: true,
+          points: new Float32Array([
+            12, 22, 30,
+            14, 22, 30,
+            14, 24, 30,
+            12, 24, 30,
+          ]),
+        },
+      ],
+    };
+
+    const mask = buildStructureMaskVolume(hollowStructure, volume);
+
+    expect(mask).not.toBeNull();
+    expect(mask?.dimensions).toEqual([7, 7, 2]);
+    const centerVoxelOffset = 0 * 7 * 7 + 3 * 7 + 3;
+    const shellVoxelOffset = 0 * 7 * 7 + 1 * 7 + 1;
+    expect(mask?.scalars[centerVoxelOffset]).toBe(0);
+    expect(mask?.scalars[shellVoxelOffset]).toBe(1);
+  });
+
   it('downsamples a volume while preserving scalar type and spatial coverage', () => {
     const downsampled = downsampleVolume(volume, 2);
 

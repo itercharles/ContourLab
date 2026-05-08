@@ -10,6 +10,11 @@ export interface MaskVolume {
 }
 
 type Vec3 = [number, number, number];
+interface SlicePolygon {
+  polygon: Array<[number, number]>;
+  bounds: [number, number, number, number];
+  area: number;
+}
 
 const DEFAULT_DIRECTION: [number, number, number, number, number, number, number, number, number] = [
   1, 0, 0,
@@ -33,7 +38,7 @@ export function buildStructureMaskVolume(structure: Structure, volume: Volume): 
   const depth = maxK - minK + 1;
   const scalars = new Uint8Array(width * height * depth);
 
-  let filledVoxelCount = 0;
+  const slicePolygons = new Map<number, SlicePolygon[]>();
   for (const contour of structure.contours) {
     if (!contour.isClosed || contour.points.length < 9) continue;
 
@@ -43,24 +48,36 @@ export function buildStructureMaskVolume(structure: Structure, volume: Volume): 
     const avgK =
       contourPoints.reduce((sum, point) => sum + point[2], 0) / contourPoints.length;
     const k = clamp(Math.round(avgK), minK, maxK);
-    const localK = k - minK;
-
     const polygon = contourPoints.map(([i, j]) => [i - minI, j - minJ] as [number, number]);
     const polyBounds = getPolygonBounds(polygon, width, height);
     if (!polyBounds) continue;
+    const area = Math.abs(computeSignedPolygonArea(polygon));
+    if (area < Number.EPSILON) continue;
 
-    const [startX, endX, startY, endY] = polyBounds;
-    for (let y = startY; y <= endY; y += 1) {
-      for (let x = startX; x <= endX; x += 1) {
-        if (!isPointInPolygon(x + 0.5, y + 0.5, polygon)) continue;
-        const offset = localK * width * height + y * width + x;
-        if (scalars[offset] === 0) {
-          scalars[offset] = 1;
-          filledVoxelCount += 1;
+    const polygons = slicePolygons.get(k - minK) ?? [];
+    polygons.push({
+      polygon,
+      bounds: polyBounds,
+      area,
+    });
+    slicePolygons.set(k - minK, polygons);
+  }
+
+  for (const [localK, polygons] of slicePolygons.entries()) {
+    const classifiedPolygons = classifySlicePolygons(polygons);
+    for (const slicePolygon of classifiedPolygons) {
+      const [startX, endX, startY, endY] = slicePolygon.bounds;
+      for (let y = startY; y <= endY; y += 1) {
+        for (let x = startX; x <= endX; x += 1) {
+          if (!isPointInPolygon(x + 0.5, y + 0.5, slicePolygon.polygon)) continue;
+          const offset = localK * width * height + y * width + x;
+          scalars[offset] = slicePolygon.fillValue;
         }
       }
     }
   }
+
+  const filledVoxelCount = scalars.reduce((count, value) => count + (value > 0 ? 1 : 0), 0);
 
   if (filledVoxelCount === 0) return null;
 
@@ -234,6 +251,39 @@ function isPointInPolygon(x: number, y: number, polygon: Array<[number, number]>
     if (intersects) inside = !inside;
   }
   return inside;
+}
+
+function classifySlicePolygons(
+  polygons: SlicePolygon[]
+): Array<SlicePolygon & { fillValue: 0 | 1 }> {
+  const sorted = [...polygons].sort((left, right) => right.area - left.area);
+
+  return sorted.map((polygon, index) => {
+    const probePoint = polygon.polygon[0];
+    let depth = 0;
+
+    for (let parentIndex = 0; parentIndex < index; parentIndex += 1) {
+      const parent = sorted[parentIndex];
+      if (isPointInPolygon(probePoint[0], probePoint[1], parent.polygon)) {
+        depth += 1;
+      }
+    }
+
+    return {
+      ...polygon,
+      fillValue: (depth % 2 === 0 ? 1 : 0) as 0 | 1,
+    };
+  });
+}
+
+function computeSignedPolygonArea(polygon: Array<[number, number]>): number {
+  let total = 0;
+  for (let index = 0; index < polygon.length; index += 1) {
+    const [x1, y1] = polygon[index];
+    const [x2, y2] = polygon[(index + 1) % polygon.length];
+    total += x1 * y2 - x2 * y1;
+  }
+  return total / 2;
 }
 
 function getScalarConstructor(
