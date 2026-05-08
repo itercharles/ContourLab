@@ -7,6 +7,7 @@ import { useUIStore } from '../../core/store/uiStore';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import ContourOverlay from './ContourOverlay';
 import ToolOptions from './ToolOptions';
+import ViewportContextMenu from './ViewportContextMenu';
 
 class ContourErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -32,10 +33,14 @@ interface InteractiveViewportLike {
 function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) {
   const elRef = useRef<HTMLDivElement>(null);
   const [viewportElement, setViewportElement] = useState<HTMLDivElement | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const activeViewport = useUIStore((s) => s.activeViewport);
   const setActiveViewport = useUIStore((s) => s.setActiveViewport);
+  const maximizedViewport = useUIStore((s) => s.maximizedViewport);
+  const toggleMaximizeViewport = useUIStore((s) => s.toggleMaximizeViewport);
 
   const isActive = activeViewport === orientation;
+  const isMaximized = maximizedViewport === orientation;
 
   useEffect(() => {
     if (elRef.current) {
@@ -74,10 +79,16 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
     return () => element.removeEventListener('wheel', handleWheel);
   }, [id]);
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
   return (
     <div
       className={`relative bg-black overflow-hidden ${isActive ? 'ring-1 ring-blue-500' : ''}`}
       onClick={() => setActiveViewport(orientation)}
+      onContextMenu={handleContextMenu}
     >
       <div
         ref={elRef}
@@ -94,6 +105,16 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
       <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
         {label}
       </span>
+      {contextMenu && (
+        <ViewportContextMenu
+          orientation={orientation}
+          isMaximized={isMaximized}
+          onMaximize={toggleMaximizeViewport}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }
@@ -103,11 +124,14 @@ export default function ImageViewer() {
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
   const windowLevelPreset = useUIStore((s) => s.windowLevelPreset);
+  const maximizedViewport = useUIStore((s) => s.maximizedViewport);
+  const resetMaximizeViewport = useUIStore((s) => s.resetMaximizeViewport);
   const [viewportsReady, setViewportsReady] = useState(false);
 
   // Track whether we've set up the tool group yet
   const setupDone = useRef(false);
   const readyViewportIds = useRef(new Set<string>());
+  const prevActiveSeriesUID = useRef<string | null>(null);
 
   const pushDebugEvent = (message: string) => {
     logClientDebug('ImageViewer', message);
@@ -207,6 +231,26 @@ export default function ImageViewer() {
     return () => observer.disconnect();
   }, []);
 
+  // Reset maximize state when active series changes (patient changes)
+  useEffect(() => {
+    if (activeSeriesUID && activeSeriesUID !== prevActiveSeriesUID.current) {
+      resetMaximizeViewport();
+    }
+    prevActiveSeriesUID.current = activeSeriesUID;
+  }, [activeSeriesUID, resetMaximizeViewport]);
+
+  // Handle Escape key to reset maximize state
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && maximizedViewport) {
+        resetMaximizeViewport();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [maximizedViewport, resetMaximizeViewport]);
+
   useEffect(() => {
     return () => {
       readyViewportIds.current.clear();
@@ -219,55 +263,85 @@ export default function ImageViewer() {
   return (
     <div
       ref={containerRef}
-      className="relative h-full flex-1 bg-[var(--color-border)]"
+      className="relative h-full flex-1 bg-[var(--color-border)] focus:outline-none"
+      tabIndex={0}
     >
       <ToolOptions />
-      <div className="grid h-full grid-cols-2 grid-rows-2 gap-[1px]">
-        <ViewportPanel
-          id={VIEWPORT_IDS.AXIAL}
-          label="AXIAL"
-          orientation="AXIAL"
-          onReady={onReady}
-        />
-        <ViewportPanel
-          id={VIEWPORT_IDS.SAGITTAL}
-          label="SAGITTAL"
-          orientation="SAGITTAL"
-          onReady={onReady}
-        />
-        <ViewportPanel
-          id={VIEWPORT_IDS.CORONAL}
-          label="CORONAL"
-          orientation="CORONAL"
-          onReady={onReady}
-        />
-
-        {/* 4th quadrant: 3D placeholder */}
-        <div className="relative bg-black flex items-center justify-center overflow-hidden">
-          <div className="text-center">
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-[var(--color-text-dim)] mx-auto mb-2"
-            >
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-              <line x1="12" y1="22.08" x2="12" y2="12" />
-            </svg>
-            <p className="text-xs text-[var(--color-text-dim)] font-mono">3D View</p>
-            <p className="text-xs text-[var(--color-text-dim)] mt-1">Not yet implemented</p>
-          </div>
-          <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
-            3D
-          </span>
+      {maximizedViewport ? (
+        <div className="flex h-full gap-[1px]">
+          {maximizedViewport === 'AXIAL' && (
+            <ViewportPanel
+              id={VIEWPORT_IDS.AXIAL}
+              label="AXIAL"
+              orientation="AXIAL"
+              onReady={onReady}
+            />
+          )}
+          {maximizedViewport === 'SAGITTAL' && (
+            <ViewportPanel
+              id={VIEWPORT_IDS.SAGITTAL}
+              label="SAGITTAL"
+              orientation="SAGITTAL"
+              onReady={onReady}
+            />
+          )}
+          {maximizedViewport === 'CORONAL' && (
+            <ViewportPanel
+              id={VIEWPORT_IDS.CORONAL}
+              label="CORONAL"
+              orientation="CORONAL"
+              onReady={onReady}
+            />
+          )}
         </div>
-      </div>
+      ) : (
+        <div className="grid h-full grid-cols-2 grid-rows-2 gap-[1px]">
+          <ViewportPanel
+            id={VIEWPORT_IDS.AXIAL}
+            label="AXIAL"
+            orientation="AXIAL"
+            onReady={onReady}
+          />
+          <ViewportPanel
+            id={VIEWPORT_IDS.SAGITTAL}
+            label="SAGITTAL"
+            orientation="SAGITTAL"
+            onReady={onReady}
+          />
+          <ViewportPanel
+            id={VIEWPORT_IDS.CORONAL}
+            label="CORONAL"
+            orientation="CORONAL"
+            onReady={onReady}
+          />
+
+          {/* 4th quadrant: 3D placeholder */}
+          <div className="relative bg-black flex items-center justify-center overflow-hidden">
+            <div className="text-center">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-[var(--color-text-dim)] mx-auto mb-2"
+              >
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                <line x1="12" y1="22.08" x2="12" y2="12" />
+              </svg>
+              <p className="text-xs text-[var(--color-text-dim)] font-mono">3D View</p>
+              <p className="text-xs text-[var(--color-text-dim)] mt-1">Not yet implemented</p>
+            </div>
+            <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
+              3D
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
