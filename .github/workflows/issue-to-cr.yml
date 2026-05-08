@@ -34,7 +34,7 @@ jobs:
           cache: 'pip'
 
       - name: Install medharness
-        run: pip install medharness==0.3.1
+        run: pip install medharness==0.3.2
 
       - name: Configure git
         run: |
