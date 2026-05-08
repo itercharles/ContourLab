@@ -1,0 +1,14 @@
+id: SRS-019
+derives_from:
+- SYS-002
+title: Software shall toggle viewport fullscreen layout state and restore normal layout
+  on user action or patient change
+content: Clicking "Maximize View" in the context menu shall set the maximized viewport
+  state, causing that viewport to occupy the full image area while other viewports
+  are hidden. Clicking "Restore View" or pressing Escape shall clear the maximized
+  state and restore the three-pane layout. Changing the active patient shall automatically
+  restore normal layout. Layout state shall not persist across workspace reloads.
+verification_method:
+- Test
+critical_safety: false
+type: SRS
