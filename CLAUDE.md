@@ -21,7 +21,6 @@ DHF/documents/         — Spec and plan templates
 docs/cr-specs/         — CR specification documents (authoritative plan specs)
 tests/dhf/             — DHF Python tests
 .github/workflows/     — CI pipeline and CR automation
-.github/prompts/       — AI prompt templates for CR workflows
 ```
 
 ## Toolchain
@@ -192,16 +191,7 @@ pushing, ask the user whether to open a PR or merge locally — do not decide un
 - `/cr-implement <CR-ID>` — **primary entry point**: read Plan Spec, implement, write tests, update DHF, open PR
 - `/cr-status` — list all CRs and their current lifecycle states
 
-**DHF impact analysis** (use during CR analysis and design)
-- `/product-impact` — UC and CRS alignment with product direction
-- `/req-manage` — requirements coverage, gap analysis, and guided item creation (UC→CRS→SYS→SRS→SWDD)
-- `/architecture-impact` — SYSARCH and architecture specification impact
-- `/risk-impact` — RISK and RCM impact (ISO 14971)
-- `/soup-impact` — SOUP and dependency impact
-- `/test-impact` — development, verification, validation, and manual test impact
-
 **DHF operations**
-- `/dhf-validate` — schema validation + traceability check
 - `/doc-generate` — regenerate all DHF specification documents
 - `/traceability-check` — show which SYS/SRS/CRS items have no test coverage; suggest next tests
 

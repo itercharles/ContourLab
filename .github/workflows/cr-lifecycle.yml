@@ -152,7 +152,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install medharness
-        run: pip install medharness
+        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.0"
       - name: Cancel CR
         run: |
           CR_ID="${{ needs.detect.outputs.cr_id }}"
@@ -202,7 +202,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install medharness
-        run: pip install medharness
+        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.0"
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -218,49 +218,14 @@ jobs:
             --json databaseId --jq '.[0].databaseId' 2>/dev/null || echo "")
           [ -n "$RUN_ID" ] && gh run download "$RUN_ID" --name product-test-results \
             --dir /tmp/test-artifacts 2>/dev/null || true
-      - name: Fetch DHF context
-        env:
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-        run: |
-          python -m medharness --dhf DHF dhf context for-stage analyze \
-            --cr "$CR_ID" > /tmp/dhf-context.json 2>/dev/null \
-            || echo '{}' > /tmp/dhf-context.json
-
       - name: Generate spec
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_ANALYZE_MODEL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
-          mkdir -p docs/cr-specs
-          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
-          PROMPT=$(sed "s/{{cr_id}}/$CR_ID/g" .github/prompts/cr-analyze.md)
-          claude -p --dangerously-skip-permissions "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
-
-      - name: Self-correct spec (validate + fix)
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          ANTHROPIC_MODEL: ${{ vars.CR_ANALYZE_MODEL }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-        run: |
-          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
-          VALIDATION=$(python -m medharness ci validate-spec \
-            --cr "$CR_ID" \
-            --spec "docs/cr-specs/${CR_ID}-Spec.md" \
-            --dhf DHF 2>&1 || true)
-          if echo "$VALIDATION" | grep -q "FAIL"; then
-            echo "Spec has errors — asking Claude to fix:"
-            echo "$VALIDATION"
-            claude -p --dangerously-skip-permissions \
-              "The spec at docs/cr-specs/${CR_ID}-Spec.md failed validation. Errors:
-
-${VALIDATION}
-
-Fix only the front-matter fields that caused errors. Do not change the markdown content." \
-              2>&1 | tee /tmp/claude-fix.txt || true
-          else
-            echo "Spec valid — no self-correction needed."
-          fi
+          python -m medharness --dhf DHF ci analyze-cr --cr "$CR_ID" 2>&1 | tee /tmp/analyze-out.txt
 
       - name: Commit and advance to spec review
         env:
@@ -308,27 +273,21 @@ Fix only the front-matter fields that caused errors. Do not change the markdown 
         with:
           python-version: '3.11'
       - name: Install medharness
-        run: pip install medharness
+        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.0"
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
-      - name: Collect review feedback
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api "repos/${{ github.repository }}/pulls/${{ needs.detect.outputs.pr_number }}/comments" > /tmp/review-comments.json
-          gh api "repos/${{ github.repository }}/pulls/${{ needs.detect.outputs.pr_number }}/reviews" > /tmp/reviews.json
       - name: Revise spec
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_ANALYZE_MODEL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
-          claude -p --dangerously-skip-permissions \
-            "Read docs/cr-specs/${CR_ID}-Spec.md (the current spec on this branch), then read /tmp/review-comments.json and /tmp/reviews.json. Revise the spec based on the review feedback. Update docs/cr-specs/ only if changes are warranted."
+          python -m medharness --dhf DHF ci analyze-cr --cr "$CR_ID" --pr "$PR_NUMBER" 2>&1 | tee /tmp/revise-out.txt
       - name: Commit revision
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -362,7 +321,7 @@ Fix only the front-matter fields that caused errors. Do not change the markdown 
         with:
           python-version: '3.11'
       - name: Install medharness
-        run: pip install medharness
+        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.0"
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -403,15 +362,10 @@ Fix only the front-matter fields that caused errors. Do not change the markdown 
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
-          DHF_CONTEXT=$(python -m medharness --dhf DHF dhf context for-stage design \
-            --cr "$CR_ID" \
-            --spec "docs/cr-specs/${CR_ID}-Spec.md" 2>/dev/null || echo '{}')
-          export DHF_CONTEXT
-          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
-          PROMPT=$(sed "s/{{cr_id}}/$CR_ID/g" .github/prompts/cr-design.md)
-          claude -p --dangerously-skip-permissions "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
+          python -m medharness --dhf DHF ci design-cr --cr "$CR_ID" 2>&1 | tee /tmp/design-out.txt
       - name: Commit design
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -481,27 +435,21 @@ Fix only the front-matter fields that caused errors. Do not change the markdown 
         with:
           python-version: '3.11'
       - name: Install medharness
-        run: pip install medharness
+        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.0"
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
-      - name: Collect review feedback
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api "repos/${{ github.repository }}/pulls/${{ needs.detect.outputs.pr_number }}/comments" > /tmp/review-comments.json
-          gh api "repos/${{ github.repository }}/pulls/${{ needs.detect.outputs.pr_number }}/reviews" > /tmp/reviews.json
       - name: Revise design
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
-          claude -p --dangerously-skip-permissions \
-            "Read the DHF design items in DHF/ related to $CR_ID, then read /tmp/review-comments.json and /tmp/reviews.json. Revise the design items based on the review feedback."
+          python -m medharness --dhf DHF ci design-cr --cr "$CR_ID" --pr "$PR_NUMBER" 2>&1 | tee /tmp/revise-out.txt
       - name: Commit revision
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -535,7 +483,7 @@ Fix only the front-matter fields that caused errors. Do not change the markdown 
         with:
           python-version: '3.11'
       - name: Install medharness
-        run: pip install medharness
+        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.0"
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -545,23 +493,10 @@ Fix only the front-matter fields that caused errors. Do not change the markdown 
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
-          DHF_CONTEXT=$(python -m medharness --dhf DHF dhf context for-stage develop \
-            --cr "$CR_ID" \
-            --spec "docs/cr-specs/${CR_ID}-Spec.md" 2>/dev/null || echo '{}')
-          export DHF_CONTEXT
-          mkdir -p /tmp/dhf-context
-          python3 -c "
-          import json, os, sys
-          d = json.loads(os.environ.get('DHF_CONTEXT', '{}') or '{}')
-          sys.stdout.write(d.get('spec_text', ''))
-          " > "/tmp/dhf-context/$CR_ID-Spec.md" 2>/dev/null || true
-          python -m medharness --dhf DHF dhf item get "$CR_ID" \
-            > "/tmp/dhf-context/$CR_ID.json" 2>/dev/null || true
-          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
-          PROMPT=$(sed "s/{{cr_id}}/$CR_ID/g" .github/prompts/cr-develop.md)
-          claude -p --dangerously-skip-permissions "$PROMPT" 2>&1 | tee /tmp/claude-out.txt || true
+          python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" 2>&1 | tee /tmp/develop-out.txt
       - name: Commit implementation
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -652,27 +587,21 @@ Fix only the front-matter fields that caused errors. Do not change the markdown 
         with:
           python-version: '3.11'
       - name: Install medharness
-        run: pip install medharness
+        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.0"
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
-      - name: Collect review feedback
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api "repos/${{ github.repository }}/pulls/${{ needs.detect.outputs.pr_number }}/comments" > /tmp/review-comments.json
-          gh api "repos/${{ github.repository }}/pulls/${{ needs.detect.outputs.pr_number }}/reviews" > /tmp/reviews.json
       - name: Revise implementation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          [ -n "$ANTHROPIC_MODEL" ] || unset ANTHROPIC_MODEL
-          claude -p --dangerously-skip-permissions \
-            "Read the implementation on this branch for $CR_ID, then read /tmp/review-comments.json and /tmp/reviews.json. Revise the implementation based on the review feedback. Do not commit."
+          python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" --pr "$PR_NUMBER" 2>&1 | tee /tmp/revise-out.txt
       - name: Commit revision
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
