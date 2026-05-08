@@ -145,21 +145,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: main
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
       - name: Install medharness
-        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.1"
+        run: pip install medharness==0.3.1
       - name: Cancel CR
         run: |
           CR_ID="${{ needs.detect.outputs.cr_id }}"
           BRANCH="${{ needs.detect.outputs.branch }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout "$BRANCH" -- "DHF/items/09_cr/$CR_ID.yaml"
+          git fetch origin "$BRANCH" --depth 1
+          git checkout "origin/$BRANCH" -- "DHF/items/09_cr/$CR_ID.yaml"
           python -m medharness --dhf DHF dhf item transition \
             "$CR_ID" cancelled \
             --by "github-actions[bot]" --commit --push
@@ -195,14 +197,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
       - name: Install medharness
-        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.1"
+        run: pip install medharness==0.3.1
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-claude-code-${{ runner.os }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -266,14 +273,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
       - name: Install medharness
-        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.1"
+        run: pip install medharness==0.3.1
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-claude-code-${{ runner.os }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -314,14 +326,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
       - name: Install medharness
-        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.1"
+        run: pip install medharness==0.3.1
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-claude-code-${{ runner.os }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -428,14 +445,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
       - name: Install medharness
-        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.1"
+        run: pip install medharness==0.3.1
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-claude-code-${{ runner.os }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -476,14 +498,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
       - name: Install medharness
-        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.1"
+        run: pip install medharness==0.3.1
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-claude-code-${{ runner.os }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -512,6 +539,7 @@ jobs:
             git push
             COMMITTED=true
           fi
+          git fetch origin main --depth 1
           CODE_EXISTS=$(git diff origin/main -- . \
             ':(exclude)DHF/' ':(exclude)docs/cr-specs/' \
             | grep -c "^+" || echo "0")
@@ -580,14 +608,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
       - name: Install medharness
-        run: pip install "git+https://github.com/itercharles/MedHarness.git@v0.3.1"
+        run: pip install medharness==0.3.1
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-claude-code-${{ runner.os }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
