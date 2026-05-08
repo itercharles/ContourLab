@@ -543,6 +543,7 @@ jobs:
             git push
             COMMITTED=true
           fi
+          echo "COMMITTED=$COMMITTED" >> "$GITHUB_ENV"
           git fetch origin main --depth 1
           CODE_EXISTS=$(git diff origin/main -- . \
             ':(exclude)DHF/' ':(exclude)docs/cr-specs/' \
@@ -553,6 +554,7 @@ jobs:
             exit 1
           fi
       - name: Wait for CI to pass
+        if: env.COMMITTED == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
