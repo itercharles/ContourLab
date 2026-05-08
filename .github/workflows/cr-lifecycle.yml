@@ -73,10 +73,14 @@ jobs:
               design) ACTION="gen-code" ;;
               code)   ACTION="code-approved" ;;
             esac
+            ISSUE_NUMBER=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" \
+              --json closingIssuesReferences \
+              --jq '.closingIssuesReferences[0].number // empty' 2>/dev/null || echo "")
             echo "action=$ACTION" >> "$GITHUB_OUTPUT"
             echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
             echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
             echo "branch=feat/$CR_ID" >> "$GITHUB_OUTPUT"
+            echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
