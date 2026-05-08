@@ -1,4 +1,5 @@
 import type { Structure, Volume } from '@webtps/shared-types';
+import { logClientDebug } from '../debug/clientDebugLog';
 
 export interface MaskVolume {
   dimensions: [number, number, number];
@@ -27,10 +28,17 @@ export function hasRenderableContours(structure: Structure): boolean {
 }
 
 export function buildStructureMaskVolume(structure: Structure, volume: Volume): MaskVolume | null {
+  const startedAt = performance.now();
+  const pushDebug = (message: string) => {
+    logClientDebug('ThreeDGeometry', `structure=${structure.id} ${message}`);
+  };
   if (!hasRenderableContours(structure)) return null;
 
   const bounds = computeStructureBounds(structure, volume);
-  if (!bounds) return null;
+  if (!bounds) {
+    pushDebug('skip reason=no-bounds');
+    return null;
+  }
 
   const [minI, maxI, minJ, maxJ, minK, maxK] = bounds;
   const width = maxI - minI + 1;
@@ -79,7 +87,16 @@ export function buildStructureMaskVolume(structure: Structure, volume: Volume): 
 
   const filledVoxelCount = scalars.reduce((count, value) => count + (value > 0 ? 1 : 0), 0);
 
-  if (filledVoxelCount === 0) return null;
+  if (filledVoxelCount === 0) {
+    pushDebug(
+      `skip reason=empty-mask contours=${structure.contours.length} bounds=${bounds.join(',')} dims=${width}x${height}x${depth} ms=${Math.round(performance.now() - startedAt)}`
+    );
+    return null;
+  }
+
+  pushDebug(
+    `mask contours=${structure.contours.length} bounds=${bounds.join(',')} dims=${width}x${height}x${depth} filled=${filledVoxelCount} ms=${Math.round(performance.now() - startedAt)}`
+  );
 
   return {
     dimensions: [width, height, depth],

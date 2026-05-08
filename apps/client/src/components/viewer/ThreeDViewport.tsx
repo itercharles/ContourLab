@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { logClientDebug } from '../../core/debug/clientDebugLog';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { createThreeDScene, type ThreeDScene } from '../../core/rendering/threeDScene';
@@ -16,6 +17,7 @@ function OverlayLabel({ children, className = '' }: { children: string; classNam
 export default function ThreeDViewport() {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<ThreeDScene | null>(null);
+  const renderAttemptRef = useRef(0);
   const [showCtSurface, setShowCtSurface] = useState(true);
   const [lastScalarLength, setLastScalarLength] = useState(0);
   const [refreshRevision, setRefreshRevision] = useState(0);
@@ -45,6 +47,10 @@ export default function ThreeDViewport() {
     [activeStructureSet]
   );
 
+  const pushDebug = (message: string) => {
+    logClientDebug('ThreeDViewport', message);
+  };
+
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return;
@@ -54,11 +60,16 @@ export default function ThreeDViewport() {
     try {
       const scene = createThreeDScene(element);
       sceneRef.current = scene;
+      const { width, height } = element.getBoundingClientRect();
+      pushDebug(`init ok size=${Math.round(width)}x${Math.round(height)}`);
       observer = new ResizeObserver(() => {
         try {
+          const { width: nextWidth, height: nextHeight } = element.getBoundingClientRect();
+          pushDebug(`resize ${Math.round(nextWidth)}x${Math.round(nextHeight)}`);
           scene.resize();
         } catch (error) {
           console.error('3D viewport resize failed', error);
+          pushDebug(`resize error ${error instanceof Error ? error.message : String(error)}`);
           setRenderError('3D viewport unavailable.');
           setStatus('3D viewport unavailable.');
         }
@@ -66,6 +77,7 @@ export default function ThreeDViewport() {
       observer.observe(element);
     } catch (error) {
       console.error('3D viewport initialization failed', error);
+      pushDebug(`init error ${error instanceof Error ? error.message : String(error)}`);
       sceneRef.current = null;
       setRenderError('3D viewport unavailable.');
       setStatus('3D viewport unavailable.');
@@ -76,8 +88,10 @@ export default function ThreeDViewport() {
       observer?.disconnect();
       try {
         sceneRef.current?.destroy();
+        pushDebug('destroy ok');
       } catch (error) {
         console.error('3D viewport teardown failed', error);
+        pushDebug(`destroy error ${error instanceof Error ? error.message : String(error)}`);
       }
       sceneRef.current = null;
     };
@@ -85,9 +99,14 @@ export default function ThreeDViewport() {
 
   useEffect(() => {
     if (!activeSeries) {
+      pushDebug('series cleared');
       setLastScalarLength(0);
       return;
     }
+
+    pushDebug(
+      `series active uid=${activeSeries.seriesUID} dims=${activeSeries.volume.dimensions.join('x')} scalars=${activeSeries.volume.pixelData.length}`
+    );
 
     const updateScalarLength = () => {
       const nextLength = activeSeries.volume.pixelData.length;
@@ -101,6 +120,7 @@ export default function ThreeDViewport() {
 
   useEffect(() => {
     if (renderError) {
+      pushDebug(`error cleared by series-or-refresh series=${activeSeriesUID ?? 'none'} revision=${refreshRevision}`);
       setRenderError(null);
     }
   }, [activeSeriesUID, refreshRevision]);
@@ -115,11 +135,24 @@ export default function ThreeDViewport() {
       structures: visibleStructures.map((structure) => ({ structure })),
     };
 
+    const attempt = ++renderAttemptRef.current;
+    const contourCount = visibleStructures.reduce(
+      (total, structure) => total + structure.contours.length,
+      0
+    );
+    const startedAt = performance.now();
+    pushDebug(
+      `render start #${attempt} series=${activeSeries?.seriesUID ?? 'none'} showCt=${showCtSurface} visibleStructures=${visibleStructures.length} contours=${contourCount} scalars=${activeSeries?.volume.pixelData.length ?? 0} revision=${refreshRevision}`
+    );
+
     const renderResult = (() => {
       try {
         return scene.renderSnapshot(snapshot);
       } catch (error) {
         console.error('3D viewport render failed', error);
+        pushDebug(
+          `render error #${attempt} after=${Math.round(performance.now() - startedAt)}ms ${error instanceof Error ? error.message : String(error)}`
+        );
         setRenderError('3D rendering unavailable for this series.');
         setStatus('3D rendering unavailable for this series.');
         return null;
@@ -128,6 +161,9 @@ export default function ThreeDViewport() {
     if (!renderResult) {
       return;
     }
+    pushDebug(
+      `render done #${attempt} ms=${Math.round(performance.now() - startedAt)} ctReady=${renderResult.ctReady} structureCount=${renderResult.structureCount}`
+    );
     if (renderError) {
       setRenderError(null);
     }
@@ -161,7 +197,13 @@ export default function ThreeDViewport() {
       <div className="absolute right-1 top-1 z-10 flex items-center gap-1 rounded border border-[var(--color-border)] bg-black/70 px-1 py-1 text-[10px] text-[var(--color-text-bright)] backdrop-blur">
         <button
           type="button"
-          onClick={() => setShowCtSurface((value) => !value)}
+          onClick={() =>
+            setShowCtSurface((value) => {
+              const nextValue = !value;
+              pushDebug(`toggle ct show=${nextValue}`);
+              return nextValue;
+            })
+          }
           disabled={renderError !== null}
           className={`rounded px-1.5 py-0.5 transition-colors ${
             showCtSurface
@@ -173,7 +215,13 @@ export default function ThreeDViewport() {
         </button>
         <button
           type="button"
-          onClick={() => setRefreshRevision((value) => value + 1)}
+          onClick={() =>
+            setRefreshRevision((value) => {
+              const nextValue = value + 1;
+              pushDebug(`manual refresh revision=${nextValue}`);
+              return nextValue;
+            })
+          }
           className="rounded px-1.5 py-0.5 text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)]"
         >
           Refresh 3D
@@ -182,9 +230,11 @@ export default function ThreeDViewport() {
           type="button"
           onClick={() => {
             try {
+              pushDebug('reset camera');
               sceneRef.current?.resetCamera();
             } catch (error) {
               console.error('3D viewport camera reset failed', error);
+              pushDebug(`reset camera error ${error instanceof Error ? error.message : String(error)}`);
               setRenderError('3D viewport unavailable.');
               setStatus('3D viewport unavailable.');
             }
