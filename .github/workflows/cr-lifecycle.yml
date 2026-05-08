@@ -223,10 +223,9 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_ANALYZE_MODEL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
-          python -m medharness --dhf DHF ci analyze-cr --cr "$CR_ID" 2>&1 | tee /tmp/analyze-out.txt || true
+          python -m medharness --dhf DHF ci analyze-cr --cr "$CR_ID" 2>&1 | tee /tmp/analyze-out.txt
 
       - name: Commit and advance to spec review
         env:
@@ -285,11 +284,10 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_ANALYZE_MODEL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          python -m medharness --dhf DHF ci analyze-cr --cr "$CR_ID" --pr "$PR_NUMBER" 2>&1 | tee /tmp/revise-out.txt || true
+          python -m medharness --dhf DHF ci analyze-cr --cr "$CR_ID" --pr "$PR_NUMBER" 2>&1 | tee /tmp/revise-out.txt
       - name: Commit revision
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -365,10 +363,9 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
-          python -m medharness --dhf DHF ci design-cr --cr "$CR_ID" 2>&1 | tee /tmp/design-out.txt || true
+          python -m medharness --dhf DHF ci design-cr --cr "$CR_ID" 2>&1 | tee /tmp/design-out.txt
       - name: Commit design
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -449,11 +446,10 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          python -m medharness --dhf DHF ci design-cr --cr "$CR_ID" --pr "$PR_NUMBER" 2>&1 | tee /tmp/revise-out.txt || true
+          python -m medharness --dhf DHF ci design-cr --cr "$CR_ID" --pr "$PR_NUMBER" 2>&1 | tee /tmp/revise-out.txt
       - name: Commit revision
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -498,10 +494,9 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
-          python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" 2>&1 | tee /tmp/develop-out.txt || true
+          python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" 2>&1 | tee /tmp/develop-out.txt
       - name: Commit implementation
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -603,11 +598,10 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" --pr "$PR_NUMBER" 2>&1 | tee /tmp/revise-out.txt || true
+          python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" --pr "$PR_NUMBER" 2>&1 | tee /tmp/revise-out.txt
       - name: Commit revision
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
