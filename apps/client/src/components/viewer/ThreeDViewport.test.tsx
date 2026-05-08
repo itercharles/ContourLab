@@ -147,4 +147,16 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
       expect(mocks.renderSnapshot.mock.calls.length).toBeGreaterThan(callsBefore);
     });
   });
+
+  it('fails closed when 3D rendering throws instead of crashing the workspace', async () => {
+    mocks.renderSnapshot.mockImplementation(() => {
+      throw new Error('vtk blew up');
+    });
+
+    render(<ThreeDViewport />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/3D rendering unavailable for this series/i)).toBeTruthy();
+    });
+  });
 });

@@ -20,6 +20,7 @@ export default function ThreeDViewport() {
   const [lastScalarLength, setLastScalarLength] = useState(0);
   const [refreshRevision, setRefreshRevision] = useState(0);
   const [status, setStatus] = useState('Load a series to view 3D anatomy.');
+  const [renderError, setRenderError] = useState<string | null>(null);
   const activeSeriesUID = useVolumeStore((state) => state.activeSeriesUID);
   const loadedSeries = useVolumeStore((state) => state.loadedSeries);
   const structureSets = useStructureStore((state) => state.structureSets);
@@ -48,15 +49,36 @@ export default function ThreeDViewport() {
     const element = containerRef.current;
     if (!element) return;
 
-    const scene = createThreeDScene(element);
-    sceneRef.current = scene;
+    let observer: ResizeObserver | null = null;
 
-    const observer = new ResizeObserver(() => scene.resize());
-    observer.observe(element);
+    try {
+      const scene = createThreeDScene(element);
+      sceneRef.current = scene;
+      observer = new ResizeObserver(() => {
+        try {
+          scene.resize();
+        } catch (error) {
+          console.error('3D viewport resize failed', error);
+          setRenderError('3D viewport unavailable.');
+          setStatus('3D viewport unavailable.');
+        }
+      });
+      observer.observe(element);
+    } catch (error) {
+      console.error('3D viewport initialization failed', error);
+      sceneRef.current = null;
+      setRenderError('3D viewport unavailable.');
+      setStatus('3D viewport unavailable.');
+      return;
+    }
 
     return () => {
-      observer.disconnect();
-      sceneRef.current?.destroy();
+      observer?.disconnect();
+      try {
+        sceneRef.current?.destroy();
+      } catch (error) {
+        console.error('3D viewport teardown failed', error);
+      }
       sceneRef.current = null;
     };
   }, []);
@@ -78,6 +100,12 @@ export default function ThreeDViewport() {
   }, [activeSeries]);
 
   useEffect(() => {
+    if (renderError) {
+      setRenderError(null);
+    }
+  }, [activeSeriesUID, refreshRevision]);
+
+  useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
 
@@ -87,7 +115,24 @@ export default function ThreeDViewport() {
       structures: visibleStructures.map((structure) => ({ structure })),
     };
 
-    const { ctReady, structureCount } = scene.renderSnapshot(snapshot);
+    const renderResult = (() => {
+      try {
+        return scene.renderSnapshot(snapshot);
+      } catch (error) {
+        console.error('3D viewport render failed', error);
+        setRenderError('3D rendering unavailable for this series.');
+        setStatus('3D rendering unavailable for this series.');
+        return null;
+      }
+    })();
+    if (!renderResult) {
+      return;
+    }
+    if (renderError) {
+      setRenderError(null);
+    }
+
+    const { ctReady, structureCount } = renderResult;
 
     if (!activeSeries) {
       setStatus('Load a series to view 3D anatomy.');
@@ -117,11 +162,12 @@ export default function ThreeDViewport() {
         <button
           type="button"
           onClick={() => setShowCtSurface((value) => !value)}
+          disabled={renderError !== null}
           className={`rounded px-1.5 py-0.5 transition-colors ${
             showCtSurface
               ? 'bg-blue-900/40 text-blue-200'
               : 'text-[var(--color-text-sec)] hover:bg-[var(--color-hover)]'
-          }`}
+          } disabled:cursor-not-allowed disabled:opacity-50`}
         >
           {showCtSurface ? 'Hide CT' : 'Show CT'}
         </button>
@@ -134,7 +180,16 @@ export default function ThreeDViewport() {
         </button>
         <button
           type="button"
-          onClick={() => sceneRef.current?.resetCamera()}
+          onClick={() => {
+            try {
+              sceneRef.current?.resetCamera();
+            } catch (error) {
+              console.error('3D viewport camera reset failed', error);
+              setRenderError('3D viewport unavailable.');
+              setStatus('3D viewport unavailable.');
+            }
+          }}
+          disabled={renderError !== null}
           className="rounded px-1.5 py-0.5 text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)]"
         >
           Reset
