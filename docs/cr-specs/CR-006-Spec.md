@@ -9,7 +9,6 @@ test_plan:
   needs_new_tc:
     - SRS-018
     - SRS-019
-    - SRS-020
   must_be_manual: []
 ---
 
@@ -95,48 +94,38 @@ User presses Escape
 ## DHF Impact
 
 ### Product / Use Cases & Customer Requirements
-**Status:** Follow-up needed  
-**Justification:** Maximize capability is a user-facing refinement of existing viewing workflows (UC-001, CRS-001). CRS-001 covers viewing in three planes; this feature enhances the viewing experience by allowing temporary fullscreen focus. A new CRS item (CRS-011) should be created to formally document the maximize requirement.
-
-**Recommended action during Design:**
-- Create `CRS-011: Clinicians shall maximize a single viewport to full workspace area for detailed examination`
-  - Derives from: UC-001
-  - User group: Clinicians  
-  - Priority: Medium
-  - Content: As a clinician reviewing contours, I need to maximize the transverse (or any) view so I can see fine anatomic detail without navigation distraction.
+**Status:** Covered by existing requirement  
+**Justification:** Maximize capability is a user-facing refinement of existing viewing workflows (UC-001, CRS-001). CRS-001 covers viewing in three planes and provides sufficient high-level scope for this feature. No new CRS item required.
 
 ### System Requirements (SYS)
-**Status:** Required  
-**Justification:** SYS-002 describes three-pane viewport rendering; it does not address fullscreen/maximize behavior. A new SYS item is needed to specify system-level maximize capability and synchronized viewport updates during maximize.
-
-**Recommended action during Design:**
-- Update `SYS-002` to clarify that maximize is an optional layout mode; contour and viewport synchronization remain active
-- Create `SYS-014: System shall support maximizing a single viewport to full workspace area while maintaining viewport synchronization and other panel visibility`
-  - Satisfies: CRS-011
-  - Category: Functional (Usability)
-  - Verification method: Test
-  - Critical safety: false
-  - Content: When a user maximizes a viewport, that viewport shall expand to fill the image area. All other workspace panels (structure list, quality summary, repository) shall remain visible. Scrolling, window/level adjustments, and contour updates shall remain synchronized across all viewports (including hidden ones) during maximize mode. Exiting maximize mode shall restore the three-pane layout without data loss.
+**Status:** Covered by existing requirement  
+**Justification:** SYS-002 describes three-pane viewport rendering and viewport synchronization; maximize is a layout variant that maintains these properties. No new SYS item required.
 
 ### Software Requirements (SRS)
 **Status:** Required  
-**Justification:** Three new SRS items are required to specify the software implementation of maximize capability.
+**Justification:** Two new SRS items are required to specify the software implementation of maximize capability at the requirement level. CSS layout implementation details are captured in SWDD.
 
 **Recommended action during Design:**
 - Create `SRS-018: Software shall render a context menu on viewport right-click with Maximize View option`
-  - Derives from: SYS-014
+  - Derives from: SYS-002
   - Verification method: Test
   - Content: When a user right-clicks on a viewport canvas, a context menu shall appear with text "Maximize View" (or "Restore View" if already maximized). The menu shall disappear when clicked outside or when an option is selected.
 
 - Create `SRS-019: Software shall toggle viewport fullscreen layout state and restore normal layout on user action or patient change`
-  - Derives from: SYS-014
+  - Derives from: SYS-002
   - Verification method: Test
   - Content: Clicking "Maximize View" in the context menu shall set the maximized viewport state. Clicking "Restore View" or pressing Escape shall clear the state. Changing the active patient shall automatically restore normal layout. Layout state shall not persist across workspace reloads.
 
-- Create `SRS-020: Software shall apply CSS layout changes to maximize viewport width while preserving other panel visibility`
-  - Derives from: SYS-014
-  - Verification method: Test
-  - Content: When maximizedViewport state is set, the corresponding viewport shall be rendered with full width (or height as appropriate). Sibling viewports shall be hidden. All other workspace panels (repository, structure inspector, toolbar) shall remain visible with no width reduction.
+### Software Design Description (SWDD)
+**Status:** Required  
+**Justification:** Implementation-level details about layout rendering and CSS are documented here, not in SRS.
+
+**Recommended content during Design:**
+- Layout rendering shall use React conditional rendering based on `maximizedViewport` state
+- CSS shall use Tailwind classes (`flex`, `w-full`, `hidden`) to show/hide viewports
+- Maximized viewport shall be rendered with full width; sibling viewports shall be hidden
+- All other workspace panels (repository, structure inspector, toolbar) shall remain visible
+- Optional: CSS transitions for smooth layout shift on maximize/restore
 
 ### Architecture (SYSARCH)
 **Status:** Not required  
@@ -175,11 +164,6 @@ New Vitest tests with `@links:SRS-0XX` annotations:
   - Test: Changing patient auto-restores normal layout
   - Test: Layout state does not persist on workspace reload
 
-- **SRS-020** — CSS layout changes
-  - Test: Maximized viewport is rendered with full width
-  - Test: Sibling viewports are hidden via CSS
-  - Test: All other panels (repository, structure list, toolbar) remain visible
-  - Test: Contour overlays are visible and interactive in maximized viewport
 
 ### Test-SYS Verification (CI: `verify-sys` phase, manual confirmation)
 - Maximize transverse viewport, verify sagittal/coronal remain synchronized when scrolling transverse
@@ -199,12 +183,8 @@ New Vitest tests with `@links:SRS-0XX` annotations:
 ## Implementation Checklist
 
 ### DHF Items (Design Phase)
-- [ ] Create `CRS-011: Clinicians shall maximize a single viewport to full workspace area for detailed examination`
-- [ ] Update `SYS-002` to clarify maximize is an optional layout mode
-- [ ] Create `SYS-014: System shall support maximizing a single viewport to full workspace area while maintaining viewport synchronization and other panel visibility`
 - [ ] Create `SRS-018: Software shall render a context menu on viewport right-click with Maximize View option`
 - [ ] Create `SRS-019: Software shall toggle viewport fullscreen layout state and restore normal layout on user action or patient change`
-- [ ] Create `SRS-020: Software shall apply CSS layout changes to maximize viewport width while preserving other panel visibility`
 - [ ] Validate DHF schema: `medharness --dhf DHF dhf validate schema`
 - [ ] Validate DHF traceability: `medharness --dhf DHF dhf validate traceability`
 
@@ -226,7 +206,6 @@ New Vitest tests with `@links:SRS-0XX` annotations:
 - [ ] Write `uiStore.test.ts`: `toggleMaximizeViewport()` state transitions
 - [ ] Write test with `@links:SRS-018` for context menu rendering
 - [ ] Write test with `@links:SRS-019` for state toggle and auto-restore
-- [ ] Write test with `@links:SRS-020` for CSS layout correctness
 - [ ] Manual test: right-click each viewport type and verify menu appears
 - [ ] Manual test: maximize one viewport, verify others hidden, panels visible
 - [ ] Manual test: perform contour edit in maximized mode, restore, verify contour present
