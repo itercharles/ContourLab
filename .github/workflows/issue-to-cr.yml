@@ -90,14 +90,16 @@ jobs:
             echo "**Stage 1 of 4 — CR Review**"
             echo "Review the CR definition in \`DHF/items/09_cr/$CR_ID.yaml\`, then approve to trigger AI spec generation."
           } > /tmp/pr-body.md
-          PR_URL=$(gh pr view "$BRANCH" --json url,state -q 'select(.state=="OPEN") | .url' 2>/dev/null || \
-            gh pr create \
+          PR_URL=$(gh pr view "$BRANCH" --json url,state -q 'select(.state=="OPEN") | .url' 2>/dev/null)
+          if [ -z "$PR_URL" ]; then
+            PR_URL=$(gh pr create \
               --head "$BRANCH" \
               --base main \
               --draft \
               --title "feat($CR_ID): $ISSUE_TITLE" \
               --body-file /tmp/pr-body.md \
               --label "cr:stage/cr")
+          fi
 
           gh issue edit "${{ github.event.issue.number }}" --add-label "cr:stage/cr"
 
