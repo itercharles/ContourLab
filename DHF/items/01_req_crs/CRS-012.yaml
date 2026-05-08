@@ -1,0 +1,11 @@
+id: CRS-012
+title: Clinicians shall review the active image set and visible structures in a synchronized 3D viewport
+content: |-
+  As a radiation therapist, physician, or dosimetrist, I need a 3D viewport in
+  the clinical workspace that shows the active image set and the currently
+  visible structures so that I can review anatomy and contour coverage in
+  spatial context without leaving the contouring workflow.
+user_group: Radiation Therapist / Physician / Dosimetrist
+derives_from:
+  - UC-001
+priority: High

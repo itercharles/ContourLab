@@ -35,6 +35,9 @@ importers:
       '@cornerstonejs/tools':
         specifier: ^4.21.0
         version: 4.21.0(@cornerstonejs/core@4.21.0(@babel/preset-env@7.29.2(@babel/core@7.29.0))(autoprefixer@10.4.27(postcss@8.5.9))(webpack@5.106.0)(wslink@2.5.0))(@kitware/vtk.js@34.15.1(@babel/preset-env@7.29.2(@babel/core@7.29.0))(autoprefixer@10.4.27(postcss@8.5.9))(webpack@5.106.0)(wslink@2.5.0))(@types/d3-array@3.2.1)(@types/d3-interpolate@3.0.4)(d3-array@3.2.4)(d3-interpolate@3.0.1)(gl-matrix@3.4.3)
+      '@kitware/vtk.js':
+        specifier: ^34.15.1
+        version: 34.15.1(@babel/preset-env@7.29.2(@babel/core@7.29.0))(autoprefixer@10.4.27(postcss@8.5.9))(webpack@5.106.0)(wslink@2.5.0)
       dcmjs:
         specifier: ^0.50.1
         version: 0.50.1
