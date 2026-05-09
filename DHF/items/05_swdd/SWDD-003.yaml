@@ -15,4 +15,4 @@ content: |-
 
   Cross-Origin isolation (COEP/COOP headers) is set in vite.config.ts for
   dev and must be set in the production server for SharedArrayBuffer support.
-implements: [SRS-012]
+implements: [SRS-012, SRS-018, SRS-019]
