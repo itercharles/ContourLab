@@ -10,7 +10,7 @@ describe('uiStore - maximize viewport', () => {
 
   // @links:SRS-019
   it('toggleMaximizeViewport sets viewport when null', () => {
-    const { toggleMaximizeViewport, maximizedViewport } = useUIStore.getState();
+    const { toggleMaximizeViewport } = useUIStore.getState();
 
     toggleMaximizeViewport('AXIAL');
 
