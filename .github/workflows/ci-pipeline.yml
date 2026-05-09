@@ -599,10 +599,27 @@ jobs:
           echo "Starting or updating persistent DICOM repository with $desired_image."
           docker compose -f docker-compose.deploy.yml up -d dicom-repo
 
-      - name: Deploy application containers
+      - name: Persist deployment secrets
         env:
           ISSUES_TOKEN: ${{ secrets.ISSUES_TOKEN }}
-        run: docker compose -f docker-compose.deploy.yml up -d --build --no-deps api client
+        run: |
+          # Write ISSUES_TOKEN to a stable file outside the workspace so that
+          # manual docker-compose runs (container recreation, restarts) also
+          # pick up the token without needing CI/CD secrets in scope.
+          SECRETS_FILE="$HOME/.webtps-secrets.env"
+          if [ -n "$ISSUES_TOKEN" ]; then
+            printf 'ISSUES_TOKEN=%s\n' "$ISSUES_TOKEN" > "$SECRETS_FILE"
+            chmod 600 "$SECRETS_FILE"
+          fi
+
+      - name: Deploy application containers
+        run: |
+          # Source persisted secrets so ISSUES_TOKEN is available to Docker Compose
+          # even when this step doesn't have the GitHub secret directly in scope.
+          set -a
+          [ -f "$HOME/.webtps-secrets.env" ] && . "$HOME/.webtps-secrets.env"
+          set +a
+          docker compose -f docker-compose.deploy.yml up -d --build --no-deps api client
 
       - name: Verify deployment
         run: |
