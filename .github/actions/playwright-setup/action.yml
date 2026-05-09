@@ -1,0 +1,22 @@
+name: Install Playwright (Chromium)
+description: Cache-aware Chromium install for SYS and CRS test jobs.
+
+runs:
+  using: composite
+  steps:
+    - name: Cache Playwright browsers
+      uses: actions/cache@v4
+      id: playwright-cache
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-chromium-${{ hashFiles('apps/client/package.json') }}
+
+    - name: Install Playwright browsers
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: pnpm --filter @webtps/client exec playwright install chromium --with-deps
+
+    - name: Install Playwright system deps (cached browser)
+      if: steps.playwright-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: pnpm --filter @webtps/client exec playwright install-deps chromium

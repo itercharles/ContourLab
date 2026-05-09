@@ -158,6 +158,7 @@ jobs:
           cache: 'pip'
       - name: Install medharness
         run: pip install medharness==0.3.1
+
       - name: Cancel CR
         run: |
           CR_ID="${{ needs.detect.outputs.cr_id }}"
@@ -204,21 +205,7 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ needs.detect.outputs.branch }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - name: Install medharness
-        run: pip install medharness==0.3.1
-      - uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-claude-code-${{ runner.os }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+      - uses: ./.github/actions/cr-agent-setup
       - name: Fetch test evidence
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -267,7 +254,7 @@ jobs:
   # ── SPEC: REVISE ──────────────────────────────────────────────────────────
 
   revise-spec:
-    needs: [detect, gen-spec]
+    needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-spec'
     name: "Revise Spec (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
@@ -280,21 +267,7 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ needs.detect.outputs.branch }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - name: Install medharness
-        run: pip install medharness==0.3.1
-      - uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-claude-code-${{ runner.os }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+      - uses: ./.github/actions/cr-agent-setup
       - name: Revise spec
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -320,7 +293,7 @@ jobs:
   # ── DESIGN: GENERATE ──────────────────────────────────────────────────────
 
   gen-design:
-    needs: [detect, revise-spec]
+    needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-design'
     name: "Generate Design (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
@@ -333,21 +306,7 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ needs.detect.outputs.branch }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - name: Install medharness
-        run: pip install medharness==0.3.1
-      - uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-claude-code-${{ runner.os }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+      - uses: ./.github/actions/cr-agent-setup
       - name: Validate spec
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -439,7 +398,7 @@ jobs:
   # ── DESIGN: REVISE ────────────────────────────────────────────────────────
 
   revise-design:
-    needs: [detect, gen-design]
+    needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-design'
     name: "Revise Design (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
@@ -452,21 +411,7 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ needs.detect.outputs.branch }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - name: Install medharness
-        run: pip install medharness==0.3.1
-      - uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-claude-code-${{ runner.os }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+      - uses: ./.github/actions/cr-agent-setup
       - name: Revise design
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -492,7 +437,7 @@ jobs:
   # ── CODE: GENERATE ────────────────────────────────────────────────────────
 
   gen-code:
-    needs: [detect, revise-design]
+    needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-code'
     name: "Generate Code (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
@@ -505,21 +450,7 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ needs.detect.outputs.branch }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - name: Install medharness
-        run: pip install medharness==0.3.1
-      - uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-claude-code-${{ runner.os }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+      - uses: ./.github/actions/cr-agent-setup
       - name: Generate implementation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -562,6 +493,10 @@ jobs:
           fi
           echo "COMMITTED=$COMMITTED" >> "$GITHUB_ENV"
       - name: Push and wait for CI
+        # We push manually here rather than letting the checkout push because
+        # we need to watch the resulting CI run. Squash-merging the feat/* branch
+        # later will inherit [skip ci] from intermediate commits, so cr-complete.yml
+        # fires workflow_dispatch on main to re-trigger the full suite.
         if: env.COMMITTED == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -614,7 +549,7 @@ jobs:
   # ── CODE: REVISE ──────────────────────────────────────────────────────────
 
   revise-code:
-    needs: [detect, gen-code]
+    needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-code'
     name: "Revise Code (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
@@ -627,21 +562,7 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ needs.detect.outputs.branch }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - name: Install medharness
-        run: pip install medharness==0.3.1
-      - uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-claude-code-${{ runner.os }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+      - uses: ./.github/actions/cr-agent-setup
       - name: Revise implementation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -667,7 +588,7 @@ jobs:
   # ── CODE: APPROVED → READY TO MERGE ──────────────────────────────────────
 
   code-approved:
-    needs: [detect, revise-code]
+    needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'code-approved'
     name: "Code Approved — Ready to Merge"
     runs-on: ubuntu-latest

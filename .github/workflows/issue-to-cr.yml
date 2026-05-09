@@ -10,7 +10,7 @@ on:
     types: [milestoned]
 
 concurrency:
-  group: issue-to-cr
+  group: issue-to-cr-${{ github.event.issue.number }}
   cancel-in-progress: false
 
 permissions:
@@ -45,7 +45,6 @@ jobs:
         id: prepare
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           medharness cr workflow intake-github-issue-ci \
             --event "$GITHUB_EVENT_PATH" \

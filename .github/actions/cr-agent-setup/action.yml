@@ -1,0 +1,33 @@
+name: CR Agent Setup
+description: Python + medharness + Node + Claude Code for CR lifecycle jobs.
+
+inputs:
+  medharness-version:
+    description: medharness PyPI version to install
+    required: false
+    default: '0.3.1'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install medharness
+      shell: bash
+      run: pip install medharness==${{ inputs.medharness-version }}
+
+    - uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: npm-claude-code-${{ runner.os }}
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Install Claude Code
+      shell: bash
+      run: npm install -g @anthropic-ai/claude-code
