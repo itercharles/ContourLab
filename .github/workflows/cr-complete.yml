@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
@@ -38,3 +39,11 @@ jobs:
             --event "$GITHUB_EVENT_PATH" \
             --by "github-actions[bot]" \
             --push
+
+      # Squash merges of feat/CR-* branches inherit [skip ci] from intermediate
+      # lifecycle commits, which suppresses the push-to-main Product CI/CD run.
+      # Fire it explicitly via workflow_dispatch — that event ignores [skip ci].
+      - name: Trigger Product CI/CD on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run ci-pipeline.yml --ref main
