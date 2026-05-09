@@ -1,32 +1,27 @@
 id: SWDD-010
-title: 3D viewport rendering and contour-to-surface reconstruction
-content: |-
-  ThreeDViewport mounts a vtk.js-backed renderer in the fourth ImageViewer
-  quadrant and keeps renderer lifecycle state outside Zustand. The renderer
-  consumes the active image series and visible structures only.
+implements:
+- SRS-018
+- SRS-019
+title: Viewport maximize feature - UI state and layout rendering
+content: 'uiStore extends the existing Zustand state with maximizedViewport field:
+  "AXIAL" | "SAGITTAL" | "CORONAL" | null (initially null). toggleMaximizeViewport(viewportId:
+  string | null) toggles between maximized and normal state; resetMaximizeViewport()
+  unconditionally clears the maximized state for patient change events.
 
-  CT context rendering:
-  1. Downsample the loaded scalar volume by a fixed stride for review-time
-     performance.
-  2. Create vtkImageData using the active volume dimensions, spacing, origin,
-     and direction cosines.
-  3. Generate a CT context surface with vtkImageMarchingCubes at a fixed
-     review threshold and render it with low opacity.
 
-  Structure rendering:
-  1. Convert each contour point from world coordinates into continuous voxel
-     coordinates using the active volume origin, spacing, and direction matrix.
-  2. Compute a cropped voxel bounding box for the structure and rasterize each
-     closed contour slice into a binary mask within that crop.
-  3. Create vtkImageData for the binary mask and run vtkImageMarchingCubes at
-     0.5 to obtain the structure surface.
-  4. Render the resulting surface actor in the structure's configured RGB
-     color.
+  ImageViewer renders viewports conditionally based on maximizedViewport state: when
+  null, render standard three-pane grid with equal proportions; when set to a viewport
+  ID, render that viewport with flex-1 w-full and hide siblings using Tailwind hidden
+  class. Flex layout transitions are optional for Phase A.
 
-  Refresh behavior:
-  - The component re-renders the 3D scene after active-series changes,
-    structure-set changes, contour commits, structure visibility toggles, and
-    manual refresh actions.
-  - The UI polls loaded voxel availability so the 3D scene can populate after
-    Cornerstone streaming completes without requiring a second user action.
-implements: [SRS-028, SRS-029]
+
+  Viewport components add onContextMenu handler to the Cornerstone3D canvas. A ContextMenu
+  component renders conditionally at cursor location with "Maximize View" or "Restore
+  View" option. Clicking the option calls toggleMaximizeViewport().
+
+
+  Keyboard handler listens for Escape key on ImageViewer; when maximizedViewport is
+  set, calls resetMaximizeViewport(). Patient/study change effect calls resetMaximizeViewport()
+  to auto-restore layout. All other workspace panels (repository browser, structure
+  list, toolbar) remain visible and unchanged.'
+type: SWDD

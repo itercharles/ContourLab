@@ -1,19 +1,23 @@
 id: CR-006
-title: add the support for 3D display
+title: maximum a certain view
 type: CR
-description: |-
-  Add support for a 3D display in the clinical workspace.
+description: '**Priority:** medium
 
-  The fourth workspace quadrant shall render a 3D view for the active image
-  series, including CT context and visible structures derived from the current
-  structure set. The 3D view shall update after contour edits and structure
-  visibility changes, and the change shall include automated test coverage and
-  DHF traceability updates.
-justification: The active clinical workspace currently reserves the fourth viewport
-  for 3D review but shows only a placeholder, limiting multi-planar contour review.
-priority: High
+  **Category:** enhancement
+
+
+  User shall be to maximize a view when he right click and select the "full screen"
+  in the right menu. User can maximize the transverse or any other views.  Maximize
+  means this view occupies all the view display area, but all the other panel still
+  there.
+
+
+  Source issue: https://github.com/itercharles/WebTPS/issues/51'
+justification: Maintainer assigned this issue to the active release milestone, indicating
+  it is accepted for CR intake.
+priority: Medium
 requested_by: itercharles
 target_version: 2026-W19
 category: Feature
 content: ''
-status: completed
+status: in_review

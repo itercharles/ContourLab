@@ -7,6 +7,7 @@ import { useUIStore } from '../../core/store/uiStore';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import ContourOverlay from './ContourOverlay';
 import ToolOptions from './ToolOptions';
+import ViewportContextMenu from './ViewportContextMenu';
 import ThreeDViewport from './ThreeDViewport';
 
 class ContourErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -33,10 +34,14 @@ interface InteractiveViewportLike {
 function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) {
   const elRef = useRef<HTMLDivElement>(null);
   const [viewportElement, setViewportElement] = useState<HTMLDivElement | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const activeViewport = useUIStore((s) => s.activeViewport);
   const setActiveViewport = useUIStore((s) => s.setActiveViewport);
+  const maximizedViewport = useUIStore((s) => s.maximizedViewport);
+  const toggleMaximizeViewport = useUIStore((s) => s.toggleMaximizeViewport);
 
   const isActive = activeViewport === orientation;
+  const isMaximized = maximizedViewport === orientation;
 
   useEffect(() => {
     if (elRef.current) {
@@ -75,10 +80,16 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
     return () => element.removeEventListener('wheel', handleWheel);
   }, [id]);
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
   return (
     <div
       className={`relative bg-black overflow-hidden ${isActive ? 'ring-1 ring-blue-500' : ''}`}
       onClick={() => setActiveViewport(orientation)}
+      onContextMenu={handleContextMenu}
     >
       <div
         ref={elRef}
@@ -95,6 +106,16 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
       <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
         {label}
       </span>
+      {contextMenu && (
+        <ViewportContextMenu
+          orientation={orientation}
+          isMaximized={isMaximized}
+          onMaximize={toggleMaximizeViewport}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }
@@ -104,12 +125,15 @@ export default function ImageViewer() {
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
   const windowLevelPreset = useUIStore((s) => s.windowLevelPreset);
+  const maximizedViewport = useUIStore((s) => s.maximizedViewport);
+  const resetMaximizeViewport = useUIStore((s) => s.resetMaximizeViewport);
   const crosshairsEnabled = useUIStore((s) => s.crosshairsEnabled);
   const [viewportsReady, setViewportsReady] = useState(false);
 
   // Track whether we've set up the tool group yet
   const setupDone = useRef(false);
   const readyViewportIds = useRef(new Set<string>());
+  const prevActiveSeriesUID = useRef<string | null>(null);
 
   const pushDebugEvent = useCallback((message: string) => {
     logClientDebug('ImageViewer', message);
@@ -215,6 +239,26 @@ export default function ImageViewer() {
     return () => observer.disconnect();
   }, []);
 
+  // Reset maximize state when active series changes (patient changes)
+  useEffect(() => {
+    if (activeSeriesUID && activeSeriesUID !== prevActiveSeriesUID.current) {
+      resetMaximizeViewport();
+    }
+    prevActiveSeriesUID.current = activeSeriesUID;
+  }, [activeSeriesUID, resetMaximizeViewport]);
+
+  // Handle Escape key to reset maximize state
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && maximizedViewport) {
+        resetMaximizeViewport();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [maximizedViewport, resetMaximizeViewport]);
+
   useEffect(() => {
     return () => {
       readyViewportIds.current.clear();
@@ -227,31 +271,60 @@ export default function ImageViewer() {
   return (
     <div
       ref={containerRef}
-      className="relative h-full flex-1 bg-[var(--color-border)]"
+      className="relative h-full flex-1 bg-[var(--color-border)] focus:outline-none"
+      tabIndex={0}
     >
       <ToolOptions />
-      <div className="grid h-full grid-cols-2 grid-rows-2 gap-[1px]">
-        <ViewportPanel
-          id={VIEWPORT_IDS.AXIAL}
-          label="AXIAL"
-          orientation="AXIAL"
-          onReady={onReady}
-        />
-        <ViewportPanel
-          id={VIEWPORT_IDS.SAGITTAL}
-          label="SAGITTAL"
-          orientation="SAGITTAL"
-          onReady={onReady}
-        />
-        <ViewportPanel
-          id={VIEWPORT_IDS.CORONAL}
-          label="CORONAL"
-          orientation="CORONAL"
-          onReady={onReady}
-        />
-
-        <ThreeDViewport />
-      </div>
+      {maximizedViewport ? (
+        <div className="flex h-full gap-[1px]">
+          {maximizedViewport === 'AXIAL' && (
+            <ViewportPanel
+              id={VIEWPORT_IDS.AXIAL}
+              label="AXIAL"
+              orientation="AXIAL"
+              onReady={onReady}
+            />
+          )}
+          {maximizedViewport === 'SAGITTAL' && (
+            <ViewportPanel
+              id={VIEWPORT_IDS.SAGITTAL}
+              label="SAGITTAL"
+              orientation="SAGITTAL"
+              onReady={onReady}
+            />
+          )}
+          {maximizedViewport === 'CORONAL' && (
+            <ViewportPanel
+              id={VIEWPORT_IDS.CORONAL}
+              label="CORONAL"
+              orientation="CORONAL"
+              onReady={onReady}
+            />
+          )}
+        </div>
+      ) : (
+        <div className="grid h-full grid-cols-2 grid-rows-2 gap-[1px]">
+          <ViewportPanel
+            id={VIEWPORT_IDS.AXIAL}
+            label="AXIAL"
+            orientation="AXIAL"
+            onReady={onReady}
+          />
+          <ViewportPanel
+            id={VIEWPORT_IDS.SAGITTAL}
+            label="SAGITTAL"
+            orientation="SAGITTAL"
+            onReady={onReady}
+          />
+          <ViewportPanel
+            id={VIEWPORT_IDS.CORONAL}
+            label="CORONAL"
+            orientation="CORONAL"
+            onReady={onReady}
+          />
+          <ThreeDViewport />
+        </div>
+      )}
     </div>
   );
 }

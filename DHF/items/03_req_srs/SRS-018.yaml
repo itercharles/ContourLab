@@ -1,0 +1,13 @@
+id: SRS-018
+derives_from:
+- SYS-002
+title: Software shall render a context menu on viewport right-click with Maximize
+  View option
+content: When a user right-clicks on a viewport canvas, a context menu shall appear
+  with text "Maximize View" (or "Restore View" if the viewport is already maximized).
+  The menu shall disappear when clicked outside or when an option is selected. The
+  menu shall be positioned near the cursor location.
+verification_method:
+- Test
+critical_safety: false
+type: SRS

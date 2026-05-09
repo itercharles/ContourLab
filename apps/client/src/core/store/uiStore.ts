@@ -34,6 +34,7 @@ interface UIState {
   activeViewport: ViewportOrientation | null;
   activeStructureOperationPanel: StructureOperationPanel;
   theme: Theme;
+  maximizedViewport: ViewportOrientation | null;
   setActiveTool: (tool: ViewerTool) => void;
   setActiveStructureOperationPanel: (panel: StructureOperationPanel) => void;
   setWindowLevelPreset: (preset: WLPreset) => void;
@@ -45,6 +46,8 @@ interface UIState {
   setCrosshairsEnabled: (v: boolean) => void;
   setActiveViewport: (v: ViewportOrientation | null) => void;
   setTheme: (t: Theme) => void;
+  toggleMaximizeViewport: (viewport: ViewportOrientation | null) => void;
+  resetMaximizeViewport: () => void;
 }
 
 function getBrowserStorage(): Storage | null {
@@ -78,6 +81,7 @@ export const useUIStore = create<UIState>()(
     activeViewport: null,
     activeStructureOperationPanel: null,
     theme: initTheme(),
+    maximizedViewport: null,
 
     setActiveTool: (tool) =>
       set((state) => {
@@ -126,6 +130,18 @@ export const useUIStore = create<UIState>()(
           document.documentElement.dataset.theme = t;
         }
         getBrowserStorage()?.setItem('webtps-theme', t);
+      }),
+    toggleMaximizeViewport: (viewport) =>
+      set((state) => {
+        if (state.maximizedViewport === viewport) {
+          state.maximizedViewport = null;
+        } else {
+          state.maximizedViewport = viewport;
+        }
+      }),
+    resetMaximizeViewport: () =>
+      set((state) => {
+        state.maximizedViewport = null;
       }),
   }))
 );

@@ -1,0 +1,102 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import ViewportContextMenu from './ViewportContextMenu';
+
+// @links:SRS-018
+describe('ViewportContextMenu', () => {
+  const mockOnMaximize = vi.fn();
+  const mockOnClose = vi.fn();
+
+  beforeEach(() => {
+    mockOnMaximize.mockClear();
+    mockOnClose.mockClear();
+  });
+
+  // @links:SRS-018
+  it('renders with Maximize View when not maximized', () => {
+    render(
+      <ViewportContextMenu
+        orientation="AXIAL"
+        isMaximized={false}
+        onMaximize={mockOnMaximize}
+        x={100}
+        y={100}
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(screen.getByText('Maximize View')).toBeTruthy();
+  });
+
+  // @links:SRS-018
+  it('renders with Restore View when maximized', () => {
+    render(
+      <ViewportContextMenu
+        orientation="AXIAL"
+        isMaximized={true}
+        onMaximize={mockOnMaximize}
+        x={100}
+        y={100}
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(screen.getByText('Restore View')).toBeTruthy();
+  });
+
+  // @links:SRS-018
+  it('calls onMaximize with viewport when Maximize View is clicked', () => {
+    render(
+      <ViewportContextMenu
+        orientation="SAGITTAL"
+        isMaximized={false}
+        onMaximize={mockOnMaximize}
+        x={100}
+        y={100}
+        onClose={mockOnClose}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Maximize View'));
+
+    expect(mockOnMaximize).toHaveBeenCalledWith('SAGITTAL');
+    expect(mockOnClose).toHaveBeenCalled();
+  });
+
+  // @links:SRS-018
+  it('calls onMaximize with null when Restore View is clicked', () => {
+    render(
+      <ViewportContextMenu
+        orientation="CORONAL"
+        isMaximized={true}
+        onMaximize={mockOnMaximize}
+        x={100}
+        y={100}
+        onClose={mockOnClose}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Restore View'));
+
+    expect(mockOnMaximize).toHaveBeenCalledWith(null);
+    expect(mockOnClose).toHaveBeenCalled();
+  });
+
+  // @links:SRS-018
+  it('closes menu when clicked outside', () => {
+    const { container } = render(
+      <ViewportContextMenu
+        orientation="AXIAL"
+        isMaximized={false}
+        onMaximize={mockOnMaximize}
+        x={100}
+        y={100}
+        onClose={mockOnClose}
+      />
+    );
+
+    fireEvent.mouseDown(container);
+
+    expect(mockOnClose).toHaveBeenCalled();
+  });
+});
