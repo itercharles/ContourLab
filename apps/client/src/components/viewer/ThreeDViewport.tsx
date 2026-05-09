@@ -69,7 +69,10 @@ export default function ThreeDViewport() {
     lastObservedScalarLengthRef.current = nextScalarLength;
     setStreamingScalarLength(nextScalarLength);
     setCtRevision(0);
-  }, [activeSeriesUID, activeSeries]);
+    pushDebug(
+      `series reset uid=${activeSeriesUID ?? 'none'} initialScalars=${nextScalarLength} preset=${ctPreset.key}`
+    );
+  }, [activeSeriesUID, activeSeries, ctPreset.key]);
 
   useEffect(() => {
     const viewportElements = [
@@ -88,7 +91,11 @@ export default function ThreeDViewport() {
         pushDebug(`stream update scalars=${nextScalarLength}`);
         setStreamingScalarLength(nextScalarLength);
       }
-      setCtRevision((value) => value + 1);
+      setCtRevision((value) => {
+        const nextValue = value + 1;
+        pushDebug(`ct revision=${nextValue} scalarChanged=${scalarLengthChanged}`);
+        return nextValue;
+      });
     };
 
     viewportElements.forEach((element) => {
@@ -209,6 +216,7 @@ export default function ThreeDViewport() {
     if (!scene) return;
 
     if (lastRenderSignatureRef.current === renderSignature) {
+      pushDebug(`render skipped signature=${renderSignature}`);
       return;
     }
 
@@ -216,13 +224,14 @@ export default function ThreeDViewport() {
       (total, structure) => total + structure.contours.length,
       0
     );
+    const attempt = renderAttemptRef.current + 1;
     pushDebug(
-      `render queued series=${activeSeries?.seriesUID ?? 'none'} structures=${visibleStructures.length} contours=${contourCount} scalars=${streamingScalarLength}`
+      `render queued #${attempt} series=${activeSeries?.seriesUID ?? 'none'} structures=${visibleStructures.length} contours=${contourCount} scalars=${streamingScalarLength} ctRevision=${ctRevision} preset=${ctPreset.key}`
     );
 
     // Defer the render via setTimeout so React can commit and the browser can paint
     // before the heavy marching-cubes / mask-building work starts on the main thread.
-    const attempt = ++renderAttemptRef.current;
+    renderAttemptRef.current = attempt;
     const handle = window.setTimeout(() => {
       const snapshot = {
         volume: activeSeries?.volume ?? null,
@@ -232,6 +241,9 @@ export default function ThreeDViewport() {
         ctRevision,
         structures: visibleStructures.map((structure) => ({ structure })),
       };
+      pushDebug(
+        `render start #${attempt} volume=${snapshot.volume?.seriesUID ?? 'none'} scalars=${snapshot.volume?.pixelData.length ?? 0} threshold=${snapshot.ctIsoThresholdHu} opacity=${snapshot.ctOpacity} structures=${snapshot.structures.length}`
+      );
 
       const renderStart = performance.now();
       const renderResult = (() => {

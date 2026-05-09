@@ -101,9 +101,18 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
     renderSnapshot(snapshot) {
       const startedAt = performance.now();
       clearMountedProps();
+      pushDebug(
+        `snapshot volume=${snapshot.volume?.seriesUID ?? 'none'} showCt=${snapshot.showCtSurface} scalars=${snapshot.volume?.pixelData.length ?? 0} ctRevision=${snapshot.ctRevision ?? 0} threshold=${snapshot.ctIsoThresholdHu ?? DEFAULT_CT_ISO_THRESHOLD_HU} opacity=${(snapshot.ctOpacity ?? DEFAULT_CT_OPACITY).toFixed(2)} structures=${snapshot.structures.length}`
+      );
 
       let ctReady = false;
-      if (snapshot.volume && snapshot.showCtSurface && snapshot.volume.pixelData.length > 0) {
+      if (!snapshot.volume) {
+        pushDebug('ct skip reason=no-volume');
+      } else if (!snapshot.showCtSurface) {
+        pushDebug('ct skip reason=hidden');
+      } else if (snapshot.volume.pixelData.length === 0) {
+        pushDebug('ct skip reason=no-scalars');
+      } else if (snapshot.volume && snapshot.showCtSurface && snapshot.volume.pixelData.length > 0) {
         const ctKey = buildCtCacheKey(
           snapshot.volume,
           snapshot.ctIsoThresholdHu ?? DEFAULT_CT_ISO_THRESHOLD_HU,
@@ -112,6 +121,7 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
         );
         let ctProp = cachedCtProp;
         if (!ctProp || ctProp.key !== ctKey) {
+          pushDebug(`ct cache miss key=${ctKey}`);
           disposeCachedProp(cachedCtProp);
           ctProp = createCtActor(
             snapshot.volume,
@@ -121,11 +131,16 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
             snapshot.ctOpacity ?? DEFAULT_CT_OPACITY
           );
           cachedCtProp = ctProp;
+        } else {
+          pushDebug(`ct cache hit key=${ctKey}`);
         }
         if (ctProp) {
           renderer.addActor(ctProp.actor);
           mountedProps.push(ctProp);
           ctReady = true;
+          pushDebug('ct actor mounted');
+        } else {
+          pushDebug('ct actor unavailable after create');
         }
       }
 
@@ -136,6 +151,7 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
         activeStructureKeys.add(structureKey);
         let structureProp = cachedStructureProps.get(structureKey) ?? null;
         if (!structureProp) {
+          pushDebug(`structure cache miss id=${layer.structure.id}`);
           structureProp = createStructureActor(
             layer.structure,
             snapshot.volume,
@@ -146,6 +162,8 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
           if (structureProp) {
             cachedStructureProps.set(structureKey, structureProp);
           }
+        } else {
+          pushDebug(`structure cache hit id=${layer.structure.id}`);
         }
         if (!structureProp) continue;
         renderer.addActor(structureProp.actor);
@@ -168,7 +186,7 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       renderWindow.render();
       const elapsedMs = Math.round(performance.now() - startedAt);
       pushDebug(
-        `render ms=${elapsedMs} ctReady=${ctReady} structureCount=${structureCount} cached_structures=${cachedStructureProps.size}`
+        `render ms=${elapsedMs} ctReady=${ctReady} structureCount=${structureCount} mountedProps=${mountedProps.length} cached_structures=${cachedStructureProps.size}`
       );
       return { ctReady, structureCount };
     },
@@ -274,6 +292,9 @@ function createCtActor(
   opacity: number
 ): CachedPropHandle | null {
   const startedAt = performance.now();
+  pushDebug(
+    `ct actor start key=${key} dims=${volume.dimensions.join('x')} spacing=${volume.spacing.join(',')} scalars=${volume.pixelData.length}`
+  );
   const sourceVolume = downsampleVolume(volume, CT_DOWNSAMPLE_STRIDE);
   const downsampleMs = Math.round(performance.now() - startedAt);
 
@@ -331,10 +352,18 @@ function createStructureActor(
   pushDebug: (message: string) => void,
   key: string
 ): CachedPropHandle | null {
-  if (!volume || !hasRenderableContours(structure)) return null;
+  if (!volume) {
+    pushDebug(`structure skip id=${structure.id} reason=no-volume`);
+    return null;
+  }
+  if (!hasRenderableContours(structure)) {
+    pushDebug(`structure skip id=${structure.id} reason=no-renderable-contours`);
+    return null;
+  }
   const startedAt = performance.now();
   const maskVolume = buildStructureMaskVolume(structure, volume);
   if (!maskVolume) {
+    pushDebug(`structure skip id=${structure.id} reason=empty-mask`);
     return null;
   }
   const maskMs = Math.round(performance.now() - startedAt);
