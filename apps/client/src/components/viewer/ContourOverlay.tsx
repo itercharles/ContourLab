@@ -1178,7 +1178,13 @@ export default function ContourOverlay({
           : undefined
       }
       preserveAspectRatio="none"
-      style={{ pointerEvents: (orientation === 'AXIAL' && isContourEditTool) || isMeasurementTool ? 'auto' : 'none', touchAction: 'none' }}
+      style={{
+        pointerEvents: (orientation === 'AXIAL' && isContourEditTool) || isMeasurementTool ? 'auto' : 'none',
+        touchAction: 'none',
+        cursor: (orientation === 'AXIAL' && isContourEditTool)
+          ? (activeTool === 'brush' || activeTool === 'eraser' ? 'cell' : 'crosshair')
+          : (isMeasurementTool && !!activeSeries ? 'crosshair' : undefined),
+      }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

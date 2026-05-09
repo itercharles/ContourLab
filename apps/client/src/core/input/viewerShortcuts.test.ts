@@ -43,6 +43,7 @@ vi.mock('../store/structureStore', () => ({
 vi.mock('../rendering/MPRController', () => ({
   MPRController: {
     setActiveTool: mocks.setActiveToolSpy,
+    clearPrimaryTool: vi.fn(),
   },
 }));
 
@@ -65,7 +66,7 @@ describe('installViewerShortcutHandler', () => {
     document.body.innerHTML = '';
   });
 
-  it('blocks contour tool shortcuts when no drawable structure is selected', () => {
+  it('activates contour tool and opens structure panel when no drawable structure is selected', () => {
     const cleanup = installViewerShortcutHandler();
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
@@ -74,14 +75,17 @@ describe('installViewerShortcutHandler', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b' }));
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
 
-    expect(mocks.uiStore.setActiveTool).not.toHaveBeenCalled();
+    // Tool activates so the viewport status message guides the user
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('freehand');
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('edit');
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('polygon');
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('brush');
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('eraser');
+    // Structure panel opens to guide the user to create a structure
     expect(mocks.uiStore.setRightSidebarOpen).toHaveBeenCalledWith(true);
     expect(mocks.uiStore.setActiveViewport).toHaveBeenCalledWith('AXIAL');
+    // Cornerstone navigation tools are not activated for contour tools
     expect(mocks.setActiveToolSpy).not.toHaveBeenCalled();
-    expect(mocks.logClientDebugSpy).toHaveBeenCalledWith(
-      'ViewerShortcut',
-      expect.stringContaining('freehand:blocked')
-    );
 
     cleanup();
   });
@@ -152,7 +156,7 @@ describe('installViewerShortcutHandler', () => {
     cleanup();
   });
 
-  it('does not activate freehand from a selected structure set that belongs to another series', () => {
+  it('activates freehand and opens structure panel when structure set belongs to another series', () => {
     mocks.volumeStore.activeSeriesUID = 'series-2';
     mocks.structureStore.structureSets = [
       {
@@ -168,7 +172,9 @@ describe('installViewerShortcutHandler', () => {
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
 
-    expect(mocks.uiStore.setActiveTool).not.toHaveBeenCalled();
+    // Tool activates — ContourOverlay will block drawing until a structure is selected
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('freehand');
+    // Structure panel opens to guide the user
     expect(mocks.uiStore.setRightSidebarOpen).toHaveBeenCalledWith(true);
     expect(mocks.uiStore.setActiveViewport).toHaveBeenCalledWith('AXIAL');
 

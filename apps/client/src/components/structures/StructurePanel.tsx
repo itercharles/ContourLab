@@ -436,6 +436,8 @@ export default function StructurePanel() {
           : undefined
       )
     : undefined;
+  const seriesHasStructureSet =
+    !!activeSeriesUID && structureSets.some((ss) => ss.referencedSeriesUID === activeSeriesUID);
   const activeStructure = activeSeriesStructureSet?.structures.find(
     (structure) => structure.id === activeStructureId
   );
@@ -1234,8 +1236,26 @@ export default function StructurePanel() {
 
             {!activeSeriesUID ? (
               <p className="px-3 py-3 text-[11px] text-[var(--color-text-muted)]">Load an image set to review structures.</p>
-            ) : !activeSeriesStructureSet ? (
+            ) : !activeSeriesStructureSet && seriesHasStructureSet ? (
               <p className="px-3 py-3 text-[11px] text-[var(--color-text-muted)]">No active structure set for this image set.</p>
+            ) : !activeSeriesStructureSet ? (
+              <div className="flex flex-col items-center gap-3 px-4 py-6">
+                <p className="text-center text-[11px] text-[var(--color-text-muted)]">
+                  No structures for this series yet.
+                </p>
+                <div className="flex gap-2">
+                  {(['PTV', 'OAR', 'EXTERNAL'] as const).map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => handleAddClick(type)}
+                      className="rounded border border-[var(--color-border)] bg-[var(--color-elevated)] px-3 py-1 text-[11px] text-[var(--color-text-sec)] hover:border-blue-500 hover:bg-blue-900/30 hover:text-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+                    >
+                      + {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ) : (
               structureGroups.map((group) => (
                 <section key={group.id}>

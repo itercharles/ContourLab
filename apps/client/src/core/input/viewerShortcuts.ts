@@ -2,7 +2,6 @@ import { MPRController } from '../rendering/MPRController';
 import { useUIStore, type ViewerTool } from '../store/uiStore';
 import { useStructureStore } from '../store/structureStore';
 import { useVolumeStore } from '../store/volumeStore';
-import { logClientDebug } from '../debug/clientDebugLog';
 
 const TOOL_NAME_MAP: Partial<Record<ViewerTool, string>> = {
   windowLevel: 'WindowLevel',
@@ -69,23 +68,22 @@ async function activateTool(tool: ViewerTool): Promise<void> {
       !!activeStructure &&
       !(activeStructure.isLocked ?? false);
 
+    uiStore.setActiveViewport('AXIAL');
+    uiStore.setActiveTool(tool);
+
     if (!canUseContourTool) {
+      // Open the structure panel so the user can create or select a structure.
+      // The ContourOverlay will show a status message explaining what is needed.
       uiStore.setRightSidebarOpen(true);
-      uiStore.setActiveViewport('AXIAL');
-      logClientDebug(
-        'ViewerShortcut',
-        [
-          `${tool}:blocked`,
-          `series=${volumeStore.activeSeriesUID ?? 'none'}`,
-          `set=${activeStructureSet?.id ?? 'none'}`,
-          `structure=${activeStructure?.id ?? 'none'}`,
-          `locked=${activeStructure?.isLocked ? 'yes' : 'no'}`,
-        ].join(' ')
-      );
-      return;
     }
 
-    uiStore.setActiveViewport('AXIAL');
+    try {
+      // Clear any active navigation binding so the viewport cursor resets.
+      await MPRController.clearPrimaryTool();
+    } catch {
+      // Ignore early shortcut presses before the tool group exists.
+    }
+    return;
   }
 
   uiStore.setActiveTool(tool);
