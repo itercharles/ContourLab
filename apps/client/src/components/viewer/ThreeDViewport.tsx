@@ -197,6 +197,54 @@ export default function ThreeDViewport() {
       <div className="absolute right-1 top-1 z-10 flex items-center gap-1 rounded border border-[var(--color-border)] bg-black/70 px-1 py-1 text-[10px] text-[var(--color-text-bright)] backdrop-blur">
         <button
           type="button"
+          onClick={() => {
+            pushDebug('rotate left');
+            sceneRef.current?.rotateCamera(-15, 0);
+          }}
+          disabled={renderError !== null}
+          className="rounded px-1.5 py-0.5 text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Rotate left"
+        >
+          Left
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            pushDebug('rotate right');
+            sceneRef.current?.rotateCamera(15, 0);
+          }}
+          disabled={renderError !== null}
+          className="rounded px-1.5 py-0.5 text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Rotate right"
+        >
+          Right
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            pushDebug('rotate up');
+            sceneRef.current?.rotateCamera(0, 10);
+          }}
+          disabled={renderError !== null}
+          className="rounded px-1.5 py-0.5 text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Rotate up"
+        >
+          Up
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            pushDebug('rotate down');
+            sceneRef.current?.rotateCamera(0, -10);
+          }}
+          disabled={renderError !== null}
+          className="rounded px-1.5 py-0.5 text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Rotate down"
+        >
+          Down
+        </button>
+        <button
+          type="button"
           onClick={() =>
             setShowCtSurface((value) => {
               const nextValue = !value;

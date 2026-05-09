@@ -31,6 +31,7 @@ export interface ThreeDScene {
   renderSnapshot: (snapshot: ThreeDSceneSnapshot) => { ctReady: boolean; structureCount: number };
   resize: () => void;
   resetCamera: () => void;
+  rotateCamera: (azimuthDelta: number, elevationDelta?: number) => void;
   destroy: () => void;
 }
 
@@ -133,6 +134,19 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       renderer.resetCamera();
       hasFramedContent = true;
       pushDebug('camera reset manual');
+      renderWindow.render();
+    },
+    rotateCamera(azimuthDelta, elevationDelta = 0) {
+      const camera = renderer.getActiveCamera();
+      if (azimuthDelta !== 0) {
+        camera.azimuth(azimuthDelta);
+      }
+      if (elevationDelta !== 0) {
+        camera.elevation(elevationDelta);
+        camera.orthogonalizeViewUp();
+      }
+      renderer.resetCameraClippingRange();
+      pushDebug(`camera rotate azimuth=${azimuthDelta} elevation=${elevationDelta}`);
       renderWindow.render();
     },
     destroy() {

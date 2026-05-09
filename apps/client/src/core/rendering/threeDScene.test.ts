@@ -2,13 +2,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Structure, Volume } from '@webtps/shared-types';
 
 const mocks = vi.hoisted(() => {
+  const camera = {
+    setParallelProjection: vi.fn(),
+    azimuth: vi.fn(),
+    elevation: vi.fn(),
+    orthogonalizeViewUp: vi.fn(),
+  };
   const renderer = {
     addActor: vi.fn(),
     removeActor: vi.fn(),
-    getActiveCamera: vi.fn(() => ({
-      setParallelProjection: vi.fn(),
-    })),
+    getActiveCamera: vi.fn(() => camera),
     resetCamera: vi.fn(),
+    resetCameraClippingRange: vi.fn(),
     delete: vi.fn(),
   };
 
@@ -47,6 +52,7 @@ const mocks = vi.hoisted(() => {
     renderWindow,
     openGLRenderWindow,
     interactor,
+    camera,
     interactorStyle: { delete: vi.fn() },
     axesActor: { delete: vi.fn() },
     tracked,
@@ -196,6 +202,9 @@ beforeEach(() => {
   mocks.tracked.images.length = 0;
   mocks.tracked.mappers.length = 0;
   mocks.tracked.marching.length = 0;
+  mocks.camera.azimuth.mockClear();
+  mocks.camera.elevation.mockClear();
+  mocks.camera.orthogonalizeViewUp.mockClear();
 });
 
 describe('threeDScene lifecycle', () => {
@@ -242,5 +251,20 @@ describe('threeDScene lifecycle', () => {
     expect(firstImageDeletes.every((spy) => spy.mock.calls.length === 1)).toBe(true);
     expect(firstMapperDeletes.every((spy) => spy.mock.calls.length === 1)).toBe(true);
     expect(firstMarchingDeletes.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+  });
+
+  it('rotates the camera explicitly when requested', () => {
+    const container = document.createElement('div');
+    container.getBoundingClientRect = () =>
+      ({ width: 320, height: 240 } as DOMRect);
+
+    const scene = createThreeDScene(container);
+    scene.rotateCamera(15, -10);
+
+    expect(mocks.camera.azimuth).toHaveBeenCalledWith(15);
+    expect(mocks.camera.elevation).toHaveBeenCalledWith(-10);
+    expect(mocks.camera.orthogonalizeViewUp).toHaveBeenCalledTimes(1);
+    expect(mocks.renderer.resetCameraClippingRange).toHaveBeenCalledTimes(1);
+    expect(mocks.renderWindow.render).toHaveBeenCalled();
   });
 });

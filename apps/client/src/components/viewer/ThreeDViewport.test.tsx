@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   })),
   resize: vi.fn(),
   resetCamera: vi.fn(),
+  rotateCamera: vi.fn(),
   destroy: vi.fn(),
 }));
 
@@ -20,6 +21,7 @@ vi.mock('../../core/rendering/threeDScene', () => ({
     renderSnapshot: mocks.renderSnapshot,
     resize: mocks.resize,
     resetCamera: mocks.resetCamera,
+    rotateCamera: mocks.rotateCamera,
     destroy: mocks.destroy,
   })),
 }));
@@ -135,6 +137,16 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
     expect(mocks.resetCamera).toHaveBeenCalledTimes(1);
+  });
+
+  it('exposes explicit rotation controls', async () => {
+    render(<ThreeDViewport />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rotate left' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rotate up' }));
+
+    expect(mocks.rotateCamera).toHaveBeenNthCalledWith(1, -15, 0);
+    expect(mocks.rotateCamera).toHaveBeenNthCalledWith(2, 0, 10);
   });
 
   it('offers a manual refresh path when the scene needs rebuilding', async () => {
