@@ -240,17 +240,67 @@ describe('threeDScene lifecycle', () => {
 
     scene.renderSnapshot(snapshot);
 
-    const firstActorDeletes = mocks.tracked.actors.slice(0, 2).map((instance) => instance.delete);
-    const firstImageDeletes = mocks.tracked.images.slice(0, 2).map((instance) => instance.delete);
-    const firstMapperDeletes = mocks.tracked.mappers.slice(0, 2).map((instance) => instance.delete);
-    const firstMarchingDeletes = mocks.tracked.marching.slice(0, 2).map((instance) => instance.delete);
+    const firstCtActorDelete = mocks.tracked.actors[0].delete;
+    const firstStructureActorDelete = mocks.tracked.actors[1].delete;
+    const firstCtImageDelete = mocks.tracked.images[0].delete;
+    const firstStructureImageDelete = mocks.tracked.images[1].delete;
+    const firstCtMapperDelete = mocks.tracked.mappers[0].delete;
+    const firstStructureMapperDelete = mocks.tracked.mappers[1].delete;
+    const firstCtMarchingDelete = mocks.tracked.marching[0].delete;
+    const firstStructureMarchingDelete = mocks.tracked.marching[1].delete;
+
+    const changedSnapshot = {
+      ...snapshot,
+      structures: [
+        {
+          structure: {
+            ...structure,
+            contours: [
+              ...structure.contours,
+              {
+                referencedSOPInstanceUID: 'sop-2',
+                slicePosition: 1,
+                isClosed: true,
+                points: new Float32Array([1, 1, 1, 4, 1, 1, 4, 4, 1, 1, 4, 1]),
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    scene.renderSnapshot(changedSnapshot);
+
+    expect(firstCtActorDelete).not.toHaveBeenCalled();
+    expect(firstCtImageDelete).not.toHaveBeenCalled();
+    expect(firstCtMapperDelete).not.toHaveBeenCalled();
+    expect(firstCtMarchingDelete).not.toHaveBeenCalled();
+    expect(firstStructureActorDelete).toHaveBeenCalledTimes(1);
+    expect(firstStructureImageDelete).toHaveBeenCalledTimes(1);
+    expect(firstStructureMapperDelete).toHaveBeenCalledTimes(1);
+    expect(firstStructureMarchingDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('reuses vtk pipelines for identical snapshots', () => {
+    const container = document.createElement('div');
+    container.getBoundingClientRect = () =>
+      ({ width: 320, height: 240 } as DOMRect);
+
+    const scene = createThreeDScene(container);
+    const snapshot = {
+      volume,
+      showCtSurface: true,
+      structures: [{ structure }],
+    };
+
+    scene.renderSnapshot(snapshot);
+    const actorCountAfterFirstRender = mocks.tracked.actors.length;
+    const imageCountAfterFirstRender = mocks.tracked.images.length;
 
     scene.renderSnapshot(snapshot);
 
-    expect(firstActorDeletes.every((spy) => spy.mock.calls.length === 1)).toBe(true);
-    expect(firstImageDeletes.every((spy) => spy.mock.calls.length === 1)).toBe(true);
-    expect(firstMapperDeletes.every((spy) => spy.mock.calls.length === 1)).toBe(true);
-    expect(firstMarchingDeletes.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(mocks.tracked.actors.length).toBe(actorCountAfterFirstRender);
+    expect(mocks.tracked.images.length).toBe(imageCountAfterFirstRender);
   });
 
   it('rotates the camera explicitly when requested', () => {

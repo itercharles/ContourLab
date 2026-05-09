@@ -43,6 +43,10 @@ interface ScenePropHandle {
   dispose: () => void;
 }
 
+interface CachedPropHandle extends ScenePropHandle {
+  key: string;
+}
+
 export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   const sceneId = nextSceneId++;
   const pushDebug = (message: string) => {
@@ -68,47 +72,76 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   renderer.getActiveCamera().setParallelProjection(false);
   resizeScene(container, openGLRenderWindow, renderWindow);
   pushDebug('create');
-  let disposableProps: ScenePropHandle[] = [];
+  let mountedProps: ScenePropHandle[] = [];
   let hasFramedContent = false;
+  let cachedCtProp: CachedPropHandle | null = null;
+  const cachedStructureProps = new Map<string, CachedPropHandle>();
 
-  const clearDisposableProps = () => {
-    if (disposableProps.length > 0) {
-      pushDebug(`clear props=${disposableProps.length}`);
+  const clearMountedProps = () => {
+    if (mountedProps.length > 0) {
+      pushDebug(`clear props=${mountedProps.length}`);
     }
-    for (const prop of disposableProps) {
+    for (const prop of mountedProps) {
       renderer.removeActor(prop.actor);
-      prop.dispose();
     }
-    disposableProps = [];
+    mountedProps = [];
+  };
+
+  const disposeCachedProp = (prop: CachedPropHandle | null) => {
+    if (!prop) return;
+    renderer.removeActor(prop.actor);
+    prop.dispose();
   };
 
   return {
     renderSnapshot(snapshot) {
       const startedAt = performance.now();
-      clearDisposableProps();
+      clearMountedProps();
 
       let ctReady = false;
       if (snapshot.volume && snapshot.showCtSurface && snapshot.volume.pixelData.length > 0) {
-        const ctProp = createCtActor(snapshot.volume, pushDebug);
+        const ctKey = buildCtCacheKey(snapshot.volume);
+        let ctProp = cachedCtProp;
+        if (!ctProp || ctProp.key !== ctKey) {
+          disposeCachedProp(cachedCtProp);
+          ctProp = createCtActor(snapshot.volume, pushDebug, ctKey);
+          cachedCtProp = ctProp;
+        }
         if (ctProp) {
           renderer.addActor(ctProp.actor);
-          disposableProps.push(ctProp);
+          mountedProps.push(ctProp);
           ctReady = true;
         }
       }
 
       let structureCount = 0;
+      const activeStructureKeys = new Set<string>();
       for (const layer of snapshot.structures) {
-        const structureProp = createStructureActor(
-          layer.structure,
-          snapshot.volume,
-          layer.opacity ?? 0.72,
-          pushDebug
-        );
+        const structureKey = buildStructureCacheKey(layer.structure, snapshot.volume, layer.opacity ?? 0.72);
+        activeStructureKeys.add(structureKey);
+        let structureProp = cachedStructureProps.get(structureKey) ?? null;
+        if (!structureProp) {
+          structureProp = createStructureActor(
+            layer.structure,
+            snapshot.volume,
+            layer.opacity ?? 0.72,
+            pushDebug,
+            structureKey
+          );
+          if (structureProp) {
+            cachedStructureProps.set(structureKey, structureProp);
+          }
+        }
         if (!structureProp) continue;
         renderer.addActor(structureProp.actor);
-        disposableProps.push(structureProp);
+        mountedProps.push(structureProp);
         structureCount += 1;
+      }
+
+      for (const [key, prop] of cachedStructureProps.entries()) {
+        if (activeStructureKeys.has(key)) continue;
+        disposeCachedProp(prop);
+        cachedStructureProps.delete(key);
       }
 
       const hasSceneContent = ctReady || structureCount > 0;
@@ -147,7 +180,13 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       renderWindow.render();
     },
     destroy() {
-      clearDisposableProps();
+      clearMountedProps();
+      disposeCachedProp(cachedCtProp);
+      cachedCtProp = null;
+      for (const prop of cachedStructureProps.values()) {
+        disposeCachedProp(prop);
+      }
+      cachedStructureProps.clear();
       interactor.unbindEvents();
       renderer.removeActor(axesActor);
       renderWindow.removeView(openGLRenderWindow);
@@ -162,6 +201,36 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   };
 }
 
+function buildCtCacheKey(volume: Volume): string {
+  return [
+    volume.seriesUID,
+    volume.dimensions.join('x'),
+    volume.spacing.join(','),
+    volume.origin.join(','),
+    volume.pixelData.length,
+  ].join('::');
+}
+
+function buildStructureCacheKey(
+  structure: Structure,
+  volume: Volume | null,
+  opacity: number
+): string {
+  const firstContour = structure.contours[0];
+  const lastContour = structure.contours[structure.contours.length - 1];
+  return [
+    volume?.seriesUID ?? 'no-volume',
+    structure.id,
+    opacity.toFixed(2),
+    structure.color.join(','),
+    structure.contours.length,
+    firstContour?.slicePosition ?? 'none',
+    lastContour?.slicePosition ?? 'none',
+    firstContour?.points.length ?? 0,
+    lastContour?.points.length ?? 0,
+  ].join('::');
+}
+
 function resizeScene(
   container: HTMLDivElement,
   openGLRenderWindow: ReturnType<typeof vtkOpenGLRenderWindow.newInstance>,
@@ -172,7 +241,11 @@ function resizeScene(
   renderWindow.render();
 }
 
-function createCtActor(volume: Volume, pushDebug: (message: string) => void): ScenePropHandle | null {
+function createCtActor(
+  volume: Volume,
+  pushDebug: (message: string) => void,
+  key: string
+): CachedPropHandle | null {
   const startedAt = performance.now();
   const sourceVolume = downsampleVolume(volume, CT_DOWNSAMPLE_STRIDE);
   const imageData = vtkImageData.newInstance();
@@ -209,6 +282,7 @@ function createCtActor(volume: Volume, pushDebug: (message: string) => void): Sc
     );
   }
   return {
+    key,
     actor,
     dispose: () => {
       actor.delete();
@@ -223,8 +297,9 @@ function createStructureActor(
   structure: Structure,
   volume: Volume | null,
   opacity: number,
-  pushDebug: (message: string) => void
-): ScenePropHandle | null {
+  pushDebug: (message: string) => void,
+  key: string
+): CachedPropHandle | null {
   if (!volume || !hasRenderableContours(structure)) return null;
   const startedAt = performance.now();
   const maskVolume = buildStructureMaskVolume(structure, volume);
@@ -271,6 +346,7 @@ function createStructureActor(
     );
   }
   return {
+    key,
     actor,
     dispose: () => {
       actor.delete();
