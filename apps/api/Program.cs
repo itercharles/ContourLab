@@ -1,7 +1,10 @@
+using System.Collections.Concurrent;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddSingleton<ClientDebugLogBuffer>();
 
 builder.Services.AddHttpClient("github", c =>
 {
@@ -35,15 +38,87 @@ app.UseCors("LocalCors");
 
 app.UseAuthorization();
 app.MapControllers();
-app.MapPost("/debug/client-log", (ClientDebugLogEntry entry, ILogger<Program> logger) =>
+app.MapPost("/debug/client-log", (ClientDebugLogEntry entry, ClientDebugLogBuffer buffer, ILogger<Program> logger) =>
 {
-    logger.LogInformation("CLIENT {Scope}: {Message}", entry.Scope, entry.Message);
+    var stored = buffer.Append(entry.Scope, entry.Message);
+    logger.LogInformation("CLIENT {Scope}: {Message}", stored.Scope, stored.Message);
     return Results.Ok();
+});
+app.MapGet("/debug/client-log", (ClientDebugLogBuffer buffer, string? scope, int? limit) =>
+{
+    var safeLimit = Math.Clamp(limit ?? 100, 1, 500);
+    return Results.Ok(buffer.Read(scope, safeLimit));
+});
+app.MapDelete("/debug/client-log", (ClientDebugLogBuffer buffer) =>
+{
+    var removed = buffer.Clear();
+    return Results.Ok(new { cleared = removed });
 });
 
 app.Run();
 
 internal sealed record ClientDebugLogEntry(string Scope, string Message);
+internal sealed record StoredClientDebugLogEntry(
+    long Sequence,
+    DateTimeOffset TimestampUtc,
+    string Scope,
+    string Message
+);
+
+internal sealed class ClientDebugLogBuffer
+{
+    private const int MaxEntries = 500;
+    private readonly object _gate = new();
+    private readonly Queue<StoredClientDebugLogEntry> _entries = new();
+    private long _nextSequence = 0;
+
+    public StoredClientDebugLogEntry Append(string scope, string message)
+    {
+        var entry = new StoredClientDebugLogEntry(
+            Interlocked.Increment(ref _nextSequence),
+            DateTimeOffset.UtcNow,
+            scope,
+            message
+        );
+
+        lock (_gate)
+        {
+            _entries.Enqueue(entry);
+            while (_entries.Count > MaxEntries)
+            {
+                _entries.Dequeue();
+            }
+        }
+
+        return entry;
+    }
+
+    public IReadOnlyList<StoredClientDebugLogEntry> Read(string? scope, int limit)
+    {
+        lock (_gate)
+        {
+            IEnumerable<StoredClientDebugLogEntry> query = _entries;
+            if (!string.IsNullOrWhiteSpace(scope))
+            {
+                query = query.Where(entry => string.Equals(entry.Scope, scope, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return query
+                .TakeLast(limit)
+                .ToArray();
+        }
+    }
+
+    public int Clear()
+    {
+        lock (_gate)
+        {
+            var count = _entries.Count;
+            _entries.Clear();
+            return count;
+        }
+    }
+}
 
 // Required for WebApplicationFactory in integration tests
 public partial class Program { }
