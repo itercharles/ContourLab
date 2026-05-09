@@ -16,7 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
@@ -41,9 +40,23 @@ jobs:
             --by "github-actions[bot]" \
             --push
 
-      # Squash merges of feat/CR-* branches inherit [skip ci] from intermediate
-      # lifecycle commits, which suppresses the push-to-main Product CI/CD run.
-      # Fire it explicitly via workflow_dispatch — that event ignores [skip ci].
+  # Squash merges of any CR-stage branch can inherit [skip ci] from intermediate
+  # lifecycle / transition commits (e.g. `chore: transition CR-NNN to in_review
+  # [skip ci]`), which suppresses the push-to-main Product CI/CD run. Fire it
+  # explicitly via workflow_dispatch — that event ignores [skip ci]. Fires for
+  # cr/, spec/, design/, and feat/ so any stage can be safely bundled.
+  trigger-ci-on-main:
+    if: |
+      github.event.pull_request.merged == true && (
+        startsWith(github.event.pull_request.head.ref, 'cr/CR-') ||
+        startsWith(github.event.pull_request.head.ref, 'spec/CR-') ||
+        startsWith(github.event.pull_request.head.ref, 'design/CR-') ||
+        startsWith(github.event.pull_request.head.ref, 'feat/CR-')
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
       - name: Trigger Product CI/CD on main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
