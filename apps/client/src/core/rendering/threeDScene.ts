@@ -35,6 +35,62 @@ export interface ThreeDScene {
   destroy: () => void;
 }
 
+export class GpuUnavailableError extends Error {
+  constructor(public readonly reason: string, public readonly rendererName?: string) {
+    super(reason);
+    this.name = 'GpuUnavailableError';
+  }
+}
+
+export class ThreeDInitError extends Error {
+  constructor(public readonly step: string, cause: unknown) {
+    super(`init step "${step}" failed: ${cause instanceof Error ? cause.message : String(cause)}`);
+    this.name = 'ThreeDInitError';
+    if (cause instanceof Error) {
+      this.stack = cause.stack;
+    }
+  }
+}
+
+export class GpuContextLostError extends Error {
+  constructor() {
+    super('WebGL context lost');
+    this.name = 'GpuContextLostError';
+  }
+}
+
+const SOFTWARE_RENDERER_PATTERN = /SwiftShader|llvmpipe|software|Microsoft Basic Render/i;
+
+interface GpuProbe {
+  rendererName: string;
+  isSoftware: boolean;
+}
+
+function probeGpu(): GpuProbe {
+  const probeCanvas = document.createElement('canvas');
+  const gl = probeCanvas.getContext('webgl2') as WebGL2RenderingContext | null;
+  if (!gl) {
+    throw new GpuUnavailableError('WebGL2 not supported by this browser');
+  }
+  const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+  const rendererName = debugInfo
+    ? String(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) ?? 'unknown')
+    : 'renderer-info-blocked';
+  // Software rendering is logged (so the deployed workstation can surface it)
+  // but not blocked — the existing e2e suite runs on Chromium SwiftShader and
+  // legitimately needs the scene to render. The scene's other catch paths
+  // surface freezes / errors specifically when they occur.
+  return { rendererName, isSoftware: SOFTWARE_RENDERER_PATTERN.test(rendererName) };
+}
+
+function tryInitStep<T>(step: string, fn: () => T): T {
+  try {
+    return fn();
+  } catch (error) {
+    throw new ThreeDInitError(step, error);
+  }
+}
+
 let nextSceneId = 1;
 interface ScenePropHandle {
   actor: ReturnType<typeof vtkActor.newInstance>;
@@ -50,25 +106,46 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   const pushDebug = (message: string) => {
     logClientDebug('ThreeDScene', `scene=${sceneId} ${message}`);
   };
-  const renderer = vtkRenderer.newInstance({
-    background: [0.01, 0.01, 0.01],
-  });
-  const renderWindow = vtkRenderWindow.newInstance();
-  const openGLRenderWindow = vtkOpenGLRenderWindow.newInstance();
-  const interactor = vtkRenderWindowInteractor.newInstance();
-  const interactorStyle = vtkInteractorStyleTrackballCamera.newInstance();
-  const axesActor = vtkAxesActor.newInstance();
 
-  openGLRenderWindow.setContainer(container);
-  renderWindow.addRenderer(renderer);
-  renderWindow.addView(openGLRenderWindow);
-  interactor.setView(openGLRenderWindow);
-  interactor.initialize();
-  interactor.bindEvents(container);
-  interactor.setInteractorStyle(interactorStyle);
-  renderer.addActor(axesActor);
-  renderer.getActiveCamera().setParallelProjection(false);
-  setSizeFromContainer(container, openGLRenderWindow);
+  const { rendererName, isSoftware } = probeGpu();
+  pushDebug(`gpu renderer="${rendererName}" software=${isSoftware}`);
+
+  const renderer = tryInitStep('renderer.newInstance', () =>
+    vtkRenderer.newInstance({ background: [0.01, 0.01, 0.01] })
+  );
+  const renderWindow = tryInitStep('renderWindow.newInstance', () => vtkRenderWindow.newInstance());
+  const openGLRenderWindow = tryInitStep('openGLRenderWindow.newInstance', () =>
+    vtkOpenGLRenderWindow.newInstance()
+  );
+  const interactor = tryInitStep('interactor.newInstance', () => vtkRenderWindowInteractor.newInstance());
+  const interactorStyle = tryInitStep('interactorStyle.newInstance', () =>
+    vtkInteractorStyleTrackballCamera.newInstance()
+  );
+  const axesActor = tryInitStep('axesActor.newInstance', () => vtkAxesActor.newInstance());
+
+  tryInitStep('setContainer', () => openGLRenderWindow.setContainer(container));
+
+  // Listen for WebGL context loss after vtk.js attaches its canvas. The canvas
+  // is appended to `container` by setContainer().
+  const canvas = container.querySelector('canvas');
+  if (canvas) {
+    canvas.addEventListener('webglcontextlost', (event) => {
+      event.preventDefault();
+      pushDebug('webglcontextlost');
+      // The next render will throw; consumers see GpuContextLostError via the
+      // ResizeObserver / renderSnapshot catch paths.
+    }, { once: false });
+  }
+
+  tryInitStep('addRenderer', () => renderWindow.addRenderer(renderer));
+  tryInitStep('addView', () => renderWindow.addView(openGLRenderWindow));
+  tryInitStep('interactor.setView', () => interactor.setView(openGLRenderWindow));
+  tryInitStep('interactor.initialize', () => interactor.initialize());
+  tryInitStep('interactor.bindEvents', () => interactor.bindEvents(container));
+  tryInitStep('interactor.setInteractorStyle', () => interactor.setInteractorStyle(interactorStyle));
+  tryInitStep('addActor(axes)', () => renderer.addActor(axesActor));
+  tryInitStep('camera.setParallelProjection', () => renderer.getActiveCamera().setParallelProjection(false));
+  tryInitStep('setSizeFromContainer', () => setSizeFromContainer(container, openGLRenderWindow));
   pushDebug('create');
   let mountedProps: ScenePropHandle[] = [];
   let hasFramedContent = false;

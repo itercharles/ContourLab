@@ -206,6 +206,13 @@ beforeEach(() => {
   mocks.camera.azimuth.mockClear();
   mocks.camera.elevation.mockClear();
   mocks.camera.orthogonalizeViewUp.mockClear();
+
+  // Stub WebGL2 capability so the GPU pre-flight check in createThreeDScene
+  // succeeds under jsdom. The scene's vtk pipeline is fully mocked above.
+  HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
+    getExtension: () => ({ UNMASKED_RENDERER_WEBGL: 0x9246 }),
+    getParameter: () => 'TestGPU NVIDIA',
+  })) as unknown as typeof HTMLCanvasElement.prototype.getContext;
 });
 
 describe('threeDScene lifecycle', () => {

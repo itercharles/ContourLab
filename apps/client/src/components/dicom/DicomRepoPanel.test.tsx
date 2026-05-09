@@ -320,7 +320,7 @@ describe('DicomRepoPanel', () => {
     await waitFor(() => expect(mocks.retrieveDicomWebInstance).toHaveBeenCalledWith(expect.objectContaining({
       sopInstanceUID: 'rtss-new',
     })));
-    expect(mocks.importRtstructArrayBuffer).toHaveBeenCalledWith(dicomBuffer, 'series-1');
+    expect(mocks.importRtstructArrayBuffer).toHaveBeenCalledWith(dicomBuffer, 'series-1', expect.any(Number));
     expect(useVolumeStore.getState().activeSeriesUID).toBe('series-1');
     expect(useStructureStore.getState().activeStructureSetId).toBe('ss-auto');
   });
@@ -586,7 +586,7 @@ describe('DicomRepoPanel', () => {
     await waitFor(() => expect(mocks.retrieveDicomWebInstance).toHaveBeenCalledWith(expect.objectContaining({
       sopInstanceUID: 'rtss-1',
     })));
-    expect(mocks.importRtstructArrayBuffer).toHaveBeenCalledWith(dicomBuffer, 'series-1');
+    expect(mocks.importRtstructArrayBuffer).toHaveBeenCalledWith(dicomBuffer, 'series-1', expect.any(Number));
     expect(useStructureStore.getState().activeStructureSetId).toBe('ss-imported');
     expect(useStructureStore.getState().activeStructureId).toBe('structure-imported');
     expect(useStructureStore.getState().structureSets).toHaveLength(1);
@@ -749,7 +749,7 @@ describe('DicomRepoPanel', () => {
     await waitFor(() => expect(mocks.retrieveDicomWebInstance).toHaveBeenCalledWith(expect.objectContaining({
       sopInstanceUID: 'rtss-1',
     })));
-    expect(mocks.importRtstructArrayBuffer).toHaveBeenCalledWith(dicomBuffer, 'series-1');
+    expect(mocks.importRtstructArrayBuffer).toHaveBeenCalledWith(dicomBuffer, 'series-1', expect.any(Number));
     expect(screen.getByText('RTSS Compare')).toBeTruthy();
     expect(screen.getByText('RTSTRUCT Baseline vs active workspace')).toBeTruthy();
     expect(screen.getByText('+0 / -1 / Δ1')).toBeTruthy();

@@ -416,7 +416,8 @@ export default function ContourOverlay({
       if (!activeSeries) return [] as RenderableContour[];
       const planePosition = focalPoint[orientation === 'SAGITTAL' ? 0 : 1];
 
-      return activeStructureSet.structures
+      const considered: Array<{ structureId: string; pathLength: number }> = [];
+      const result = activeStructureSet.structures
         .filter((structure) => structure.isVisible ?? true)
         .flatMap((structure) => {
           const color = `rgb(${structure.color.join(', ')})`;
@@ -428,16 +429,28 @@ export default function ContourOverlay({
               planePosition,
               worldToOverlayCanvas
             );
+            considered.push({ structureId: structure.id, pathLength: path.length });
             if (!path) return [];
             return [{
               path,
               color,
               strokeWidth: structure.id === activeStructureId ? 2 : 1.25,
             }];
-          } catch {
+          } catch (error) {
+            console.warn('mpr reslice failed', { orientation, structureId: structure.id, error });
             return [];
           }
         });
+      const emitted = result.length;
+      if (considered.length > 0 && emitted === 0) {
+        console.debug('mpr reslice produced no paths', {
+          orientation,
+          planePosition,
+          considered: considered.length,
+          structures: considered,
+        });
+      }
+      return result;
     }
 
     return activeStructureSet.structures
