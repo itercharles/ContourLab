@@ -19,6 +19,93 @@ permissions:
 
 jobs:
 
+  # ── CHANGE DETECTION ─────────────────────────────────────────────────────────
+  # Detects which workspaces changed so downstream jobs can skip irrelevant work.
+  # On main and workflow_dispatch all flags are forced true — full suite always runs.
+
+  changes:
+    name: Detect Changed Scope
+    runs-on: ubuntu-latest
+    outputs:
+      client:       ${{ steps.scope.outputs.client }}
+      api:          ${{ steps.scope.outputs.api }}
+      shared_types: ${{ steps.scope.outputs.shared_types }}
+      dhf:          ${{ steps.scope.outputs.dhf }}
+      any_code:     ${{ steps.scope.outputs.any_code }}
+      skip_all:     ${{ steps.scope.outputs.skip_all }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          REF:   ${{ github.ref }}
+          BASE:  ${{ github.event.pull_request.base.ref }}
+        run: |
+          # Always run full suite on main and manual triggers
+          if [ "$REF" = "refs/heads/main" ] || [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "client=true"       >> "$GITHUB_OUTPUT"
+            echo "api=true"          >> "$GITHUB_OUTPUT"
+            echo "shared_types=true" >> "$GITHUB_OUTPUT"
+            echo "dhf=true"          >> "$GITHUB_OUTPUT"
+            echo "any_code=true"     >> "$GITHUB_OUTPUT"
+            echo "skip_all=false"    >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # For PRs compare against the base branch; for other pushes use previous commit
+          if [ "$EVENT" = "pull_request" ] && [ -n "$BASE" ]; then
+            CHANGED=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null || \
+                      git diff --name-only HEAD^1 HEAD 2>/dev/null || echo "UNKNOWN")
+          else
+            CHANGED=$(git diff --name-only HEAD^1 HEAD 2>/dev/null || echo "UNKNOWN")
+          fi
+
+          # If change list cannot be determined, run everything safely
+          if [ "$CHANGED" = "UNKNOWN" ] || [ -z "$CHANGED" ]; then
+            echo "client=true"       >> "$GITHUB_OUTPUT"
+            echo "api=true"          >> "$GITHUB_OUTPUT"
+            echo "shared_types=true" >> "$GITHUB_OUTPUT"
+            echo "dhf=true"          >> "$GITHUB_OUTPUT"
+            echo "any_code=true"     >> "$GITHUB_OUTPUT"
+            echo "skip_all=false"    >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          client=false api=false shared_types=false dhf=false
+
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+            case "$file" in
+              apps/client/*)                 client=true ;;
+              apps/api/* | apps/api.tests/*) api=true ;;
+              packages/shared-types/*)       shared_types=true ;;
+              DHF/* | docs/cr-specs/*)       dhf=true ;;
+              .github/* | *.md | LICENSE)    ;;  # CI/docs only — no code impact
+              *)                             client=true; api=true ;;  # unknown: full run
+            esac
+          done <<< "$CHANGED"
+
+          # shared-types changes cascade to all JS workspaces
+          if [[ "$shared_types" == "true" ]]; then client=true; api=true; fi
+
+          any_code=false
+          [[ "$client" == "true" || "$api" == "true" ]] && any_code=true
+
+          # skip_all: nothing code or DHF-related changed (pure CI / docs PR)
+          skip_all=false
+          [[ "$any_code" == "false" && "$dhf" == "false" ]] && skip_all=true
+
+          echo "client=$client"             >> "$GITHUB_OUTPUT"
+          echo "api=$api"                   >> "$GITHUB_OUTPUT"
+          echo "shared_types=$shared_types" >> "$GITHUB_OUTPUT"
+          echo "dhf=$dhf"                   >> "$GITHUB_OUTPUT"
+          echo "any_code=$any_code"         >> "$GITHUB_OUTPUT"
+          echo "skip_all=$skip_all"         >> "$GITHUB_OUTPUT"
+
   # ── CR VALIDATION ─────────────────────────────────────────────────────────
   # Phase 1: PR title must contain a CR ID (or be a chore/ci/docs prefix).
   # All design/spec/feat branches from the CR automation satisfy this rule.
@@ -70,8 +157,8 @@ jobs:
   dhf-validation:
     name: DHF Validation (schema + traceability)
     runs-on: ubuntu-latest
-    needs: [cr-validation]
-    if: always() && !failure() && !cancelled()
+    needs: [cr-validation, changes]
+    if: always() && !failure() && !cancelled() && needs.changes.outputs.dhf == 'true'
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
@@ -104,8 +191,8 @@ jobs:
   dev-frontend:
     name: Dev | Frontend (lint · typecheck · build)
     runs-on: ubuntu-latest
-    needs: [cr-validation, stage-gate]
-    if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false'
+    needs: [cr-validation, stage-gate, changes]
+    if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.client == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -123,8 +210,8 @@ jobs:
   dev-api:
     name: Dev | API (restore · build · test)
     runs-on: ubuntu-latest
-    needs: [cr-validation, stage-gate]
-    if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false'
+    needs: [cr-validation, stage-gate, changes]
+    if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.api == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -145,8 +232,8 @@ jobs:
   dev-shared-types:
     name: Dev | Shared Types (typecheck · build)
     runs-on: ubuntu-latest
-    needs: [cr-validation, stage-gate]
-    if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false'
+    needs: [cr-validation, stage-gate, changes]
+    if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.shared_types == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -163,8 +250,8 @@ jobs:
   dev-integration:
     name: Dev | Integration Smoke (full stack · health check)
     runs-on: ubuntu-latest
-    needs: [dev-frontend, dev-api, dev-shared-types]
-    if: always() && !failure() && !cancelled()
+    needs: [dev-frontend, dev-api, dev-shared-types, changes]
+    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -217,8 +304,8 @@ jobs:
   verify-srs:
     name: Verify | Test-SRS (Vitest · software requirements)
     runs-on: ubuntu-latest
-    needs: [dev-frontend, dev-shared-types]
-    if: always() && !failure() && !cancelled()
+    needs: [dev-frontend, dev-shared-types, changes]
+    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -244,8 +331,8 @@ jobs:
     runs-on: ubuntu-latest
     # SYS tests use page.route() mocks and window.__webtps_stores injection —
     # they do not call the API or Orthanc, so only the frontend needs to run.
-    needs: [dev-frontend, dev-shared-types]
-    if: always() && !failure() && !cancelled()
+    needs: [dev-frontend, dev-shared-types, changes]
+    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -314,8 +401,8 @@ jobs:
   validate-crs:
     name: Validate | Test-CRS (Playwright · clinical workflows)
     runs-on: ubuntu-latest
-    needs: [dev-frontend, dev-api, dev-shared-types]
-    if: always() && !failure() && !cancelled()
+    needs: [dev-frontend, dev-api, dev-shared-types, changes]
+    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -398,8 +485,8 @@ jobs:
   compliance:
     name: Test Coverage Gate (requirement → test)
     runs-on: ubuntu-latest
-    needs: [dhf-validation, dev-integration, verify-srs, verify-sys, validate-crs]
-    if: always() && !failure() && !cancelled()
+    needs: [dhf-validation, dev-integration, verify-srs, verify-sys, validate-crs, changes]
+    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
