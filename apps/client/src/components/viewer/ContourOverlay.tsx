@@ -170,14 +170,10 @@ export default function ContourOverlay({
     const update = () => setRevision((value) => value + 1);
     viewportElement.addEventListener('CORNERSTONE_IMAGE_RENDERED', update);
     viewportElement.addEventListener('CORNERSTONE_CAMERA_MODIFIED', update);
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
-    resizeObserver?.observe(viewportElement);
 
     return () => {
       viewportElement.removeEventListener('CORNERSTONE_IMAGE_RENDERED', update);
       viewportElement.removeEventListener('CORNERSTONE_CAMERA_MODIFIED', update);
-      resizeObserver?.disconnect();
     };
   }, [viewportElement]);
 
