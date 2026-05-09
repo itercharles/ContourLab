@@ -182,6 +182,10 @@ export interface DicomUploadProgress {
   fileCount: number;
 }
 
+function multipartBoundary(): string {
+  return `webtps-${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
+}
+
 export async function uploadDicomWebStudies(
   files: File[],
   onProgress?: (progress: DicomUploadProgress) => void
@@ -190,7 +194,7 @@ export async function uploadDicomWebStudies(
     return;
   }
 
-  const boundary = `webtps-${crypto.randomUUID()}`;
+  const boundary = multipartBoundary();
   const bodyParts: BlobPart[] = [];
 
   for (const file of files) {
@@ -254,7 +258,7 @@ export async function uploadDicomWebStudies(
 }
 
 export async function uploadDicomBlobToRepository(blob: Blob): Promise<void> {
-  const boundary = `webtps-${crypto.randomUUID()}`;
+  const boundary = multipartBoundary();
   const body = new Blob([
     `--${boundary}\r\n`,
     'Content-Type: application/dicom\r\n',
