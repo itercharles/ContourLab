@@ -1,0 +1,32 @@
+id: SWDD-011
+title: 3D viewport rendering and contour-to-surface reconstruction
+content: |-
+  ThreeDViewport mounts a vtk.js-backed renderer in the fourth ImageViewer
+  quadrant and keeps renderer lifecycle state outside Zustand. The renderer
+  consumes the active image series and visible structures only.
+
+  CT context rendering:
+  1. Downsample the loaded scalar volume by a fixed stride for review-time
+     performance.
+  2. Create vtkImageData using the active volume dimensions, spacing, origin,
+     and direction cosines.
+  3. Generate a CT context surface with vtkImageMarchingCubes at a fixed
+     review threshold and render it with low opacity.
+
+  Structure rendering:
+  1. Convert each contour point from world coordinates into continuous voxel
+     coordinates using the active volume origin, spacing, and direction matrix.
+  2. Compute a cropped voxel bounding box for the structure and rasterize each
+     closed contour slice into a binary mask within that crop.
+  3. Create vtkImageData for the binary mask and run vtkImageMarchingCubes at
+     0.5 to obtain the structure surface.
+  4. Render the resulting surface actor in the structure's configured RGB
+     color.
+
+  Refresh behavior:
+  - The component re-renders the 3D scene after active-series changes,
+    structure-set changes, contour commits, structure visibility toggles, and
+    manual refresh actions.
+  - The UI polls loaded voxel availability so the 3D scene can populate after
+    Cornerstone streaming completes without requiring a second user action.
+implements: [SRS-028, SRS-029]
