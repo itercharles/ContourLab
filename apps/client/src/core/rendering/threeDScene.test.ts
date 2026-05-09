@@ -64,6 +64,7 @@ vi.mock('@kitware/vtk.js/Rendering/Core/Actor', () => ({
     newInstance: vi.fn(() => {
       const instance = {
         setMapper: vi.fn(),
+        setVisibility: vi.fn(),
         getProperty: vi.fn(() => ({
           setColor: vi.fn(),
           setOpacity: vi.fn(),
@@ -238,10 +239,11 @@ describe('threeDScene lifecycle', () => {
 
     scene.renderSnapshot(snapshot);
 
-    const firstStructureActorDelete = mocks.tracked.actors[0].delete;
-    const firstStructureImageDelete = mocks.tracked.images[0].delete;
-    const firstStructureMapperDelete = mocks.tracked.mappers[0].delete;
-    const firstStructureMarchingDelete = mocks.tracked.marching[0].delete;
+    // CT actor is at index 0; structure actor is at index 1.
+    const firstStructureActorDelete = mocks.tracked.actors[1].delete;
+    const firstStructureImageDelete = mocks.tracked.images[1].delete;
+    const firstStructureMapperDelete = mocks.tracked.mappers[1].delete;
+    const firstStructureMarchingDelete = mocks.tracked.marching[1].delete;
 
     const changedSnapshot = {
       ...snapshot,

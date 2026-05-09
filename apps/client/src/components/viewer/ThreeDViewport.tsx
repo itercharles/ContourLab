@@ -22,6 +22,8 @@ export default function ThreeDViewport() {
   const [refreshRevision, setRefreshRevision] = useState(0);
   const [status, setStatus] = useState('Load a series to view 3D structures.');
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [ctReady, setCtReady] = useState(false);
+  const [ctVisible, setCtVisible] = useState(true);
   const activeSeriesUID = useVolumeStore((state) => state.activeSeriesUID);
   const loadedSeries = useVolumeStore((state) => state.loadedSeries);
   const structureSets = useStructureStore((state) => state.structureSets);
@@ -119,6 +121,7 @@ export default function ThreeDViewport() {
     if (renderError) {
       setRenderError(null);
     }
+    setCtReady(false);
   }, [activeSeriesUID, refreshRevision]);
 
   useEffect(() => {
@@ -183,24 +186,25 @@ export default function ThreeDViewport() {
       lastRenderSignatureRef.current = renderSignature;
       const elapsedMs = Math.round(performance.now() - renderStart);
       pushDebug(
-        `render done #${attempt} ms=${elapsedMs} structureCount=${renderResult.structureCount}`
+        `render done #${attempt} ms=${elapsedMs} structureCount=${renderResult.structureCount} ctReady=${renderResult.ctReady}`
       );
 
       // Clear any stale error now that a render has succeeded.
       setRenderError(null);
+      setCtReady(renderResult.ctReady);
 
-      const { structureCount } = renderResult;
+      const { structureCount, ctReady: newCtReady } = renderResult;
 
       if (!activeSeries) {
         setStatus('Load a series to view 3D structures.');
         return;
       }
 
-      setStatus(
+      const structPart =
         structureCount === 0
           ? 'No visible 3D structures yet.'
-          : `${structureCount} visible structure${structureCount === 1 ? '' : 's'}`
-      );
+          : `${structureCount} visible structure${structureCount === 1 ? '' : 's'}`;
+      setStatus(newCtReady ? `CT surface ready · ${structPart}` : structPart);
     }, 0);
 
     return () => window.clearTimeout(handle);
@@ -258,6 +262,21 @@ export default function ThreeDViewport() {
         >
           Down
         </button>
+        {ctReady && (
+          <button
+            type="button"
+            onClick={() => {
+              const next = !ctVisible;
+              pushDebug(`ct visible=${next}`);
+              setCtVisible(next);
+              sceneRef.current?.setCTVisible(next);
+            }}
+            disabled={renderError !== null}
+            className="rounded px-1.5 py-0.5 text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {ctVisible ? 'Hide CT' : 'Show CT'}
+          </button>
+        )}
         <button
           type="button"
           onClick={() =>

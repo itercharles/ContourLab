@@ -8,10 +8,12 @@ import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore'
 const mocks = vi.hoisted(() => ({
   renderSnapshot: vi.fn((snapshot) => ({
     structureCount: snapshot.structures.length,
+    ctReady: true,
   })),
   resize: vi.fn(),
   resetCamera: vi.fn(),
   rotateCamera: vi.fn(),
+  setCTVisible: vi.fn(),
   destroy: vi.fn(),
 }));
 
@@ -21,6 +23,7 @@ vi.mock('../../core/rendering/threeDScene', () => ({
     resize: mocks.resize,
     resetCamera: mocks.resetCamera,
     rotateCamera: mocks.rotateCamera,
+    setCTVisible: mocks.setCTVisible,
     destroy: mocks.destroy,
   })),
 }));

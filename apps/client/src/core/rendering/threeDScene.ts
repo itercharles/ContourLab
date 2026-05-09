@@ -14,7 +14,7 @@ import { logClientDebug } from '../debug/clientDebugLog';
 // @ts-expect-error
 import vtkImageMarchingCubes from '@kitware/vtk.js/Filters/General/ImageMarchingCubes';
 import type { Structure, Volume } from '@webtps/shared-types';
-import { buildStructureMaskVolume, hasRenderableContours } from './threeDGeometry';
+import { buildStructureMaskVolume, downsampleVolume, hasRenderableContours } from './threeDGeometry';
 
 export interface ThreeDStructureLayer {
   structure: Structure;
@@ -27,10 +27,11 @@ export interface ThreeDSceneSnapshot {
 }
 
 export interface ThreeDScene {
-  renderSnapshot: (snapshot: ThreeDSceneSnapshot) => { structureCount: number };
+  renderSnapshot: (snapshot: ThreeDSceneSnapshot) => { structureCount: number; ctReady: boolean };
   resize: () => void;
   resetCamera: () => void;
   rotateCamera: (azimuthDelta: number, elevationDelta?: number) => void;
+  setCTVisible: (visible: boolean) => void;
   destroy: () => void;
 }
 
@@ -72,6 +73,9 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   let mountedProps: ScenePropHandle[] = [];
   let hasFramedContent = false;
   const cachedStructureProps = new Map<string, CachedPropHandle>();
+  let ctPropHandle: ScenePropHandle | null = null;
+  let lastCtSeriesUID: string | null = null;
+  let ctActorVisible = true;
 
   const clearMountedProps = () => {
     if (mountedProps.length > 0) {
@@ -96,6 +100,27 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       pushDebug(
         `snapshot volume=${snapshot.volume?.seriesUID ?? 'none'} structures=${snapshot.structures.length}`
       );
+
+      // CT context rendering
+      let ctReady = false;
+      if (snapshot.volume) {
+        const nextCtSeriesUID = snapshot.volume.seriesUID;
+        if (lastCtSeriesUID !== nextCtSeriesUID) {
+          if (ctPropHandle) {
+            renderer.removeActor(ctPropHandle.actor);
+            ctPropHandle.dispose();
+            ctPropHandle = null;
+          }
+          const handle = createCTActor(snapshot.volume, pushDebug);
+          if (handle) {
+            ctPropHandle = handle;
+            handle.actor.setVisibility(ctActorVisible);
+            renderer.addActor(handle.actor);
+            lastCtSeriesUID = nextCtSeriesUID;
+          }
+        }
+        ctReady = ctPropHandle !== null;
+      }
 
       let structureCount = 0;
       const activeStructureKeys = new Set<string>();
@@ -141,7 +166,7 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       pushDebug(
         `render ms=${elapsedMs} structureCount=${structureCount} mountedProps=${mountedProps.length} cached_structures=${cachedStructureProps.size}`
       );
-      return { structureCount };
+      return { structureCount, ctReady };
     },
     resize() {
       setSizeFromContainer(container, openGLRenderWindow);
@@ -169,12 +194,25 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       pushDebug(`camera rotate azimuth=${azimuthDelta} elevation=${elevationDelta}`);
       renderWindow.render();
     },
+    setCTVisible(visible: boolean) {
+      ctActorVisible = visible;
+      if (ctPropHandle) {
+        ctPropHandle.actor.setVisibility(visible);
+        renderWindow.render();
+        pushDebug(`ct visibility=${visible}`);
+      }
+    },
     destroy() {
       clearMountedProps();
       for (const prop of cachedStructureProps.values()) {
         disposeCachedProp(prop);
       }
       cachedStructureProps.clear();
+      if (ctPropHandle) {
+        renderer.removeActor(ctPropHandle.actor);
+        ctPropHandle.dispose();
+        ctPropHandle = null;
+      }
       interactor.unbindEvents();
       renderer.removeActor(axesActor);
       renderWindow.removeView(openGLRenderWindow);
@@ -194,19 +232,62 @@ function buildStructureCacheKey(
   volume: Volume | null,
   opacity: number
 ): string {
-  const firstContour = structure.contours[0];
-  const lastContour = structure.contours[structure.contours.length - 1];
+  const contourSig = structure.contours
+    .map((c) => `${c.slicePosition}:${c.points.length}`)
+    .join(',');
   return [
     volume?.seriesUID ?? 'no-volume',
     structure.id,
     opacity.toFixed(2),
     structure.color.join(','),
-    structure.contours.length,
-    firstContour?.slicePosition ?? 'none',
-    lastContour?.slicePosition ?? 'none',
-    firstContour?.points.length ?? 0,
-    lastContour?.points.length ?? 0,
+    contourSig,
   ].join('::');
+}
+
+function createCTActor(volume: Volume, pushDebug: (msg: string) => void): ScenePropHandle | null {
+  const startedAt = performance.now();
+  try {
+    const downsampled = downsampleVolume(volume, 4);
+    const imageData = vtkImageData.newInstance();
+    imageData.setDimensions(...downsampled.dimensions);
+    imageData.setSpacing(downsampled.spacing);
+    imageData.setOrigin(downsampled.origin);
+    imageData.setDirection(Float64Array.from(downsampled.directionCosines) as unknown as never);
+    imageData.getPointData().setScalars(
+      vtkDataArray.newInstance({
+        name: 'ct-scalars',
+        values: downsampled.pixelData,
+        numberOfComponents: 1,
+      })
+    );
+    const marchingCubes = vtkImageMarchingCubes.newInstance({
+      contourValue: -400,
+      computeNormals: true,
+      mergePoints: true,
+    });
+    marchingCubes.setInputData(imageData);
+    const mapper = vtkMapper.newInstance();
+    mapper.setInputConnection(marchingCubes.getOutputPort());
+    const actor = vtkActor.newInstance();
+    actor.setMapper(mapper);
+    actor.getProperty().setColor(0.85, 0.82, 0.78);
+    actor.getProperty().setOpacity(0.12);
+    actor.getProperty().setInterpolationToPhong();
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    pushDebug(`ct actor ms=${elapsedMs} uid=${volume.seriesUID} dims=${downsampled.dimensions.join('x')}`);
+    return {
+      actor,
+      dispose: () => {
+        actor.delete();
+        mapper.delete();
+        marchingCubes.delete();
+        imageData.delete();
+      },
+    };
+  } catch (error) {
+    pushDebug(`ct actor error ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
 }
 
 function setSizeFromContainer(
