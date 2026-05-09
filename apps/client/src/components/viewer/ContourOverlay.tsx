@@ -3,7 +3,6 @@ import { ContourEngine } from '../../core/contouring/ContourEngine';
 import {
   findContourOnFrame,
   flattenWorldPoints,
-  getViewportTransformSignature,
   isContourOnFrame,
   projectContourToCanvasPath,
   type WorldPoint,
@@ -171,10 +170,14 @@ export default function ContourOverlay({
     const update = () => setRevision((value) => value + 1);
     viewportElement.addEventListener('CORNERSTONE_IMAGE_RENDERED', update);
     viewportElement.addEventListener('CORNERSTONE_CAMERA_MODIFIED', update);
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    resizeObserver?.observe(viewportElement);
 
     return () => {
       viewportElement.removeEventListener('CORNERSTONE_IMAGE_RENDERED', update);
       viewportElement.removeEventListener('CORNERSTONE_CAMERA_MODIFIED', update);
+      resizeObserver?.disconnect();
     };
   }, [viewportElement]);
 
@@ -184,37 +187,6 @@ export default function ContourOverlay({
       | VolumeViewportLike
       | undefined;
   }, [revision, viewportId]);
-
-  useEffect(() => {
-    if (!viewportElement) return;
-
-    let frameId: number | null = null;
-    let lastSignature = '';
-
-    const checkTransform = () => {
-      const currentViewport = ViewportManager.getRenderingEngine()?.getViewport(viewportId) as
-        | VolumeViewportLike
-        | undefined;
-      const canvas = viewportElement.querySelector('canvas');
-      const rect = canvas instanceof HTMLCanvasElement
-        ? canvas.getBoundingClientRect()
-        : viewportElement.getBoundingClientRect();
-      const nextSignature = getViewportTransformSignature(currentViewport, rect);
-      if (nextSignature !== lastSignature) {
-        lastSignature = nextSignature;
-        setRevision((value) => value + 1);
-      }
-      frameId = window.requestAnimationFrame(checkTransform);
-    };
-
-    frameId = window.requestAnimationFrame(checkTransform);
-
-    return () => {
-      if (frameId !== null) {
-        window.cancelAnimationFrame(frameId);
-      }
-    };
-  }, [viewportElement, viewportId]);
 
   useEffect(() => {
     setMeasurements([]);
