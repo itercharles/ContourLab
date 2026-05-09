@@ -201,16 +201,22 @@ export default function ToolRail() {
       return;
     }
 
-    if (CONTOUR_TOOLS.has(tool) && !canUseContourTool) {
-      setRightSidebarOpen(true);
-      setActiveViewport('AXIAL');
-      logClientDebug('ToolRail', `${tool}:blocked missing drawable structure`);
-      return;
-    }
-
     setActiveTool(tool);
+
     if (CONTOUR_TOOLS.has(tool)) {
       setActiveViewport('AXIAL');
+      if (!canUseContourTool) {
+        // Open the structure panel so the user can create or select a structure.
+        // The ContourOverlay will show a status message explaining what is needed.
+        setRightSidebarOpen(true);
+      }
+      try {
+        // Clear any active navigation binding so the viewport cursor resets.
+        await MPRController.clearPrimaryTool();
+      } catch {
+        // The tool group may not exist yet while the viewer is initializing.
+      }
+      return;
     }
 
     if (cornerstoneTool) {

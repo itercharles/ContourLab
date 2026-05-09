@@ -5,6 +5,7 @@ import {
   loadSeriesFromDicomWeb,
   queryRtstructInstancesForStudy,
   retrieveDicomWebInstance,
+  type DicomUploadProgress,
   type DicomWebRtstructInstance,
   type DicomWebSeriesSummary,
 } from '../../core/dicom/dicomWebClient';
@@ -94,6 +95,23 @@ interface AxialViewportLike {
 interface DicomRepoPanelProps {
   refreshRequestToken?: number;
   onRefreshStateChange?: (state: RepoRefreshState) => void;
+}
+
+function formatImportBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value < 10 && unit > 0 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
+}
+
+function formatImportPercent(progress: DicomUploadProgress): number {
+  if (progress.total <= 0) return 0;
+  return Math.min(100, Math.round((progress.loaded / progress.total) * 100));
 }
 
 function formatDicomDate(date: string): string {
@@ -337,6 +355,10 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
   const [selectedPatientKey, setSelectedPatientKey] = useState<string | null>(null);
   const [isPatientSelectorOpen, setIsPatientSelectorOpen] = useState(false);
   const [isImportingDicom, setIsImportingDicom] = useState(false);
+  const [importProgress, setImportProgress] = useState<DicomUploadProgress | null>(null);
+  const [importSuccess, setImportSuccess] = useState<{ fileCount: number } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const importSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [expandedImageSetUIDs, setExpandedImageSetUIDs] = useState<string[]>([]);
   const [comparingRtstructSop, setComparingRtstructSop] = useState<string | null>(null);
   const [rtstructComparison, setRtstructComparison] = useState<RtstructComparisonState | null>(null);
@@ -578,28 +600,38 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
   const onImportDicomFiles = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
 
+    if (importSuccessTimerRef.current) {
+      clearTimeout(importSuccessTimerRef.current);
+      importSuccessTimerRef.current = null;
+    }
     setIsImportingDicom(true);
-    setStatus({
-      tone: 'muted',
-      message: `Importing ${files.length} DICOM file${files.length === 1 ? '' : 's'} to repository...`,
-    });
+    setImportError(null);
+    setImportSuccess(null);
+    setImportProgress({ loaded: 0, total: 0, fileCount: files.length });
 
     try {
-      await uploadDicomWebStudies(files);
+      await uploadDicomWebStudies(files, (progress) => setImportProgress(progress));
       await refreshRepository();
-      setStatus({
-        tone: 'muted',
-        message: `Imported ${files.length} DICOM file${files.length === 1 ? '' : 's'} to repository.`,
-      });
+      setImportSuccess({ fileCount: files.length });
+      importSuccessTimerRef.current = setTimeout(() => setImportSuccess(null), 3000);
       logClientDebug('DicomRepoPanel', `import:dicom files=${files.length}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import DICOM files.';
-      setStatus({ tone: 'error', message });
+      setImportError(message);
       logClientDebug('DicomRepoPanel', `import:dicom:error ${message}`);
     } finally {
       setIsImportingDicom(false);
+      setImportProgress(null);
     }
   }, [refreshRepository]);
+
+  useEffect(() => {
+    return () => {
+      if (importSuccessTimerRef.current) {
+        clearTimeout(importSuccessTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     onRefreshStateChange?.({ hasUpdates: hasRepositoryUpdates, isRefreshing });
@@ -1085,6 +1117,53 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                 </svg>
               </button>
             </div>
+
+            {/* DICOM import status row — visible during/after import */}
+            {(importProgress || importSuccess || importError) && (
+              <div
+                role="status"
+                aria-live="polite"
+                data-testid="dicom-import-status"
+                className="flex flex-none items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-4 py-1.5"
+              >
+                {importProgress ? (
+                  <>
+                    <span className="text-[11px] text-[var(--color-text-sec)]">
+                      Importing {importProgress.fileCount} file{importProgress.fileCount === 1 ? '' : 's'}…
+                      {' '}
+                      {formatImportBytes(importProgress.loaded)} / {formatImportBytes(importProgress.total)}
+                    </span>
+                    <div className="h-1 min-w-0 flex-1 rounded-full bg-[var(--color-border)]">
+                      <div
+                        className="h-1 rounded-full bg-blue-500 transition-all duration-100"
+                        style={{ width: `${formatImportPercent(importProgress)}%` }}
+                      />
+                    </div>
+                    <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
+                      {formatImportPercent(importProgress)}%
+                    </span>
+                  </>
+                ) : importSuccess ? (
+                  <span className="text-[11px] text-green-400">
+                    ✓ Imported {importSuccess.fileCount} file{importSuccess.fileCount === 1 ? '' : 's'} to repository
+                  </span>
+                ) : importError ? (
+                  <>
+                    <span className="text-[11px] text-red-400">{importError}</span>
+                    <button
+                      type="button"
+                      onClick={() => setImportError(null)}
+                      aria-label="Dismiss import error"
+                      className="ml-auto flex h-5 w-5 items-center justify-center rounded text-[var(--color-text-muted)] hover:bg-[var(--color-elevated)] hover:text-[var(--color-text-bright)]"
+                    >
+                      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            )}
 
             {/* Search toolbar */}
             <div className="flex flex-none items-center gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-4 py-2">

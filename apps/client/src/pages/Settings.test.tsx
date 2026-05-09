@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Settings from './Settings';
 import * as qaRuleConfig from '../core/qa/qaRuleConfig';
@@ -61,8 +61,51 @@ describe('Settings', () => {
       target: { files: [file] },
     });
 
-    await waitFor(() => expect(mocks.uploadDicomWebStudies).toHaveBeenCalledWith([file]));
+    await waitFor(() => expect(mocks.uploadDicomWebStudies).toHaveBeenCalled());
+    expect(mocks.uploadDicomWebStudies.mock.calls[0][0]).toEqual([file]);
     expect(screen.getByText('Imported 1 DICOM file into the configured repository.')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByTestId('dicom-import-status').textContent).toContain('✓ Imported 1 file');
+    });
+  });
+
+  it('shows progress while importing and an error message on failure', async () => {
+    let progressCallback: ((p: { loaded: number; total: number; fileCount: number }) => void) | undefined;
+    let resolveUpload: (() => void) | undefined;
+    let rejectUpload: ((err: Error) => void) | undefined;
+    mocks.uploadDicomWebStudies.mockImplementationOnce((_files, onProgress) => {
+      progressCallback = onProgress;
+      return new Promise<void>((resolve, reject) => {
+        resolveUpload = resolve;
+        rejectUpload = reject;
+      });
+    });
+
+    render(
+      <MemoryRouter>
+        <Settings />
+      </MemoryRouter>
+    );
+
+    const file = new File(['dicom'], 'ct.dcm', { type: 'application/dicom' });
+    fireEvent.change(screen.getByLabelText('Import DICOM Files'), { target: { files: [file] } });
+
+    await waitFor(() => expect(progressCallback).toBeDefined());
+    act(() => { progressCallback!({ loaded: 512, total: 2048, fileCount: 1 }); });
+
+    const status = await screen.findByTestId('dicom-import-status');
+    expect(status.textContent).toContain('Importing 1 file');
+    expect(status.textContent).toContain('25%');
+
+    // Now simulate failure
+    act(() => { rejectUpload!(new Error('HTTP 500')); });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dicom-import-status').textContent).toContain('HTTP 500');
+    });
+
+    // Avoid unused-var lint
+    void resolveUpload;
   });
 
   it('toggles QA rules and resets them', () => {
