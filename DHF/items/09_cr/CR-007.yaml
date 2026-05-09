@@ -1,0 +1,26 @@
+id: CR-007
+title: Contouring functions are not avaliable.
+type: CR
+description: '**Priority:** critical
+
+  **Category:** bug
+
+
+  Drawing features such as Brush, freehand, is not available:
+
+  Click the button is not functioning.
+
+  The mouse icon keeps the previous functions.
+
+  This happens on the auto deployed environment, the local environment looks OK.
+
+
+  Source issue: https://github.com/itercharles/WebTPS/issues/55'
+justification: Maintainer assigned this issue to the active release milestone, indicating
+  it is accepted for CR intake.
+priority: Medium
+requested_by: itercharles
+target_version: 2026-W19
+category: Feature
+content: ''
+status: planned
