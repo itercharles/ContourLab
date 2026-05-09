@@ -1,0 +1,12 @@
+id: SRS-028
+title: Software shall present CT context and visible structures in the 3D workspace quadrant
+content: |-
+  ImageViewer shall replace the fourth workspace placeholder with a dedicated 3D
+  viewport component. The component shall render the active image series with a
+  CT-derived 3D context layer and overlay all visible structures from the
+  active structure set as colored 3D surfaces. The viewport shall expose
+  rotate, pan, zoom, camera reset, CT show/hide, and manual refresh controls
+  while preserving the existing 2x2 viewer layout.
+derives_from: [SYS-014]
+verification_method: [Test, Demonstration]
+critical_safety: true

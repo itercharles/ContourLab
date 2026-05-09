@@ -3,7 +3,6 @@ import { ContourEngine } from '../../core/contouring/ContourEngine';
 import {
   findContourOnFrame,
   flattenWorldPoints,
-  getViewportTransformSignature,
   isContourOnFrame,
   projectContourToCanvasPath,
   type WorldPoint,
@@ -186,37 +185,6 @@ export default function ContourOverlay({
   }, [revision, viewportId]);
 
   useEffect(() => {
-    if (!viewportElement) return;
-
-    let frameId: number | null = null;
-    let lastSignature = '';
-
-    const checkTransform = () => {
-      const currentViewport = ViewportManager.getRenderingEngine()?.getViewport(viewportId) as
-        | VolumeViewportLike
-        | undefined;
-      const canvas = viewportElement.querySelector('canvas');
-      const rect = canvas instanceof HTMLCanvasElement
-        ? canvas.getBoundingClientRect()
-        : viewportElement.getBoundingClientRect();
-      const nextSignature = getViewportTransformSignature(currentViewport, rect);
-      if (nextSignature !== lastSignature) {
-        lastSignature = nextSignature;
-        setRevision((value) => value + 1);
-      }
-      frameId = window.requestAnimationFrame(checkTransform);
-    };
-
-    frameId = window.requestAnimationFrame(checkTransform);
-
-    return () => {
-      if (frameId !== null) {
-        window.cancelAnimationFrame(frameId);
-      }
-    };
-  }, [viewportElement, viewportId]);
-
-  useEffect(() => {
     setMeasurements([]);
     setSelectedMeasurementId(null);
     setMeasurementDraftPoints([]);
@@ -319,10 +287,16 @@ export default function ContourOverlay({
   );
   const isContourEditTool = ['edit', 'freehand', 'polygon', 'brush', 'eraser'].includes(activeTool);
   const canMeasure = isMeasurementTool && !!viewport && !!activeSeries;
+  const isInteractiveTool = isContourEditTool || isMeasurementTool;
 
   useEffect(() => {
-    if (!isContourEditTool && !isMeasurementTool) {
+    if (!isInteractiveTool) {
       clearDraft();
+    }
+  }, [isInteractiveTool]);
+
+  useEffect(() => {
+    if (!isInteractiveTool) {
       return;
     }
 
@@ -419,7 +393,7 @@ export default function ContourOverlay({
     activeStructure,
     activeStructureSet,
     activeTool,
-    isContourEditTool,
+    isInteractiveTool,
     isMeasurementTool,
     measurementDraftPoints,
     measurements,

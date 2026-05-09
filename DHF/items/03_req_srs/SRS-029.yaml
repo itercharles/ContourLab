@@ -1,0 +1,13 @@
+id: SRS-029
+title: Software shall regenerate 3D structure geometry after contour and visibility changes
+content: |-
+  The 3D viewport shall rebuild structure geometry from the current contour data
+  for the active image series whenever a contour is committed, deleted, or when
+  visible structures change. The rebuild shall occur automatically after the
+  editing action completes and shall keep the 3D geometry aligned to the active
+  series origin, spacing, and orientation. When automatic rebuilding cannot
+  produce a valid surface, the UI shall retain the viewport and allow a manual
+  refresh operation without blocking the rest of the contour workspace.
+derives_from: [SYS-015]
+verification_method: [Test, Demonstration]
+critical_safety: true

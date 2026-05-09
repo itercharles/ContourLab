@@ -1,0 +1,19 @@
+id: CR-006
+title: add the support for 3D display
+type: CR
+description: |-
+  Add support for a 3D display in the clinical workspace.
+
+  The fourth workspace quadrant shall render a 3D view for the active image
+  series, including CT context and visible structures derived from the current
+  structure set. The 3D view shall update after contour edits and structure
+  visibility changes, and the change shall include automated test coverage and
+  DHF traceability updates.
+justification: The active clinical workspace currently reserves the fourth viewport
+  for 3D review but shows only a placeholder, limiting multi-planar contour review.
+priority: High
+requested_by: itercharles
+target_version: 2026-W19
+category: Feature
+content: ''
+status: completed

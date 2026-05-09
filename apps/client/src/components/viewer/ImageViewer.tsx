@@ -1,4 +1,4 @@
-import { Component, useEffect, useRef, useState } from 'react';
+import { Component, useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { MPRController, VIEWPORT_IDS } from '../../core/rendering/MPRController';
@@ -7,6 +7,7 @@ import { useUIStore } from '../../core/store/uiStore';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import ContourOverlay from './ContourOverlay';
 import ToolOptions from './ToolOptions';
+import ThreeDViewport from './ThreeDViewport';
 
 class ContourErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -103,17 +104,18 @@ export default function ImageViewer() {
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
   const windowLevelPreset = useUIStore((s) => s.windowLevelPreset);
+  const crosshairsEnabled = useUIStore((s) => s.crosshairsEnabled);
   const [viewportsReady, setViewportsReady] = useState(false);
 
   // Track whether we've set up the tool group yet
   const setupDone = useRef(false);
   const readyViewportIds = useRef(new Set<string>());
 
-  const pushDebugEvent = (message: string) => {
+  const pushDebugEvent = useCallback((message: string) => {
     logClientDebug('ImageViewer', message);
-  };
+  }, []);
 
-  const handleViewportReady = async (id: string, el: HTMLDivElement): Promise<boolean> => {
+  const handleViewportReady = useCallback(async (id: string, el: HTMLDivElement): Promise<boolean> => {
     try {
       await ViewportManager.init();
       const existingViewport = ViewportManager.getRenderingEngine()?.getViewport(id);
@@ -134,10 +136,10 @@ export default function ImageViewer() {
       console.error(`Failed to enable viewport ${id}:`, err);
       return false;
     }
-  };
+  }, [pushDebugEvent]);
 
   // After all three viewports are ready, set up tool group once
-  const onReady = async (id: string, el: HTMLDivElement) => {
+  const onReady = useCallback(async (id: string, el: HTMLDivElement) => {
     const ok = await handleViewportReady(id, el);
     if (!ok) return;
 
@@ -148,6 +150,9 @@ export default function ImageViewer() {
         // MPRController.setup requires a volumeId; pass empty string for initial setup
         // It will be re-called when a volume is loaded
         await MPRController.setup('');
+        if (crosshairsEnabled) {
+          await MPRController.enableCrosshairs();
+        }
         pushDebugEvent('toolgroup:setup');
         setViewportsReady(true);
       } catch (err) {
@@ -156,7 +161,7 @@ export default function ImageViewer() {
         console.error('MPRController setup failed:', err);
       }
     }
-  };
+  }, [handleViewportReady, pushDebugEvent]);
 
   // When active series changes, load volume into viewports
   useEffect(() => {
@@ -173,6 +178,9 @@ export default function ImageViewer() {
         pushDebugEvent(`volume:start ${volumeId}`);
         // Re-setup tool group with the actual volume id
         await MPRController.setup(volumeId);
+        if (crosshairsEnabled) {
+          await MPRController.enableCrosshairs();
+        }
         pushDebugEvent(`volume:toolgroup ${volumeId}`);
 
         await Promise.all([
@@ -192,7 +200,7 @@ export default function ImageViewer() {
     };
 
     void applyVolume();
-  }, [activeSeriesUID, loadedSeries, viewportsReady, windowLevelPreset]);
+  }, [activeSeriesUID, crosshairsEnabled, loadedSeries, viewportsReady, windowLevelPreset]);
 
   // ResizeObserver on the container
   useEffect(() => {
@@ -242,31 +250,7 @@ export default function ImageViewer() {
           onReady={onReady}
         />
 
-        {/* 4th quadrant: 3D placeholder */}
-        <div className="relative bg-black flex items-center justify-center overflow-hidden">
-          <div className="text-center">
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-[var(--color-text-dim)] mx-auto mb-2"
-            >
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-              <line x1="12" y1="22.08" x2="12" y2="12" />
-            </svg>
-            <p className="text-xs text-[var(--color-text-dim)] font-mono">3D View</p>
-            <p className="text-xs text-[var(--color-text-dim)] mt-1">Not yet implemented</p>
-          </div>
-          <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
-            3D
-          </span>
-        </div>
+        <ThreeDViewport />
       </div>
     </div>
   );
