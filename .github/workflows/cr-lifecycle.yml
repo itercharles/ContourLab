@@ -152,12 +152,7 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: main
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-      - name: Install medharness
-        run: pip install medharness==0.3.1
+      - uses: ./.github/actions/medharness-setup
 
       - name: Cancel CR
         run: |

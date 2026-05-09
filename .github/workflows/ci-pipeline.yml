@@ -4,7 +4,6 @@ run-name: Product CI/CD | ${{ github.event_name }} | ${{ github.event.pull_reque
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  MEDHARNESS_VERSION: '0.3.1'
 
 on:
   push:
@@ -163,14 +162,7 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install medharness
-        run: pip install medharness==${{ env.MEDHARNESS_VERSION }}
+      - uses: ./.github/actions/medharness-setup
 
       - name: Run DHF validation
         run: |
@@ -469,14 +461,7 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install medharness
-        run: pip install medharness==${{ env.MEDHARNESS_VERSION }}
+      - uses: ./.github/actions/medharness-setup
 
       - name: Download SRS test evidence (Vitest)
         uses: actions/download-artifact@v4
@@ -531,19 +516,14 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
       - name: Install system dependencies for PDF export
         run: |
           sudo apt-get update
           sudo apt-get install -y libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0
 
-      - name: Install medharness
-        run: pip install "medharness[docs]==${{ env.MEDHARNESS_VERSION }}"
+      - uses: ./.github/actions/medharness-setup
+        with:
+          extras: '[docs]'
 
       - name: Download SRS test evidence (Vitest)
         uses: actions/download-artifact@v4
