@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
@@ -46,23 +46,17 @@ export default function ThreeDViewport() {
     [activeStructureSet]
   );
 
-  const pushDebug = (message: string) => {
+  const pushDebug = useCallback((message: string) => {
     logClientDebug('ThreeDViewport', message);
-  };
+  }, []);
 
   const renderSignature = useMemo(() => {
     const structureSignature = visibleStructures
       .map((structure) => {
-        const firstContour = structure.contours[0];
-        const lastContour = structure.contours[structure.contours.length - 1];
-        return [
-          structure.id,
-          structure.contours.length,
-          firstContour?.slicePosition ?? 'none',
-          lastContour?.slicePosition ?? 'none',
-          firstContour?.points.length ?? 0,
-          lastContour?.points.length ?? 0,
-        ].join(':');
+        const contourSig = structure.contours
+          .map((c) => `${c.slicePosition}:${c.points.length}`)
+          .join(',');
+        return `${structure.id}:${contourSig}`;
       })
       .join('|');
 
@@ -202,14 +196,11 @@ export default function ThreeDViewport() {
         return;
       }
 
-      if (structureCount === 0) {
-        setStatus('No visible 3D structures yet.');
-        return;
-      }
-
-      const structureSummary =
-        structureCount === 0 ? 'No visible structures' : `${structureCount} visible structure${structureCount === 1 ? '' : 's'}`;
-      setStatus(structureSummary);
+      setStatus(
+        structureCount === 0
+          ? 'No visible 3D structures yet.'
+          : `${structureCount} visible structure${structureCount === 1 ? '' : 's'}`
+      );
     }, 0);
 
     return () => window.clearTimeout(handle);
@@ -294,7 +285,7 @@ export default function ThreeDViewport() {
             }
           }}
           disabled={renderError !== null}
-          className="rounded px-1.5 py-0.5 text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)]"
+          className="rounded px-1.5 py-0.5 text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           Reset
         </button>

@@ -314,12 +314,15 @@ function classifySlicePolygons(
   const sorted = [...polygons].sort((left, right) => right.area - left.area);
 
   return sorted.map((polygon, index) => {
-    const probePoint = polygon.polygon[0];
+    // Use centroid as probe point; vertex 0 may lie on a parent boundary,
+    // causing isPointInPolygon to return an undefined result.
+    const probeX = polygon.polygon.reduce((s, p) => s + p[0], 0) / polygon.polygon.length;
+    const probeY = polygon.polygon.reduce((s, p) => s + p[1], 0) / polygon.polygon.length;
     let depth = 0;
 
     for (let parentIndex = 0; parentIndex < index; parentIndex += 1) {
       const parent = sorted[parentIndex];
-      if (isPointInPolygon(probePoint[0], probePoint[1], parent.polygon)) {
+      if (isPointInPolygon(probeX, probeY, parent.polygon)) {
         depth += 1;
       }
     }
