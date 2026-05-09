@@ -22,84 +22,113 @@ const DEFAULT_DIRECTION: [number, number, number, number, number, number, number
   0, 1, 0,
   0, 0, 1,
 ];
+const SLOW_MASK_BUILD_MS = 40;
+const SLOW_DOWNSAMPLE_MS = 25;
 
 export function hasRenderableContours(structure: Structure): boolean {
   return structure.contours.some((contour) => contour.isClosed && contour.points.length >= 9);
 }
 
 export function buildStructureMaskVolume(structure: Structure, volume: Volume): MaskVolume | null {
-  const startedAt = performance.now();
+  const totalStart = performance.now();
   const pushDebug = (message: string) => {
     logClientDebug('ThreeDGeometry', `structure=${structure.id} ${message}`);
   };
   if (!hasRenderableContours(structure)) return null;
 
-  const bounds = computeStructureBounds(structure, volume);
-  if (!bounds) {
+  // Precompute world→voxel transform for all valid contours once (was computed twice before).
+  const precomputeStart = performance.now();
+  const validContours: Array<{ voxelPoints: Vec3[]; k: number }> = [];
+  for (const contour of structure.contours) {
+    if (!contour.isClosed || contour.points.length < 9) continue;
+    const voxelPoints = toContinuousVoxelPoints(contour.points, volume);
+    if (voxelPoints.length < 3) continue;
+    const avgK = voxelPoints.reduce((sum, p) => sum + p[2], 0) / voxelPoints.length;
+    validContours.push({ voxelPoints, k: avgK });
+  }
+  const precomputeMs = Math.round(performance.now() - precomputeStart);
+
+  if (validContours.length === 0) {
+    pushDebug('skip reason=no-valid-contours');
+    return null;
+  }
+
+  // Compute bounds from precomputed points (no redundant transform).
+  const [dimX, dimY, dimZ] = volume.dimensions;
+  let minI = Number.POSITIVE_INFINITY, maxI = Number.NEGATIVE_INFINITY;
+  let minJ = Number.POSITIVE_INFINITY, maxJ = Number.NEGATIVE_INFINITY;
+  let minK = Number.POSITIVE_INFINITY, maxK = Number.NEGATIVE_INFINITY;
+
+  for (const { voxelPoints } of validContours) {
+    for (const [i, j, k] of voxelPoints) {
+      if (i < minI) minI = i;
+      if (i > maxI) maxI = i;
+      if (j < minJ) minJ = j;
+      if (j > maxJ) maxJ = j;
+      if (k < minK) minK = k;
+      if (k > maxK) maxK = k;
+    }
+  }
+
+  if (!Number.isFinite(minI)) {
     pushDebug('skip reason=no-bounds');
     return null;
   }
 
-  const [minI, maxI, minJ, maxJ, minK, maxK] = bounds;
-  const width = maxI - minI + 1;
-  const height = maxJ - minJ + 1;
-  const depth = maxK - minK + 1;
+  const boundsMinI = clamp(Math.floor(minI) - 1, 0, dimX - 1);
+  const boundsMaxI = clamp(Math.ceil(maxI) + 1, 0, dimX - 1);
+  const boundsMinJ = clamp(Math.floor(minJ) - 1, 0, dimY - 1);
+  const boundsMaxJ = clamp(Math.ceil(maxJ) + 1, 0, dimY - 1);
+  const boundsMinK = clamp(Math.floor(minK) - 1, 0, dimZ - 1);
+  const boundsMaxK = clamp(Math.ceil(maxK) + 1, 0, dimZ - 1);
+
+  const width = boundsMaxI - boundsMinI + 1;
+  const height = boundsMaxJ - boundsMinJ + 1;
+  const depth = boundsMaxK - boundsMinK + 1;
   const scalars = new Uint8Array(width * height * depth);
 
+  // Group polygons by slice using the already-transformed voxel points.
   const slicePolygons = new Map<number, SlicePolygon[]>();
-  for (const contour of structure.contours) {
-    if (!contour.isClosed || contour.points.length < 9) continue;
-
-    const contourPoints = toContinuousVoxelPoints(contour.points, volume);
-    if (contourPoints.length < 3) continue;
-
-    const avgK =
-      contourPoints.reduce((sum, point) => sum + point[2], 0) / contourPoints.length;
-    const k = clamp(Math.round(avgK), minK, maxK);
-    const polygon = contourPoints.map(([i, j]) => [i - minI, j - minJ] as [number, number]);
+  for (const { voxelPoints, k: rawK } of validContours) {
+    const k = clamp(Math.round(rawK), boundsMinK, boundsMaxK);
+    const polygon = voxelPoints.map(([i, j]) => [i - boundsMinI, j - boundsMinJ] as [number, number]);
     const polyBounds = getPolygonBounds(polygon, width, height);
     if (!polyBounds) continue;
     const area = Math.abs(computeSignedPolygonArea(polygon));
     if (area < Number.EPSILON) continue;
 
-    const polygons = slicePolygons.get(k - minK) ?? [];
-    polygons.push({
-      polygon,
-      bounds: polyBounds,
-      area,
-    });
-    slicePolygons.set(k - minK, polygons);
+    const localK = k - boundsMinK;
+    const polygons = slicePolygons.get(localK) ?? [];
+    polygons.push({ polygon, bounds: polyBounds, area });
+    slicePolygons.set(localK, polygons);
   }
 
+  // Rasterize with scanline fill — O(height × edges + filled_pixels) per polygon,
+  // versus the previous O(width × height × edges) per-pixel point-in-polygon approach.
+  const rasterizeStart = performance.now();
   for (const [localK, polygons] of slicePolygons.entries()) {
     const classifiedPolygons = classifySlicePolygons(polygons);
     for (const slicePolygon of classifiedPolygons) {
-      const [startX, endX, startY, endY] = slicePolygon.bounds;
-      for (let y = startY; y <= endY; y += 1) {
-        for (let x = startX; x <= endX; x += 1) {
-          if (!isPointInPolygon(x + 0.5, y + 0.5, slicePolygon.polygon)) continue;
-          const offset = localK * width * height + y * width + x;
-          scalars[offset] = slicePolygon.fillValue;
-        }
-      }
+      scanlineFillPolygon(slicePolygon, localK, width, height, scalars);
     }
   }
+  const rasterizeMs = Math.round(performance.now() - rasterizeStart);
 
   const filledVoxelCount = scalars.reduce((count, value) => count + (value > 0 ? 1 : 0), 0);
 
   if (filledVoxelCount === 0) return null;
 
-  const elapsedMs = Math.round(performance.now() - startedAt);
-  if (elapsedMs >= 40) {
+  const totalMs = Math.round(performance.now() - totalStart);
+  if (totalMs >= SLOW_MASK_BUILD_MS) {
     pushDebug(
-      `mask slow ms=${elapsedMs} contours=${structure.contours.length} dims=${width}x${height}x${depth} filled=${filledVoxelCount}`
+      `mask slow ms=${totalMs} (precompute=${precomputeMs} rasterize=${rasterizeMs}) contours=${validContours.length} slices=${slicePolygons.size} dims=${width}x${height}x${depth} filled=${filledVoxelCount}`
     );
   }
 
   return {
     dimensions: [width, height, depth],
     spacing: volume.spacing,
-    origin: voxelToWorld([minI, minJ, minK], volume),
+    origin: voxelToWorld([boundsMinI, boundsMinJ, boundsMinK], volume),
     directionCosines: volume.directionCosines.length === 9 ? volume.directionCosines : DEFAULT_DIRECTION,
     scalars,
     filledVoxelCount,
@@ -117,6 +146,7 @@ export function downsampleVolume(volume: Volume, stride = 2): Volume {
     Math.max(1, Math.ceil(dimZ / safeStride)),
   ];
 
+  const startedAt = performance.now();
   const pixelData = volume.pixelData;
   const ScalarCtor = getScalarConstructor(pixelData);
   const downsampled = new ScalarCtor(nextDimensions[0] * nextDimensions[1] * nextDimensions[2]);
@@ -132,6 +162,14 @@ export function downsampleVolume(volume: Volume, stride = 2): Volume {
         downsampled[dstOffset] = pixelData[srcOffset];
       }
     }
+  }
+
+  const elapsedMs = Math.round(performance.now() - startedAt);
+  if (elapsedMs >= SLOW_DOWNSAMPLE_MS) {
+    logClientDebug(
+      'ThreeDGeometry',
+      `downsample slow ms=${elapsedMs} stride=${safeStride} src=${volume.dimensions.join('x')} dst=${nextDimensions.join('x')} scalars=${downsampled.length}`
+    );
   }
 
   return {
@@ -178,40 +216,42 @@ export function worldToContinuousVoxel(world: Vec3, volume: Pick<Volume, 'origin
   ];
 }
 
-function computeStructureBounds(structure: Structure, volume: Volume): [number, number, number, number, number, number] | null {
-  const [dimX, dimY, dimZ] = volume.dimensions;
-  let minI = Number.POSITIVE_INFINITY;
-  let maxI = Number.NEGATIVE_INFINITY;
-  let minJ = Number.POSITIVE_INFINITY;
-  let maxJ = Number.NEGATIVE_INFINITY;
-  let minK = Number.POSITIVE_INFINITY;
-  let maxK = Number.NEGATIVE_INFINITY;
+// Scanline polygon fill: O(height × edges + filled_pixels) per polygon.
+// xStart/xEnd derived so pixel centers (x+0.5, y+0.5) fall strictly inside the span.
+function scanlineFillPolygon(
+  classified: SlicePolygon & { fillValue: 0 | 1 },
+  localK: number,
+  width: number,
+  height: number,
+  scalars: Uint8Array
+): void {
+  const [startX, endX, startY, endY] = classified.bounds;
+  const { polygon, fillValue } = classified;
 
-  for (const contour of structure.contours) {
-    if (!contour.isClosed || contour.points.length < 9) continue;
-    const points = toContinuousVoxelPoints(contour.points, volume);
-    for (const [i, j, k] of points) {
-      minI = Math.min(minI, i);
-      maxI = Math.max(maxI, i);
-      minJ = Math.min(minJ, j);
-      maxJ = Math.max(maxJ, j);
-      minK = Math.min(minK, k);
-      maxK = Math.max(maxK, k);
+  for (let y = startY; y <= endY; y += 1) {
+    const scanY = y + 0.5;
+    const xCrossings: number[] = [];
+
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const [xi, yi] = polygon[i];
+      const [xj, yj] = polygon[j];
+      if ((yi > scanY) !== (yj > scanY)) {
+        xCrossings.push(((xj - xi) * (scanY - yi)) / ((yj - yi) || Number.EPSILON) + xi);
+      }
+    }
+
+    xCrossings.sort((a, b) => a - b);
+
+    for (let p = 0; p + 1 < xCrossings.length; p += 2) {
+      // Smallest x where pixel center x+0.5 > xCrossings[p].
+      const xStart = Math.max(startX, Math.round(xCrossings[p]));
+      // Largest x where pixel center x+0.5 < xCrossings[p+1].
+      const xEnd = Math.min(endX, Math.ceil(xCrossings[p + 1] - 0.5) - 1);
+      for (let x = xStart; x <= xEnd; x += 1) {
+        scalars[localK * width * height + y * width + x] = fillValue;
+      }
     }
   }
-
-  if (!Number.isFinite(minI) || !Number.isFinite(minJ) || !Number.isFinite(minK)) {
-    return null;
-  }
-
-  return [
-    clamp(Math.floor(minI) - 1, 0, dimX - 1),
-    clamp(Math.ceil(maxI) + 1, 0, dimX - 1),
-    clamp(Math.floor(minJ) - 1, 0, dimY - 1),
-    clamp(Math.ceil(maxJ) + 1, 0, dimY - 1),
-    clamp(Math.floor(minK) - 1, 0, dimZ - 1),
-    clamp(Math.ceil(maxK) + 1, 0, dimZ - 1),
-  ];
 }
 
 function toContinuousVoxelPoints(points: Float32Array, volume: Volume): Vec3[] {
