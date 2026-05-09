@@ -157,7 +157,7 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       - name: Install medharness
-        run: pip install medharness==0.3.2
+        run: pip install medharness==0.3.1
       - name: Cancel CR
         run: |
           CR_ID="${{ needs.detect.outputs.cr_id }}"
@@ -209,7 +209,7 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       - name: Install medharness
-        run: pip install medharness==0.3.2
+        run: pip install medharness==0.3.1
       - uses: actions/cache@v4
         with:
           path: ~/.npm
@@ -285,7 +285,7 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       - name: Install medharness
-        run: pip install medharness==0.3.2
+        run: pip install medharness==0.3.1
       - uses: actions/cache@v4
         with:
           path: ~/.npm
@@ -338,7 +338,7 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       - name: Install medharness
-        run: pip install medharness==0.3.2
+        run: pip install medharness==0.3.1
       - uses: actions/cache@v4
         with:
           path: ~/.npm
@@ -457,7 +457,7 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       - name: Install medharness
-        run: pip install medharness==0.3.2
+        run: pip install medharness==0.3.1
       - uses: actions/cache@v4
         with:
           path: ~/.npm
@@ -510,7 +510,7 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       - name: Install medharness
-        run: pip install medharness==0.3.2
+        run: pip install medharness==0.3.1
       - uses: actions/cache@v4
         with:
           path: ~/.npm
@@ -632,7 +632,7 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       - name: Install medharness
-        run: pip install medharness==0.3.2
+        run: pip install medharness==0.3.1
       - uses: actions/cache@v4
         with:
           path: ~/.npm
