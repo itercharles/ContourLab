@@ -1,0 +1,16 @@
+id: SYS-014
+title: System shall render a fourth 3D viewport for the active image set
+content: |-
+  The system shall dedicate the fourth workspace quadrant to a 3D viewport for
+  the active image set. The 3D viewport shall present CT-derived spatial
+  context together with the currently visible structures from the active
+  structure set and shall support rotate, pan, zoom, and camera reset
+  interactions without replacing the existing axial, sagittal, and coronal
+  viewports.
+category: Functional
+verification_method:
+  - Test
+  - Demonstration
+critical_safety: false
+satisfies:
+  - CRS-012

@@ -77,7 +77,7 @@ export const useUIStore = create<UIState>()(
     brushRadius: 10,
     rightSidebarOpen: true,
     leftSidebarOpen: false,
-    crosshairsEnabled: true,
+    crosshairsEnabled: false,
     activeViewport: null,
     activeStructureOperationPanel: null,
     theme: initTheme(),

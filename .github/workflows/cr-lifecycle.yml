@@ -395,7 +395,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add DHF/
+          git add DHF/ docs/cr-specs/
           if ! git diff --staged --quiet; then
             git commit -m "feat: design $CR_ID"
             git push
@@ -540,10 +540,8 @@ jobs:
           COMMITTED=false
           if ! git diff --staged --quiet; then
             git commit -m "feat: implement $CR_ID"
-            git push
             COMMITTED=true
           fi
-          echo "COMMITTED=$COMMITTED" >> "$GITHUB_ENV"
           git fetch origin main --depth 1
           CODE_EXISTS=$(git diff origin/main -- . \
             ':(exclude)DHF/' ':(exclude)docs/cr-specs/' \
@@ -553,7 +551,17 @@ jobs:
               --body "⚠️ Implementation produced no code changes for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: design) and check Claude logs."
             exit 1
           fi
-      - name: Wait for CI to pass
+          if [ "$COMMITTED" = "true" ]; then
+            # Advance label BEFORE pushing so the PR-triggered CI run sees cr:stage/code
+            # and the stage-gate allows dev tests (lint · typecheck · build) to run.
+            gh pr edit "$PR_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code"
+            gh pr ready "$PR_NUMBER"
+            ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
+            [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" \
+              --remove-label "cr:stage/design" --add-label "cr:stage/code" 2>/dev/null || true
+          fi
+          echo "COMMITTED=$COMMITTED" >> "$GITHUB_ENV"
+      - name: Push and wait for CI
         if: env.COMMITTED == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -561,36 +569,47 @@ jobs:
           BRANCH: ${{ needs.detect.outputs.branch }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
-          gh workflow run ci-pipeline.yml \
-            --repo "${{ github.repository }}" \
-            --ref "$BRANCH"
-          sleep 8
-          RUN_ID=$(gh run list \
+          LAST_RUN_ID=$(gh run list \
             --repo "${{ github.repository }}" \
             --workflow ci-pipeline.yml \
             --branch "$BRANCH" \
-            --event workflow_dispatch \
+            --event pull_request \
             --limit 1 \
             --json databaseId \
-            --jq '.[0].databaseId')
+            --jq '.[0].databaseId' 2>/dev/null || echo "")
+          git push
+          RUN_ID=""
+          for i in $(seq 1 18); do
+            CANDIDATE=$(gh run list \
+              --repo "${{ github.repository }}" \
+              --workflow ci-pipeline.yml \
+              --branch "$BRANCH" \
+              --event pull_request \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId' 2>/dev/null || echo "")
+            if [ -n "$CANDIDATE" ] && [ "$CANDIDATE" != "$LAST_RUN_ID" ]; then
+              RUN_ID="$CANDIDATE"
+              break
+            fi
+            echo "Waiting for CI run to appear... ($i/18)"
+            sleep 10
+          done
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::Timed out waiting for CI run on branch $BRANCH"
+            gh pr comment "$PR_NUMBER" \
+              --body "⚠️ Timed out waiting for CI pipeline to start for $CR_ID. Check Actions → ci-pipeline.yml on branch \`$BRANCH\`."
+            exit 1
+          fi
           echo "Watching CI run $RUN_ID..."
           if ! gh run watch "$RUN_ID" \
             --repo "${{ github.repository }}" \
             --exit-status; then
             RUN_URL="https://github.com/${{ github.repository }}/actions/runs/$RUN_ID"
             gh pr comment "$PR_NUMBER" \
-              --body "⚠️ CI pipeline failed for $CR_ID — stage not advanced. See [CI run]($RUN_URL) for details. Fix the failures and re-trigger via workflow_dispatch (stage: design)."
+              --body "⚠️ CI pipeline failed for $CR_ID. See [CI run]($RUN_URL) for details. Fix failures and re-trigger via workflow_dispatch (stage: design)."
             exit 1
           fi
-      - name: Advance to code review
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          gh pr edit "$PR_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code"
-          gh pr ready "$PR_NUMBER"
-          ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
-          [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code" 2>/dev/null || true
 
   # ── CODE: REVISE ──────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
-FROM node:20-bookworm-slim AS build
+FROM node:22-bookworm-slim AS build
 WORKDIR /app
 
-RUN corepack enable
+RUN npm install -g pnpm@9 --ignore-scripts
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/client/package.json apps/client/
 COPY packages/shared-types/package.json packages/shared-types/
