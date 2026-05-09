@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { version } from '../../package.json';
 import {
@@ -7,6 +7,7 @@ import {
   resetDicomWebBaseUrl,
   setDicomWebBaseUrl,
   uploadDicomWebStudies,
+  type DicomUploadProgress,
 } from '../core/dicom/dicomWebClient';
 import {
   QA_RULE_DEFINITIONS,
@@ -22,6 +23,23 @@ interface SettingsStatus {
   message: string;
 }
 
+function formatImportBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value < 10 && unit > 0 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
+}
+
+function formatImportPercent(progress: DicomUploadProgress): number {
+  if (progress.total <= 0) return 0;
+  return Math.min(100, Math.round((progress.loaded / progress.total) * 100));
+}
+
 const ABOUT_DETAILS = [
   { label: 'Version', value: version },
   { label: 'Current scope', value: 'Contour review and RTSTRUCT round-trip' },
@@ -35,6 +53,16 @@ export default function Settings() {
   const [qaRuleConfig, setQaRuleConfig] = useState<QaRuleConfig>(getQaRuleConfig());
   const [status, setStatus] = useState<SettingsStatus | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<DicomUploadProgress | null>(null);
+  const [importSuccess, setImportSuccess] = useState<{ fileCount: number } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const importSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (importSuccessTimerRef.current) clearTimeout(importSuccessTimerRef.current);
+    };
+  }, []);
 
   const onSaveEndpoint = () => {
     try {
@@ -60,25 +88,31 @@ export default function Settings() {
     event.target.value = '';
     if (files.length === 0) return;
 
+    if (importSuccessTimerRef.current) {
+      clearTimeout(importSuccessTimerRef.current);
+      importSuccessTimerRef.current = null;
+    }
     setIsImporting(true);
-    setStatus({
-      tone: 'muted',
-      message: `Importing ${files.length} DICOM file${files.length === 1 ? '' : 's'} into ${getDicomWebBaseUrl()}...`,
-    });
+    setImportError(null);
+    setImportSuccess(null);
+    setImportProgress({ loaded: 0, total: 0, fileCount: files.length });
+    setStatus(null);
 
     try {
-      await uploadDicomWebStudies(files);
+      await uploadDicomWebStudies(files, (progress) => setImportProgress(progress));
+      setImportSuccess({ fileCount: files.length });
+      importSuccessTimerRef.current = setTimeout(() => setImportSuccess(null), 3000);
       setStatus({
         tone: 'muted',
         message: `Imported ${files.length} DICOM file${files.length === 1 ? '' : 's'} into the configured repository.`,
       });
     } catch (error) {
-      setStatus({
-        tone: 'error',
-        message: error instanceof Error ? error.message : 'Failed to import DICOM files.',
-      });
+      const message = error instanceof Error ? error.message : 'Failed to import DICOM files.';
+      setImportError(message);
+      setStatus({ tone: 'error', message });
     } finally {
       setIsImporting(false);
+      setImportProgress(null);
     }
   };
 
@@ -207,7 +241,7 @@ export default function Settings() {
               Import local DICOM files into the configured repository for development and review workflows.
             </p>
           </div>
-          <div className="px-3 py-3">
+          <div className="space-y-2 px-3 py-3">
             <label className="inline-flex h-8 cursor-pointer items-center rounded bg-[var(--color-elevated)] px-3 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-hover)]">
               {isImporting ? 'Importing...' : 'Import DICOM Files'}
               <input
@@ -219,6 +253,39 @@ export default function Settings() {
                 disabled={isImporting}
               />
             </label>
+            {(importProgress || importSuccess || importError) && (
+              <div
+                role="status"
+                aria-live="polite"
+                data-testid="dicom-import-status"
+                className="flex items-center gap-3"
+              >
+                {importProgress ? (
+                  <>
+                    <span className="text-[11px] text-[var(--color-text-sec)]">
+                      Importing {importProgress.fileCount} file{importProgress.fileCount === 1 ? '' : 's'}…
+                      {' '}
+                      {formatImportBytes(importProgress.loaded)} / {formatImportBytes(importProgress.total)}
+                    </span>
+                    <div className="h-1 min-w-0 max-w-[280px] flex-1 rounded-full bg-[var(--color-border)]">
+                      <div
+                        className="h-1 rounded-full bg-blue-500 transition-all duration-100"
+                        style={{ width: `${formatImportPercent(importProgress)}%` }}
+                      />
+                    </div>
+                    <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
+                      {formatImportPercent(importProgress)}%
+                    </span>
+                  </>
+                ) : importSuccess ? (
+                  <span className="text-[11px] text-green-400">
+                    ✓ Imported {importSuccess.fileCount} file{importSuccess.fileCount === 1 ? '' : 's'} into the configured repository
+                  </span>
+                ) : importError ? (
+                  <span className="text-[11px] text-red-400">{importError}</span>
+                ) : null}
+              </div>
+            )}
           </div>
         </section>
 

@@ -362,8 +362,59 @@ describe('DicomRepoPanel', () => {
       target: { files: [file] },
     });
 
-    await waitFor(() => expect(mocks.uploadDicomWebStudies).toHaveBeenCalledWith([file]));
+    await waitFor(() => expect(mocks.uploadDicomWebStudies).toHaveBeenCalled());
+    expect(mocks.uploadDicomWebStudies.mock.calls[0][0]).toEqual([file]);
     await waitFor(() => expect(mocks.queryDicomWebSeries).toHaveBeenCalledTimes(2));
+  });
+
+  it('shows progress while importing and a success message when the upload finishes', async () => {
+    let progressCallback: ((p: { loaded: number; total: number; fileCount: number }) => void) | undefined;
+    let resolveUpload: (() => void) | undefined;
+    mocks.uploadDicomWebStudies.mockImplementation((_files, onProgress) => {
+      progressCallback = onProgress;
+      return new Promise<void>((resolve) => { resolveUpload = resolve; });
+    });
+
+    render(<DicomRepoPanel />);
+    await screen.findByText('Image Sets');
+    act(() => {
+      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+    });
+    await screen.findByText('Patient browser');
+
+    const file = new File(['dicom'], 'ct-1.dcm', { type: 'application/dicom' });
+    fireEvent.change(screen.getByLabelText('Import DICOM files'), { target: { files: [file] } });
+
+    await waitFor(() => expect(progressCallback).toBeDefined());
+    act(() => { progressCallback!({ loaded: 1024, total: 4096, fileCount: 1 }); });
+
+    const status = await screen.findByTestId('dicom-import-status');
+    expect(status.textContent).toContain('Importing 1 file');
+    expect(status.textContent).toContain('25%');
+
+    act(() => { resolveUpload!(); });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dicom-import-status').textContent).toContain('✓ Imported 1 file');
+    });
+  });
+
+  it('shows an error message when the import fails', async () => {
+    mocks.uploadDicomWebStudies.mockRejectedValueOnce(new Error('Boom: 503'));
+
+    render(<DicomRepoPanel />);
+    await screen.findByText('Image Sets');
+    act(() => {
+      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+    });
+    await screen.findByText('Patient browser');
+
+    const file = new File(['dicom'], 'ct-1.dcm', { type: 'application/dicom' });
+    fireEvent.change(screen.getByLabelText('Import DICOM files'), { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dicom-import-status').textContent).toContain('Boom: 503');
+    });
   });
 
   it('closes the patient browser with the close command and Escape', async () => {
