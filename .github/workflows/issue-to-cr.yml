@@ -91,7 +91,7 @@ jobs:
             echo "**Stage 1 of 4 — CR Review**"
             echo "Review the CR definition in \`DHF/items/09_cr/$CR_ID.yaml\`, then approve to trigger AI spec generation."
           } > /tmp/pr-body.md
-          PR_URL=$(gh pr view "$BRANCH" --json url,state -q 'select(.state=="OPEN") | .url' 2>/dev/null)
+          PR_URL=$(gh pr view "$BRANCH" --json url,state -q 'select(.state=="OPEN") | .url' 2>/dev/null || true)
           if [ -z "$PR_URL" ]; then
             PR_URL=$(gh pr create \
               --head "$BRANCH" \
