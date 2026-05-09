@@ -116,21 +116,25 @@ No `.env` file is required — all defaults work out of the box.
 The Orthanc repository ships with **no authentication** (open for local
 development). Its web UI at `http://127.0.0.1:8042` requires no login.
 
-To load DICOM data for development, import it through the WebTPS UI:
+DICOM file import is delegated to **Orthanc Explorer 2** — clicking **Import
+DICOM** in WebTPS opens the Orthanc UI in a new tab. To load test data:
 
 1. Open `http://127.0.0.1:3000/workspace`.
-2. Click the **patient folder icon** in the left toolbar (or press the Navigator
-   button) to open the Repository panel.
-3. Click **"Open patient browser"** at the top of the panel, then click
-   **"+ Import DICOM"** in the modal header.
-4. Select a folder of `.dcm` files — the browser will recurse into
-   subdirectories automatically.
-5. After import completes, click **Refresh** (or wait for the auto-poll) and
-   the new studies appear in the patient list.
+2. Click the **patient folder icon** in the left toolbar to open the Repository
+   panel, then click **"Open patient browser"**.
+3. Click **"+ Import DICOM"** in the modal header. A new tab opens at
+   Orthanc Explorer 2 (`http://<host>:8042/ui/app/index.html`). The exact host
+   is derived from the configured DICOMweb endpoint, so it works for local
+   (`localhost:8042`) and LAN (`<host-lan-ip>:8042`) setups without changing
+   any code.
+4. In the Orthanc tab, drag a folder of `.dcm` files onto the upload area
+   (Orthanc handles RTSTRUCT, RTPLAN, and RTDOSE alongside CT/MR slices).
+5. Return to the WebTPS tab — the worklist auto-refreshes when the tab regains
+   focus, and the new studies appear in the patient list.
 
-Alternatively, import via **Settings → Import DICOM Data** (useful for bulk
-initial loads). DICOM data persists in a named Docker volume across restarts;
-run `pnpm repo:down && docker volume rm webtps_orthanc-db` to wipe it.
+The same redirect button is also available from **Settings → Import DICOM
+Data**. DICOM data persists in a named Docker volume across restarts; run
+`pnpm repo:down && docker volume rm webtps_orthanc-db` to wipe it.
 
 Sample DICOM datasets for testing are available from:
 - [TCIA (The Cancer Imaging Archive)](https://www.cancerimagingarchive.net/) —

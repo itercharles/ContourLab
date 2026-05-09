@@ -149,11 +149,14 @@ content: |-
   progress/Awaiting review/Approved filter tabs, patient/MRN/treatment
   site/study/status/assignee/last-activity columns, active-patient indication,
   click-outside close, an explicit close control, Escape-key dismissal, and an
-  enabled Import DICOM action. The import action opens a hidden multi-file /
-  directory file input, sends the selected files through
-  dicomWebClient.uploadDicomWebStudies(), reports import progress or failure in
-  repository status, and refreshes the worklist after successful repository
-  upload.
+  Import DICOM action. The Import DICOM action opens the configured Orthanc
+  Explorer UI in a new browser tab via window.open(getOrthancUiUrl(),
+  '_blank', 'noopener,noreferrer'). dicomWebClient.getOrthancUiUrl() derives
+  the URL from the existing DICOMweb endpoint configuration (or an explicit
+  VITE_ORTHANC_UI_URL override) by swapping to port 8042 and path
+  /ui/app/index.html. DicomRepoPanel re-runs its silent worklist refresh on
+  the window focus event so the worklist updates as soon as the user returns
+  from the Orthanc tab.
   Selecting a patient in the browser is a workflow-open action: DicomRepoPanel
   resolves the newest planning CT series by study date, queries RTSTRUCT objects
   for the patient's studies, selects the newest RTSTRUCT that references that
@@ -223,7 +226,8 @@ content: |-
   routine contour review. It reads the default DICOMweb endpoint from
   VITE_DICOMWEB_BASE_URL or /dicom-web, allows a browser-local override through
   dicomWebClient.setDicomWebBaseUrl(), supports reset to the default endpoint,
-  and imports local DICOM files through uploadDicomWebStudies(). Settings also
+  and exposes an Import DICOM Files action that opens the configured Orthanc
+  Explorer UI in a new tab via dicomWebClient.getOrthancUiUrl(). Settings also
   exposes browser-local QA rule configuration backed by qaRuleConfig so each
   contour QA and RTSS QA rule can be enabled or disabled individually without
   changing shared repository data. StructurePanel reads this configuration at
@@ -231,8 +235,10 @@ content: |-
   rtssQuality analysis. Local
   development Orthanc endpoints at localhost:8042/dicom-web are normalized to
   the same-origin /dicom-web proxy so browser CORS restrictions do not block
-  QIDO-RS, WADO-RS, or STOW-RS calls. All DICOMweb query, retrieve, load,
-  import, and RTSTRUCT push calls resolve the endpoint at request time through
+  QIDO-RS, WADO-RS, or STOW-RS calls. All DICOMweb query, retrieve, load, and
+  RTSTRUCT push calls resolve the endpoint at request time through
   getDicomWebBaseUrl(), so changing Settings affects later repository
-  operations without rebuilding the client.
+  operations without rebuilding the client. Local file import is delegated to
+  the Orthanc Explorer UI; the redirect URL is derived from the same DICOMweb
+  endpoint configuration via getOrthancUiUrl().
 implements: [SRS-009, SRS-010, SRS-013, SRS-015]
