@@ -1,3 +1,9 @@
+// Register vtk.js surface-rendering profile so the render pipeline's pass
+// classes are wired up. Without this, Vite tree-shakes the side-effect
+// registration in production builds and `interactor.initialize()` fails
+// with "Cannot read properties of undefined (reading 'traverse')" the
+// first time a render pass is traversed.
+import '@kitware/vtk.js/Rendering/Profiles/Geometry';
 import vtkActor from '@kitware/vtk.js/Rendering/Core/Actor';
 import vtkAxesActor from '@kitware/vtk.js/Rendering/Core/AxesActor';
 import vtkDataArray from '@kitware/vtk.js/Common/Core/DataArray';
