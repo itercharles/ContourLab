@@ -4,6 +4,7 @@ import type { StructureSet } from '@webtps/shared-types';
 import ThreeDViewport from './ThreeDViewport';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
+import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
 
 const mocks = vi.hoisted(() => ({
   renderSnapshot: vi.fn((snapshot) => ({
@@ -103,6 +104,11 @@ function makeStructureSet(): StructureSet {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal('ResizeObserver', ResizeObserverMock);
+  document.body.innerHTML = `
+    <div data-viewport-id="${VIEWPORT_IDS.AXIAL}"></div>
+    <div data-viewport-id="${VIEWPORT_IDS.SAGITTAL}"></div>
+    <div data-viewport-id="${VIEWPORT_IDS.CORONAL}"></div>
+  `;
   useVolumeStore.setState({
     loadedSeries: [makeLoadedSeries()],
     activeSeriesUID: 'series-1',
@@ -157,6 +163,36 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
 
     await waitFor(() => {
       expect(mocks.renderSnapshot.mock.calls.length).toBeGreaterThan(callsBefore);
+    });
+  });
+
+  it('re-renders CT when streamed voxels arrive after the initial mount', async () => {
+    useVolumeStore.setState({
+      loadedSeries: [makeLoadedSeries(new Float32Array(0))],
+      activeSeriesUID: 'series-1',
+      isLoading: false,
+      loadError: null,
+    });
+
+    render(<ThreeDViewport />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/CT streaming/i)).toBeTruthy();
+    });
+
+    const callsBefore = mocks.renderSnapshot.mock.calls.length;
+    const nextPixelData = new Float32Array([0, 150, 300, 600]);
+    const series = useVolumeStore.getState().loadedSeries[0];
+    series.volume.pixelData = nextPixelData;
+
+    fireEvent(
+      document.querySelector(`[data-viewport-id="${VIEWPORT_IDS.AXIAL}"]`) as Element,
+      new Event('CORNERSTONE_IMAGE_RENDERED')
+    );
+
+    await waitFor(() => {
+      expect(mocks.renderSnapshot.mock.calls.length).toBeGreaterThan(callsBefore);
+      expect(screen.getByText(/CT surface ready/i)).toBeTruthy();
     });
   });
 

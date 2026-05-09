@@ -3,6 +3,13 @@ import { logClientDebug } from '../../core/debug/clientDebugLog';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { createThreeDScene, type ThreeDScene } from '../../core/rendering/threeDScene';
+import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
+
+const CT_PRESETS = [
+  { key: 'soft', label: 'Soft CT', thresholdHu: 80, opacity: 0.24 },
+  { key: 'body', label: 'Body CT', thresholdHu: 120, opacity: 0.3 },
+  { key: 'bone', label: 'Bone CT', thresholdHu: 250, opacity: 0.42 },
+] as const;
 
 function OverlayLabel({ children, className = '' }: { children: string; className?: string }) {
   return (
@@ -19,8 +26,12 @@ export default function ThreeDViewport() {
   const sceneRef = useRef<ThreeDScene | null>(null);
   const renderAttemptRef = useRef(0);
   const lastRenderSignatureRef = useRef<string | null>(null);
+  const lastObservedScalarLengthRef = useRef(0);
   const [showCtSurface, setShowCtSurface] = useState(true);
+  const [ctPresetKey, setCtPresetKey] = useState<(typeof CT_PRESETS)[number]['key']>('body');
   const [refreshRevision, setRefreshRevision] = useState(0);
+  const [streamingScalarLength, setStreamingScalarLength] = useState(0);
+  const [ctRevision, setCtRevision] = useState(0);
   const [status, setStatus] = useState('Load a series to view 3D anatomy.');
   const [renderError, setRenderError] = useState<string | null>(null);
   const activeSeriesUID = useVolumeStore((state) => state.activeSeriesUID);
@@ -51,7 +62,46 @@ export default function ThreeDViewport() {
     logClientDebug('ThreeDViewport', message);
   };
 
-  const scalarLength = activeSeries?.volume.pixelData.length ?? 0;
+  const ctPreset = CT_PRESETS.find((preset) => preset.key === ctPresetKey) ?? CT_PRESETS[1];
+
+  useEffect(() => {
+    const nextScalarLength = activeSeries?.volume.pixelData.length ?? 0;
+    lastObservedScalarLengthRef.current = nextScalarLength;
+    setStreamingScalarLength(nextScalarLength);
+    setCtRevision(0);
+  }, [activeSeriesUID, activeSeries]);
+
+  useEffect(() => {
+    const viewportElements = [
+      document.querySelector(`[data-viewport-id="${VIEWPORT_IDS.AXIAL}"]`),
+      document.querySelector(`[data-viewport-id="${VIEWPORT_IDS.SAGITTAL}"]`),
+      document.querySelector(`[data-viewport-id="${VIEWPORT_IDS.CORONAL}"]`),
+    ].filter((element): element is HTMLDivElement => element instanceof HTMLDivElement);
+
+    if (viewportElements.length === 0 || !activeSeries) return;
+
+    const syncStreamingScalarLength = () => {
+      const nextScalarLength = activeSeries.volume.pixelData.length;
+      const scalarLengthChanged = nextScalarLength !== lastObservedScalarLengthRef.current;
+      lastObservedScalarLengthRef.current = nextScalarLength;
+      if (scalarLengthChanged) {
+        pushDebug(`stream update scalars=${nextScalarLength}`);
+        setStreamingScalarLength(nextScalarLength);
+      }
+      setCtRevision((value) => value + 1);
+    };
+
+    viewportElements.forEach((element) => {
+      element.addEventListener('CORNERSTONE_IMAGE_RENDERED', syncStreamingScalarLength);
+    });
+
+    return () => {
+      viewportElements.forEach((element) => {
+        element.removeEventListener('CORNERSTONE_IMAGE_RENDERED', syncStreamingScalarLength);
+      });
+    };
+  }, [activeSeries]);
+
   const renderSignature = useMemo(() => {
     const structureSignature = visibleStructures
       .map((structure) => {
@@ -70,13 +120,24 @@ export default function ThreeDViewport() {
 
     return [
       activeSeries?.seriesUID ?? 'none',
-      scalarLength,
+      streamingScalarLength,
+      ctRevision,
       showCtSurface ? 'ct-on' : 'ct-off',
+      ctPreset.key,
       activeStructureSet?.id ?? 'no-structure-set',
       structureSignature,
       refreshRevision,
     ].join('::');
-  }, [activeSeries?.seriesUID, activeStructureSet?.id, refreshRevision, scalarLength, showCtSurface, visibleStructures]);
+  }, [
+    activeSeries?.seriesUID,
+    activeStructureSet?.id,
+    ctPreset.key,
+    refreshRevision,
+    showCtSurface,
+    streamingScalarLength,
+    ctRevision,
+    visibleStructures,
+  ]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -139,9 +200,9 @@ export default function ThreeDViewport() {
     }
 
     pushDebug(
-      `series active uid=${activeSeries.seriesUID} dims=${activeSeries.volume.dimensions.join('x')} scalars=${scalarLength}`
+      `series active uid=${activeSeries.seriesUID} dims=${activeSeries.volume.dimensions.join('x')} scalars=${streamingScalarLength}`
     );
-  }, [activeSeries, scalarLength]);
+  }, [activeSeries, streamingScalarLength]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -151,68 +212,82 @@ export default function ThreeDViewport() {
       return;
     }
 
-    const snapshot = {
-      volume: activeSeries?.volume ?? null,
-      showCtSurface,
-      structures: visibleStructures.map((structure) => ({ structure })),
-    };
-
-    const attempt = ++renderAttemptRef.current;
     const contourCount = visibleStructures.reduce(
       (total, structure) => total + structure.contours.length,
       0
     );
-    const startedAt = performance.now();
+    pushDebug(
+      `render queued series=${activeSeries?.seriesUID ?? 'none'} structures=${visibleStructures.length} contours=${contourCount} scalars=${streamingScalarLength}`
+    );
 
-    const renderResult = (() => {
-      try {
-        return scene.renderSnapshot(snapshot);
-      } catch (error) {
-        console.error('3D viewport render failed', error);
-        pushDebug(
-          `render error #${attempt} after=${Math.round(performance.now() - startedAt)}ms ${error instanceof Error ? error.message : String(error)}`
-        );
-        setRenderError('3D rendering unavailable for this series.');
-        setStatus('3D rendering unavailable for this series.');
-        return null;
-      }
-    })();
-    if (!renderResult) {
-      return;
-    }
-    lastRenderSignatureRef.current = renderSignature;
-    const elapsedMs = Math.round(performance.now() - startedAt);
-    if (elapsedMs >= 80) {
+    // Defer the render via setTimeout so React can commit and the browser can paint
+    // before the heavy marching-cubes / mask-building work starts on the main thread.
+    const attempt = ++renderAttemptRef.current;
+    const handle = window.setTimeout(() => {
+      const snapshot = {
+        volume: activeSeries?.volume ?? null,
+        showCtSurface,
+        ctIsoThresholdHu: ctPreset.thresholdHu,
+        ctOpacity: ctPreset.opacity,
+        ctRevision,
+        structures: visibleStructures.map((structure) => ({ structure })),
+      };
+
+      const renderStart = performance.now();
+      const renderResult = (() => {
+        try {
+          return scene.renderSnapshot(snapshot);
+        } catch (error) {
+          console.error('3D viewport render failed', error);
+          pushDebug(
+            `render error #${attempt} ms=${Math.round(performance.now() - renderStart)} ${error instanceof Error ? error.message : String(error)}`
+          );
+          setRenderError('3D rendering unavailable for this series.');
+          setStatus('3D rendering unavailable for this series.');
+          return null;
+        }
+      })();
+
+      if (!renderResult) return;
+
+      lastRenderSignatureRef.current = renderSignature;
+      const elapsedMs = Math.round(performance.now() - renderStart);
       pushDebug(
-        `render slow #${attempt} ms=${elapsedMs} series=${activeSeries?.seriesUID ?? 'none'} visibleStructures=${visibleStructures.length} contours=${contourCount} ctReady=${renderResult.ctReady} structureCount=${renderResult.structureCount}`
+        `render done #${attempt} ms=${elapsedMs} ctReady=${renderResult.ctReady} structureCount=${renderResult.structureCount}`
       );
-    }
-    if (renderError) {
+
+      // Clear any stale error now that a render has succeeded.
       setRenderError(null);
-    }
 
-    const { ctReady, structureCount } = renderResult;
+      const { ctReady, structureCount } = renderResult;
 
-    if (!activeSeries) {
-      setStatus('Load a series to view 3D anatomy.');
-      return;
-    }
+      if (!activeSeries) {
+        setStatus('Load a series to view 3D anatomy.');
+        return;
+      }
 
-    if (scalarLength === 0 && structureCount === 0) {
-      setStatus('CT voxels are still streaming. 3D will populate automatically.');
-      return;
-    }
+      if (streamingScalarLength === 0 && structureCount === 0) {
+        setStatus('CT voxels are still streaming. 3D will populate automatically.');
+        return;
+      }
 
-    if (structureCount === 0 && !ctReady) {
-      setStatus('No visible 3D structures yet.');
-      return;
-    }
+      if (structureCount === 0 && !ctReady) {
+        setStatus('No visible 3D structures yet.');
+        return;
+      }
 
-    const ctSummary = showCtSurface ? (ctReady ? 'CT surface ready' : 'CT streaming') : 'CT hidden';
-    const structureSummary =
-      structureCount === 0 ? 'No visible structures' : `${structureCount} visible structure${structureCount === 1 ? '' : 's'}`;
-    setStatus(`${ctSummary} · ${structureSummary}`);
-  }, [activeSeries, refreshRevision, renderError, renderSignature, scalarLength, showCtSurface, visibleStructures]);
+      const ctSummary = showCtSurface
+        ? ctReady
+          ? `CT surface ready (${ctPreset.label})`
+          : 'CT streaming'
+        : 'CT hidden';
+      const structureSummary =
+        structureCount === 0 ? 'No visible structures' : `${structureCount} visible structure${structureCount === 1 ? '' : 's'}`;
+      setStatus(`${ctSummary} · ${structureSummary}`);
+    }, 0);
+
+    return () => window.clearTimeout(handle);
+  }, [activeSeries, ctPreset, ctRevision, refreshRevision, renderSignature, showCtSurface, streamingScalarLength, visibleStructures]);
 
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-black">
@@ -283,6 +358,22 @@ export default function ThreeDViewport() {
           } disabled:cursor-not-allowed disabled:opacity-50`}
         >
           {showCtSurface ? 'Hide CT' : 'Show CT'}
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setCtPresetKey((value) => {
+              const currentIndex = CT_PRESETS.findIndex((preset) => preset.key === value);
+              const nextPreset = CT_PRESETS[(currentIndex + 1) % CT_PRESETS.length];
+              pushDebug(`ct preset ${nextPreset.key} threshold=${nextPreset.thresholdHu} opacity=${nextPreset.opacity}`);
+              return nextPreset.key;
+            })
+          }
+          disabled={renderError !== null || !showCtSurface}
+          className="rounded px-1.5 py-0.5 text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Cycle CT preset"
+        >
+          {ctPreset.label}
         </button>
         <button
           type="button"

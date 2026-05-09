@@ -24,6 +24,9 @@ export interface ThreeDStructureLayer {
 export interface ThreeDSceneSnapshot {
   volume: Volume | null;
   showCtSurface: boolean;
+  ctIsoThresholdHu?: number;
+  ctOpacity?: number;
+  ctRevision?: number;
   structures: ThreeDStructureLayer[];
 }
 
@@ -35,7 +38,8 @@ export interface ThreeDScene {
   destroy: () => void;
 }
 
-const CT_ISO_THRESHOLD_HU = 250;
+const DEFAULT_CT_ISO_THRESHOLD_HU = 120;
+const DEFAULT_CT_OPACITY = 0.3;
 const CT_DOWNSAMPLE_STRIDE = 2;
 let nextSceneId = 1;
 interface ScenePropHandle {
@@ -70,7 +74,7 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   interactor.setInteractorStyle(interactorStyle);
   renderer.addActor(axesActor);
   renderer.getActiveCamera().setParallelProjection(false);
-  resizeScene(container, openGLRenderWindow, renderWindow);
+  setSizeFromContainer(container, openGLRenderWindow);
   pushDebug('create');
   let mountedProps: ScenePropHandle[] = [];
   let hasFramedContent = false;
@@ -100,11 +104,22 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
 
       let ctReady = false;
       if (snapshot.volume && snapshot.showCtSurface && snapshot.volume.pixelData.length > 0) {
-        const ctKey = buildCtCacheKey(snapshot.volume);
+        const ctKey = buildCtCacheKey(
+          snapshot.volume,
+          snapshot.ctIsoThresholdHu ?? DEFAULT_CT_ISO_THRESHOLD_HU,
+          snapshot.ctOpacity ?? DEFAULT_CT_OPACITY,
+          snapshot.ctRevision ?? 0
+        );
         let ctProp = cachedCtProp;
         if (!ctProp || ctProp.key !== ctKey) {
           disposeCachedProp(cachedCtProp);
-          ctProp = createCtActor(snapshot.volume, pushDebug, ctKey);
+          ctProp = createCtActor(
+            snapshot.volume,
+            pushDebug,
+            ctKey,
+            snapshot.ctIsoThresholdHu ?? DEFAULT_CT_ISO_THRESHOLD_HU,
+            snapshot.ctOpacity ?? DEFAULT_CT_OPACITY
+          );
           cachedCtProp = ctProp;
         }
         if (ctProp) {
@@ -152,13 +167,17 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       hasFramedContent = hasSceneContent;
       renderWindow.render();
       const elapsedMs = Math.round(performance.now() - startedAt);
-      if (elapsedMs >= 80) {
-        pushDebug(`render slow ms=${elapsedMs} ctReady=${ctReady} structureCount=${structureCount}`);
-      }
+      pushDebug(
+        `render ms=${elapsedMs} ctReady=${ctReady} structureCount=${structureCount} cached_structures=${cachedStructureProps.size}`
+      );
       return { ctReady, structureCount };
     },
     resize() {
-      resizeScene(container, openGLRenderWindow, renderWindow);
+      setSizeFromContainer(container, openGLRenderWindow);
+      // Only re-render if there is content to display; avoids a wasted GPU draw on empty init.
+      if (hasFramedContent) {
+        renderWindow.render();
+      }
     },
     resetCamera() {
       renderer.resetCamera();
@@ -201,13 +220,21 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   };
 }
 
-function buildCtCacheKey(volume: Volume): string {
+function buildCtCacheKey(
+  volume: Volume,
+  isoThresholdHu: number,
+  opacity: number,
+  revision: number
+): string {
   return [
     volume.seriesUID,
     volume.dimensions.join('x'),
     volume.spacing.join(','),
     volume.origin.join(','),
     volume.pixelData.length,
+    isoThresholdHu,
+    opacity.toFixed(2),
+    revision,
   ].join('::');
 }
 
@@ -231,23 +258,26 @@ function buildStructureCacheKey(
   ].join('::');
 }
 
-function resizeScene(
+function setSizeFromContainer(
   container: HTMLDivElement,
-  openGLRenderWindow: ReturnType<typeof vtkOpenGLRenderWindow.newInstance>,
-  renderWindow: ReturnType<typeof vtkRenderWindow.newInstance>
+  openGLRenderWindow: ReturnType<typeof vtkOpenGLRenderWindow.newInstance>
 ) {
   const { width, height } = container.getBoundingClientRect();
   openGLRenderWindow.setSize(Math.max(1, Math.floor(width)), Math.max(1, Math.floor(height)));
-  renderWindow.render();
 }
 
 function createCtActor(
   volume: Volume,
   pushDebug: (message: string) => void,
-  key: string
+  key: string,
+  isoThresholdHu: number,
+  opacity: number
 ): CachedPropHandle | null {
   const startedAt = performance.now();
   const sourceVolume = downsampleVolume(volume, CT_DOWNSAMPLE_STRIDE);
+  const downsampleMs = Math.round(performance.now() - startedAt);
+
+  const marchingStart = performance.now();
   const imageData = vtkImageData.newInstance();
   imageData.setDimensions(...sourceVolume.dimensions);
   imageData.setSpacing(sourceVolume.spacing);
@@ -262,7 +292,7 @@ function createCtActor(
   );
 
   const marchingCubes = vtkImageMarchingCubes.newInstance({
-    contourValue: CT_ISO_THRESHOLD_HU,
+    contourValue: isoThresholdHu,
     computeNormals: true,
     mergePoints: true,
   });
@@ -273,14 +303,15 @@ function createCtActor(
   const actor = vtkActor.newInstance();
   actor.setMapper(mapper);
   actor.getProperty().setColor(0.85, 0.87, 0.92);
-  actor.getProperty().setOpacity(0.18);
+  actor.getProperty().setOpacity(opacity);
   actor.getProperty().setInterpolationToPhong();
-  const elapsedMs = Math.round(performance.now() - startedAt);
-  if (elapsedMs >= 40) {
-    pushDebug(
-      `ct actor slow ms=${elapsedMs} source=${volume.dimensions.join('x')} downsampled=${sourceVolume.dimensions.join('x')} scalars=${sourceVolume.pixelData.length}`
-    );
-  }
+
+  const marchingMs = Math.round(performance.now() - marchingStart);
+  const totalMs = Math.round(performance.now() - startedAt);
+  pushDebug(
+    `ct actor ms=${totalMs} (downsample=${downsampleMs} marching=${marchingMs}) threshold=${isoThresholdHu} opacity=${opacity.toFixed(2)} src=${volume.dimensions.join('x')} downsampled=${sourceVolume.dimensions.join('x')} scalars=${sourceVolume.pixelData.length}`
+  );
+
   return {
     key,
     actor,
@@ -306,7 +337,9 @@ function createStructureActor(
   if (!maskVolume) {
     return null;
   }
+  const maskMs = Math.round(performance.now() - startedAt);
 
+  const marchingStart = performance.now();
   const imageData = vtkImageData.newInstance();
   imageData.setDimensions(...maskVolume.dimensions);
   imageData.setSpacing(maskVolume.spacing);
@@ -339,12 +372,13 @@ function createStructureActor(
   );
   actor.getProperty().setOpacity(opacity);
   actor.getProperty().setInterpolationToPhong();
-  const elapsedMs = Math.round(performance.now() - startedAt);
-  if (elapsedMs >= 40) {
-    pushDebug(
-      `structure actor slow id=${structure.id} ms=${elapsedMs} contours=${structure.contours.length} mask=${maskVolume.dimensions.join('x')} filled=${maskVolume.filledVoxelCount}`
-    );
-  }
+
+  const marchingMs = Math.round(performance.now() - marchingStart);
+  const totalMs = Math.round(performance.now() - startedAt);
+  pushDebug(
+    `structure actor ms=${totalMs} (mask=${maskMs} marching=${marchingMs}) id=${structure.id} contours=${structure.contours.length} mask=${maskVolume.dimensions.join('x')} filled=${maskVolume.filledVoxelCount}`
+  );
+
   return {
     key,
     actor,
