@@ -17,16 +17,39 @@ const mocks = vi.hoisted(() => ({
   destroy: vi.fn(),
 }));
 
-vi.mock('../../core/rendering/threeDScene', () => ({
-  createThreeDScene: vi.fn(() => ({
-    renderSnapshot: mocks.renderSnapshot,
-    resize: mocks.resize,
-    resetCamera: mocks.resetCamera,
-    rotateCamera: mocks.rotateCamera,
-    setCTVisible: mocks.setCTVisible,
-    destroy: mocks.destroy,
-  })),
-}));
+vi.mock('../../core/rendering/threeDScene', () => {
+  class GpuUnavailableError extends Error {
+    constructor(public readonly reason: string, public readonly rendererName?: string) {
+      super(reason);
+      this.name = 'GpuUnavailableError';
+    }
+  }
+  class ThreeDInitError extends Error {
+    constructor(public readonly step: string, cause: unknown) {
+      super(`init step "${step}" failed: ${cause instanceof Error ? cause.message : String(cause)}`);
+      this.name = 'ThreeDInitError';
+    }
+  }
+  class GpuContextLostError extends Error {
+    constructor() {
+      super('WebGL context lost');
+      this.name = 'GpuContextLostError';
+    }
+  }
+  return {
+    GpuUnavailableError,
+    ThreeDInitError,
+    GpuContextLostError,
+    createThreeDScene: vi.fn(() => ({
+      renderSnapshot: mocks.renderSnapshot,
+      resize: mocks.resize,
+      resetCamera: mocks.resetCamera,
+      rotateCamera: mocks.rotateCamera,
+      setCTVisible: mocks.setCTVisible,
+      destroy: mocks.destroy,
+    })),
+  };
+});
 
 class ResizeObserverMock {
   observe() {}
@@ -159,7 +182,7 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
     });
   });
 
-  it('fails closed when 3D rendering throws instead of crashing the workspace', async () => {
+  it('surfaces the underlying error message when 3D rendering throws', async () => {
     mocks.renderSnapshot.mockImplementation(() => {
       throw new Error('vtk blew up');
     });
@@ -167,7 +190,7 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
     render(<ThreeDViewport />);
 
     await waitFor(() => {
-      expect(screen.getByText(/3D rendering unavailable for this series/i)).toBeTruthy();
+      expect(screen.getByText(/3D rendering failed for series .*: vtk blew up/i)).toBeTruthy();
     });
   });
 });

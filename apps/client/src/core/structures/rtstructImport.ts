@@ -1,4 +1,5 @@
 import type { ContourSlice, Structure, StructureSet, StructureType } from '@webtps/shared-types';
+import { computeVolume } from './VolumeCalculator';
 
 interface RtstructDataset {
   StructureSetLabel?: string;
@@ -80,7 +81,8 @@ function buildId(prefix: string, value: string | number): string {
 
 export function importRtstructDataset(
   dataset: RtstructDataset,
-  referencedSeriesUID: string
+  referencedSeriesUID: string,
+  sliceThickness_mm?: number
 ): StructureSet {
   const observationsByRoi = new Map<number, RtstructObservation>();
   for (const observation of dataset.RTROIObservationsSequence ?? []) {
@@ -113,7 +115,7 @@ export function importRtstructDataset(
       }];
     });
 
-    return {
+    const structure: Structure = {
       id: buildId('roi', roiNumber),
       name: roi.ROIName?.trim() || `ROI ${roiNumber}`,
       type: mapRtRoiType(observation?.RTROIInterpretedType),
@@ -127,6 +129,10 @@ export function importRtstructDataset(
       isLocked: false,
       volume_cc: 0,
     };
+    if (sliceThickness_mm && sliceThickness_mm > 0) {
+      structure.volume_cc = computeVolume(structure, sliceThickness_mm);
+    }
+    return structure;
   });
 
   return {
@@ -140,11 +146,12 @@ export function importRtstructDataset(
 
 export async function importRtstructArrayBuffer(
   buffer: ArrayBuffer,
-  referencedSeriesUID: string
+  referencedSeriesUID: string,
+  sliceThickness_mm?: number
 ): Promise<StructureSet> {
   const dcmjs = await import('dcmjs');
   const { DicomMessage, DicomMetaDictionary } = dcmjs.data;
   const dicomData = DicomMessage.readFile(buffer);
   const dataset = DicomMetaDictionary.naturalizeDataset(dicomData.dict) as RtstructDataset;
-  return importRtstructDataset(dataset, referencedSeriesUID);
+  return importRtstructDataset(dataset, referencedSeriesUID, sliceThickness_mm);
 }

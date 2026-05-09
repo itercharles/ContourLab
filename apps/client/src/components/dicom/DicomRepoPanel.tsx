@@ -747,7 +747,15 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
         if (!imageSetLoaded) return;
 
         const buffer = await retrieveDicomWebInstance(instance);
-        const importedStructureSet = await importRtstructArrayBuffer(buffer, targetSeriesUID);
+        const sliceThickness = useVolumeStore
+          .getState()
+          .loadedSeries.find((entry) => entry.seriesUID === targetSeriesUID)
+          ?.volume.spacing[2];
+        const importedStructureSet = await importRtstructArrayBuffer(
+          buffer,
+          targetSeriesUID,
+          sliceThickness
+        );
         const sourcedStructureSet = {
           ...importedStructureSet,
           source: {
@@ -931,7 +939,15 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
       try {
         setComparingRtstructSop(instance.sopInstanceUID);
         const buffer = await retrieveDicomWebInstance(instance);
-        const repositoryStructureSet = await importRtstructArrayBuffer(buffer, targetSeriesUID);
+        const sliceThickness = useVolumeStore
+          .getState()
+          .loadedSeries.find((entry) => entry.seriesUID === targetSeriesUID)
+          ?.volume.spacing[2];
+        const repositoryStructureSet = await importRtstructArrayBuffer(
+          buffer,
+          targetSeriesUID,
+          sliceThickness
+        );
         const summary = compareStructureSets(repositoryStructureSet, activeSeriesStructureSet);
         setRtstructComparison({
           label: `${instance.seriesDescription || 'RTSTRUCT'} vs active workspace`,

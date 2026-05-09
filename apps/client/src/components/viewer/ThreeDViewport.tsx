@@ -2,7 +2,40 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
-import { createThreeDScene, type ThreeDScene } from '../../core/rendering/threeDScene';
+import {
+  createThreeDScene,
+  GpuContextLostError,
+  GpuUnavailableError,
+  ThreeDInitError,
+  type ThreeDScene,
+} from '../../core/rendering/threeDScene';
+
+function formatThreeDError(error: unknown, context: 'init' | 'resize' | 'render' | 'reset', seriesUID?: string | null): string {
+  if (error instanceof GpuUnavailableError) {
+    if (error.rendererName) {
+      return `3D rendering disabled: GPU unavailable (running on ${error.rendererName}).`;
+    }
+    return `3D rendering needs a GPU. ${error.message}.`;
+  }
+  if (error instanceof ThreeDInitError) {
+    return `3D viewport init failed at ${error.step}: ${error.message}`;
+  }
+  if (error instanceof GpuContextLostError) {
+    return '3D viewport lost its GPU context (WebGL context lost). Reload to recover.';
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  switch (context) {
+    case 'render':
+      return `3D rendering failed for series ${seriesUID ?? 'unknown'}: ${message}`;
+    case 'resize':
+      return `3D viewport resize failed: ${message}`;
+    case 'reset':
+      return `3D camera reset failed: ${message}`;
+    case 'init':
+    default:
+      return `3D viewport init failed: ${message}`;
+  }
+}
 
 function OverlayLabel({ children, className = '' }: { children: string; className?: string }) {
   return (
@@ -89,8 +122,9 @@ export default function ThreeDViewport() {
         } catch (error) {
           console.error('3D viewport resize failed', error);
           pushDebug(`resize error ${error instanceof Error ? error.message : String(error)}`);
-          setRenderError('3D viewport unavailable.');
-          setStatus('3D viewport unavailable.');
+          const message = formatThreeDError(error, 'resize');
+          setRenderError(message);
+          setStatus(message);
         }
       });
       observer.observe(element);
@@ -98,8 +132,9 @@ export default function ThreeDViewport() {
       console.error('3D viewport initialization failed', error);
       pushDebug(`init error ${error instanceof Error ? error.message : String(error)}`);
       sceneRef.current = null;
-      setRenderError('3D viewport unavailable.');
-      setStatus('3D viewport unavailable.');
+      const message = formatThreeDError(error, 'init');
+      setRenderError(message);
+      setStatus(message);
       return;
     }
 
@@ -175,8 +210,9 @@ export default function ThreeDViewport() {
           pushDebug(
             `render error #${attempt} ms=${Math.round(performance.now() - renderStart)} ${error instanceof Error ? error.message : String(error)}`
           );
-          setRenderError('3D rendering unavailable for this series.');
-          setStatus('3D rendering unavailable for this series.');
+          const message = formatThreeDError(error, 'render', activeSeries?.seriesUID ?? null);
+          setRenderError(message);
+          setStatus(message);
           return null;
         }
       })();
@@ -299,8 +335,9 @@ export default function ThreeDViewport() {
             } catch (error) {
               console.error('3D viewport camera reset failed', error);
               pushDebug(`reset camera error ${error instanceof Error ? error.message : String(error)}`);
-              setRenderError('3D viewport unavailable.');
-              setStatus('3D viewport unavailable.');
+              const message = formatThreeDError(error, 'reset');
+              setRenderError(message);
+              setStatus(message);
             }
           }}
           disabled={renderError !== null}
