@@ -87,16 +87,14 @@ export function buildStructureMaskVolume(structure: Structure, volume: Volume): 
 
   const filledVoxelCount = scalars.reduce((count, value) => count + (value > 0 ? 1 : 0), 0);
 
-  if (filledVoxelCount === 0) {
-    pushDebug(
-      `skip reason=empty-mask contours=${structure.contours.length} bounds=${bounds.join(',')} dims=${width}x${height}x${depth} ms=${Math.round(performance.now() - startedAt)}`
-    );
-    return null;
-  }
+  if (filledVoxelCount === 0) return null;
 
-  pushDebug(
-    `mask contours=${structure.contours.length} bounds=${bounds.join(',')} dims=${width}x${height}x${depth} filled=${filledVoxelCount} ms=${Math.round(performance.now() - startedAt)}`
-  );
+  const elapsedMs = Math.round(performance.now() - startedAt);
+  if (elapsedMs >= 40) {
+    pushDebug(
+      `mask slow ms=${elapsedMs} contours=${structure.contours.length} dims=${width}x${height}x${depth} filled=${filledVoxelCount}`
+    );
+  }
 
   return {
     dimensions: [width, height, depth],

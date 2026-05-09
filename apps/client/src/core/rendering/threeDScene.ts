@@ -85,9 +85,6 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   return {
     renderSnapshot(snapshot) {
       const startedAt = performance.now();
-      pushDebug(
-        `render start showCt=${snapshot.showCtSurface} volume=${snapshot.volume ? snapshot.volume.dimensions.join('x') : 'none'} structures=${snapshot.structures.length}`
-      );
       clearDisposableProps();
 
       let ctReady = false;
@@ -121,13 +118,13 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       }
       hasFramedContent = hasSceneContent;
       renderWindow.render();
-      pushDebug(
-        `render done ms=${Math.round(performance.now() - startedAt)} ctReady=${ctReady} structureCount=${structureCount}`
-      );
+      const elapsedMs = Math.round(performance.now() - startedAt);
+      if (elapsedMs >= 80) {
+        pushDebug(`render slow ms=${elapsedMs} ctReady=${ctReady} structureCount=${structureCount}`);
+      }
       return { ctReady, structureCount };
     },
     resize() {
-      pushDebug('resize');
       resizeScene(container, openGLRenderWindow, renderWindow);
     },
     resetCamera() {
@@ -178,9 +175,6 @@ function resizeScene(
 function createCtActor(volume: Volume, pushDebug: (message: string) => void): ScenePropHandle | null {
   const startedAt = performance.now();
   const sourceVolume = downsampleVolume(volume, CT_DOWNSAMPLE_STRIDE);
-  pushDebug(
-    `ct actor source=${volume.dimensions.join('x')} downsampled=${sourceVolume.dimensions.join('x')} scalars=${sourceVolume.pixelData.length}`
-  );
   const imageData = vtkImageData.newInstance();
   imageData.setDimensions(...sourceVolume.dimensions);
   imageData.setSpacing(sourceVolume.spacing);
@@ -208,7 +202,12 @@ function createCtActor(volume: Volume, pushDebug: (message: string) => void): Sc
   actor.getProperty().setColor(0.85, 0.87, 0.92);
   actor.getProperty().setOpacity(0.18);
   actor.getProperty().setInterpolationToPhong();
-  pushDebug(`ct actor ready ms=${Math.round(performance.now() - startedAt)}`);
+  const elapsedMs = Math.round(performance.now() - startedAt);
+  if (elapsedMs >= 40) {
+    pushDebug(
+      `ct actor slow ms=${elapsedMs} source=${volume.dimensions.join('x')} downsampled=${sourceVolume.dimensions.join('x')} scalars=${sourceVolume.pixelData.length}`
+    );
+  }
   return {
     actor,
     dispose: () => {
@@ -230,14 +229,8 @@ function createStructureActor(
   const startedAt = performance.now();
   const maskVolume = buildStructureMaskVolume(structure, volume);
   if (!maskVolume) {
-    pushDebug(
-      `structure skip id=${structure.id} name=${structure.name} contours=${structure.contours.length} reason=empty-mask`
-    );
     return null;
   }
-  pushDebug(
-    `structure actor id=${structure.id} name=${structure.name} contours=${structure.contours.length} mask=${maskVolume.dimensions.join('x')} filled=${maskVolume.filledVoxelCount}`
-  );
 
   const imageData = vtkImageData.newInstance();
   imageData.setDimensions(...maskVolume.dimensions);
@@ -271,9 +264,12 @@ function createStructureActor(
   );
   actor.getProperty().setOpacity(opacity);
   actor.getProperty().setInterpolationToPhong();
-  pushDebug(
-    `structure actor ready id=${structure.id} ms=${Math.round(performance.now() - startedAt)}`
-  );
+  const elapsedMs = Math.round(performance.now() - startedAt);
+  if (elapsedMs >= 40) {
+    pushDebug(
+      `structure actor slow id=${structure.id} ms=${elapsedMs} contours=${structure.contours.length} mask=${maskVolume.dimensions.join('x')} filled=${maskVolume.filledVoxelCount}`
+    );
+  }
   return {
     actor,
     dispose: () => {

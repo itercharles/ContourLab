@@ -18,8 +18,8 @@ export default function ThreeDViewport() {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<ThreeDScene | null>(null);
   const renderAttemptRef = useRef(0);
+  const lastRenderSignatureRef = useRef<string | null>(null);
   const [showCtSurface, setShowCtSurface] = useState(true);
-  const [lastScalarLength, setLastScalarLength] = useState(0);
   const [refreshRevision, setRefreshRevision] = useState(0);
   const [status, setStatus] = useState('Load a series to view 3D anatomy.');
   const [renderError, setRenderError] = useState<string | null>(null);
@@ -50,6 +50,33 @@ export default function ThreeDViewport() {
   const pushDebug = (message: string) => {
     logClientDebug('ThreeDViewport', message);
   };
+
+  const scalarLength = activeSeries?.volume.pixelData.length ?? 0;
+  const renderSignature = useMemo(() => {
+    const structureSignature = visibleStructures
+      .map((structure) => {
+        const firstContour = structure.contours[0];
+        const lastContour = structure.contours[structure.contours.length - 1];
+        return [
+          structure.id,
+          structure.contours.length,
+          firstContour?.slicePosition ?? 'none',
+          lastContour?.slicePosition ?? 'none',
+          firstContour?.points.length ?? 0,
+          lastContour?.points.length ?? 0,
+        ].join(':');
+      })
+      .join('|');
+
+    return [
+      activeSeries?.seriesUID ?? 'none',
+      scalarLength,
+      showCtSurface ? 'ct-on' : 'ct-off',
+      activeStructureSet?.id ?? 'no-structure-set',
+      structureSignature,
+      refreshRevision,
+    ].join('::');
+  }, [activeSeries?.seriesUID, activeStructureSet?.id, refreshRevision, scalarLength, showCtSurface, visibleStructures]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -94,40 +121,35 @@ export default function ThreeDViewport() {
         pushDebug(`destroy error ${error instanceof Error ? error.message : String(error)}`);
       }
       sceneRef.current = null;
+      lastRenderSignatureRef.current = null;
     };
   }, []);
 
   useEffect(() => {
-    if (!activeSeries) {
-      pushDebug('series cleared');
-      setLastScalarLength(0);
-      return;
-    }
-
-    pushDebug(
-      `series active uid=${activeSeries.seriesUID} dims=${activeSeries.volume.dimensions.join('x')} scalars=${activeSeries.volume.pixelData.length}`
-    );
-
-    const updateScalarLength = () => {
-      const nextLength = activeSeries.volume.pixelData.length;
-      setLastScalarLength((previous) => (previous === nextLength ? previous : nextLength));
-    };
-
-    updateScalarLength();
-    const intervalId = window.setInterval(updateScalarLength, 500);
-    return () => window.clearInterval(intervalId);
-  }, [activeSeries]);
-
-  useEffect(() => {
     if (renderError) {
-      pushDebug(`error cleared by series-or-refresh series=${activeSeriesUID ?? 'none'} revision=${refreshRevision}`);
       setRenderError(null);
     }
   }, [activeSeriesUID, refreshRevision]);
 
   useEffect(() => {
+    if (!activeSeries) {
+      lastRenderSignatureRef.current = null;
+      pushDebug('series cleared');
+      return;
+    }
+
+    pushDebug(
+      `series active uid=${activeSeries.seriesUID} dims=${activeSeries.volume.dimensions.join('x')} scalars=${scalarLength}`
+    );
+  }, [activeSeries, scalarLength]);
+
+  useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
+
+    if (lastRenderSignatureRef.current === renderSignature) {
+      return;
+    }
 
     const snapshot = {
       volume: activeSeries?.volume ?? null,
@@ -141,9 +163,6 @@ export default function ThreeDViewport() {
       0
     );
     const startedAt = performance.now();
-    pushDebug(
-      `render start #${attempt} series=${activeSeries?.seriesUID ?? 'none'} showCt=${showCtSurface} visibleStructures=${visibleStructures.length} contours=${contourCount} scalars=${activeSeries?.volume.pixelData.length ?? 0} revision=${refreshRevision}`
-    );
 
     const renderResult = (() => {
       try {
@@ -161,9 +180,13 @@ export default function ThreeDViewport() {
     if (!renderResult) {
       return;
     }
-    pushDebug(
-      `render done #${attempt} ms=${Math.round(performance.now() - startedAt)} ctReady=${renderResult.ctReady} structureCount=${renderResult.structureCount}`
-    );
+    lastRenderSignatureRef.current = renderSignature;
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    if (elapsedMs >= 80) {
+      pushDebug(
+        `render slow #${attempt} ms=${elapsedMs} series=${activeSeries?.seriesUID ?? 'none'} visibleStructures=${visibleStructures.length} contours=${contourCount} ctReady=${renderResult.ctReady} structureCount=${renderResult.structureCount}`
+      );
+    }
     if (renderError) {
       setRenderError(null);
     }
@@ -175,7 +198,7 @@ export default function ThreeDViewport() {
       return;
     }
 
-    if (lastScalarLength === 0 && structureCount === 0) {
+    if (scalarLength === 0 && structureCount === 0) {
       setStatus('CT voxels are still streaming. 3D will populate automatically.');
       return;
     }
@@ -189,7 +212,7 @@ export default function ThreeDViewport() {
     const structureSummary =
       structureCount === 0 ? 'No visible structures' : `${structureCount} visible structure${structureCount === 1 ? '' : 's'}`;
     setStatus(`${ctSummary} · ${structureSummary}`);
-  }, [activeSeries, lastScalarLength, refreshRevision, showCtSurface, visibleStructures]);
+  }, [activeSeries, refreshRevision, renderError, renderSignature, scalarLength, showCtSurface, visibleStructures]);
 
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-black">
