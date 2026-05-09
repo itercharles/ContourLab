@@ -254,7 +254,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.queryByText('oar1')).toBeNull();
   });
 
-  it('deactivates a stale structure set when the active image set changes', async () => {
+  it('falls back to the active image-set structure set when selection is stale', async () => {
     useVolumeStore.setState({
       loadedSeries: [makeLoadedSeries()],
       activeSeriesUID: 'series-1',
@@ -267,10 +267,10 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     render(<StructurePanel />);
 
-    await waitFor(() => expect(useStructureStore.getState().activeStructureSetId).toBeNull());
-    expect(useStructureStore.getState().activeStructureId).toBeNull();
-    expect(screen.queryByLabelText('Active structure color')).toBeNull();
-    expect(screen.getByText('No active structure set for this image set.')).toBeTruthy();
+    await waitFor(() => expect(useStructureStore.getState().activeStructureSetId).toBe('ss-1'));
+    expect(useStructureStore.getState().activeStructureId).toBe('structure-1');
+    expect(screen.getByLabelText('Active structure color')).toBeTruthy();
+    expect(screen.queryByText('No active structure set for this image set.')).toBeNull();
   });
 
   it('does not show a structure set header in the structure list', () => {

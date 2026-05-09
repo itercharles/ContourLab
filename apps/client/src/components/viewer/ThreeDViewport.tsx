@@ -192,7 +192,7 @@ export default function ThreeDViewport() {
     // Defer the render via setTimeout so React can commit and the browser can paint
     // before the heavy marching-cubes / mask-building work starts on the main thread.
     renderAttemptRef.current = attempt;
-    const handle = window.setTimeout(() => {
+    const handle = window.setTimeout(async () => {
       const snapshot = {
         volume: activeSeries?.volume ?? null,
         structures: visibleStructures.map((structure) => ({ structure })),
@@ -202,9 +202,9 @@ export default function ThreeDViewport() {
       );
 
       const renderStart = performance.now();
-      const renderResult = (() => {
+      const renderResult = await (async () => {
         try {
-          return scene.renderSnapshot(snapshot);
+          return await scene.renderSnapshot(snapshot);
         } catch (error) {
           console.error('3D viewport render failed', error);
           pushDebug(
@@ -218,6 +218,10 @@ export default function ThreeDViewport() {
       })();
 
       if (!renderResult) return;
+      if (renderAttemptRef.current !== attempt) {
+        pushDebug(`render stale #${attempt} latest=${renderAttemptRef.current}`);
+        return;
+      }
 
       lastRenderSignatureRef.current = renderSignature;
       const elapsedMs = Math.round(performance.now() - renderStart);

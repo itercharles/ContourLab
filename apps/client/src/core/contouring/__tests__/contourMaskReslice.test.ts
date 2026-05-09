@@ -37,8 +37,9 @@ describe('buildMprMaskBoundaryPath', () => {
       ([, y, z]) => [y, z]
     );
 
-    expect(path).toContain('M 1.5 0.5 L 2.5 0.5');
-    expect(path).toContain('M 7.5 2.5 L 6.5 2.5');
+    expect(path).toContain('M 1.5 0.5');
+    expect(path).toContain('L 7.5 2.5');
+    expect(path).toContain('Z');
   });
 
   it('returns no boundary when the MPR plane misses the contour mask', () => {
@@ -51,5 +52,44 @@ describe('buildMprMaskBoundaryPath', () => {
     );
 
     expect(path).toBe('');
+  });
+
+  it('keeps multiple disjoint contours on the same slice as separate closed boundaries', () => {
+    const leftSquare: ContourSlice = {
+      referencedSOPInstanceUID: 'sop-left',
+      slicePosition: 1,
+      isClosed: true,
+      points: new Float32Array([
+        1, 2, 1,
+        4, 2, 1,
+        4, 5, 1,
+        1, 5, 1,
+      ]),
+    };
+    const rightSquare: ContourSlice = {
+      referencedSOPInstanceUID: 'sop-right',
+      slicePosition: 1,
+      isClosed: true,
+      points: new Float32Array([
+        7, 2, 1,
+        10, 2, 1,
+        10, 5, 1,
+        7, 5, 1,
+      ]),
+    };
+
+    const path = buildMprMaskBoundaryPath(
+      volume,
+      [leftSquare, rightSquare],
+      'CORONAL',
+      3,
+      ([x, , z]) => [x, z]
+    );
+
+    expect(path).toContain('M 0.5 0.5');
+    expect(path).toContain('L 4.5 1.5');
+    expect(path).toContain('M 6.5 0.5');
+    expect(path).toContain('L 10.5 1.5');
+    expect(path.match(/ Z\b/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
   });
 });

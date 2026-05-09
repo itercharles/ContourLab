@@ -36,21 +36,27 @@ export const StructureSetManager = {
         structureSet.referencedSeriesUID === referencedSeriesUID
     );
 
-    if (!activeSet) {
+    const fallbackSet = store.structureSets.find(
+      (structureSet) => structureSet.referencedSeriesUID === referencedSeriesUID
+    );
+
+    const resolvedSet = activeSet ?? fallbackSet;
+
+    if (!resolvedSet) {
       store.setActiveStructureSet(null);
       store.setActiveStructure(null);
       return;
     }
 
     const activeStructureStillValid =
-      !!activeSet.structures.find((structure) => structure.id === store.activeStructureId);
+      !!resolvedSet.structures.find((structure) => structure.id === store.activeStructureId);
 
-    store.setActiveStructureSet(activeSet.id);
+    store.setActiveStructureSet(resolvedSet.id);
     if (activeStructureStillValid) {
       return;
     }
 
-    store.setActiveStructure(activeSet.structures[0]?.id ?? null);
+    store.setActiveStructure(resolvedSet.structures[0]?.id ?? null);
   },
 
   createStructure(

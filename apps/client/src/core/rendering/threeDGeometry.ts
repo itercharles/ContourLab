@@ -10,6 +10,14 @@ export interface MaskVolume {
   filledVoxelCount: number;
 }
 
+export interface PointScalarVolume {
+  dimensions: [number, number, number];
+  spacing: [number, number, number];
+  origin: [number, number, number];
+  directionCosines: number[];
+  scalars: Uint8Array;
+}
+
 type Vec3 = [number, number, number];
 interface SlicePolygon {
   polygon: Array<[number, number]>;
@@ -181,6 +189,104 @@ export function downsampleVolume(volume: Volume, stride = 2): Volume {
       volume.spacing[2] * safeStride,
     ],
     pixelData: downsampled,
+  };
+}
+
+export function downsampleMaskVolume(mask: MaskVolume, stride = 2): MaskVolume {
+  const safeStride = Math.max(1, Math.floor(stride));
+  if (safeStride === 1) return mask;
+
+  const [dimX, dimY, dimZ] = mask.dimensions;
+  const nextDimensions: [number, number, number] = [
+    Math.max(1, Math.ceil(dimX / safeStride)),
+    Math.max(1, Math.ceil(dimY / safeStride)),
+    Math.max(1, Math.ceil(dimZ / safeStride)),
+  ];
+
+  const startedAt = performance.now();
+  const downsampled = new Uint8Array(nextDimensions[0] * nextDimensions[1] * nextDimensions[2]);
+  let filledVoxelCount = 0;
+
+  for (let k = 0; k < nextDimensions[2]; k += 1) {
+    for (let j = 0; j < nextDimensions[1]; j += 1) {
+      for (let i = 0; i < nextDimensions[0]; i += 1) {
+        let occupied = 0;
+        const srcKStart = k * safeStride;
+        const srcJStart = j * safeStride;
+        const srcIStart = i * safeStride;
+
+        for (let kk = srcKStart; kk < Math.min(dimZ, srcKStart + safeStride) && occupied === 0; kk += 1) {
+          for (let jj = srcJStart; jj < Math.min(dimY, srcJStart + safeStride) && occupied === 0; jj += 1) {
+            for (let ii = srcIStart; ii < Math.min(dimX, srcIStart + safeStride); ii += 1) {
+              if (mask.scalars[kk * dimX * dimY + jj * dimX + ii] > 0) {
+                occupied = 1;
+                break;
+              }
+            }
+          }
+        }
+
+        const dstOffset = k * nextDimensions[0] * nextDimensions[1] + j * nextDimensions[0] + i;
+        downsampled[dstOffset] = occupied;
+        filledVoxelCount += occupied;
+      }
+    }
+  }
+
+  const elapsedMs = Math.round(performance.now() - startedAt);
+  if (elapsedMs >= SLOW_DOWNSAMPLE_MS) {
+    logClientDebug(
+      'ThreeDGeometry',
+      `mask downsample slow ms=${elapsedMs} stride=${safeStride} src=${mask.dimensions.join('x')} dst=${nextDimensions.join('x')} filled=${filledVoxelCount}`
+    );
+  }
+
+  return {
+    dimensions: nextDimensions,
+    spacing: [
+      mask.spacing[0] * safeStride,
+      mask.spacing[1] * safeStride,
+      mask.spacing[2] * safeStride,
+    ],
+    origin: voxelToWorld(
+      [
+        (safeStride - 1) / 2,
+        (safeStride - 1) / 2,
+        (safeStride - 1) / 2,
+      ],
+      mask
+    ),
+    directionCosines: mask.directionCosines,
+    scalars: downsampled,
+    filledVoxelCount,
+  };
+}
+
+export function buildPointScalarVolumeFromMask(mask: MaskVolume): PointScalarVolume {
+  const [dimX, dimY, dimZ] = mask.dimensions;
+  const pointDimensions: [number, number, number] = [dimX + 2, dimY + 2, dimZ + 2];
+  const pointScalars = new Uint8Array(pointDimensions[0] * pointDimensions[1] * pointDimensions[2]);
+
+  for (let k = 0; k < dimZ; k += 1) {
+    for (let j = 0; j < dimY; j += 1) {
+      for (let i = 0; i < dimX; i += 1) {
+        const srcOffset = k * dimX * dimY + j * dimX + i;
+        if (mask.scalars[srcOffset] === 0) continue;
+        const dstOffset =
+          (k + 1) * pointDimensions[0] * pointDimensions[1] +
+          (j + 1) * pointDimensions[0] +
+          (i + 1);
+        pointScalars[dstOffset] = mask.scalars[srcOffset];
+      }
+    }
+  }
+
+  return {
+    dimensions: pointDimensions,
+    spacing: mask.spacing,
+    origin: voxelToWorld([-1, -1, -1], mask),
+    directionCosines: mask.directionCosines,
+    scalars: pointScalars,
   };
 }
 

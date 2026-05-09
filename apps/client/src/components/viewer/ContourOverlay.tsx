@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ContourEngine } from '../../core/contouring/ContourEngine';
 import {
+  buildCrossPlaneBoundaryPath,
   findContourOnFrame,
   flattenWorldPoints,
   isContourOnFrame,
@@ -9,6 +10,7 @@ import {
 } from '../../core/contouring/contourOverlayUtils';
 import { buildMprMaskBoundaryPath } from '../../core/contouring/contourMaskReslice';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
+import { voxelToWorld } from '../../core/rendering/threeDGeometry';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useUIStore } from '../../core/store/uiStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
@@ -73,6 +75,38 @@ interface MeasurementAnnotation {
   kind: MeasurementKind;
   points: MeasurementWorldPoint[];
   label: string;
+}
+
+function getVolumeAxisWorldBounds(
+  volume: {
+    dimensions: [number, number, number];
+    origin: [number, number, number];
+    spacing: [number, number, number];
+    directionCosines: number[];
+  },
+  axis: 0 | 1 | 2
+): [number, number] {
+  const [dimX, dimY, dimZ] = volume.dimensions;
+  const corners: Array<[number, number, number]> = [
+    [-0.5, -0.5, -0.5],
+    [dimX - 0.5, -0.5, -0.5],
+    [-0.5, dimY - 0.5, -0.5],
+    [-0.5, -0.5, dimZ - 0.5],
+    [dimX - 0.5, dimY - 0.5, -0.5],
+    [dimX - 0.5, -0.5, dimZ - 0.5],
+    [-0.5, dimY - 0.5, dimZ - 0.5],
+    [dimX - 0.5, dimY - 0.5, dimZ - 0.5],
+  ];
+
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (const corner of corners) {
+    const world = voxelToWorld(corner, volume);
+    min = Math.min(min, world[axis]);
+    max = Math.max(max, world[axis]);
+  }
+
+  return [min, max];
 }
 
 function formatMeasurementKindLabel(kind: MeasurementKind): string {
@@ -232,10 +266,12 @@ export default function ContourOverlay({
     : undefined;
 
   const activeStructureSet = useMemo(() => {
+    const activeById = structureSets.find((structureSet) => structureSet.id === activeStructureSetId);
+    if (activeById?.referencedSeriesUID === activeSeriesUID) {
+      return activeById;
+    }
     return structureSets.find(
-      (structureSet) =>
-        structureSet.id === activeStructureSetId &&
-        structureSet.referencedSeriesUID === activeSeriesUID
+      (structureSet) => structureSet.referencedSeriesUID === activeSeriesUID
     );
   }, [activeSeriesUID, activeStructureSetId, structureSets]);
 
@@ -415,21 +451,42 @@ export default function ContourOverlay({
     if (orientation === 'SAGITTAL' || orientation === 'CORONAL') {
       if (!activeSeries) return [] as RenderableContour[];
       const planePosition = focalPoint[orientation === 'SAGITTAL' ? 0 : 1];
+      const fixedAxis = orientation === 'SAGITTAL' ? 0 : 1;
+      const fixedDim = activeSeries.volume.dimensions[fixedAxis];
+      const [minPlanePosition, maxPlanePosition] = getVolumeAxisWorldBounds(
+        activeSeries.volume,
+        fixedAxis
+      );
 
-      const considered: Array<{ structureId: string; pathLength: number }> = [];
-      const result = activeStructureSet.structures
+      if (!Number.isFinite(planePosition) || fixedDim <= 0) {
+        return [] as RenderableContour[];
+      }
+      const resolvedPlanePosition = Math.min(
+        maxPlanePosition,
+        Math.max(minPlanePosition, planePosition)
+      );
+
+      return activeStructureSet.structures
         .filter((structure) => structure.isVisible ?? true)
         .flatMap((structure) => {
           const color = `rgb(${structure.color.join(', ')})`;
           try {
-            const path = buildMprMaskBoundaryPath(
+            const maskPath = buildMprMaskBoundaryPath(
               activeSeries.volume,
               structure.contours,
               orientation,
-              planePosition,
+              resolvedPlanePosition,
               worldToOverlayCanvas
             );
-            considered.push({ structureId: structure.id, pathLength: path.length });
+            const crossPlanePath = !maskPath
+              ? buildCrossPlaneBoundaryPath(
+                  structure.contours.map((contour) => contour.points),
+                  orientation === 'SAGITTAL' ? 0 : 1,
+                  resolvedPlanePosition,
+                  worldToOverlayCanvas
+                )
+              : '';
+            const path = maskPath || crossPlanePath;
             if (!path) return [];
             return [{
               path,
@@ -441,16 +498,6 @@ export default function ContourOverlay({
             return [];
           }
         });
-      const emitted = result.length;
-      if (considered.length > 0 && emitted === 0) {
-        console.debug('mpr reslice produced no paths', {
-          orientation,
-          planePosition,
-          considered: considered.length,
-          structures: considered,
-        });
-      }
-      return result;
     }
 
     return activeStructureSet.structures

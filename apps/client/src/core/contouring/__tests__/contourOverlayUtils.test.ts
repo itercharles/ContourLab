@@ -192,7 +192,43 @@ describe('buildCrossPlaneBoundaryPath', () => {
       ([x, , z]) => [x, z]
     );
 
-    expect(path).toBe('M 6 0 L 12 0');
+    expect(path).toBe('M 0 0 L 4 0 M 6 0 L 12 0');
+  });
+
+  it('preserves multiple disjoint boundary tracks across slices', () => {
+    const lowerLeft = new Float32Array([
+      0, 0, 0,
+      4, 0, 0,
+      4, 4, 0,
+      0, 4, 0,
+    ]);
+    const lowerRight = new Float32Array([
+      8, 0, 0,
+      12, 0, 0,
+      12, 4, 0,
+      8, 4, 0,
+    ]);
+    const upperLeft = new Float32Array([
+      0, 0, 10,
+      4, 0, 10,
+      4, 4, 10,
+      0, 4, 10,
+    ]);
+    const upperRight = new Float32Array([
+      8, 0, 10,
+      12, 0, 10,
+      12, 4, 10,
+      8, 4, 10,
+    ]);
+
+    const path = buildCrossPlaneBoundaryPath(
+      [upperLeft, upperRight, lowerLeft, lowerRight],
+      1,
+      2,
+      ([x, , z]) => [x, z]
+    );
+
+    expect(path).toBe('M 0 0 L 0 10 M 4 0 L 4 10 M 8 0 L 8 10 M 12 0 L 12 10');
   });
 });
 

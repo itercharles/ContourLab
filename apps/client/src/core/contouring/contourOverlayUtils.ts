@@ -255,34 +255,46 @@ export function buildCrossPlaneBoundaryPath(
   }, []);
 
   const paths: string[] = [];
-  let lowBoundary: WorldPoint[] = [];
-  let highBoundary: WorldPoint[] = [];
+  type BoundaryTrack = { lowBoundary: WorldPoint[]; highBoundary: WorldPoint[] };
+  let tracks: BoundaryTrack[] = [];
 
-  const flushBoundary = () => {
-    if (lowBoundary.length === 1 && highBoundary.length === 1) {
-      paths.push(projectPolylineToCanvasPath([lowBoundary[0], highBoundary[0]], worldToCanvas));
-    } else {
-      if (lowBoundary.length >= 2) {
-        paths.push(projectPolylineToCanvasPath(lowBoundary, worldToCanvas));
+  const flushTracks = () => {
+    for (const track of tracks) {
+      if (track.lowBoundary.length === 1 && track.highBoundary.length === 1) {
+        paths.push(projectPolylineToCanvasPath([track.lowBoundary[0], track.highBoundary[0]], worldToCanvas));
+        continue;
       }
-      if (highBoundary.length >= 2) {
-        paths.push(projectPolylineToCanvasPath(highBoundary, worldToCanvas));
+      if (track.lowBoundary.length >= 2) {
+        paths.push(projectPolylineToCanvasPath(track.lowBoundary, worldToCanvas));
+      }
+      if (track.highBoundary.length >= 2) {
+        paths.push(projectPolylineToCanvasPath(track.highBoundary, worldToCanvas));
       }
     }
-    lowBoundary = [];
-    highBoundary = [];
+    tracks = [];
   };
 
   for (const group of sliceGroups) {
-    const representativeSegment = group.reduce((longest, segment) => {
-      const currentLength = Math.abs(segment.high[inPlaneAxis] - segment.low[inPlaneAxis]);
-      const longestLength = Math.abs(longest.high[inPlaneAxis] - longest.low[inPlaneAxis]);
-      return currentLength > longestLength ? segment : longest;
+    const orderedGroup = [...group].sort((left, right) => {
+      const leftMid = (left.low[inPlaneAxis] + left.high[inPlaneAxis]) / 2;
+      const rightMid = (right.low[inPlaneAxis] + right.high[inPlaneAxis]) / 2;
+      return leftMid - rightMid;
     });
-    lowBoundary.push(representativeSegment.low);
-    highBoundary.push(representativeSegment.high);
+
+    if (tracks.length > 0 && tracks.length !== orderedGroup.length) {
+      flushTracks();
+    }
+
+    if (tracks.length === 0) {
+      tracks = orderedGroup.map(() => ({ lowBoundary: [], highBoundary: [] }));
+    }
+
+    orderedGroup.forEach((segment, index) => {
+      tracks[index].lowBoundary.push(segment.low);
+      tracks[index].highBoundary.push(segment.high);
+    });
   }
 
-  flushBoundary();
+  flushTracks();
   return paths.join(' ');
 }

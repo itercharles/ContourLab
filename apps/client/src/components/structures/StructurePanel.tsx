@@ -433,7 +433,7 @@ export default function StructurePanel() {
     ? (
         activeStructureSetById?.referencedSeriesUID === activeSeriesUID
           ? activeStructureSetById
-          : undefined
+          : structureSets.find((structureSet) => structureSet.referencedSeriesUID === activeSeriesUID)
       )
     : undefined;
   const seriesHasStructureSet =

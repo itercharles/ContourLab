@@ -4,6 +4,7 @@
 // with "Cannot read properties of undefined (reading 'traverse')" the
 // first time a render pass is traversed.
 import '@kitware/vtk.js/Rendering/Profiles/Geometry';
+import macro from '@kitware/vtk.js/macros';
 import vtkActor from '@kitware/vtk.js/Rendering/Core/Actor';
 import vtkAxesActor from '@kitware/vtk.js/Rendering/Core/AxesActor';
 import vtkDataArray from '@kitware/vtk.js/Common/Core/DataArray';
@@ -20,7 +21,13 @@ import { logClientDebug } from '../debug/clientDebugLog';
 // @ts-expect-error
 import vtkImageMarchingCubes from '@kitware/vtk.js/Filters/General/ImageMarchingCubes';
 import type { Structure, Volume } from '@webtps/shared-types';
-import { buildStructureMaskVolume, downsampleVolume, hasRenderableContours } from './threeDGeometry';
+import {
+  buildPointScalarVolumeFromMask,
+  buildStructureMaskVolume,
+  downsampleMaskVolume,
+  downsampleVolume,
+  hasRenderableContours,
+} from './threeDGeometry';
 
 export interface ThreeDStructureLayer {
   structure: Structure;
@@ -33,7 +40,9 @@ export interface ThreeDSceneSnapshot {
 }
 
 export interface ThreeDScene {
-  renderSnapshot: (snapshot: ThreeDSceneSnapshot) => { structureCount: number; ctReady: boolean };
+  renderSnapshot: (
+    snapshot: ThreeDSceneSnapshot
+  ) => Promise<{ structureCount: number; ctReady: boolean }> | { structureCount: number; ctReady: boolean };
   resize: () => void;
   resetCamera: () => void;
   rotateCamera: (azimuthDelta: number, elevationDelta?: number) => void;
@@ -66,6 +75,8 @@ export class GpuContextLostError extends Error {
 }
 
 const SOFTWARE_RENDERER_PATTERN = /SwiftShader|llvmpipe|software|Microsoft Basic Render/i;
+const { normalizeWheel } = macro;
+const STRUCTURE_MASK_DOWNSAMPLE_VOXELS = 750_000;
 
 interface GpuProbe {
   rendererName: string;
@@ -128,6 +139,7 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
     vtkInteractorStyleTrackballCamera.newInstance()
   );
   const axesActor = tryInitStep('axesActor.newInstance', () => vtkAxesActor.newInstance());
+  const wheelBindings = createPassiveWheelBindings(container, openGLRenderWindow, interactor);
 
   tryInitStep('setContainer', () => openGLRenderWindow.setContainer(container));
 
@@ -147,7 +159,8 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   tryInitStep('addView', () => renderWindow.addView(openGLRenderWindow));
   tryInitStep('interactor.setView', () => interactor.setView(openGLRenderWindow));
   tryInitStep('interactor.initialize', () => interactor.initialize());
-  tryInitStep('interactor.bindEvents', () => interactor.bindEvents(container));
+  tryInitStep('interactor.bindEvents', () => bindInteractorEventsWithoutWheel(interactor, container));
+  tryInitStep('interactor.replaceWheelEvents', () => wheelBindings.bind());
   tryInitStep('interactor.setInteractorStyle', () => interactor.setInteractorStyle(interactorStyle));
   tryInitStep('addActor(axes)', () => renderer.addActor(axesActor));
   tryInitStep('camera.setParallelProjection', () => renderer.getActiveCamera().setParallelProjection(false));
@@ -177,7 +190,7 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   };
 
   return {
-    renderSnapshot(snapshot) {
+    async renderSnapshot(snapshot) {
       const startedAt = performance.now();
       clearMountedProps();
       pushDebug(
@@ -189,6 +202,7 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       if (snapshot.volume) {
         const nextCtSeriesUID = snapshot.volume.seriesUID;
         if (lastCtSeriesUID !== nextCtSeriesUID) {
+          await yieldToBrowser();
           if (ctPropHandle) {
             renderer.removeActor(ctPropHandle.actor);
             ctPropHandle.dispose();
@@ -213,6 +227,7 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
         let structureProp = cachedStructureProps.get(structureKey) ?? null;
         if (!structureProp) {
           pushDebug(`structure cache miss id=${layer.structure.id}`);
+          await yieldToBrowser();
           structureProp = createStructureActor(
             layer.structure,
             snapshot.volume,
@@ -296,6 +311,7 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
         ctPropHandle.dispose();
         ctPropHandle = null;
       }
+      wheelBindings.unbind();
       interactor.unbindEvents();
       renderer.removeActor(axesActor);
       renderWindow.removeView(openGLRenderWindow);
@@ -308,6 +324,94 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       pushDebug('destroy');
     },
   };
+}
+
+function createPassiveWheelBindings(
+  container: HTMLDivElement,
+  openGLRenderWindow: ReturnType<typeof vtkOpenGLRenderWindow.newInstance>,
+  interactor: ReturnType<typeof vtkRenderWindowInteractor.newInstance>
+) {
+  let wheelTimeoutId = 0;
+  let wheelCoefficient = 1;
+
+  const getEventPosition = (event: WheelEvent) => {
+    const canvas = openGLRenderWindow.getCanvas();
+    const bounds = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / bounds.width;
+    const scaleY = canvas.height / bounds.height;
+    return {
+      x: scaleX * (event.clientX - bounds.left),
+      y: scaleY * (bounds.height - event.clientY + bounds.top),
+      z: 0,
+      movementX: scaleX * event.movementX,
+      movementY: scaleY * event.movementY,
+    };
+  };
+
+  const emitWheel = (event: WheelEvent) => {
+    const callData = {
+      ...normalizeWheel(event),
+      controlKey: event.ctrlKey,
+      altKey: event.altKey,
+      shiftKey: event.shiftKey,
+      position: getEventPosition(event),
+      deviceType: event.deltaMode === WheelEvent.DOM_DELTA_PIXEL ? 'mouse' : '',
+    };
+
+    if (wheelTimeoutId === 0) {
+      wheelCoefficient = Math.abs(callData.spinY) >= 0.3 ? Math.abs(callData.spinY) : 1;
+    }
+    callData.spinY /= wheelCoefficient;
+
+    if (wheelTimeoutId === 0) {
+      interactor.startMouseWheelEvent(callData);
+    } else {
+      window.clearTimeout(wheelTimeoutId);
+    }
+    interactor.mouseWheelEvent(callData);
+
+    wheelTimeoutId = window.setTimeout(() => {
+      interactor.endMouseWheelEvent();
+      wheelTimeoutId = 0;
+    }, 200);
+  };
+
+  const bind = () => {
+    container.removeEventListener('wheel', interactor.handleWheel);
+    container.removeEventListener('DOMMouseScroll', interactor.handleWheel);
+    container.addEventListener('wheel', emitWheel, { passive: true });
+    container.addEventListener('DOMMouseScroll', emitWheel as EventListener, { passive: true });
+  };
+
+  const unbind = () => {
+    if (wheelTimeoutId !== 0) {
+      window.clearTimeout(wheelTimeoutId);
+      wheelTimeoutId = 0;
+    }
+    container.removeEventListener('wheel', emitWheel);
+    container.removeEventListener('DOMMouseScroll', emitWheel as EventListener);
+  };
+
+  return { bind, unbind };
+}
+
+function bindInteractorEventsWithoutWheel(
+  interactor: ReturnType<typeof vtkRenderWindowInteractor.newInstance>,
+  container: HTMLDivElement
+) {
+  const originalAddEventListener = container.addEventListener.bind(container);
+  container.addEventListener = ((type: string, listener: EventListenerOrEventListenerObject | null, options?: AddEventListenerOptions | boolean) => {
+    if (type === 'wheel' || type === 'DOMMouseScroll') {
+      return;
+    }
+    originalAddEventListener(type, listener, options);
+  }) as typeof container.addEventListener;
+
+  try {
+    interactor.bindEvents(container);
+  } finally {
+    container.addEventListener = originalAddEventListener;
+  }
 }
 
 function buildStructureCacheKey(
@@ -381,6 +485,12 @@ function setSizeFromContainer(
   openGLRenderWindow.setSize(Math.max(1, Math.floor(width)), Math.max(1, Math.floor(height)));
 }
 
+function yieldToBrowser(): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, 0);
+  });
+}
+
 function createStructureActor(
   structure: Structure,
   volume: Volume | null,
@@ -397,23 +507,28 @@ function createStructureActor(
     return null;
   }
   const startedAt = performance.now();
-  const maskVolume = buildStructureMaskVolume(structure, volume);
-  if (!maskVolume) {
+  const rawMaskVolume = buildStructureMaskVolume(structure, volume);
+  if (!rawMaskVolume) {
     pushDebug(`structure skip id=${structure.id} reason=empty-mask`);
     return null;
   }
+  const maskVoxelCount = rawMaskVolume.dimensions[0] * rawMaskVolume.dimensions[1] * rawMaskVolume.dimensions[2];
+  const maskDownsampleStride = maskVoxelCount >= STRUCTURE_MASK_DOWNSAMPLE_VOXELS ? 2 : 1;
+  const maskVolume =
+    maskDownsampleStride > 1 ? downsampleMaskVolume(rawMaskVolume, maskDownsampleStride) : rawMaskVolume;
   const maskMs = Math.round(performance.now() - startedAt);
+  const pointScalarVolume = buildPointScalarVolumeFromMask(maskVolume);
 
   const marchingStart = performance.now();
   const imageData = vtkImageData.newInstance();
-  imageData.setDimensions(...maskVolume.dimensions);
-  imageData.setSpacing(maskVolume.spacing);
-  imageData.setOrigin(maskVolume.origin);
-  imageData.setDirection(Float64Array.from(maskVolume.directionCosines) as unknown as never);
+  imageData.setDimensions(...pointScalarVolume.dimensions);
+  imageData.setSpacing(pointScalarVolume.spacing);
+  imageData.setOrigin(pointScalarVolume.origin);
+  imageData.setDirection(Float64Array.from(pointScalarVolume.directionCosines) as unknown as never);
   imageData.getPointData().setScalars(
     vtkDataArray.newInstance({
       name: `${structure.id}-mask`,
-      values: maskVolume.scalars,
+      values: pointScalarVolume.scalars,
       numberOfComponents: 1,
     })
   );
@@ -441,7 +556,7 @@ function createStructureActor(
   const marchingMs = Math.round(performance.now() - marchingStart);
   const totalMs = Math.round(performance.now() - startedAt);
   pushDebug(
-    `structure actor ms=${totalMs} (mask=${maskMs} marching=${marchingMs}) id=${structure.id} contours=${structure.contours.length} mask=${maskVolume.dimensions.join('x')} filled=${maskVolume.filledVoxelCount}`
+    `structure actor ms=${totalMs} (mask=${maskMs} marching=${marchingMs}) id=${structure.id} contours=${structure.contours.length} mask=${maskVolume.dimensions.join('x')} filled=${maskVolume.filledVoxelCount} stride=${maskDownsampleStride}`
   );
 
   return {

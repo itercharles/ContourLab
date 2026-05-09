@@ -28,6 +28,14 @@ const mocks = vi.hoisted(() => {
   const openGLRenderWindow = {
     setContainer: vi.fn(),
     setSize: vi.fn(),
+    getCanvas: vi.fn(() => {
+      const canvas = document.createElement('canvas');
+      Object.defineProperty(canvas, 'width', { value: 320, configurable: true });
+      Object.defineProperty(canvas, 'height', { value: 240, configurable: true });
+      canvas.getBoundingClientRect = () =>
+        ({ left: 0, top: 0, width: 320, height: 240 } as DOMRect);
+      return canvas;
+    }),
     delete: vi.fn(),
   };
 
@@ -35,6 +43,10 @@ const mocks = vi.hoisted(() => {
     setView: vi.fn(),
     initialize: vi.fn(),
     bindEvents: vi.fn(),
+    handleWheel: vi.fn(),
+    startMouseWheelEvent: vi.fn(),
+    mouseWheelEvent: vi.fn(),
+    endMouseWheelEvent: vi.fn(),
     setInteractorStyle: vi.fn(),
     unbindEvents: vi.fn(),
     delete: vi.fn(),
@@ -216,7 +228,7 @@ beforeEach(() => {
 });
 
 describe('threeDScene lifecycle', () => {
-  it('keeps the current camera on subsequent scene refreshes', () => {
+  it('keeps the current camera on subsequent scene refreshes', async () => {
     const container = document.createElement('div');
     container.getBoundingClientRect = () =>
       ({ width: 320, height: 240 } as DOMRect);
@@ -227,13 +239,13 @@ describe('threeDScene lifecycle', () => {
       structures: [{ structure }],
     };
 
-    scene.renderSnapshot(snapshot);
-    scene.renderSnapshot(snapshot);
+    await scene.renderSnapshot(snapshot);
+    await scene.renderSnapshot(snapshot);
 
     expect(mocks.renderer.resetCamera).toHaveBeenCalledTimes(1);
   });
 
-  it('disposes the previous vtk pipelines before replacing scene props', () => {
+  it('disposes the previous vtk pipelines before replacing scene props', async () => {
     const container = document.createElement('div');
     container.getBoundingClientRect = () =>
       ({ width: 320, height: 240 } as DOMRect);
@@ -244,7 +256,7 @@ describe('threeDScene lifecycle', () => {
       structures: [{ structure }],
     };
 
-    scene.renderSnapshot(snapshot);
+    await scene.renderSnapshot(snapshot);
 
     // CT actor is at index 0; structure actor is at index 1.
     const firstStructureActorDelete = mocks.tracked.actors[1].delete;
@@ -272,7 +284,7 @@ describe('threeDScene lifecycle', () => {
       ],
     };
 
-    scene.renderSnapshot(changedSnapshot);
+    await scene.renderSnapshot(changedSnapshot);
 
     expect(firstStructureActorDelete).toHaveBeenCalledTimes(1);
     expect(firstStructureImageDelete).toHaveBeenCalledTimes(1);
@@ -280,7 +292,7 @@ describe('threeDScene lifecycle', () => {
     expect(firstStructureMarchingDelete).toHaveBeenCalledTimes(1);
   });
 
-  it('reuses vtk pipelines for identical snapshots', () => {
+  it('reuses vtk pipelines for identical snapshots', async () => {
     const container = document.createElement('div');
     container.getBoundingClientRect = () =>
       ({ width: 320, height: 240 } as DOMRect);
@@ -291,11 +303,11 @@ describe('threeDScene lifecycle', () => {
       structures: [{ structure }],
     };
 
-    scene.renderSnapshot(snapshot);
+    await scene.renderSnapshot(snapshot);
     const actorCountAfterFirstRender = mocks.tracked.actors.length;
     const imageCountAfterFirstRender = mocks.tracked.images.length;
 
-    scene.renderSnapshot(snapshot);
+    await scene.renderSnapshot(snapshot);
 
     expect(mocks.tracked.actors.length).toBe(actorCountAfterFirstRender);
     expect(mocks.tracked.images.length).toBe(imageCountAfterFirstRender);

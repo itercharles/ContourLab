@@ -1,5 +1,5 @@
 import type { ContourSlice, Volume } from '@webtps/shared-types';
-import type { WorldPoint } from './contourOverlayUtils';
+import { intersectContourWithPlane, type WorldPoint } from './contourOverlayUtils';
 
 type MprOrientation = 'SAGITTAL' | 'CORONAL';
 
@@ -13,32 +13,6 @@ function getVoxelCenter(index: number, origin: number, spacing: number): number 
 
 function getVoxelBoundary(index: number, origin: number, spacing: number): number {
   return origin + (index - 0.5) * spacing;
-}
-
-function isInsidePolygon2D(
-  points: Float32Array,
-  horizontalAxis: 0 | 1,
-  verticalAxis: 0 | 1,
-  horizontal: number,
-  vertical: number
-): boolean {
-  let inside = false;
-  const pointCount = Math.floor(points.length / 3);
-  if (pointCount < 3) return false;
-
-  for (let index = 0, previousIndex = pointCount - 1; index < pointCount; previousIndex = index, index += 1) {
-    const xi = points[index * 3 + horizontalAxis];
-    const yi = points[index * 3 + verticalAxis];
-    const xj = points[previousIndex * 3 + horizontalAxis];
-    const yj = points[previousIndex * 3 + verticalAxis];
-
-    const intersects =
-      yi > vertical !== yj > vertical &&
-      horizontal < ((xj - xi) * (vertical - yi)) / (yj - yi || Number.EPSILON) + xi;
-    if (intersects) inside = !inside;
-  }
-
-  return inside;
 }
 
 function getContourBounds(points: Float32Array, axis: 0 | 1): [number, number] {
@@ -76,6 +50,65 @@ function projectBoundaryEdge(
   return `M ${x1} ${y1} L ${x2} ${y2}`;
 }
 
+interface BoundaryEdge2D {
+  start: [number, number];
+  end: [number, number];
+}
+
+function makePointKey([x, y]: [number, number]): string {
+  return `${x.toFixed(4)}|${y.toFixed(4)}`;
+}
+
+function buildClosedBoundaryPaths(
+  edges: BoundaryEdge2D[],
+  orientation: MprOrientation,
+  planePosition: number,
+  worldToCanvas: (point: WorldPoint) => [number, number]
+): string[] {
+  const outgoing = new Map<string, number[]>();
+  edges.forEach((edge, index) => {
+    const key = makePointKey(edge.start);
+    outgoing.set(key, [...(outgoing.get(key) ?? []), index]);
+  });
+
+  const visited = new Set<number>();
+  const paths: string[] = [];
+
+  for (let index = 0; index < edges.length; index += 1) {
+    if (visited.has(index)) continue;
+
+    const loop: Array<[number, number]> = [];
+    let currentIndex = index;
+    let guard = 0;
+
+    while (!visited.has(currentIndex) && guard < edges.length + 1) {
+      guard += 1;
+      const edge = edges[currentIndex];
+      visited.add(currentIndex);
+      if (loop.length === 0) {
+        loop.push(edge.start);
+      }
+      loop.push(edge.end);
+
+      const nextCandidates = outgoing.get(makePointKey(edge.end)) ?? [];
+      const nextIndex = nextCandidates.find((candidate) => !visited.has(candidate));
+      if (nextIndex === undefined) {
+        break;
+      }
+      currentIndex = nextIndex;
+    }
+
+    if (loop.length < 3) continue;
+    const commands = loop.map((point, pointIndex) => {
+      const [x, y] = worldToCanvas(makeWorldPoint(orientation, planePosition, point[0], point[1]));
+      return `${pointIndex === 0 ? 'M' : 'L'} ${x} ${y}`;
+    });
+    paths.push(`${commands.join(' ')} Z`);
+  }
+
+  return paths;
+}
+
 export function buildMprMaskBoundaryPath(
   volume: Volume,
   contours: ContourSlice[],
@@ -98,31 +131,21 @@ export function buildMprMaskBoundaryPath(
     const zIndex = getVoxelIndex(contour.slicePosition, volume.origin[2], volume.spacing[2]);
     if (zIndex < 0 || zIndex >= zSize) continue;
 
-    const horizontalBounds = getContourBounds(contour.points, horizontalAxis);
-    const start = Math.max(
-      0,
-      Math.floor((horizontalBounds[0] - volume.origin[horizontalAxis]) / volume.spacing[horizontalAxis])
-    );
-    const end = Math.min(
-      horizontalSize - 1,
-      Math.ceil((horizontalBounds[1] - volume.origin[horizontalAxis]) / volume.spacing[horizontalAxis])
-    );
+    const intersections = intersectContourWithPlane(contour.points, fixedAxis, planePosition);
+    if (intersections.length < 2) continue;
 
-    for (let horizontalIndex = start; horizontalIndex <= end; horizontalIndex += 1) {
-      const horizontalPosition = getVoxelCenter(
-        horizontalIndex,
-        volume.origin[horizontalAxis],
-        volume.spacing[horizontalAxis]
+    const sorted = [...intersections].sort((a, b) => a[horizontalAxis] - b[horizontalAxis]);
+    for (let index = 0; index + 1 < sorted.length; index += 2) {
+      const start = Math.max(
+        0,
+        Math.round((sorted[index][horizontalAxis] - volume.origin[horizontalAxis]) / volume.spacing[horizontalAxis])
       );
-      if (
-        isInsidePolygon2D(
-          contour.points,
-          fixedAxis,
-          horizontalAxis,
-          planePosition,
-          horizontalPosition
-        )
-      ) {
+      const end = Math.min(
+        horizontalSize - 1,
+        Math.round((sorted[index + 1][horizontalAxis] - volume.origin[horizontalAxis]) / volume.spacing[horizontalAxis])
+      );
+
+      for (let horizontalIndex = Math.min(start, end); horizontalIndex <= Math.max(start, end); horizontalIndex += 1) {
         mask[zIndex * horizontalSize + horizontalIndex] = 1;
       }
     }
@@ -135,7 +158,7 @@ export function buildMprMaskBoundaryPath(
     return mask[zIndex * horizontalSize + horizontalIndex] === 1;
   };
 
-  const paths: string[] = [];
+  const boundaryEdges: BoundaryEdge2D[] = [];
   for (let zIndex = 0; zIndex < zSize; zIndex += 1) {
     for (let horizontalIndex = 0; horizontalIndex < horizontalSize; horizontalIndex += 1) {
       if (!isFilled(horizontalIndex, zIndex)) continue;
@@ -146,19 +169,19 @@ export function buildMprMaskBoundaryPath(
       const z1 = getVoxelBoundary(zIndex + 1, volume.origin[2], volume.spacing[2]);
 
       if (!isFilled(horizontalIndex, zIndex - 1)) {
-        paths.push(projectBoundaryEdge(orientation, planePosition, h0, z0, h1, z0, worldToCanvas));
+        boundaryEdges.push({ start: [h0, z0], end: [h1, z0] });
       }
       if (!isFilled(horizontalIndex + 1, zIndex)) {
-        paths.push(projectBoundaryEdge(orientation, planePosition, h1, z0, h1, z1, worldToCanvas));
+        boundaryEdges.push({ start: [h1, z0], end: [h1, z1] });
       }
       if (!isFilled(horizontalIndex, zIndex + 1)) {
-        paths.push(projectBoundaryEdge(orientation, planePosition, h1, z1, h0, z1, worldToCanvas));
+        boundaryEdges.push({ start: [h1, z1], end: [h0, z1] });
       }
       if (!isFilled(horizontalIndex - 1, zIndex)) {
-        paths.push(projectBoundaryEdge(orientation, planePosition, h0, z1, h0, z0, worldToCanvas));
+        boundaryEdges.push({ start: [h0, z1], end: [h0, z0] });
       }
     }
   }
 
-  return paths.join(' ');
+  return buildClosedBoundaryPaths(boundaryEdges, orientation, planePosition, worldToCanvas).join(' ');
 }
