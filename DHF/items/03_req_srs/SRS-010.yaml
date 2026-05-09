@@ -44,12 +44,15 @@ content: |-
   selector for non-default workflows. RT Structure Sets shall not be displayed
   as a patient-level list before the user chooses or expands an image set. The client
   software shall provide a settings page for configuring the active DICOMweb
-  repository endpoint and importing local DICOM files into that repository.
-  Repository refresh shall remain available from the patient context area of
-  the main workspace and shall visually indicate when background polling detects
-  repository worklist changes. Push Changes shall remain available from the
-  central top operation bar. Repository endpoint selection and local DICOM
-  import shall be handled outside the main clinical workspace.
+  repository endpoint and a control that opens the configured DICOMweb
+  repository's native upload UI in a new tab for importing local DICOM files
+  into that repository. The same control shall be available from the patient
+  browser. Repository refresh shall remain available from the patient context
+  area of the main workspace and shall visually indicate when background
+  polling detects repository worklist changes. Push Changes shall remain
+  available from the central top operation bar. Repository endpoint selection
+  and the local DICOM import control shall be handled outside the main
+  clinical workspace.
 derives_from: [SYS-006, SYS-007, SYS-011, SYS-012]
 verification_method: [Test, Demonstration]
 critical_safety: true

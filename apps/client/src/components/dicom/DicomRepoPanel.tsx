@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   queryDicomWebSeries,
-  uploadDicomWebStudies,
+  getOrthancUiUrl,
   loadSeriesFromDicomWeb,
   queryRtstructInstancesForStudy,
   retrieveDicomWebInstance,
-  type DicomUploadProgress,
   type DicomWebRtstructInstance,
   type DicomWebSeriesSummary,
 } from '../../core/dicom/dicomWebClient';
@@ -95,23 +94,6 @@ interface AxialViewportLike {
 interface DicomRepoPanelProps {
   refreshRequestToken?: number;
   onRefreshStateChange?: (state: RepoRefreshState) => void;
-}
-
-function formatImportBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let value = bytes;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  return `${value < 10 && unit > 0 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
-}
-
-function formatImportPercent(progress: DicomUploadProgress): number {
-  if (progress.total <= 0) return 0;
-  return Math.min(100, Math.round((progress.loaded / progress.total) * 100));
 }
 
 function formatDicomDate(date: string): string {
@@ -324,7 +306,6 @@ function RtstructCompareSummary({
 export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshStateChange }: DicomRepoPanelProps) {
   const lastRefreshRequestTokenRef = useRef(refreshRequestToken);
   const lastSeriesSignatureRef = useRef('');
-  const importInputRef = useRef<HTMLInputElement>(null);
   const addSeries = useVolumeStore((s) => s.addSeries);
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
@@ -354,11 +335,6 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
   const [patientBrowserFilter, setPatientBrowserFilter] = useState<PatientBrowserFilter>('all');
   const [selectedPatientKey, setSelectedPatientKey] = useState<string | null>(null);
   const [isPatientSelectorOpen, setIsPatientSelectorOpen] = useState(false);
-  const [isImportingDicom, setIsImportingDicom] = useState(false);
-  const [importProgress, setImportProgress] = useState<DicomUploadProgress | null>(null);
-  const [importSuccess, setImportSuccess] = useState<{ fileCount: number } | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
-  const importSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [expandedImageSetUIDs, setExpandedImageSetUIDs] = useState<string[]>([]);
   const [comparingRtstructSop, setComparingRtstructSop] = useState<string | null>(null);
   const [rtstructComparison, setRtstructComparison] = useState<RtstructComparisonState | null>(null);
@@ -597,41 +573,17 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
     }
   }, []);
 
-  const onImportDicomFiles = useCallback(async (files: File[]) => {
-    if (files.length === 0) return;
-
-    if (importSuccessTimerRef.current) {
-      clearTimeout(importSuccessTimerRef.current);
-      importSuccessTimerRef.current = null;
-    }
-    setIsImportingDicom(true);
-    setImportError(null);
-    setImportSuccess(null);
-    setImportProgress({ loaded: 0, total: 0, fileCount: files.length });
-
-    try {
-      await uploadDicomWebStudies(files, (progress) => setImportProgress(progress));
-      await refreshRepository();
-      setImportSuccess({ fileCount: files.length });
-      importSuccessTimerRef.current = setTimeout(() => setImportSuccess(null), 3000);
-      logClientDebug('DicomRepoPanel', `import:dicom files=${files.length}`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to import DICOM files.';
-      setImportError(message);
-      logClientDebug('DicomRepoPanel', `import:dicom:error ${message}`);
-    } finally {
-      setIsImportingDicom(false);
-      setImportProgress(null);
-    }
-  }, [refreshRepository]);
+  const onOpenOrthancUi = useCallback(() => {
+    const url = getOrthancUiUrl();
+    window.open(url, '_blank', 'noopener,noreferrer');
+    logClientDebug('DicomRepoPanel', `import:open-orthanc-ui url=${url}`);
+  }, []);
 
   useEffect(() => {
-    return () => {
-      if (importSuccessTimerRef.current) {
-        clearTimeout(importSuccessTimerRef.current);
-      }
-    };
-  }, []);
+    const onFocus = () => { void refreshRepository({ silent: true }); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [refreshRepository]);
 
   useEffect(() => {
     onRefreshStateChange?.({ hasUpdates: hasRepositoryUpdates, isRefreshing });
@@ -1085,27 +1037,18 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
               <div className="ml-auto" />
               <button
                 type="button"
-                onClick={() => importInputRef.current?.click()}
-                disabled={isImportingDicom}
-                title="Import local DICOM files into the repository"
-                className="flex h-6 items-center gap-1.5 rounded bg-[var(--color-elevated)] px-2 text-[11px] text-[var(--color-text-sec)] hover:bg-blue-900/40 hover:text-blue-200 disabled:cursor-not-allowed disabled:text-[var(--color-text-dim)] disabled:hover:bg-[var(--color-elevated)]"
+                onClick={onOpenOrthancUi}
+                title="Open Orthanc to import local DICOM files"
+                className="flex h-6 items-center gap-1.5 rounded bg-[var(--color-elevated)] px-2 text-[11px] text-[var(--color-text-sec)] hover:bg-blue-900/40 hover:text-blue-200"
               >
                 <span aria-hidden="true">+</span>
-                {isImportingDicom ? 'Importing...' : 'Import DICOM'}
+                Import DICOM
+                <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
               </button>
-              <input
-                ref={importInputRef}
-                aria-label="Import DICOM files"
-                type="file"
-                multiple
-                {...{ webkitdirectory: '' }}
-                className="sr-only"
-                onChange={(event) => {
-                  const files = Array.from(event.currentTarget.files ?? []);
-                  event.currentTarget.value = '';
-                  void onImportDicomFiles(files);
-                }}
-              />
               <button
                 type="button"
                 onClick={() => setIsPatientSelectorOpen(false)}
@@ -1117,53 +1060,6 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
                 </svg>
               </button>
             </div>
-
-            {/* DICOM import status row — visible during/after import */}
-            {(importProgress || importSuccess || importError) && (
-              <div
-                role="status"
-                aria-live="polite"
-                data-testid="dicom-import-status"
-                className="flex flex-none items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-4 py-1.5"
-              >
-                {importProgress ? (
-                  <>
-                    <span className="text-[11px] text-[var(--color-text-sec)]">
-                      Importing {importProgress.fileCount} file{importProgress.fileCount === 1 ? '' : 's'}…
-                      {' '}
-                      {formatImportBytes(importProgress.loaded)} / {formatImportBytes(importProgress.total)}
-                    </span>
-                    <div className="h-1 min-w-0 flex-1 rounded-full bg-[var(--color-border)]">
-                      <div
-                        className="h-1 rounded-full bg-blue-500 transition-all duration-100"
-                        style={{ width: `${formatImportPercent(importProgress)}%` }}
-                      />
-                    </div>
-                    <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
-                      {formatImportPercent(importProgress)}%
-                    </span>
-                  </>
-                ) : importSuccess ? (
-                  <span className="text-[11px] text-green-400">
-                    ✓ Imported {importSuccess.fileCount} file{importSuccess.fileCount === 1 ? '' : 's'} to repository
-                  </span>
-                ) : importError ? (
-                  <>
-                    <span className="text-[11px] text-red-400">{importError}</span>
-                    <button
-                      type="button"
-                      onClick={() => setImportError(null)}
-                      aria-label="Dismiss import error"
-                      className="ml-auto flex h-5 w-5 items-center justify-center rounded text-[var(--color-text-muted)] hover:bg-[var(--color-elevated)] hover:text-[var(--color-text-bright)]"
-                    >
-                      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            )}
 
             {/* Search toolbar */}
             <div className="flex flex-none items-center gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-4 py-2">

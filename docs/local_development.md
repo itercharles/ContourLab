@@ -118,29 +118,36 @@ The local Orthanc repository has **no authentication** — its web UI at
 `http://127.0.0.1:8042` requires no login and is open by design for local
 development.
 
-### Import through the WebTPS UI (recommended)
+### Import through the WebTPS UI
+
+WebTPS does not handle DICOM file upload itself. Both **Patient browser →
+Import DICOM** and **Settings → Import DICOM Files** open the Orthanc Explorer
+upload UI in a new tab. After uploading there, return to WebTPS — the worklist
+auto-refreshes when the tab regains focus.
 
 1. Open `http://127.0.0.1:3000/workspace`.
 2. Click the **Navigator** button in the left toolbar (folder icon) to open the
    left sidebar.
 3. In the Repository panel, click **"Open patient browser"**.
 4. In the patient browser modal, click **"+ Import DICOM"** in the top-right of
-   the header bar.
-5. A file picker opens. Select a folder containing `.dcm` files — the picker
-   recurses into subdirectories, so you can select a study root folder.
-6. Wait for the import to complete (a status message appears at the bottom of
-   the panel).
-7. The patient list refreshes automatically. Click a patient row to open their
-   workspace and load the image set.
+   the header bar. A new tab opens at Orthanc Explorer 2
+   (`http://<host>:8042/ui/app/index.html`). The host comes from the configured
+   DICOMweb endpoint, so it works the same in local and LAN setups without code
+   changes.
+5. In the Orthanc tab, drag the study folder onto the upload area. Orthanc
+   handles RTSTRUCT, RTPLAN, and RTDOSE alongside CT/MR slices.
+6. Return to the WebTPS tab. The patient list auto-refreshes — click a patient
+   row to open their workspace and load the image set.
 
-You can also import via **Settings → Import DICOM Data** — useful for a bulk
-initial load before opening the workspace.
+The redirect button is also available from **Settings → Import DICOM Data**.
 
-### Import via Orthanc web UI
+### Import via Orthanc web UI directly
 
-For direct bulk uploads or to inspect stored instances:
+You can also navigate to Orthanc Explorer directly without going through
+WebTPS:
 
-1. Open `http://127.0.0.1:8042` in your browser.
+1. Open `http://127.0.0.1:8042/ui/app/index.html` (or the same URL on your
+   LAN IP from another device).
 2. Click **Upload** and drag DICOM files or a ZIP archive onto the upload area.
 
 ### Sample DICOM datasets

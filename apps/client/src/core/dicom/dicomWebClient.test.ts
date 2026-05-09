@@ -1,14 +1,50 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   __testables__,
   getDefaultDicomWebBaseUrl,
   getDicomWebBaseUrl,
+  getOrthancUiUrl,
   resetDicomWebBaseUrl,
   setDicomWebBaseUrl,
 } from './dicomWebClient';
 
 beforeEach(() => {
   resetDicomWebBaseUrl();
+});
+
+describe('getOrthancUiUrl', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('derives the Orthanc Explorer URL from the same host on port 8042 @links:SRS-010', () => {
+    setDicomWebBaseUrl('http://10.140.115.109:3000/dicom-web');
+
+    expect(getOrthancUiUrl()).toBe('http://10.140.115.109:8042/ui/app/index.html');
+  });
+
+  it('derives an absolute Orthanc URL even when the configured base is relative @links:SRS-010', () => {
+    resetDicomWebBaseUrl();
+
+    const url = getOrthancUiUrl();
+
+    // window.location.origin is http://localhost:3000 in the test env;
+    // the helper swaps to port 8042 and the Orthanc Explorer 2 path.
+    expect(url).toMatch(/^https?:\/\/[^/]+:8042\/ui\/app\/index\.html$/);
+  });
+
+  it('honours VITE_ORTHANC_UI_URL when set to an http(s) URL @links:SRS-010', () => {
+    vi.stubEnv('VITE_ORTHANC_UI_URL', 'https://orthanc.example.com/orthanc/ui/app/index.html');
+
+    expect(getOrthancUiUrl()).toBe('https://orthanc.example.com/orthanc/ui/app/index.html');
+  });
+
+  it('rejects non-http(s) override schemes and falls back to the derived URL @links:SRS-010', () => {
+    vi.stubEnv('VITE_ORTHANC_UI_URL', 'javascript:alert(1)');
+    setDicomWebBaseUrl('http://10.140.115.109:3000/dicom-web');
+
+    expect(getOrthancUiUrl()).toBe('http://10.140.115.109:8042/ui/app/index.html');
+  });
 });
 
 describe('dicomWebClient summary parsing', () => {

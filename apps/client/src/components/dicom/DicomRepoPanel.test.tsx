@@ -7,7 +7,7 @@ import type { StructureSet } from '@webtps/shared-types';
 
 const mocks = vi.hoisted(() => ({
   queryDicomWebSeries: vi.fn(),
-  uploadDicomWebStudies: vi.fn(),
+  getOrthancUiUrl: vi.fn(() => 'http://localhost:8042/ui/app/index.html'),
   loadSeriesFromDicomWeb: vi.fn(),
   uploadDicomBlobToRepository: vi.fn(),
   queryRtstructInstancesForStudy: vi.fn(),
@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../core/dicom/dicomWebClient', () => ({
   queryDicomWebSeries: mocks.queryDicomWebSeries,
-  uploadDicomWebStudies: mocks.uploadDicomWebStudies,
+  getOrthancUiUrl: mocks.getOrthancUiUrl,
   loadSeriesFromDicomWeb: mocks.loadSeriesFromDicomWeb,
   uploadDicomBlobToRepository: mocks.uploadDicomBlobToRepository,
   queryRtstructInstancesForStudy: mocks.queryRtstructInstancesForStudy,
@@ -145,7 +145,7 @@ beforeEach(() => {
       instanceCount: 128,
     },
   ]);
-  mocks.uploadDicomWebStudies.mockResolvedValue(undefined);
+  mocks.getOrthancUiUrl.mockReturnValue('http://localhost:8042/ui/app/index.html');
   mocks.loadSeriesFromDicomWeb.mockResolvedValue(makeLoadedSeries());
   mocks.uploadDicomBlobToRepository.mockResolvedValue(undefined);
   mocks.queryRtstructInstancesForStudy.mockResolvedValue([]);
@@ -345,35 +345,9 @@ describe('DicomRepoPanel', () => {
     expect(screen.getByText('Last activity')).toBeTruthy();
   });
 
-  it('imports local DICOM files from the patient browser', async () => {
-    render(<DicomRepoPanel />);
-
-    await screen.findByText('Image Sets');
-    act(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
-    });
-
-    expect(await screen.findByText('Patient browser')).toBeTruthy();
-    const importButton = screen.getByRole('button', { name: 'Import DICOM' }) as HTMLButtonElement;
-    expect(importButton.disabled).toBe(false);
-
-    const file = new File(['dicom'], 'ct-1.dcm', { type: 'application/dicom' });
-    fireEvent.change(screen.getByLabelText('Import DICOM files'), {
-      target: { files: [file] },
-    });
-
-    await waitFor(() => expect(mocks.uploadDicomWebStudies).toHaveBeenCalled());
-    expect(mocks.uploadDicomWebStudies.mock.calls[0][0]).toEqual([file]);
-    await waitFor(() => expect(mocks.queryDicomWebSeries).toHaveBeenCalledTimes(2));
-  });
-
-  it('shows progress while importing and a success message when the upload finishes', async () => {
-    let progressCallback: ((p: { loaded: number; total: number; fileCount: number }) => void) | undefined;
-    let resolveUpload: (() => void) | undefined;
-    mocks.uploadDicomWebStudies.mockImplementation((_files, onProgress) => {
-      progressCallback = onProgress;
-      return new Promise<void>((resolve) => { resolveUpload = resolve; });
-    });
+  it('opens the Orthanc UI in a new tab when Import DICOM is clicked', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+    mocks.getOrthancUiUrl.mockReturnValue('http://10.140.115.109:8042/ui/app/index.html');
 
     render(<DicomRepoPanel />);
     await screen.findByText('Image Sets');
@@ -382,38 +356,29 @@ describe('DicomRepoPanel', () => {
     });
     await screen.findByText('Patient browser');
 
-    const file = new File(['dicom'], 'ct-1.dcm', { type: 'application/dicom' });
-    fireEvent.change(screen.getByLabelText('Import DICOM files'), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: /Import DICOM/i }));
 
-    await waitFor(() => expect(progressCallback).toBeDefined());
-    act(() => { progressCallback!({ loaded: 1024, total: 4096, fileCount: 1 }); });
+    expect(openSpy).toHaveBeenCalledWith(
+      'http://10.140.115.109:8042/ui/app/index.html',
+      '_blank',
+      'noopener,noreferrer',
+    );
 
-    const status = await screen.findByTestId('dicom-import-status');
-    expect(status.textContent).toContain('Importing 1 file');
-    expect(status.textContent).toContain('25%');
-
-    act(() => { resolveUpload!(); });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('dicom-import-status').textContent).toContain('✓ Imported 1 file');
-    });
+    openSpy.mockRestore();
   });
 
-  it('shows an error message when the import fails', async () => {
-    mocks.uploadDicomWebStudies.mockRejectedValueOnce(new Error('Boom: 503'));
-
+  it('refreshes the worklist when the window regains focus', async () => {
     render(<DicomRepoPanel />);
     await screen.findByText('Image Sets');
-    act(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
-    });
-    await screen.findByText('Patient browser');
 
-    const file = new File(['dicom'], 'ct-1.dcm', { type: 'application/dicom' });
-    fireEvent.change(screen.getByLabelText('Import DICOM files'), { target: { files: [file] } });
+    const callsBeforeFocus = mocks.queryDicomWebSeries.mock.calls.length;
+
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
 
     await waitFor(() => {
-      expect(screen.getByTestId('dicom-import-status').textContent).toContain('Boom: 503');
+      expect(mocks.queryDicomWebSeries.mock.calls.length).toBeGreaterThan(callsBeforeFocus);
     });
   });
 

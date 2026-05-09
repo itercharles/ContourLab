@@ -51,7 +51,7 @@ Validation scenarios map to the clinical workflow phases of WebTPS:
 
 | Scenario | CRS/UC items | Workflow |
 |---|---|---|
-| Patient selection and DICOM import | UC-001, CRS-001 | Open patient browser → import DICOM → confirm study appears |
+| Patient selection and DICOM import | UC-001, CRS-001 | Open patient browser → click Import DICOM (opens Orthanc Explorer in a new tab) → upload files in Orthanc → return to WebTPS → confirm new study appears in the worklist after auto-refresh |
 | CT series loading and viewport display | UC-002, CRS-002, CRS-003 | Select study → load CT → confirm all slices render |
 | Structure set creation and editing | UC-003, CRS-005 | Create RTSTRUCT → draw contour → edit contour → confirm persistence |
 | Structure export | UC-004, CRS-006 | Edit structure → export RTSTRUCT → confirm DICOMweb push |

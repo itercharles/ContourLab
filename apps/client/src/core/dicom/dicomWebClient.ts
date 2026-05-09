@@ -114,6 +114,37 @@ export function resetDicomWebBaseUrl(): void {
   clearStoredDicomWebBaseUrl();
 }
 
+const ORTHANC_UI_PATH = '/ui/app/index.html';
+
+// Set VITE_ORTHANC_UI_URL when Orthanc is not reachable at port 8042 on the
+// same host as WebTPS — e.g. reverse-proxy deployments serving it under a
+// path prefix on port 80/443.
+export function getOrthancUiUrl(): string {
+  const explicit = (import.meta.env?.VITE_ORTHANC_UI_URL as string | undefined)?.trim();
+  if (explicit) {
+    try {
+      const url = new URL(explicit);
+      if (url.protocol === 'http:' || url.protocol === 'https:') {
+        return explicit;
+      }
+    } catch {
+      // fall through to the derived URL
+    }
+  }
+
+  const base = getDicomWebBaseUrl();
+  try {
+    const absolute = new URL(base, window.location.origin);
+    absolute.port = '8042';
+    absolute.pathname = ORTHANC_UI_PATH;
+    absolute.search = '';
+    absolute.hash = '';
+    return absolute.toString();
+  } catch {
+    return ORTHANC_UI_PATH;
+  }
+}
+
 function normalizeDicomWebBaseUrl(baseUrl: string): string {
   const trimmed = baseUrl.trim().replace(/\/$/, '');
   if (!trimmed) return '';
@@ -176,85 +207,8 @@ export async function queryDicomWebSeries(): Promise<DicomWebSeriesSummary[]> {
     });
 }
 
-export interface DicomUploadProgress {
-  loaded: number;
-  total: number;
-  fileCount: number;
-}
-
 function multipartBoundary(): string {
   return `webtps-${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
-}
-
-export async function uploadDicomWebStudies(
-  files: File[],
-  onProgress?: (progress: DicomUploadProgress) => void
-): Promise<void> {
-  if (files.length === 0) {
-    return;
-  }
-
-  const boundary = multipartBoundary();
-  const bodyParts: BlobPart[] = [];
-
-  for (const file of files) {
-    bodyParts.push(`--${boundary}\r\n`);
-    bodyParts.push('Content-Type: application/dicom\r\n');
-    bodyParts.push('\r\n');
-    bodyParts.push(file);
-    bodyParts.push('\r\n');
-  }
-
-  bodyParts.push(`--${boundary}--\r\n`);
-  const body = new Blob(bodyParts);
-
-  if (typeof XMLHttpRequest === 'undefined') {
-    const response = await fetch(`${getDicomWebBaseUrl()}/studies`, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/dicom+json',
-        'Content-Type': `multipart/related; type=application/dicom; boundary=${boundary}`,
-      },
-      body,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to upload DICOM instances (${response.status})`);
-    }
-    onProgress?.({ loaded: body.size, total: body.size, fileCount: files.length });
-    return;
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${getDicomWebBaseUrl()}/studies`);
-    xhr.setRequestHeader('Accept', 'application/dicom+json');
-    xhr.setRequestHeader(
-      'Content-Type',
-      `multipart/related; type=application/dicom; boundary=${boundary}`
-    );
-
-    if (onProgress) {
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          onProgress({ loaded: event.loaded, total: event.total, fileCount: files.length });
-        }
-      });
-    }
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        onProgress?.({ loaded: body.size, total: body.size, fileCount: files.length });
-        resolve();
-      } else {
-        reject(new Error(`Failed to upload DICOM instances (${xhr.status})`));
-      }
-    };
-    xhr.onerror = () => reject(new Error('Failed to upload DICOM instances (network error)'));
-    xhr.onabort = () => reject(new Error('DICOM upload aborted'));
-
-    xhr.send(body);
-  });
 }
 
 export async function uploadDicomBlobToRepository(blob: Blob): Promise<void> {
