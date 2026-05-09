@@ -1,4 +1,4 @@
-import { Component, useEffect, useRef, useState } from 'react';
+import { Component, useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { MPRController, VIEWPORT_IDS } from '../../core/rendering/MPRController';
@@ -104,17 +104,18 @@ export default function ImageViewer() {
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
   const windowLevelPreset = useUIStore((s) => s.windowLevelPreset);
+  const crosshairsEnabled = useUIStore((s) => s.crosshairsEnabled);
   const [viewportsReady, setViewportsReady] = useState(false);
 
   // Track whether we've set up the tool group yet
   const setupDone = useRef(false);
   const readyViewportIds = useRef(new Set<string>());
 
-  const pushDebugEvent = (message: string) => {
+  const pushDebugEvent = useCallback((message: string) => {
     logClientDebug('ImageViewer', message);
-  };
+  }, []);
 
-  const handleViewportReady = async (id: string, el: HTMLDivElement): Promise<boolean> => {
+  const handleViewportReady = useCallback(async (id: string, el: HTMLDivElement): Promise<boolean> => {
     try {
       await ViewportManager.init();
       const existingViewport = ViewportManager.getRenderingEngine()?.getViewport(id);
@@ -135,10 +136,10 @@ export default function ImageViewer() {
       console.error(`Failed to enable viewport ${id}:`, err);
       return false;
     }
-  };
+  }, [pushDebugEvent]);
 
   // After all three viewports are ready, set up tool group once
-  const onReady = async (id: string, el: HTMLDivElement) => {
+  const onReady = useCallback(async (id: string, el: HTMLDivElement) => {
     const ok = await handleViewportReady(id, el);
     if (!ok) return;
 
@@ -149,6 +150,9 @@ export default function ImageViewer() {
         // MPRController.setup requires a volumeId; pass empty string for initial setup
         // It will be re-called when a volume is loaded
         await MPRController.setup('');
+        if (crosshairsEnabled) {
+          await MPRController.enableCrosshairs();
+        }
         pushDebugEvent('toolgroup:setup');
         setViewportsReady(true);
       } catch (err) {
@@ -157,7 +161,7 @@ export default function ImageViewer() {
         console.error('MPRController setup failed:', err);
       }
     }
-  };
+  }, [handleViewportReady, pushDebugEvent]);
 
   // When active series changes, load volume into viewports
   useEffect(() => {
@@ -174,6 +178,9 @@ export default function ImageViewer() {
         pushDebugEvent(`volume:start ${volumeId}`);
         // Re-setup tool group with the actual volume id
         await MPRController.setup(volumeId);
+        if (crosshairsEnabled) {
+          await MPRController.enableCrosshairs();
+        }
         pushDebugEvent(`volume:toolgroup ${volumeId}`);
 
         await Promise.all([
@@ -193,7 +200,7 @@ export default function ImageViewer() {
     };
 
     void applyVolume();
-  }, [activeSeriesUID, loadedSeries, viewportsReady, windowLevelPreset]);
+  }, [activeSeriesUID, crosshairsEnabled, loadedSeries, viewportsReady, windowLevelPreset]);
 
   // ResizeObserver on the container
   useEffect(() => {

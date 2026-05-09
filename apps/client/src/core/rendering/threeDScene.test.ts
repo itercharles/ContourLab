@@ -216,7 +216,6 @@ describe('threeDScene lifecycle', () => {
     const scene = createThreeDScene(container);
     const snapshot = {
       volume,
-      showCtSurface: true,
       structures: [{ structure }],
     };
 
@@ -234,20 +233,15 @@ describe('threeDScene lifecycle', () => {
     const scene = createThreeDScene(container);
     const snapshot = {
       volume,
-      showCtSurface: true,
       structures: [{ structure }],
     };
 
     scene.renderSnapshot(snapshot);
 
-    const firstCtActorDelete = mocks.tracked.actors[0].delete;
-    const firstStructureActorDelete = mocks.tracked.actors[1].delete;
-    const firstCtImageDelete = mocks.tracked.images[0].delete;
-    const firstStructureImageDelete = mocks.tracked.images[1].delete;
-    const firstCtMapperDelete = mocks.tracked.mappers[0].delete;
-    const firstStructureMapperDelete = mocks.tracked.mappers[1].delete;
-    const firstCtMarchingDelete = mocks.tracked.marching[0].delete;
-    const firstStructureMarchingDelete = mocks.tracked.marching[1].delete;
+    const firstStructureActorDelete = mocks.tracked.actors[0].delete;
+    const firstStructureImageDelete = mocks.tracked.images[0].delete;
+    const firstStructureMapperDelete = mocks.tracked.mappers[0].delete;
+    const firstStructureMarchingDelete = mocks.tracked.marching[0].delete;
 
     const changedSnapshot = {
       ...snapshot,
@@ -271,10 +265,6 @@ describe('threeDScene lifecycle', () => {
 
     scene.renderSnapshot(changedSnapshot);
 
-    expect(firstCtActorDelete).not.toHaveBeenCalled();
-    expect(firstCtImageDelete).not.toHaveBeenCalled();
-    expect(firstCtMapperDelete).not.toHaveBeenCalled();
-    expect(firstCtMarchingDelete).not.toHaveBeenCalled();
     expect(firstStructureActorDelete).toHaveBeenCalledTimes(1);
     expect(firstStructureImageDelete).toHaveBeenCalledTimes(1);
     expect(firstStructureMapperDelete).toHaveBeenCalledTimes(1);
@@ -289,7 +279,6 @@ describe('threeDScene lifecycle', () => {
     const scene = createThreeDScene(container);
     const snapshot = {
       volume,
-      showCtSurface: true,
       structures: [{ structure }],
     };
 

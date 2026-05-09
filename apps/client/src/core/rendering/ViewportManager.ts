@@ -13,6 +13,8 @@ let renderingEngine: {
   resize: () => void;
   destroy: () => void;
 } | null = null;
+let initPromise: Promise<void> | null = null;
+const enabledViewportElements = new Map<string, HTMLDivElement>();
 
 interface ViewportLike {
   setVolumes: (
@@ -28,9 +30,24 @@ interface ViewportLike {
 export const ViewportManager = {
   async init(): Promise<void> {
     if (renderingEngine) return;
-    await cornerstoneInit();
-    const { RenderingEngine } = await import('@cornerstonejs/core');
-    renderingEngine = new RenderingEngine(ENGINE_ID) as unknown as NonNullable<typeof renderingEngine>;
+    if (initPromise) {
+      await initPromise;
+      return;
+    }
+
+    initPromise = (async () => {
+      await cornerstoneInit();
+      const { RenderingEngine } = await import('@cornerstonejs/core');
+      if (!renderingEngine) {
+        renderingEngine = new RenderingEngine(ENGINE_ID) as unknown as NonNullable<typeof renderingEngine>;
+      }
+    })();
+
+    try {
+      await initPromise;
+    } finally {
+      initPromise = null;
+    }
   },
 
   getRenderingEngine() {
@@ -43,9 +60,17 @@ export const ViewportManager = {
     orientation: OrthographicOrientation
   ): Promise<void> {
     if (!renderingEngine) await this.init();
+    if (!renderingEngine) return;
+
+    const existingViewport = renderingEngine.getViewport(viewportId);
+    const existingElement = enabledViewportElements.get(viewportId);
+    if (existingViewport && existingElement === element) {
+      return;
+    }
+
     const { Enums } = await import('@cornerstonejs/core');
 
-    renderingEngine!.enableElement({
+    renderingEngine.enableElement({
       viewportId,
       type: Enums.ViewportType.ORTHOGRAPHIC,
       element,
@@ -59,6 +84,7 @@ export const ViewportManager = {
         background: [0, 0, 0] as [number, number, number],
       },
     });
+    enabledViewportElements.set(viewportId, element);
   },
 
   async setVolume(
@@ -104,6 +130,8 @@ export const ViewportManager = {
   destroy(): void {
     renderingEngine?.destroy();
     renderingEngine = null;
+    initPromise = null;
+    enabledViewportElements.clear();
   },
 };
 

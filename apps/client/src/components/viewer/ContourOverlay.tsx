@@ -287,10 +287,16 @@ export default function ContourOverlay({
   );
   const isContourEditTool = ['edit', 'freehand', 'polygon', 'brush', 'eraser'].includes(activeTool);
   const canMeasure = isMeasurementTool && !!viewport && !!activeSeries;
+  const isInteractiveTool = isContourEditTool || isMeasurementTool;
 
   useEffect(() => {
-    if (!isContourEditTool && !isMeasurementTool) {
+    if (!isInteractiveTool) {
       clearDraft();
+    }
+  }, [isInteractiveTool]);
+
+  useEffect(() => {
+    if (!isInteractiveTool) {
       return;
     }
 
@@ -387,7 +393,7 @@ export default function ContourOverlay({
     activeStructure,
     activeStructureSet,
     activeTool,
-    isContourEditTool,
+    isInteractiveTool,
     isMeasurementTool,
     measurementDraftPoints,
     measurements,

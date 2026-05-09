@@ -14,7 +14,7 @@ import { logClientDebug } from '../debug/clientDebugLog';
 // @ts-expect-error
 import vtkImageMarchingCubes from '@kitware/vtk.js/Filters/General/ImageMarchingCubes';
 import type { Structure, Volume } from '@webtps/shared-types';
-import { buildStructureMaskVolume, downsampleVolume, hasRenderableContours } from './threeDGeometry';
+import { buildStructureMaskVolume, hasRenderableContours } from './threeDGeometry';
 
 export interface ThreeDStructureLayer {
   structure: Structure;
@@ -23,24 +23,17 @@ export interface ThreeDStructureLayer {
 
 export interface ThreeDSceneSnapshot {
   volume: Volume | null;
-  showCtSurface: boolean;
-  ctIsoThresholdHu?: number;
-  ctOpacity?: number;
-  ctRevision?: number;
   structures: ThreeDStructureLayer[];
 }
 
 export interface ThreeDScene {
-  renderSnapshot: (snapshot: ThreeDSceneSnapshot) => { ctReady: boolean; structureCount: number };
+  renderSnapshot: (snapshot: ThreeDSceneSnapshot) => { structureCount: number };
   resize: () => void;
   resetCamera: () => void;
   rotateCamera: (azimuthDelta: number, elevationDelta?: number) => void;
   destroy: () => void;
 }
 
-const DEFAULT_CT_ISO_THRESHOLD_HU = 120;
-const DEFAULT_CT_OPACITY = 0.3;
-const CT_DOWNSAMPLE_STRIDE = 2;
 let nextSceneId = 1;
 interface ScenePropHandle {
   actor: ReturnType<typeof vtkActor.newInstance>;
@@ -78,7 +71,6 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   pushDebug('create');
   let mountedProps: ScenePropHandle[] = [];
   let hasFramedContent = false;
-  let cachedCtProp: CachedPropHandle | null = null;
   const cachedStructureProps = new Map<string, CachedPropHandle>();
 
   const clearMountedProps = () => {
@@ -102,47 +94,8 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       const startedAt = performance.now();
       clearMountedProps();
       pushDebug(
-        `snapshot volume=${snapshot.volume?.seriesUID ?? 'none'} showCt=${snapshot.showCtSurface} scalars=${snapshot.volume?.pixelData.length ?? 0} ctRevision=${snapshot.ctRevision ?? 0} threshold=${snapshot.ctIsoThresholdHu ?? DEFAULT_CT_ISO_THRESHOLD_HU} opacity=${(snapshot.ctOpacity ?? DEFAULT_CT_OPACITY).toFixed(2)} structures=${snapshot.structures.length}`
+        `snapshot volume=${snapshot.volume?.seriesUID ?? 'none'} structures=${snapshot.structures.length}`
       );
-
-      let ctReady = false;
-      if (!snapshot.volume) {
-        pushDebug('ct skip reason=no-volume');
-      } else if (!snapshot.showCtSurface) {
-        pushDebug('ct skip reason=hidden');
-      } else if (snapshot.volume.pixelData.length === 0) {
-        pushDebug('ct skip reason=no-scalars');
-      } else if (snapshot.volume && snapshot.showCtSurface && snapshot.volume.pixelData.length > 0) {
-        const ctKey = buildCtCacheKey(
-          snapshot.volume,
-          snapshot.ctIsoThresholdHu ?? DEFAULT_CT_ISO_THRESHOLD_HU,
-          snapshot.ctOpacity ?? DEFAULT_CT_OPACITY,
-          snapshot.ctRevision ?? 0
-        );
-        let ctProp = cachedCtProp;
-        if (!ctProp || ctProp.key !== ctKey) {
-          pushDebug(`ct cache miss key=${ctKey}`);
-          disposeCachedProp(cachedCtProp);
-          ctProp = createCtActor(
-            snapshot.volume,
-            pushDebug,
-            ctKey,
-            snapshot.ctIsoThresholdHu ?? DEFAULT_CT_ISO_THRESHOLD_HU,
-            snapshot.ctOpacity ?? DEFAULT_CT_OPACITY
-          );
-          cachedCtProp = ctProp;
-        } else {
-          pushDebug(`ct cache hit key=${ctKey}`);
-        }
-        if (ctProp) {
-          renderer.addActor(ctProp.actor);
-          mountedProps.push(ctProp);
-          ctReady = true;
-          pushDebug('ct actor mounted');
-        } else {
-          pushDebug('ct actor unavailable after create');
-        }
-      }
 
       let structureCount = 0;
       const activeStructureKeys = new Set<string>();
@@ -177,7 +130,7 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
         cachedStructureProps.delete(key);
       }
 
-      const hasSceneContent = ctReady || structureCount > 0;
+      const hasSceneContent = structureCount > 0;
       if (hasSceneContent && !hasFramedContent) {
         renderer.resetCamera();
         pushDebug('camera reset for initial framing');
@@ -186,9 +139,9 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       renderWindow.render();
       const elapsedMs = Math.round(performance.now() - startedAt);
       pushDebug(
-        `render ms=${elapsedMs} ctReady=${ctReady} structureCount=${structureCount} mountedProps=${mountedProps.length} cached_structures=${cachedStructureProps.size}`
+        `render ms=${elapsedMs} structureCount=${structureCount} mountedProps=${mountedProps.length} cached_structures=${cachedStructureProps.size}`
       );
-      return { ctReady, structureCount };
+      return { structureCount };
     },
     resize() {
       setSizeFromContainer(container, openGLRenderWindow);
@@ -218,8 +171,6 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
     },
     destroy() {
       clearMountedProps();
-      disposeCachedProp(cachedCtProp);
-      cachedCtProp = null;
       for (const prop of cachedStructureProps.values()) {
         disposeCachedProp(prop);
       }
@@ -236,24 +187,6 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       pushDebug('destroy');
     },
   };
-}
-
-function buildCtCacheKey(
-  volume: Volume,
-  isoThresholdHu: number,
-  opacity: number,
-  revision: number
-): string {
-  return [
-    volume.seriesUID,
-    volume.dimensions.join('x'),
-    volume.spacing.join(','),
-    volume.origin.join(','),
-    volume.pixelData.length,
-    isoThresholdHu,
-    opacity.toFixed(2),
-    revision,
-  ].join('::');
 }
 
 function buildStructureCacheKey(
@@ -282,67 +215,6 @@ function setSizeFromContainer(
 ) {
   const { width, height } = container.getBoundingClientRect();
   openGLRenderWindow.setSize(Math.max(1, Math.floor(width)), Math.max(1, Math.floor(height)));
-}
-
-function createCtActor(
-  volume: Volume,
-  pushDebug: (message: string) => void,
-  key: string,
-  isoThresholdHu: number,
-  opacity: number
-): CachedPropHandle | null {
-  const startedAt = performance.now();
-  pushDebug(
-    `ct actor start key=${key} dims=${volume.dimensions.join('x')} spacing=${volume.spacing.join(',')} scalars=${volume.pixelData.length}`
-  );
-  const sourceVolume = downsampleVolume(volume, CT_DOWNSAMPLE_STRIDE);
-  const downsampleMs = Math.round(performance.now() - startedAt);
-
-  const marchingStart = performance.now();
-  const imageData = vtkImageData.newInstance();
-  imageData.setDimensions(...sourceVolume.dimensions);
-  imageData.setSpacing(sourceVolume.spacing);
-  imageData.setOrigin(sourceVolume.origin);
-  imageData.setDirection(Float64Array.from(sourceVolume.directionCosines) as unknown as never);
-  imageData.getPointData().setScalars(
-    vtkDataArray.newInstance({
-      name: 'ct-scalars',
-      values: sourceVolume.pixelData,
-      numberOfComponents: 1,
-    })
-  );
-
-  const marchingCubes = vtkImageMarchingCubes.newInstance({
-    contourValue: isoThresholdHu,
-    computeNormals: true,
-    mergePoints: true,
-  });
-  marchingCubes.setInputData(imageData);
-  const mapper = vtkMapper.newInstance();
-  mapper.setInputConnection(marchingCubes.getOutputPort());
-
-  const actor = vtkActor.newInstance();
-  actor.setMapper(mapper);
-  actor.getProperty().setColor(0.85, 0.87, 0.92);
-  actor.getProperty().setOpacity(opacity);
-  actor.getProperty().setInterpolationToPhong();
-
-  const marchingMs = Math.round(performance.now() - marchingStart);
-  const totalMs = Math.round(performance.now() - startedAt);
-  pushDebug(
-    `ct actor ms=${totalMs} (downsample=${downsampleMs} marching=${marchingMs}) threshold=${isoThresholdHu} opacity=${opacity.toFixed(2)} src=${volume.dimensions.join('x')} downsampled=${sourceVolume.dimensions.join('x')} scalars=${sourceVolume.pixelData.length}`
-  );
-
-  return {
-    key,
-    actor,
-    dispose: () => {
-      actor.delete();
-      mapper.delete();
-      marchingCubes.delete();
-      imageData.delete();
-    },
-  };
 }
 
 function createStructureActor(

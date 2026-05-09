@@ -10,6 +10,7 @@ export const VIEWPORT_IDS = {
 } as const;
 
 let toolGroupId: string | null = null;
+let crosshairsAdded = false;
 
 export const MPRController = {
   async setup(volumeId: string): Promise<void> {
@@ -29,6 +30,7 @@ export const MPRController = {
     // Destroy existing tool group if reinitializing
     const existing = ToolGroupManager.getToolGroup(toolGroupId);
     if (existing) ToolGroupManager.destroyToolGroup(toolGroupId);
+    crosshairsAdded = false;
 
     const toolGroup = ToolGroupManager.createToolGroup(toolGroupId)!;
 
@@ -42,12 +44,6 @@ export const MPRController = {
     toolGroup.addTool(ZoomTool.toolName);
     toolGroup.addTool(PanTool.toolName);
     toolGroup.addTool(StackScrollTool.toolName);
-    toolGroup.addTool(CrosshairsTool.toolName, {
-      getReferenceLineColor: () => 'rgb(0, 200, 255)',
-      getReferenceLineControllable: () => true,
-      getReferenceLineDraggableRotatable: () => true,
-      getReferenceLineSlabThicknessControlsOn: () => false,
-    });
 
     // Start with no primary-button image tool selected. The user explicitly chooses
     // Window/Level, Zoom, Pan, or Scroll from the tool rail / shortcuts.
@@ -60,8 +56,6 @@ export const MPRController = {
     toolGroup.setToolActive(StackScrollTool.toolName, {
       bindings: [{ mouseButton: csToolsEnums.MouseBindings.Primary, modifierKey: csToolsEnums.KeyboardBindings.Shift }],
     });
-    toolGroup.setToolEnabled(CrosshairsTool.toolName);
-
     void volumeId; // volume association happens via setVolume in ViewportManager
   },
 
@@ -101,7 +95,20 @@ export const MPRController = {
   async enableCrosshairs(): Promise<void> {
     if (!toolGroupId) return;
     const { ToolGroupManager, CrosshairsTool } = await import('@cornerstonejs/tools');
-    ToolGroupManager.getToolGroup(toolGroupId)?.setToolEnabled(CrosshairsTool.toolName);
+    const toolGroup = ToolGroupManager.getToolGroup(toolGroupId);
+    if (!toolGroup) return;
+
+    if (!crosshairsAdded) {
+      toolGroup.addTool(CrosshairsTool.toolName, {
+        getReferenceLineColor: () => 'rgb(0, 200, 255)',
+        getReferenceLineControllable: () => true,
+        getReferenceLineDraggableRotatable: () => true,
+        getReferenceLineSlabThicknessControlsOn: () => false,
+      });
+      crosshairsAdded = true;
+    }
+
+    toolGroup.setToolEnabled(CrosshairsTool.toolName);
   },
 
   async disableCrosshairs(): Promise<void> {
@@ -115,6 +122,7 @@ export const MPRController = {
     import('@cornerstonejs/tools').then(({ ToolGroupManager }) => {
       ToolGroupManager.destroyToolGroup(toolGroupId!);
       toolGroupId = null;
+      crosshairsAdded = false;
     });
   },
 };

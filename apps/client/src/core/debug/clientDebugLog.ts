@@ -4,6 +4,8 @@ declare global {
   }
 }
 
+let remoteLoggingDisabled = false;
+
 export function logClientDebug(scope: string, message: string): void {
   const entry = `[${scope}] ${message}`;
 
@@ -18,13 +20,21 @@ export function logClientDebug(scope: string, message: string): void {
 
   console.debug(entry);
 
+  if (remoteLoggingDisabled) {
+    return;
+  }
+
   void fetch('/debug/client-log', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ scope, message }),
+  }).then((response) => {
+    if (!response.ok) {
+      remoteLoggingDisabled = true;
+    }
   }).catch(() => {
-    // Ignore logging transport failures in the client.
+    remoteLoggingDisabled = true;
   });
 }

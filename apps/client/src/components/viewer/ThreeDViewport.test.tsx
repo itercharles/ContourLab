@@ -4,11 +4,9 @@ import type { StructureSet } from '@webtps/shared-types';
 import ThreeDViewport from './ThreeDViewport';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
-import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
 
 const mocks = vi.hoisted(() => ({
   renderSnapshot: vi.fn((snapshot) => ({
-    ctReady: Boolean(snapshot.volume?.pixelData.length) && snapshot.showCtSurface,
     structureCount: snapshot.structures.length,
   })),
   resize: vi.fn(),
@@ -104,11 +102,7 @@ function makeStructureSet(): StructureSet {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal('ResizeObserver', ResizeObserverMock);
-  document.body.innerHTML = `
-    <div data-viewport-id="${VIEWPORT_IDS.AXIAL}"></div>
-    <div data-viewport-id="${VIEWPORT_IDS.SAGITTAL}"></div>
-    <div data-viewport-id="${VIEWPORT_IDS.CORONAL}"></div>
-  `;
+  document.body.innerHTML = '';
   useVolumeStore.setState({
     loadedSeries: [makeLoadedSeries()],
     activeSeriesUID: 'series-1',
@@ -130,16 +124,12 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
 
     expect(screen.getByLabelText('3D viewport')).toBeTruthy();
     await waitFor(() => {
-      expect(screen.getByText(/CT surface ready/i)).toBeTruthy();
       expect(screen.getByText(/1 visible structure/i)).toBeTruthy();
     });
   });
 
-  it('lets the user hide CT context and reset the 3D camera', async () => {
+  it('lets the user reset the 3D camera', async () => {
     render(<ThreeDViewport />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Hide CT' }));
-    await waitFor(() => expect(screen.getByText(/CT hidden/i)).toBeTruthy());
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
     expect(mocks.resetCamera).toHaveBeenCalledTimes(1);
@@ -163,36 +153,6 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
 
     await waitFor(() => {
       expect(mocks.renderSnapshot.mock.calls.length).toBeGreaterThan(callsBefore);
-    });
-  });
-
-  it('re-renders CT when streamed voxels arrive after the initial mount', async () => {
-    useVolumeStore.setState({
-      loadedSeries: [makeLoadedSeries(new Float32Array(0))],
-      activeSeriesUID: 'series-1',
-      isLoading: false,
-      loadError: null,
-    });
-
-    render(<ThreeDViewport />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/CT streaming/i)).toBeTruthy();
-    });
-
-    const callsBefore = mocks.renderSnapshot.mock.calls.length;
-    const nextPixelData = new Float32Array([0, 150, 300, 600]);
-    const series = useVolumeStore.getState().loadedSeries[0];
-    series.volume.pixelData = nextPixelData;
-
-    fireEvent(
-      document.querySelector(`[data-viewport-id="${VIEWPORT_IDS.AXIAL}"]`) as Element,
-      new Event('CORNERSTONE_IMAGE_RENDERED')
-    );
-
-    await waitFor(() => {
-      expect(mocks.renderSnapshot.mock.calls.length).toBeGreaterThan(callsBefore);
-      expect(screen.getByText(/CT surface ready/i)).toBeTruthy();
     });
   });
 
