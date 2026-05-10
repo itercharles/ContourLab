@@ -27,8 +27,8 @@ function makeSquare(z: number): ContourSlice {
   };
 }
 
-describe('buildMprMaskBoundaryPath', () => {
-  it('extracts a sagittal boundary from rasterized contour mask data', () => {
+describe('buildMprMaskBoundaryPath @links:SRS-012', () => {
+  it('extracts a sagittal boundary from rasterized contour mask data @links:SRS-012', () => {
     const path = buildMprMaskBoundaryPath(
       volume,
       [makeSquare(1), makeSquare(2)],
@@ -41,7 +41,7 @@ describe('buildMprMaskBoundaryPath', () => {
     expect(path).toContain('M 7.5 2.5 L 6.5 2.5');
   });
 
-  it('returns no boundary when the MPR plane misses the contour mask', () => {
+  it('returns no boundary when the MPR plane misses the contour mask @links:SRS-012', () => {
     const path = buildMprMaskBoundaryPath(
       volume,
       [makeSquare(1), makeSquare(2)],
@@ -59,7 +59,7 @@ describe('buildMprMaskBoundaryPath', () => {
   // range whenever two contours shared a slice — the contour that sorted
   // first in that pair would be dropped. Slab-level grouping has to
   // rasterise every polygon on a shared slice.
-  it('rasterises every polygon on a multi-polygon slice', () => {
+  it('rasterises every polygon on a multi-polygon slice @links:SRS-012', () => {
     // Two polygons at world Z = 1 that both intersect a sagittal plane at
     // X = 5 but cover disjoint Y ranges. The previous per-contour code drops
     // the first one (kStart > kEnd because the next contour shares its K).
@@ -87,12 +87,22 @@ describe('buildMprMaskBoundaryPath', () => {
     );
 
     expect(path.length).toBeGreaterThan(0);
-    // The first polygon spans voxel J in [2, 5] — its left wall lies at
-    // canvas X = 1.5 (voxel J = 2's left edge). The second spans J in
-    // [7, 10] — its left wall lies at canvas X = 6.5. Both must appear; the
-    // pre-slab implementation produced only the second polygon's outline.
-    expect(path).toMatch(/M 1\.5 /);
-    expect(path).toMatch(/M 6\.5 /);
+    // The first polygon spans voxel J in [2, 5] (canvas X 1.5..5.5) — its
+    // left wall lies at canvas X = 1.5 (voxel J = 2's left edge). The
+    // second spans J in [7, 10] (canvas X 6.5..10.5). Both must appear;
+    // the pre-slab implementation produced only the second polygon's
+    // outline. Rather than literal-matching the SVG number format we
+    // extract every vertical edge (constant canvas X) and assert at least
+    // one in each band — survives a future precision change in
+    // worldToCanvas / projectBoundaryEdge.
+    const verticalEdges = [...path.matchAll(/M (-?\d+\.?\d*) (-?\d+\.?\d*) L (-?\d+\.?\d*) (-?\d+\.?\d*)/g)]
+      .filter((m) => Math.abs(Number(m[1]) - Number(m[3])) < 1e-6)
+      .map((m) => Number(m[1]));
+    const distinctXs = new Set(verticalEdges.map((x) => x.toFixed(3)));
+    const inFirstBand = [...distinctXs].some((s) => Number(s) >= 1 && Number(s) <= 6);
+    const inSecondBand = [...distinctXs].some((s) => Number(s) >= 6 && Number(s) <= 11);
+    expect(inFirstBand).toBe(true);
+    expect(inSecondBand).toBe(true);
   });
 
   // CTs that mix 5 mm and 2.5 mm slabs come back from Cornerstone3D as a
@@ -101,7 +111,7 @@ describe('buildMprMaskBoundaryPath', () => {
   // every-other K row empty between consecutive contours and the S/C
   // boundary draws as a stack of disconnected stripes. Use a fractional
   // contour spacing to pin the ownership-window fix.
-  it('fills every K row between consecutive contours when the volume grid is finer than the contour spacing', () => {
+  it('fills every K row between consecutive contours when the volume grid is finer than the contour spacing @links:SRS-012', () => {
     const fineGridVolume: Volume = {
       ...volume,
       dimensions: [12, 12, 8],
@@ -147,7 +157,7 @@ describe('buildMprMaskBoundaryPath', () => {
   // direct-world-axis math with negative voxel indices and dropped every slice
   // below the volume's origin. Force the same geometry here so a regression
   // would surface as an empty path.
-  it('extracts boundaries on HFP-style flipped-Y and flipped-Z volumes', () => {
+  it('extracts boundaries on HFP-style flipped-Y and flipped-Z volumes @links:SRS-012', () => {
     const hfpVolume: Volume = {
       ...volume,
       origin: [0, 10, 10],

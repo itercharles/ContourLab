@@ -169,7 +169,12 @@ export function cornerstoneMetadataProvider(type: string, imageId: string): unkn
       // in-flight streaming requests for the volume, blocking the
       // viewport.setVolumes() promise for several seconds on cold load.
       // Hand it a modality-appropriate default so the slow path is never
-      // taken; users can still tweak windowing from the toolbar.
+      // taken.
+      //
+      // These are first-paint placeholders, not clinical presets. CT 40/400
+      // is soft-tissue (thorax/abdomen); head CTs would prefer 35/80
+      // (brain) or 600/2800 (bone), MR varies by sequence. Users adjust
+      // windowing from the toolbar's W/L preset menu after load.
       if (meta.modality === 'CT') {
         return { windowCenter: 40, windowWidth: 400 };
       }

@@ -202,10 +202,8 @@ export default function ThreeDViewport() {
     const abort = new AbortController();
     let scheduleHandle: number | null = null;
     let timeoutHandle: number | null = null;
-    type IdleSchedule = (cb: () => void, opts: { timeout: number }) => number;
-    type IdleCancel = (handle: number) => void;
-    const ric = (window as Window & { requestIdleCallback?: IdleSchedule }).requestIdleCallback;
-    const cic = (window as Window & { cancelIdleCallback?: IdleCancel }).cancelIdleCallback;
+    const ric = window.requestIdleCallback;
+    const cic = window.cancelIdleCallback;
 
     const startSnapshot = () => {
       if (abort.signal.aborted) return;

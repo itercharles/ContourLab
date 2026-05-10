@@ -197,6 +197,12 @@ export default function ImageViewer() {
 
     const volumeId = series.cornerstoneVolumeId;
 
+    // AbortSignal scopes the per-viewport first-paint listeners to this
+    // effect. If the user switches series before CORNERSTONE_IMAGE_RENDERED
+    // fires (or fires on the wrong viewport pass), the cleanup aborts the
+    // controller and the listeners are removed automatically — no
+    // dangling-listener leak per the review feedback.
+    const abort = new AbortController();
     const applyVolume = async () => {
       const t0 = performance.now();
       try {
@@ -207,7 +213,9 @@ export default function ImageViewer() {
           await MPRController.enableCrosshairs();
         }
         const tToolgroup = performance.now();
-        pushDebugEvent(`volume:toolgroup ${volumeId} ms=${Math.round(tToolgroup - t0)}`);
+        if (import.meta.env.DEV) {
+          pushDebugEvent(`volume:toolgroup ${volumeId} ms=${Math.round(tToolgroup - t0)}`);
+        }
 
         await Promise.all([
           ViewportManager.setVolume(VIEWPORT_IDS.AXIAL, volumeId),
@@ -218,26 +226,32 @@ export default function ImageViewer() {
         ViewportManager.setWindowLevel(VIEWPORT_IDS.AXIAL, windowLevelPreset);
         ViewportManager.setWindowLevel(VIEWPORT_IDS.SAGITTAL, windowLevelPreset);
         ViewportManager.setWindowLevel(VIEWPORT_IDS.CORONAL, windowLevelPreset);
-        pushDebugEvent(
-          `volume:done ${volumeId} setVolume=${Math.round(tSetVolume - tToolgroup)} total=${Math.round(performance.now() - t0)}`
-        );
+        if (import.meta.env.DEV) {
+          pushDebugEvent(
+            `volume:done ${volumeId} setVolume=${Math.round(tSetVolume - tToolgroup)} total=${Math.round(performance.now() - t0)}`
+          );
+        }
 
         // Time-to-first-paint per 2D viewport. setVolume returns once the
         // actor is wired up, but the GPU 3D-texture upload + first MPR
-        // composition happens asynchronously after — that is the wall-clock
-        // delay the user perceives as "TSC views are slow". Listen for
-        // CORNERSTONE_IMAGE_RENDERED on each viewport DOM element exactly
-        // once and log the elapsed time, so we have an objective
-        // measurement of where the load goes.
-        for (const id of [VIEWPORT_IDS.AXIAL, VIEWPORT_IDS.SAGITTAL, VIEWPORT_IDS.CORONAL] as const) {
-          const element = document.querySelector(`[data-viewport-id="${id}"]`) as HTMLDivElement | null;
-          if (!element) continue;
-          const onFirstRender = () => {
-            const elapsed = Math.round(performance.now() - t0);
-            pushDebugEvent(`viewport:first-paint ${id} ms=${elapsed}`);
-            element.removeEventListener('CORNERSTONE_IMAGE_RENDERED', onFirstRender);
-          };
-          element.addEventListener('CORNERSTONE_IMAGE_RENDERED', onFirstRender);
+        // composition happens asynchronously after. Listen for
+        // CORNERSTONE_IMAGE_RENDERED once per viewport — the AbortSignal
+        // both removes the listener after a one-shot fire and on series
+        // switch. Gated to DEV since this is profiling-only.
+        if (import.meta.env.DEV) {
+          for (const id of [VIEWPORT_IDS.AXIAL, VIEWPORT_IDS.SAGITTAL, VIEWPORT_IDS.CORONAL] as const) {
+            const element = document.querySelector(`[data-viewport-id="${id}"]`) as HTMLDivElement | null;
+            if (!element) continue;
+            const onFirstRender = () => {
+              const elapsed = Math.round(performance.now() - t0);
+              pushDebugEvent(`viewport:first-paint ${id} ms=${elapsed}`);
+              abort.abort();
+            };
+            element.addEventListener('CORNERSTONE_IMAGE_RENDERED', onFirstRender, {
+              once: true,
+              signal: abort.signal,
+            });
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
@@ -247,6 +261,9 @@ export default function ImageViewer() {
     };
 
     void applyVolume();
+    return () => {
+      abort.abort();
+    };
   }, [activeSeriesUID, crosshairsEnabled, loadedSeries, viewportsReady, windowLevelPreset]);
 
   // ResizeObserver on the container

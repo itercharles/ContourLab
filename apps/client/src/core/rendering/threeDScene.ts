@@ -57,12 +57,8 @@ export interface ThreeDScene {
 // expose it (older Safari).
 function yieldToMainThread(): Promise<void> {
   return new Promise<void>((resolve) => {
-    const ric = (typeof window !== 'undefined' &&
-      typeof (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number })
-        .requestIdleCallback === 'function')
-      ? (window as Window & { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback
-      : null;
-    if (ric) {
+    const ric = typeof window !== 'undefined' ? window.requestIdleCallback : undefined;
+    if (typeof ric === 'function') {
       ric(() => resolve(), { timeout: 50 });
     } else {
       setTimeout(resolve, 0);
@@ -290,6 +286,18 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
         cachedStructureProps.delete(key);
       }
 
+      // Last yield + abort check before the synchronous renderWindow.render().
+      // The render itself can't be aborted (vtk.js draws into the WebGL context
+      // synchronously) — but if we already know the snapshot is stale we skip
+      // the GPU work and let the next snapshot's clearMountedProps drain the
+      // actors we just added. The next-snapshot path is the safety net for
+      // overlapping renders; this final check is the cheap escape hatch.
+      await yieldToMainThread();
+      if (isAborted()) {
+        pushDebug('snapshot cancelled before final render');
+        return { structureCount, ctReady, cancelled: true };
+      }
+
       const hasSceneContent = structureCount > 0;
       if (hasSceneContent && !hasFramedContent) {
         renderer.resetCamera();
@@ -395,21 +403,58 @@ function buildStructureCacheKey(
 // · index` exactly. Non-diagonal (oblique) volumes still need a transform-
 // based fix; this codepath assumes axial CTs which is what the rest of the
 // rendering pipeline expects.
+// Off-diagonal magnitude above which the volume's direction is treated as
+// oblique enough to fall outside the axis-aligned contract. Voxel sizes are
+// typically ~1 mm; an off-diagonal of 1e-3 corresponds to a ~0.06° basis
+// rotation, well below clinical-relevance.
+const OBLIQUE_DIRECTION_EPSILON = 1e-3;
+let obliqueDirectionWarned = false;
+
 function getDirectionSignedSpacing(
   spacing: readonly [number, number, number],
   directionCosines: readonly number[]
 ): [number, number, number] {
   if (directionCosines.length !== 9) return [spacing[0], spacing[1], spacing[2]];
+  // Detect oblique direction matrices and warn loudly. The contract here is
+  // strictly axis-aligned; tilted-gantry CTs (rare in RT) would silently
+  // produce a wrong mesh otherwise. Surface a specific named cause so it
+  // ends up in the deployed-workstation debug log alongside the other
+  // viewer error messages.
+  const offDiagonalMax = Math.max(
+    Math.abs(directionCosines[1] ?? 0),
+    Math.abs(directionCosines[2] ?? 0),
+    Math.abs(directionCosines[3] ?? 0),
+    Math.abs(directionCosines[5] ?? 0),
+    Math.abs(directionCosines[6] ?? 0),
+    Math.abs(directionCosines[7] ?? 0)
+  );
+  if (offDiagonalMax > OBLIQUE_DIRECTION_EPSILON && !obliqueDirectionWarned) {
+    obliqueDirectionWarned = true;
+    logClientDebug(
+      'ThreeDScene',
+      `oblique direction approximated as axis-aligned offDiagMax=${offDiagonalMax.toFixed(4)} ` +
+        `direction=[${directionCosines.map((v) => v.toFixed(3)).join(',')}] ` +
+        `— 3D meshes will be misregistered until the path is generalised`
+    );
+    console.warn(
+      '[ThreeDScene] Volume direction is non-diagonal (off-diagonal max=%s); ' +
+        'getDirectionSignedSpacing approximates as axis-aligned and meshes may misregister.',
+      offDiagonalMax.toFixed(4)
+    );
+  }
   const sx = (directionCosines[0] || 0) >= 0 ? 1 : -1;
   const sy = (directionCosines[4] || 0) >= 0 ? 1 : -1;
   const sz = (directionCosines[8] || 0) >= 0 ? 1 : -1;
-  // Use the diagonal entry's actual sign — we only support axis-aligned
-  // direction matrices (off-diagonal entries should be ~0). If a future caller
-  // hands an oblique direction in here this will silently approximate it as
-  // axis-aligned; that's a knowingly-narrow contract.
   return [sx * spacing[0], sy * spacing[1], sz * spacing[2]];
 }
 
+// Identity direction handed to vtkImageData so vtk.js's other code paths (camera
+// reset bounds, picking, …) match the signed-spacing geometry we use in
+// marching cubes. WARNING: do NOT reuse imageData configured with this constant
+// for vtkVolume / vtkImageMapper without first auditing how their bounds and
+// VOI handling react to negative spacing — vtkMapper.getBounds() recomputes
+// from polydata points so marching-cubes output is fine, but volume-rendering
+// paths read renderer-level bounds that derive from imageData.
 const IDENTITY_DIRECTION_FLAT = Float64Array.from([1, 0, 0, 0, 1, 0, 0, 0, 1]);
 
 function createCTActor(volume: Volume, pushDebug: (msg: string) => void): ScenePropHandle | null {

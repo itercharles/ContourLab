@@ -195,4 +195,38 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
       expect(screen.getByText(/3D rendering failed for series .*: vtk blew up/i)).toBeTruthy();
     });
   });
+
+  it('aborts the in-flight snapshot when the viewport unmounts mid-render', async () => {
+    // The async renderSnapshot path holds onto the AbortSignal between
+    // structures and before the final renderWindow.render(); the cleanup in
+    // ThreeDViewport must call abort.abort() so that signal is observed when
+    // the user navigates away or switches series mid-flight.
+    type SnapshotResult = { structureCount: number; ctReady: boolean };
+    let receivedSignal: AbortSignal | undefined;
+    const resolvers: Array<(result: SnapshotResult) => void> = [];
+    mocks.renderSnapshot.mockImplementation((_snapshot: unknown, options?: { signal?: AbortSignal }) => {
+      receivedSignal = options?.signal;
+      return new Promise<SnapshotResult>((resolve) => {
+        resolvers.push(resolve);
+      });
+    });
+
+    const { unmount } = render(<ThreeDViewport />);
+
+    // Wait for the deferred snapshot to actually fire (requestIdleCallback /
+    // setTimeout fall-back happens after React commits).
+    await waitFor(() => {
+      expect(receivedSignal).toBeDefined();
+    });
+
+    expect(receivedSignal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(receivedSignal?.aborted).toBe(true);
+
+    // Resolve the deferred mock so the dangling promise doesn't leak across
+    // tests; the component is gone, so the result is ignored.
+    for (const resolve of resolvers) resolve({ structureCount: 0, ctReady: false });
+  });
 });
