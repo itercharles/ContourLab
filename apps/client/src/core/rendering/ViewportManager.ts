@@ -95,6 +95,12 @@ export const ViewportManager = {
     const viewport = renderingEngine.getViewport(viewportId);
     if (!viewport) return;
 
+    // Cold-load profiling: setVolumes can block for several seconds when the
+    // CT lacks WindowCenter/WindowWidth metadata, because Cornerstone3D's
+    // setDefaultVolumeVOI then has to fetch the middle slice and compute
+    // min/max. Log per-step timing so we can see exactly where the time goes
+    // on a fresh patient load.
+    const t0 = performance.now();
     await viewport.setVolumes([
       {
         volumeId,
@@ -103,9 +109,24 @@ export const ViewportManager = {
         },
       },
     ], true);
+    const tAfterSet = performance.now();
     viewport.resetCamera();
+    const tAfterReset = performance.now();
     viewport.render();
     renderingEngine?.renderViewport(viewportId);
+    const tAfterRender = performance.now();
+    const setMs = Math.round(tAfterSet - t0);
+    const resetMs = Math.round(tAfterReset - tAfterSet);
+    const renderMs = Math.round(tAfterRender - tAfterReset);
+    if (setMs >= 100) {
+      // Only emit when the cold path gets hit; warm reloads are fast.
+      void import('../debug/clientDebugLog').then(({ logClientDebug }) => {
+        logClientDebug(
+          'ViewportManager',
+          `setVolume ${viewportId} setMs=${setMs} resetMs=${resetMs} renderMs=${renderMs}`
+        );
+      });
+    }
   },
 
   setWindowLevel(viewportId: string, preset: WLPreset): void {

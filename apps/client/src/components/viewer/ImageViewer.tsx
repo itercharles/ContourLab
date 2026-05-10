@@ -198,6 +198,7 @@ export default function ImageViewer() {
     const volumeId = series.cornerstoneVolumeId;
 
     const applyVolume = async () => {
+      const t0 = performance.now();
       try {
         pushDebugEvent(`volume:start ${volumeId}`);
         // Re-setup tool group with the actual volume id
@@ -205,17 +206,39 @@ export default function ImageViewer() {
         if (crosshairsEnabled) {
           await MPRController.enableCrosshairs();
         }
-        pushDebugEvent(`volume:toolgroup ${volumeId}`);
+        const tToolgroup = performance.now();
+        pushDebugEvent(`volume:toolgroup ${volumeId} ms=${Math.round(tToolgroup - t0)}`);
 
         await Promise.all([
           ViewportManager.setVolume(VIEWPORT_IDS.AXIAL, volumeId),
           ViewportManager.setVolume(VIEWPORT_IDS.SAGITTAL, volumeId),
           ViewportManager.setVolume(VIEWPORT_IDS.CORONAL, volumeId),
         ]);
+        const tSetVolume = performance.now();
         ViewportManager.setWindowLevel(VIEWPORT_IDS.AXIAL, windowLevelPreset);
         ViewportManager.setWindowLevel(VIEWPORT_IDS.SAGITTAL, windowLevelPreset);
         ViewportManager.setWindowLevel(VIEWPORT_IDS.CORONAL, windowLevelPreset);
-        pushDebugEvent(`volume:done ${volumeId}`);
+        pushDebugEvent(
+          `volume:done ${volumeId} setVolume=${Math.round(tSetVolume - tToolgroup)} total=${Math.round(performance.now() - t0)}`
+        );
+
+        // Time-to-first-paint per 2D viewport. setVolume returns once the
+        // actor is wired up, but the GPU 3D-texture upload + first MPR
+        // composition happens asynchronously after — that is the wall-clock
+        // delay the user perceives as "TSC views are slow". Listen for
+        // CORNERSTONE_IMAGE_RENDERED on each viewport DOM element exactly
+        // once and log the elapsed time, so we have an objective
+        // measurement of where the load goes.
+        for (const id of [VIEWPORT_IDS.AXIAL, VIEWPORT_IDS.SAGITTAL, VIEWPORT_IDS.CORONAL] as const) {
+          const element = document.querySelector(`[data-viewport-id="${id}"]`) as HTMLDivElement | null;
+          if (!element) continue;
+          const onFirstRender = () => {
+            const elapsed = Math.round(performance.now() - t0);
+            pushDebugEvent(`viewport:first-paint ${id} ms=${elapsed}`);
+            element.removeEventListener('CORNERSTONE_IMAGE_RENDERED', onFirstRender);
+          };
+          element.addEventListener('CORNERSTONE_IMAGE_RENDERED', onFirstRender);
+        }
       } catch (err) {
         const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
         pushDebugEvent(`volume:error ${volumeId} ${message}`);

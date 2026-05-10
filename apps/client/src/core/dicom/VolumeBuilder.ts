@@ -65,8 +65,19 @@ export async function buildVolume(parsedSeries: ParsedSeries): Promise<LoadedSer
 
   // Fire-and-forget: streaming loads frames in the background. Keep the shared
   // pixelData reference current so tools such as HU probe can read loaded voxels.
+  // The load callback fires once every imageId in the streaming volume has been
+  // fetched, parsed, and inserted into the volume's voxel manager. The wall-
+  // clock between createAndCacheVolume returning and this callback is the
+  // network fetch + parse time on a cold load — the dominant slice of "patient
+  // load" that's NOT 3D rendering.
+  const loadStartedAt = performance.now();
   (volume as { load: (callback?: () => void) => void }).load(() => {
     sharedVolume.pixelData = getPixelData();
+    logClientDebug(
+      'VolumeBuilder',
+      `streaming-loaded uid=${seriesUID} ms=${Math.round(performance.now() - loadStartedAt)} ` +
+        `imageIds=${imageIds.length}`
+    );
   });
 
   return {
