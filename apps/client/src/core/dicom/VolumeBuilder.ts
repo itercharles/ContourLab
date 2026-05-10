@@ -2,6 +2,7 @@ import type { Volume } from '@webtps/shared-types';
 import type { ParsedSeries } from './DicomLoader';
 import type { LoadedSeries } from '../store/volumeStore';
 import { cornerstoneInit } from '../rendering/cornerstoneInit';
+import { logClientDebug } from '../debug/clientDebugLog';
 
 /**
  * Build a Cornerstone3D streaming volume from a parsed DICOM series.
@@ -53,6 +54,14 @@ export async function buildVolume(parsedSeries: ParsedSeries): Promise<LoadedSer
     windowCenter: csVolume.windowCenter ?? 40,
     windowWidth: csVolume.windowWidth ?? 400,
   };
+
+  logClientDebug(
+    'VolumeBuilder',
+    `geometry uid=${seriesUID} dims=${csVolume.dimensions.join('x')} ` +
+      `origin=[${csVolume.origin.map((v) => v.toFixed(2)).join(',')}] ` +
+      `spacing=[${csVolume.spacing.map((v) => v.toFixed(3)).join(',')}] ` +
+      `direction=[${csVolume.direction.map((v) => v.toFixed(3)).join(',')}]`
+  );
 
   // Fire-and-forget: streaming loads frames in the background. Keep the shared
   // pixelData reference current so tools such as HU probe can read loaded voxels.

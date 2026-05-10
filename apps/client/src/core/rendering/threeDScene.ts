@@ -327,15 +327,49 @@ function buildStructureCacheKey(
   ].join('::');
 }
 
+// Encode the per-axis direction sign into the spacing we hand to vtk.js.
+//
+// vtk.js's vtkImageMarchingCubes ignores the imageData's direction matrix and
+// computes voxel positions as `origin[a] + index * spacing[a]` (see
+// Filters/General/ImageMarchingCubes.js getVoxelPoints). For a HFP / FFS axial
+// CT (direction = diag(1, -1, -1) etc.) that places every voxel on the wrong
+// side of the volume origin, and the per-actor flip-axis differs between the
+// CT image (volume.origin) and each structure mask (each its own mask.origin),
+// so each structure ends up with a different offset relative to the CT.
+//
+// For axis-aligned (diagonal) direction matrices we can fold the per-axis
+// sign into the spacing and pass identity direction to vtk.js. Then
+// `origin + index * signedSpacing` matches `origin + direction · diag(spacing)
+// · index` exactly. Non-diagonal (oblique) volumes still need a transform-
+// based fix; this codepath assumes axial CTs which is what the rest of the
+// rendering pipeline expects.
+function getDirectionSignedSpacing(
+  spacing: readonly [number, number, number],
+  directionCosines: readonly number[]
+): [number, number, number] {
+  if (directionCosines.length !== 9) return [spacing[0], spacing[1], spacing[2]];
+  const sx = (directionCosines[0] || 0) >= 0 ? 1 : -1;
+  const sy = (directionCosines[4] || 0) >= 0 ? 1 : -1;
+  const sz = (directionCosines[8] || 0) >= 0 ? 1 : -1;
+  // Use the diagonal entry's actual sign — we only support axis-aligned
+  // direction matrices (off-diagonal entries should be ~0). If a future caller
+  // hands an oblique direction in here this will silently approximate it as
+  // axis-aligned; that's a knowingly-narrow contract.
+  return [sx * spacing[0], sy * spacing[1], sz * spacing[2]];
+}
+
+const IDENTITY_DIRECTION_FLAT = Float64Array.from([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+
 function createCTActor(volume: Volume, pushDebug: (msg: string) => void): ScenePropHandle | null {
   const startedAt = performance.now();
   try {
     const downsampled = downsampleVolume(volume, 4);
+    const signedSpacing = getDirectionSignedSpacing(downsampled.spacing, downsampled.directionCosines);
     const imageData = vtkImageData.newInstance();
     imageData.setDimensions(...downsampled.dimensions);
-    imageData.setSpacing(downsampled.spacing);
+    imageData.setSpacing(signedSpacing);
     imageData.setOrigin(downsampled.origin);
-    imageData.setDirection(Float64Array.from(downsampled.directionCosines) as unknown as never);
+    imageData.setDirection(IDENTITY_DIRECTION_FLAT as unknown as never);
     imageData.getPointData().setScalars(
       vtkDataArray.newInstance({
         name: 'ct-scalars',
@@ -405,11 +439,12 @@ function createStructureActor(
   const maskMs = Math.round(performance.now() - startedAt);
 
   const marchingStart = performance.now();
+  const signedSpacing = getDirectionSignedSpacing(maskVolume.spacing, maskVolume.directionCosines);
   const imageData = vtkImageData.newInstance();
   imageData.setDimensions(...maskVolume.dimensions);
-  imageData.setSpacing(maskVolume.spacing);
+  imageData.setSpacing(signedSpacing);
   imageData.setOrigin(maskVolume.origin);
-  imageData.setDirection(Float64Array.from(maskVolume.directionCosines) as unknown as never);
+  imageData.setDirection(IDENTITY_DIRECTION_FLAT as unknown as never);
   imageData.getPointData().setScalars(
     vtkDataArray.newInstance({
       name: `${structure.id}-mask`,

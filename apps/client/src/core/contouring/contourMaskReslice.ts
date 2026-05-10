@@ -1,78 +1,125 @@
 import type { ContourSlice, Volume } from '@webtps/shared-types';
+import { voxelToWorld, worldToContinuousVoxel } from '../rendering/threeDGeometry';
 import type { WorldPoint } from './contourOverlayUtils';
 
 type MprOrientation = 'SAGITTAL' | 'CORONAL';
 
-function getVoxelIndex(worldPosition: number, origin: number, spacing: number): number {
-  return Math.round((worldPosition - origin) / spacing);
+// Voxel axes used for the 2-D mask grid that this reslice rasterizes into.
+// The "fixed" voxel axis is the one perpendicular to the MPR plane (e.g. the I
+// axis for SAGITTAL on an axial scan). The remaining two axes form the (h, v)
+// grid of the rasterized mask: v is always the slice (K) axis since contours
+// come from axial slices, and h is the in-plane axis that varies along the
+// horizontal of the MPR display.
+//
+// IMPORTANT: For non-axis-aligned (oblique) volumes, the world plane
+// `worldAxis = planePosition` does not correspond to a single voxel column.
+// This function handles the common axial case where the volume's direction is
+// diagonal (each voxel basis vector is parallel to a world axis, possibly
+// flipped). Picking `fixedVoxelAxis = worldAxis` is exact in that case.
+interface VoxelAxes {
+  fixedVoxelAxis: 0 | 1 | 2;
+  horizontalVoxelAxis: 0 | 1 | 2;
+  verticalVoxelAxis: 0 | 1 | 2;
 }
 
-function getVoxelCenter(index: number, origin: number, spacing: number): number {
-  return origin + index * spacing;
+function getVoxelAxes(orientation: MprOrientation): VoxelAxes {
+  if (orientation === 'SAGITTAL') {
+    return { fixedVoxelAxis: 0, horizontalVoxelAxis: 1, verticalVoxelAxis: 2 };
+  }
+  return { fixedVoxelAxis: 1, horizontalVoxelAxis: 0, verticalVoxelAxis: 2 };
 }
 
-function getVoxelBoundary(index: number, origin: number, spacing: number): number {
-  return origin + (index - 0.5) * spacing;
+type Vec3 = [number, number, number];
+
+function pointsToVoxel(points: Float32Array, volume: Volume): Vec3[] {
+  const voxels: Vec3[] = [];
+  for (let index = 0; index < points.length; index += 3) {
+    voxels.push(
+      worldToContinuousVoxel(
+        [points[index], points[index + 1], points[index + 2]],
+        volume
+      )
+    );
+  }
+  return voxels;
 }
 
-function isInsidePolygon2D(
-  points: Float32Array,
-  horizontalAxis: 0 | 1,
-  verticalAxis: 0 | 1,
-  horizontal: number,
-  vertical: number
+function getVoxelBounds(voxelPoints: Vec3[], axis: 0 | 1 | 2): [number, number] {
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (const point of voxelPoints) {
+    const value = point[axis];
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+  return [min, max];
+}
+
+// Average voxel-axis value across a polygon's voxel points. Used to assign each
+// axial contour to a single slice index (K) on the mask grid — voxel-space
+// rasterization replaces the previous direct world-Z math, which assumed the
+// K basis points in +Z and silently dropped contours on HFP / FFS scans.
+function getAverageVoxelAxis(voxelPoints: Vec3[], axis: 0 | 1 | 2): number {
+  let total = 0;
+  for (const point of voxelPoints) total += point[axis];
+  return total / voxelPoints.length;
+}
+
+function isInsideVoxelPolygon(
+  voxelPoints: Vec3[],
+  fixedAxis: 0 | 1 | 2,
+  horizontalAxis: 0 | 1 | 2,
+  fixedPosition: number,
+  horizontalPosition: number
 ): boolean {
   let inside = false;
-  const pointCount = Math.floor(points.length / 3);
-  if (pointCount < 3) return false;
+  const count = voxelPoints.length;
+  if (count < 3) return false;
 
-  for (let index = 0, previousIndex = pointCount - 1; index < pointCount; previousIndex = index, index += 1) {
-    const xi = points[index * 3 + horizontalAxis];
-    const yi = points[index * 3 + verticalAxis];
-    const xj = points[previousIndex * 3 + horizontalAxis];
-    const yj = points[previousIndex * 3 + verticalAxis];
+  for (let index = 0, previousIndex = count - 1; index < count; previousIndex = index, index += 1) {
+    const xi = voxelPoints[index][fixedAxis];
+    const yi = voxelPoints[index][horizontalAxis];
+    const xj = voxelPoints[previousIndex][fixedAxis];
+    const yj = voxelPoints[previousIndex][horizontalAxis];
 
     const intersects =
-      yi > vertical !== yj > vertical &&
-      horizontal < ((xj - xi) * (vertical - yi)) / (yj - yi || Number.EPSILON) + xi;
+      yi > horizontalPosition !== yj > horizontalPosition &&
+      fixedPosition <
+        ((xj - xi) * (horizontalPosition - yi)) / (yj - yi || Number.EPSILON) + xi;
     if (intersects) inside = !inside;
   }
 
   return inside;
 }
 
-function getContourBounds(points: Float32Array, axis: 0 | 1): [number, number] {
-  let min = Number.POSITIVE_INFINITY;
-  let max = Number.NEGATIVE_INFINITY;
-  for (let index = axis; index < points.length; index += 3) {
-    min = Math.min(min, points[index]);
-    max = Math.max(max, points[index]);
-  }
-  return [min, max];
-}
-
-function makeWorldPoint(
-  orientation: MprOrientation,
-  planePosition: number,
-  horizontalPosition: number,
-  zPosition: number
+function makeBoundaryWorldPoint(
+  axes: VoxelAxes,
+  fixedVoxel: number,
+  horizontalVoxel: number,
+  verticalVoxel: number,
+  volume: Volume
 ): WorldPoint {
-  return orientation === 'SAGITTAL'
-    ? [planePosition, horizontalPosition, zPosition]
-    : [horizontalPosition, planePosition, zPosition];
+  const voxel: Vec3 = [0, 0, 0];
+  voxel[axes.fixedVoxelAxis] = fixedVoxel;
+  voxel[axes.horizontalVoxelAxis] = horizontalVoxel;
+  voxel[axes.verticalVoxelAxis] = verticalVoxel;
+  return voxelToWorld(voxel, volume);
 }
 
 function projectBoundaryEdge(
-  orientation: MprOrientation,
-  planePosition: number,
-  horizontalStart: number,
-  zStart: number,
-  horizontalEnd: number,
-  zEnd: number,
+  axes: VoxelAxes,
+  fixedVoxel: number,
+  hStart: number,
+  vStart: number,
+  hEnd: number,
+  vEnd: number,
+  volume: Volume,
   worldToCanvas: (point: WorldPoint) => [number, number]
 ): string {
-  const [x1, y1] = worldToCanvas(makeWorldPoint(orientation, planePosition, horizontalStart, zStart));
-  const [x2, y2] = worldToCanvas(makeWorldPoint(orientation, planePosition, horizontalEnd, zEnd));
+  const a = makeBoundaryWorldPoint(axes, fixedVoxel, hStart, vStart, volume);
+  const b = makeBoundaryWorldPoint(axes, fixedVoxel, hEnd, vEnd, volume);
+  const [x1, y1] = worldToCanvas(a);
+  const [x2, y2] = worldToCanvas(b);
   return `M ${x1} ${y1} L ${x2} ${y2}`;
 }
 
@@ -83,79 +130,100 @@ export function buildMprMaskBoundaryPath(
   planePosition: number,
   worldToCanvas: (point: WorldPoint) => [number, number]
 ): string {
-  const fixedAxis = orientation === 'SAGITTAL' ? 0 : 1;
-  const horizontalAxis = orientation === 'SAGITTAL' ? 1 : 0;
-  const horizontalSize = volume.dimensions[horizontalAxis];
-  const zSize = volume.dimensions[2];
-  if (horizontalSize <= 0 || zSize <= 0) return '';
+  const axes = getVoxelAxes(orientation);
+  // World axis whose value is held constant by the MPR plane (X for SAGITTAL,
+  // Y for CORONAL). For diagonal-direction volumes this maps onto a single
+  // voxel column at axes.fixedVoxelAxis.
+  const planeWorldAxis = orientation === 'SAGITTAL' ? 0 : 1;
+  const horizontalSize = volume.dimensions[axes.horizontalVoxelAxis];
+  const verticalSize = volume.dimensions[axes.verticalVoxelAxis];
+  if (horizontalSize <= 0 || verticalSize <= 0) return '';
 
-  const mask = new Uint8Array(horizontalSize * zSize);
+  // Project (planePosition along the world axis, origin elsewhere) into voxel
+  // space and read out the fixed voxel axis. For diagonal direction this is
+  // exact; for non-diagonal direction it assumes the other world axes coincide
+  // with the volume origin's plane, which is sufficient for axis-aligned axial
+  // CT data.
+  const planeProbe: Vec3 = [volume.origin[0], volume.origin[1], volume.origin[2]];
+  planeProbe[planeWorldAxis] = planePosition;
+  const fixedVoxel = worldToContinuousVoxel(planeProbe, volume)[axes.fixedVoxelAxis];
+
+  const mask = new Uint8Array(horizontalSize * verticalSize);
 
   for (const contour of contours) {
-    const fixedBounds = getContourBounds(contour.points, fixedAxis);
-    if (planePosition < fixedBounds[0] || planePosition > fixedBounds[1]) continue;
+    if (contour.points.length < 9) continue;
+    const voxelPoints = pointsToVoxel(contour.points, volume);
+    if (voxelPoints.length < 3) continue;
 
-    const zIndex = getVoxelIndex(contour.slicePosition, volume.origin[2], volume.spacing[2]);
-    if (zIndex < 0 || zIndex >= zSize) continue;
+    const fixedBounds = getVoxelBounds(voxelPoints, axes.fixedVoxelAxis);
+    if (fixedVoxel < fixedBounds[0] || fixedVoxel > fixedBounds[1]) continue;
 
-    const horizontalBounds = getContourBounds(contour.points, horizontalAxis);
-    const start = Math.max(
-      0,
-      Math.floor((horizontalBounds[0] - volume.origin[horizontalAxis]) / volume.spacing[horizontalAxis])
-    );
-    const end = Math.min(
-      horizontalSize - 1,
-      Math.ceil((horizontalBounds[1] - volume.origin[horizontalAxis]) / volume.spacing[horizontalAxis])
-    );
+    // Each axial contour rasterizes onto exactly one K row of the (h, v) mask.
+    // Use the average K of the contour's voxel points so the assignment is
+    // robust to floating-point noise across the polygon vertices.
+    const verticalCenter = getAverageVoxelAxis(voxelPoints, axes.verticalVoxelAxis);
+    const verticalIndex = Math.round(verticalCenter);
+    if (verticalIndex < 0 || verticalIndex >= verticalSize) continue;
+
+    const horizontalBounds = getVoxelBounds(voxelPoints, axes.horizontalVoxelAxis);
+    const start = Math.max(0, Math.floor(horizontalBounds[0]));
+    const end = Math.min(horizontalSize - 1, Math.ceil(horizontalBounds[1]));
 
     for (let horizontalIndex = start; horizontalIndex <= end; horizontalIndex += 1) {
-      const horizontalPosition = getVoxelCenter(
-        horizontalIndex,
-        volume.origin[horizontalAxis],
-        volume.spacing[horizontalAxis]
-      );
+      // Pixel-center sampling — the rendered mask is interpreted as voxel
+      // centres so the boundary edges land on voxel boundaries (±0.5).
+      const horizontalPosition = horizontalIndex;
       if (
-        isInsidePolygon2D(
-          contour.points,
-          fixedAxis,
-          horizontalAxis,
-          planePosition,
+        isInsideVoxelPolygon(
+          voxelPoints,
+          axes.fixedVoxelAxis,
+          axes.horizontalVoxelAxis,
+          fixedVoxel,
           horizontalPosition
         )
       ) {
-        mask[zIndex * horizontalSize + horizontalIndex] = 1;
+        mask[verticalIndex * horizontalSize + horizontalIndex] = 1;
       }
     }
   }
 
-  const isFilled = (horizontalIndex: number, zIndex: number) => {
-    if (horizontalIndex < 0 || horizontalIndex >= horizontalSize || zIndex < 0 || zIndex >= zSize) {
+  const isFilled = (horizontalIndex: number, verticalIndex: number) => {
+    if (
+      horizontalIndex < 0 ||
+      horizontalIndex >= horizontalSize ||
+      verticalIndex < 0 ||
+      verticalIndex >= verticalSize
+    ) {
       return false;
     }
-    return mask[zIndex * horizontalSize + horizontalIndex] === 1;
+    return mask[verticalIndex * horizontalSize + horizontalIndex] === 1;
   };
 
+  // Voxel boundaries (h ± 0.5, v ± 0.5) get converted back to world coords via
+  // voxelToWorld so the SVG path is in world space, then projected through the
+  // viewport. Going via voxelToWorld means any direction matrix the volume
+  // carries (sign flips, oblique rotation) is honoured automatically.
   const paths: string[] = [];
-  for (let zIndex = 0; zIndex < zSize; zIndex += 1) {
+  for (let verticalIndex = 0; verticalIndex < verticalSize; verticalIndex += 1) {
     for (let horizontalIndex = 0; horizontalIndex < horizontalSize; horizontalIndex += 1) {
-      if (!isFilled(horizontalIndex, zIndex)) continue;
+      if (!isFilled(horizontalIndex, verticalIndex)) continue;
 
-      const h0 = getVoxelBoundary(horizontalIndex, volume.origin[horizontalAxis], volume.spacing[horizontalAxis]);
-      const h1 = getVoxelBoundary(horizontalIndex + 1, volume.origin[horizontalAxis], volume.spacing[horizontalAxis]);
-      const z0 = getVoxelBoundary(zIndex, volume.origin[2], volume.spacing[2]);
-      const z1 = getVoxelBoundary(zIndex + 1, volume.origin[2], volume.spacing[2]);
+      const h0 = horizontalIndex - 0.5;
+      const h1 = horizontalIndex + 0.5;
+      const v0 = verticalIndex - 0.5;
+      const v1 = verticalIndex + 0.5;
 
-      if (!isFilled(horizontalIndex, zIndex - 1)) {
-        paths.push(projectBoundaryEdge(orientation, planePosition, h0, z0, h1, z0, worldToCanvas));
+      if (!isFilled(horizontalIndex, verticalIndex - 1)) {
+        paths.push(projectBoundaryEdge(axes, fixedVoxel, h0, v0, h1, v0, volume, worldToCanvas));
       }
-      if (!isFilled(horizontalIndex + 1, zIndex)) {
-        paths.push(projectBoundaryEdge(orientation, planePosition, h1, z0, h1, z1, worldToCanvas));
+      if (!isFilled(horizontalIndex + 1, verticalIndex)) {
+        paths.push(projectBoundaryEdge(axes, fixedVoxel, h1, v0, h1, v1, volume, worldToCanvas));
       }
-      if (!isFilled(horizontalIndex, zIndex + 1)) {
-        paths.push(projectBoundaryEdge(orientation, planePosition, h1, z1, h0, z1, worldToCanvas));
+      if (!isFilled(horizontalIndex, verticalIndex + 1)) {
+        paths.push(projectBoundaryEdge(axes, fixedVoxel, h1, v1, h0, v1, volume, worldToCanvas));
       }
-      if (!isFilled(horizontalIndex - 1, zIndex)) {
-        paths.push(projectBoundaryEdge(orientation, planePosition, h0, z1, h0, z0, worldToCanvas));
+      if (!isFilled(horizontalIndex - 1, verticalIndex)) {
+        paths.push(projectBoundaryEdge(axes, fixedVoxel, h0, v1, h0, v0, volume, worldToCanvas));
       }
     }
   }

@@ -315,4 +315,63 @@ describe('threeDScene lifecycle', () => {
     expect(mocks.renderer.resetCameraClippingRange).toHaveBeenCalledTimes(1);
     expect(mocks.renderWindow.render).toHaveBeenCalled();
   });
+
+  // vtk.js's vtkImageMarchingCubes ignores the imageData direction matrix and
+  // computes voxel positions as `origin + index * spacing`. For HFP / FFP /
+  // FFS volumes the volume's K and/or J basis vectors point in -Z and -Y, so
+  // unsigned spacing places every mesh on the wrong side of the origin and
+  // each per-structure mask flips around its own origin — producing a
+  // different per-structure offset relative to the CT mesh. Lock down the
+  // signed-spacing fix that compensates for this.
+  it('passes direction-signed spacing to vtk.js for HFP-style flipped volumes', () => {
+    // HFP-style direction: K basis = -Z, J basis = -Y. With origin Z=2 and
+    // spacing[2]=2 and dimZ=2, world Z range is [0, 2]. Place the contour at
+    // Z=2 (top slice K=0) so worldToContinuousVoxel keeps it inside the
+    // volume and the structure mask is non-empty.
+    const hfpVolume: Volume = {
+      ...volume,
+      origin: [0, 6, 2],
+      directionCosines: [1, 0, 0, 0, -1, 0, 0, 0, -1],
+    };
+    const hfpStructure: Structure = {
+      ...structure,
+      contours: [
+        {
+          referencedSOPInstanceUID: 'sop-1',
+          slicePosition: 2,
+          isClosed: true,
+          points: new Float32Array([1, 1, 2, 4, 1, 2, 4, 4, 2, 1, 4, 2]),
+        },
+      ],
+    };
+    const container = document.createElement('div');
+    container.getBoundingClientRect = () =>
+      ({ width: 320, height: 240 } as DOMRect);
+
+    const scene = createThreeDScene(container);
+    scene.renderSnapshot({ volume: hfpVolume, structures: [{ structure: hfpStructure }] });
+
+    // First image is the CT actor's data, second is the structure mask. The
+    // tracked mock array's element type only exposes `delete`; the rest of
+    // the methods (setSpacing/setDirection/...) are added at newInstance
+    // time, so cast through `unknown` to read them off.
+    type ImageMock = {
+      setSpacing: ReturnType<typeof vi.fn>;
+      setDirection: ReturnType<typeof vi.fn>;
+    };
+    const ctImage = mocks.tracked.images[0] as unknown as ImageMock;
+    const structureImage = mocks.tracked.images[1] as unknown as ImageMock;
+
+    expect(ctImage.setSpacing).toHaveBeenCalledWith([
+      1 * 4, // sx · 1, then ×stride (4) from downsampleVolume
+      -1 * 4, // sy flipped (J basis = -Y)
+      -2 * 4, // sz flipped (K basis = -Z)
+    ]);
+    // Identity direction so vtk.js's other code paths don't double-rotate the
+    // signed-spacing geometry.
+    const ctDirectionArg = ctImage.setDirection.mock.calls[0][0];
+    expect(Array.from(ctDirectionArg as Float64Array)).toEqual([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+
+    expect(structureImage.setSpacing).toHaveBeenCalledWith([1, -1, -2]);
+  });
 });
