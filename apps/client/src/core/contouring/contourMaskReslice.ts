@@ -150,6 +150,20 @@ export function buildMprMaskBoundaryPath(
 
   const mask = new Uint8Array(horizontalSize * verticalSize);
 
+  // First pass: keep only contours that actually intersect the MPR plane and
+  // record each one's continuous voxel-K (slice) centre. Sorting by K lets us
+  // give each contour an "ownership window" along the slice axis, which is
+  // essential when the volume's K spacing is finer than the inter-contour
+  // spacing — typically because the CT mixes 5 mm and 2.5 mm slabs and the
+  // resulting Cornerstone grid spacing (the average) doesn't line up with
+  // either. Without the window every other K row would be left empty and the
+  // S/C boundary would render as a stack of disconnected stripes (断层).
+  interface PlaneIntersect {
+    voxelPoints: Vec3[];
+    kCenter: number;
+    horizontalBounds: [number, number];
+  }
+  const intersects: PlaneIntersect[] = [];
   for (const contour of contours) {
     if (contour.points.length < 9) continue;
     const voxelPoints = pointsToVoxel(contour.points, volume);
@@ -158,31 +172,53 @@ export function buildMprMaskBoundaryPath(
     const fixedBounds = getVoxelBounds(voxelPoints, axes.fixedVoxelAxis);
     if (fixedVoxel < fixedBounds[0] || fixedVoxel > fixedBounds[1]) continue;
 
-    // Each axial contour rasterizes onto exactly one K row of the (h, v) mask.
-    // Use the average K of the contour's voxel points so the assignment is
-    // robust to floating-point noise across the polygon vertices.
-    const verticalCenter = getAverageVoxelAxis(voxelPoints, axes.verticalVoxelAxis);
-    const verticalIndex = Math.round(verticalCenter);
-    if (verticalIndex < 0 || verticalIndex >= verticalSize) continue;
+    const kCenter = getAverageVoxelAxis(voxelPoints, axes.verticalVoxelAxis);
+    if (!Number.isFinite(kCenter)) continue;
 
-    const horizontalBounds = getVoxelBounds(voxelPoints, axes.horizontalVoxelAxis);
-    const start = Math.max(0, Math.floor(horizontalBounds[0]));
-    const end = Math.min(horizontalSize - 1, Math.ceil(horizontalBounds[1]));
+    intersects.push({
+      voxelPoints,
+      kCenter,
+      horizontalBounds: getVoxelBounds(voxelPoints, axes.horizontalVoxelAxis),
+    });
+  }
+
+  intersects.sort((a, b) => a.kCenter - b.kCenter);
+
+  for (let i = 0; i < intersects.length; i += 1) {
+    const c = intersects[i];
+    // Boundary handling: the first and last contours each extend half a slice
+    // beyond their own centre. For contours in the middle we hand off ownership
+    // at the midpoint with each neighbour. Using `Math.ceil(midHigh) - 1` for
+    // the upper bound makes ties (integer midpoints) belong to the lower
+    // contour — every integer K voxel ends up owned by exactly one contour.
+    const prevK = i > 0 ? intersects[i - 1].kCenter : c.kCenter - 0.5;
+    const nextK = i < intersects.length - 1 ? intersects[i + 1].kCenter : c.kCenter + 0.5;
+    const midLow = (prevK + c.kCenter) / 2;
+    const midHigh = (c.kCenter + nextK) / 2;
+    const kStart = Math.max(0, Math.ceil(midLow));
+    const kEnd = Math.min(verticalSize - 1, Math.ceil(midHigh) - 1);
+    if (kStart > kEnd) continue;
+
+    const start = Math.max(0, Math.floor(c.horizontalBounds[0]));
+    const end = Math.min(horizontalSize - 1, Math.ceil(c.horizontalBounds[1]));
 
     for (let horizontalIndex = start; horizontalIndex <= end; horizontalIndex += 1) {
       // Pixel-center sampling — the rendered mask is interpreted as voxel
-      // centres so the boundary edges land on voxel boundaries (±0.5).
-      const horizontalPosition = horizontalIndex;
+      // centres so the boundary edges land on voxel boundaries (±0.5). The
+      // polygon-inside test is independent of K, so we run it once per (h, v)
+      // and write the result to every K row this contour owns.
       if (
         isInsideVoxelPolygon(
-          voxelPoints,
+          c.voxelPoints,
           axes.fixedVoxelAxis,
           axes.horizontalVoxelAxis,
           fixedVoxel,
-          horizontalPosition
+          horizontalIndex
         )
       ) {
-        mask[verticalIndex * horizontalSize + horizontalIndex] = 1;
+        for (let k = kStart; k <= kEnd; k += 1) {
+          mask[k * horizontalSize + horizontalIndex] = 1;
+        }
       }
     }
   }

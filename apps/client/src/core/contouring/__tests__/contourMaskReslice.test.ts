@@ -53,6 +53,54 @@ describe('buildMprMaskBoundaryPath', () => {
     expect(path).toBe('');
   });
 
+  // CTs that mix 5 mm and 2.5 mm slabs come back from Cornerstone3D as a
+  // uniform grid spaced at the average (e.g. 2.765 mm), which means each
+  // contour falls on a fractional voxel-K row. Rounded naively this leaves
+  // every-other K row empty between consecutive contours and the S/C
+  // boundary draws as a stack of disconnected stripes. Use a fractional
+  // contour spacing to pin the ownership-window fix.
+  it('fills every K row between consecutive contours when the volume grid is finer than the contour spacing', () => {
+    const fineGridVolume: Volume = {
+      ...volume,
+      dimensions: [12, 12, 8],
+      spacing: [1, 1, 2.765],
+    };
+    // Contours at world Z = 0, 5, 10 (5 mm physical spacing) on a volume with
+    // K spacing 2.765 mm. Continuous voxel K = 0, 1.808, 3.617. Naive
+    // rounding lands on K = 0, 2, 4 — leaving K=1, 3 empty.
+    const contours = [makeSquare(0), makeSquare(5), makeSquare(10)];
+
+    const path = buildMprMaskBoundaryPath(
+      fineGridVolume,
+      contours,
+      'SAGITTAL',
+      5,
+      ([, y, z]) => [y, z]
+    );
+
+    expect(path.length).toBeGreaterThan(0);
+
+    // The volume's K spacing is 2.765 mm. Sample voxel-boundary world Zs and
+    // count how many integer K rows have a horizontal boundary edge passing
+    // through them. A contiguous (well-filled) sagittal cross-section emits
+    // horizontal edges only at the structure's top and bottom — exactly two
+    // K rows. The buggy "round to nearest K" version of this code drops
+    // every other K row from the mask, producing one new top+bottom edge
+    // pair per filled K row (in this case ≥ 6 distinct K rows with
+    // horizontal edges).
+    const horizontalEdgeRegex = /M (-?\d+\.?\d*) (-?\d+\.?\d*) L (-?\d+\.?\d*) (-?\d+\.?\d*)/g;
+    const horizontalEdgeKRows = new Set<string>();
+    for (const match of path.matchAll(horizontalEdgeRegex)) {
+      const z1 = Number(match[2]);
+      const z2 = Number(match[4]);
+      // Horizontal edges share Y on canvas (Z in our worldToCanvas mapping).
+      if (Math.abs(z1 - z2) < 1e-6) {
+        horizontalEdgeKRows.add(z1.toFixed(3));
+      }
+    }
+    expect(horizontalEdgeKRows.size).toBeLessThanOrEqual(2);
+  });
+
   // HFP scans (and any flipped-Y / flipped-Z orientation) hit the previous
   // direct-world-axis math with negative voxel indices and dropped every slice
   // below the volume's origin. Force the same geometry here so a regression
