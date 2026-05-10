@@ -53,6 +53,48 @@ describe('buildMprMaskBoundaryPath', () => {
     expect(path).toBe('');
   });
 
+  // Body skin contours frequently include multiple polygons per axial slice
+  // (trunk plus a separate arm contour, lungs left and right at the same Z,
+  // etc.). The earlier per-contour ownership window collapsed to an empty
+  // range whenever two contours shared a slice — the contour that sorted
+  // first in that pair would be dropped. Slab-level grouping has to
+  // rasterise every polygon on a shared slice.
+  it('rasterises every polygon on a multi-polygon slice', () => {
+    // Two polygons at world Z = 1 that both intersect a sagittal plane at
+    // X = 5 but cover disjoint Y ranges. The previous per-contour code drops
+    // the first one (kStart > kEnd because the next contour shares its K).
+    const multiPolygonContours: ContourSlice[] = [
+      {
+        referencedSOPInstanceUID: 'sop-first-z1',
+        slicePosition: 1,
+        isClosed: true,
+        points: new Float32Array([1, 2, 1, 9, 2, 1, 9, 5, 1, 1, 5, 1]),
+      },
+      {
+        referencedSOPInstanceUID: 'sop-second-z1',
+        slicePosition: 1,
+        isClosed: true,
+        points: new Float32Array([1, 7, 1, 9, 7, 1, 9, 10, 1, 1, 10, 1]),
+      },
+    ];
+
+    const path = buildMprMaskBoundaryPath(
+      volume,
+      multiPolygonContours,
+      'SAGITTAL',
+      5,
+      ([, y, z]) => [y, z]
+    );
+
+    expect(path.length).toBeGreaterThan(0);
+    // The first polygon spans voxel J in [2, 5] — its left wall lies at
+    // canvas X = 1.5 (voxel J = 2's left edge). The second spans J in
+    // [7, 10] — its left wall lies at canvas X = 6.5. Both must appear; the
+    // pre-slab implementation produced only the second polygon's outline.
+    expect(path).toMatch(/M 1\.5 /);
+    expect(path).toMatch(/M 6\.5 /);
+  });
+
   // CTs that mix 5 mm and 2.5 mm slabs come back from Cornerstone3D as a
   // uniform grid spaced at the average (e.g. 2.765 mm), which means each
   // contour falls on a fractional voxel-K row. Rounded naively this leaves

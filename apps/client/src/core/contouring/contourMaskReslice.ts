@@ -150,72 +150,128 @@ export function buildMprMaskBoundaryPath(
 
   const mask = new Uint8Array(horizontalSize * verticalSize);
 
-  // First pass: keep only contours that actually intersect the MPR plane and
-  // record each one's continuous voxel-K (slice) centre. Sorting by K lets us
-  // give each contour an "ownership window" along the slice axis, which is
-  // essential when the volume's K spacing is finer than the inter-contour
-  // spacing — typically because the CT mixes 5 mm and 2.5 mm slabs and the
-  // resulting Cornerstone grid spacing (the average) doesn't line up with
-  // either. Without the window every other K row would be left empty and the
-  // S/C boundary would render as a stack of disconnected stripes (断层).
-  interface PlaneIntersect {
+  // First pass: collect every contour's continuous voxel-K (slice) centre and
+  // its plane intersection, keeping multi-polygon slices together. Sorting by
+  // K lets us give each *slab* (group of polygons sharing a K) an ownership
+  // window along the slice axis, which is essential when the volume's K
+  // spacing is finer than the inter-contour spacing — typically because the
+  // CT mixes 5 mm and 2.5 mm slabs and the resulting Cornerstone grid spacing
+  // (the average) doesn't line up with either. Without the window every other
+  // K row would be left empty and the S/C boundary would render as a stack of
+  // disconnected stripes (断层). Multi-polygon-per-slice structures (skin
+  // contours that include the body plus arms, lungs left+right at the same Z
+  // etc.) need slab-level grouping — handing each polygon its own ownership
+  // window collapses to an empty range when two share the same K and silently
+  // drops one of them.
+  interface PolygonOnPlane {
     voxelPoints: Vec3[];
-    kCenter: number;
     horizontalBounds: [number, number];
   }
-  const intersects: PlaneIntersect[] = [];
+  interface SliceSlab {
+    kCenter: number;
+    polygons: PolygonOnPlane[];
+  }
+  interface RawContour {
+    voxelPoints: Vec3[];
+    kCenter: number;
+    intersects: boolean;
+    horizontalBounds: [number, number] | null;
+  }
+
+  const sliceTolerance = 1e-3;
+  const rawContours: RawContour[] = [];
   for (const contour of contours) {
     if (contour.points.length < 9) continue;
     const voxelPoints = pointsToVoxel(contour.points, volume);
     if (voxelPoints.length < 3) continue;
 
-    const fixedBounds = getVoxelBounds(voxelPoints, axes.fixedVoxelAxis);
-    if (fixedVoxel < fixedBounds[0] || fixedVoxel > fixedBounds[1]) continue;
-
     const kCenter = getAverageVoxelAxis(voxelPoints, axes.verticalVoxelAxis);
     if (!Number.isFinite(kCenter)) continue;
 
-    intersects.push({
+    const fixedBounds = getVoxelBounds(voxelPoints, axes.fixedVoxelAxis);
+    const intersects = fixedVoxel >= fixedBounds[0] && fixedVoxel <= fixedBounds[1];
+
+    rawContours.push({
       voxelPoints,
       kCenter,
-      horizontalBounds: getVoxelBounds(voxelPoints, axes.horizontalVoxelAxis),
+      intersects,
+      horizontalBounds: intersects ? getVoxelBounds(voxelPoints, axes.horizontalVoxelAxis) : null,
     });
   }
 
-  intersects.sort((a, b) => a.kCenter - b.kCenter);
+  rawContours.sort((a, b) => a.kCenter - b.kCenter);
 
-  for (let i = 0; i < intersects.length; i += 1) {
-    const c = intersects[i];
-    // Boundary handling: the first and last contours each extend half a slice
-    // beyond their own centre. For contours in the middle we hand off ownership
+  // Bucket consecutive same-K contours into slabs. Non-intersecting contours
+  // still occupy their slab in the K ordering — that prevents a neighbour's
+  // ownership window from extending across a slice where the structure
+  // legitimately leaves the MPR plane.
+  const slabs: SliceSlab[] = [];
+  for (const c of rawContours) {
+    const last = slabs[slabs.length - 1];
+    if (last && Math.abs(last.kCenter - c.kCenter) < sliceTolerance) {
+      if (c.intersects && c.horizontalBounds) {
+        last.polygons.push({ voxelPoints: c.voxelPoints, horizontalBounds: c.horizontalBounds });
+      }
+    } else {
+      slabs.push({
+        kCenter: c.kCenter,
+        polygons: c.intersects && c.horizontalBounds
+          ? [{ voxelPoints: c.voxelPoints, horizontalBounds: c.horizontalBounds }]
+          : [],
+      });
+    }
+  }
+
+  for (let i = 0; i < slabs.length; i += 1) {
+    const slab = slabs[i];
+    if (slab.polygons.length === 0) continue;
+
+    // Boundary handling: the first and last slabs each extend half a slice
+    // beyond their own centre. For slabs in the middle we hand off ownership
     // at the midpoint with each neighbour. Using `Math.ceil(midHigh) - 1` for
     // the upper bound makes ties (integer midpoints) belong to the lower
-    // contour — every integer K voxel ends up owned by exactly one contour.
-    const prevK = i > 0 ? intersects[i - 1].kCenter : c.kCenter - 0.5;
-    const nextK = i < intersects.length - 1 ? intersects[i + 1].kCenter : c.kCenter + 0.5;
-    const midLow = (prevK + c.kCenter) / 2;
-    const midHigh = (c.kCenter + nextK) / 2;
+    // slab — every integer K voxel ends up owned by exactly one slab.
+    const prevK = i > 0 ? slabs[i - 1].kCenter : slab.kCenter - 0.5;
+    const nextK = i < slabs.length - 1 ? slabs[i + 1].kCenter : slab.kCenter + 0.5;
+    const midLow = (prevK + slab.kCenter) / 2;
+    const midHigh = (slab.kCenter + nextK) / 2;
     const kStart = Math.max(0, Math.ceil(midLow));
     const kEnd = Math.min(verticalSize - 1, Math.ceil(midHigh) - 1);
     if (kStart > kEnd) continue;
 
-    const start = Math.max(0, Math.floor(c.horizontalBounds[0]));
-    const end = Math.min(horizontalSize - 1, Math.ceil(c.horizontalBounds[1]));
+    let hMin = Infinity;
+    let hMax = -Infinity;
+    for (const polygon of slab.polygons) {
+      if (polygon.horizontalBounds[0] < hMin) hMin = polygon.horizontalBounds[0];
+      if (polygon.horizontalBounds[1] > hMax) hMax = polygon.horizontalBounds[1];
+    }
+    const start = Math.max(0, Math.floor(hMin));
+    const end = Math.min(horizontalSize - 1, Math.ceil(hMax));
 
     for (let horizontalIndex = start; horizontalIndex <= end; horizontalIndex += 1) {
       // Pixel-center sampling — the rendered mask is interpreted as voxel
       // centres so the boundary edges land on voxel boundaries (±0.5). The
       // polygon-inside test is independent of K, so we run it once per (h, v)
-      // and write the result to every K row this contour owns.
-      if (
-        isInsideVoxelPolygon(
-          c.voxelPoints,
-          axes.fixedVoxelAxis,
-          axes.horizontalVoxelAxis,
-          fixedVoxel,
-          horizontalIndex
-        )
-      ) {
+      // and write the result to every K row this slab owns. OR semantics
+      // across multi-polygon slabs (body + arms etc.) — note this fills holes
+      // for genuinely nested polygons; the current consumers (skin, PTV,
+      // lungs) aren't donut-shaped so OR is the right default.
+      let inside = false;
+      for (const polygon of slab.polygons) {
+        if (
+          isInsideVoxelPolygon(
+            polygon.voxelPoints,
+            axes.fixedVoxelAxis,
+            axes.horizontalVoxelAxis,
+            fixedVoxel,
+            horizontalIndex
+          )
+        ) {
+          inside = true;
+          break;
+        }
+      }
+      if (inside) {
         for (let k = kStart; k <= kEnd; k += 1) {
           mask[k * horizontalSize + horizontalIndex] = 1;
         }
