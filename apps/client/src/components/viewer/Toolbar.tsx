@@ -319,33 +319,33 @@ export default function Toolbar() {
           </div>
         )}
         <div className="h-4 w-px bg-[var(--color-border)]" />
-        {/* Change Requests */}
+        {/* Change Requests — prototype highlight */}
         <Link
           to="/issues"
           reloadDocument
-          title="Change Requests"
-          aria-label="Change Requests"
-          className="flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          title="Submit or track a Change Request"
+          className="flex h-7 items-center gap-1.5 rounded border border-blue-500/40 bg-blue-950/20 px-2.5 text-[11px] font-medium text-blue-400 transition-colors hover:bg-blue-900/40 hover:text-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 11l3 3L22 4" />
             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
           </svg>
+          Change Requests
         </Link>
-        {/* DHF Artifacts download */}
+        {/* DHF Artifacts download — prototype highlight */}
         <a
           href={DHF_ARTIFACTS_URL}
           target="_blank"
           rel="noreferrer"
           title="Download latest DHF artifacts (dhf-artifacts.zip)"
-          aria-label="Download DHF artifacts"
-          className="flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="flex h-7 items-center gap-1.5 rounded border border-emerald-500/40 bg-emerald-950/20 px-2.5 text-[11px] font-medium text-emerald-400 transition-colors hover:bg-emerald-900/30 hover:text-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
+          DHF Artifacts
         </a>
         <div className="h-4 w-px bg-[var(--color-border)]" />
         <Link
