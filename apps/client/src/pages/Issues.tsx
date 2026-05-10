@@ -177,10 +177,10 @@ export default function Issues() {
         <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
           <div className="border-b border-[var(--color-border)] px-3 py-2">
             <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
-              Submit an Issue
+              Submit a Change Request
             </h2>
             <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
-              Report a bug or request an enhancement. Your submission is logged as a GitHub issue and enters the change request pipeline.
+              A change request can be an <span className="text-[var(--color-text-sec)]">enhancement</span> (new feature or improvement) or a <span className="text-[var(--color-text-sec)]">bug</span> (defect or unexpected behaviour). Your submission is logged as a GitHub issue and enters the formal change request pipeline.
             </p>
           </div>
 
