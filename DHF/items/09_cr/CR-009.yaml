@@ -1,0 +1,65 @@
+id: CR-009
+title: 3D structure positioning, MPR contours, and patient-load performance
+type: CR
+description: '**Priority:** high
+
+  **Category:** bug
+
+
+  Three connected issues showed up while loading patients with non-axial / non-HFS
+  geometry or with multi-polygon-per-slice structure sets, plus a cold-load
+  performance regression on CTs that ship without WindowCenter / WindowWidth tags.
+
+
+  - 3D structure positioning was wrong on HFP / FFS / FFP CTs (each structure
+    appeared translated from the CT body by a different amount). Root cause:
+    vtk.js''s vtkImageMarchingCubes ignores the imageData direction matrix, so
+    each per-structure mask flipped around its own origin while the CT mesh
+    flipped around the volume origin. Folding the per-axis sign into the spacing
+    fed to vtk.js fixes both meshes consistently for axis-aligned (diagonal)
+    direction matrices.
+
+
+  - Sagittal / coronal MPR contours were dropped or fragmented:
+
+    * Direction-aware fix replaces the world-axis-aligned voxel arithmetic in
+      `buildMprMaskBoundaryPath`. For HFP scans (K basis = -Z) the previous
+      code produced negative voxel indices and skipped every contour below the
+      top slice.
+
+    * K-row ownership window: when the CT mixes 5 mm / 2.5 mm slabs, Cornerstone3D
+      builds a uniform grid at the average spacing (≈ 2.765 mm), so each
+      contour falls on a fractional voxel-K row. Splitting K ownership halfway
+      between consecutive contours fills every row between the structure''s
+      first and last slice.
+
+    * Slab-level grouping for multi-polygon-per-slice contours (skin trunk +
+      arm at the same Z, lungs left + right). The previous per-contour
+      ownership window collapsed when two contours shared a K, silently
+      dropping one polygon and producing a stripe pattern in S/C views.
+
+
+  - Patient load took 7 s on cold loads of CTs whose DICOMs lack WC / WW tags.
+    Cornerstone3D''s setDefaultVolumeVOI fetched the middle slice with
+    ignoreCache and contended with the streaming-volume queue. Defaulting CT
+    to WC=40 / WW=400 (and MR to WC=600 / WW=1500) in our voiLutModule
+    metadata provider sidesteps the slow path entirely. Cold load drops to
+    ~200 ms.
+
+
+  Adaptive structure mask stride and idle-deferred 3D snapshot are part of
+  the same patient-load improvement: they keep the perceived load time well
+  under a second even on the integrated GPU workstation.
+
+
+  Verified on real RTSTRUCTs against BRTO25A20EL (HFP, multi-polygon skin),
+  BRTO25A11EL (cold load with empty WC/WW), and BRTO25A31EL.'
+justification: Patient load correctness and speed regressions blocking review of
+  HFP / FFS plans. Bundled because the underlying root causes overlap (direction
+  handling, mask construction, Cornerstone3D's default-VOI path).
+priority: High
+requested_by: itercharles
+target_version: 2026-W19
+category: Bug
+content: ''
+status: implementing
