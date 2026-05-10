@@ -7,7 +7,7 @@ env:
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feat/* ]
   pull_request:
     types: [opened, synchronize]
   workflow_dispatch:
