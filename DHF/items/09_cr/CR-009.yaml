@@ -57,7 +57,7 @@ description: '**Priority:** high
 justification: Patient load correctness and speed regressions blocking review of
   HFP / FFS plans. Bundled because the underlying root causes overlap (direction
   handling, mask construction, Cornerstone3D's default-VOI path).
-links: [SRS-012, SRS-028, SRS-029]
+affected_items: [SRS-012, SRS-028, SRS-029]
 priority: High
 requested_by: itercharles
 target_version: 2026-W19
