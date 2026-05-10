@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { Structure, Volume } from '@webtps/shared-types';
 import {
   buildStructureMaskVolume,
+  chooseStructureMaskStride,
+  deriveStrideVolume,
   downsampleVolume,
+  estimateStructureVoxelExtent,
   voxelToWorld,
   worldToContinuousVoxel,
 } from './threeDGeometry';
@@ -115,5 +118,53 @@ describe('threeDGeometry @links:SRS-028,SRS-029', () => {
     expect(downsampled.spacing).toEqual([2, 2, 4]);
     expect(downsampled.pixelData).toBeInstanceOf(Int16Array);
     expect(downsampled.pixelData.length).toBe(32);
+  });
+
+  it('deriveStrideVolume rescales metadata without copying scalars', () => {
+    const strided = deriveStrideVolume(volume, 4);
+    expect(strided.dimensions).toEqual([2, 2, 1]);
+    expect(strided.spacing).toEqual([4, 4, 8]);
+    // Same pixelData reference — mask building never reads it, so we skip
+    // the O(dim^3) copy that downsampleVolume does for the CT actor.
+    expect(strided.pixelData).toBe(volume.pixelData);
+    // Stride 1 returns the original instance unchanged.
+    expect(deriveStrideVolume(volume, 1)).toBe(volume);
+  });
+
+  it('chooseStructureMaskStride keeps small structures at full resolution', () => {
+    expect(chooseStructureMaskStride(structure, volume)).toBe(1);
+  });
+
+  it('chooseStructureMaskStride backs off for skin-sized structures', () => {
+    // Big-volume volume with a single sweeping body-outline contour. A
+    // 200 × 200 × 200 mm bounding box on a 1 mm grid is 8 M voxels — well
+    // above the 1 M full-res budget — so the stride should be > 1.
+    const bigVolume: Volume = {
+      ...volume,
+      dimensions: [256, 256, 256],
+      spacing: [1, 1, 1],
+      origin: [0, 0, 0],
+    };
+    const skin: Structure = {
+      ...structure,
+      contours: [
+        {
+          referencedSOPInstanceUID: 'sop-skin-1',
+          slicePosition: 100,
+          isClosed: true,
+          points: new Float32Array([10, 10, 100, 210, 10, 100, 210, 210, 100, 10, 210, 100]),
+        },
+        {
+          referencedSOPInstanceUID: 'sop-skin-2',
+          slicePosition: 200,
+          isClosed: true,
+          points: new Float32Array([10, 10, 200, 210, 10, 200, 210, 210, 200, 10, 210, 200]),
+        },
+      ],
+    };
+    const stride = chooseStructureMaskStride(skin, bigVolume);
+    expect(stride).toBeGreaterThanOrEqual(2);
+    expect(stride).toBeLessThanOrEqual(4);
+    expect(estimateStructureVoxelExtent(skin, bigVolume)).toBeGreaterThan(1_000_000);
   });
 });

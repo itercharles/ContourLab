@@ -20,7 +20,13 @@ import { logClientDebug } from '../debug/clientDebugLog';
 // @ts-expect-error
 import vtkImageMarchingCubes from '@kitware/vtk.js/Filters/General/ImageMarchingCubes';
 import type { Structure, Volume } from '@webtps/shared-types';
-import { buildStructureMaskVolume, downsampleVolume, hasRenderableContours } from './threeDGeometry';
+import {
+  buildStructureMaskVolume,
+  chooseStructureMaskStride,
+  deriveStrideVolume,
+  downsampleVolume,
+  hasRenderableContours,
+} from './threeDGeometry';
 
 export interface ThreeDStructureLayer {
   structure: Structure;
@@ -431,12 +437,22 @@ function createStructureActor(
     return null;
   }
   const startedAt = performance.now();
-  const maskVolume = buildStructureMaskVolume(structure, volume);
+  // Big external/skin contours produce 8-10 M-voxel masks, which marching-
+  // cubes turns into 1-2 M triangles. On integrated GPUs the upload + first
+  // render of that mesh dominates the perceived "load patient" delay (≈8 s
+  // out of 10). Drop the stride for those — full-resolution stays the
+  // default for the small structures (PTV, OARs, lungs).
+  const stride = chooseStructureMaskStride(structure, volume);
+  const maskGridVolume = stride > 1 ? deriveStrideVolume(volume, stride) : volume;
+  const maskVolume = buildStructureMaskVolume(structure, maskGridVolume);
   if (!maskVolume) {
     pushDebug(`structure skip id=${structure.id} reason=empty-mask`);
     return null;
   }
   const maskMs = Math.round(performance.now() - startedAt);
+  if (stride > 1) {
+    pushDebug(`structure stride id=${structure.id} stride=${stride} mask=${maskVolume.dimensions.join('x')}`);
+  }
 
   const marchingStart = performance.now();
   const signedSpacing = getDirectionSignedSpacing(maskVolume.spacing, maskVolume.directionCosines);
