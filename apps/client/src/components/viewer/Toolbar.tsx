@@ -17,7 +17,7 @@ const ACTIVITY_TONE_CLASS: Record<ActivityItem['tone'], string> = {
 };
 
 const WEBTPS_REPO_URL = 'https://github.com/itercharles/WebTPS';
-const DHF_ARTIFACTS_URL = 'https://nightly.link/itercharles/WebTPS/workflows/ci-pipeline.yml/main/dhf-artifacts.zip';
+const DHF_ARTIFACTS_URL = 'https://github.com/itercharles/WebTPS/actions/workflows/ci-pipeline.yml?query=branch%3Amain+event%3Apush+is%3Asuccess';
 
 function formatActivityTime(value: string): string {
   const date = new Date(value);
@@ -337,7 +337,7 @@ export default function Toolbar() {
           href={DHF_ARTIFACTS_URL}
           target="_blank"
           rel="noreferrer"
-          title="Download latest DHF artifacts (dhf-artifacts.zip)"
+          title="View CI runs on GitHub — download dhf-artifacts.zip from any successful run"
           className="flex h-7 items-center gap-1.5 rounded border border-emerald-500/40 bg-emerald-950/20 px-2.5 text-[11px] font-medium text-emerald-400 transition-colors hover:bg-emerald-900/30 hover:text-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
