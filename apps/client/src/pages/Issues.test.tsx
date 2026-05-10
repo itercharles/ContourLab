@@ -25,6 +25,28 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('Issues page — heading', () => {
+  it('renders "Change Requests" as the page heading', async () => {
+    render(<MemoryRouter><Issues /></MemoryRouter>);
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Change Requests' })).toBeTruthy();
+  });
+
+  it('section heading reads "Submit a Change Request"', async () => {
+    render(<MemoryRouter><Issues /></MemoryRouter>);
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Submit a Change Request' })).toBeTruthy();
+  });
+
+  it('description mentions enhancement and bug as change request types', async () => {
+    render(<MemoryRouter><Issues /></MemoryRouter>);
+
+    const desc = screen.getByText(/A change request can be an/i);
+    expect(desc.textContent).toMatch(/enhancement/i);
+    expect(desc.textContent).toMatch(/bug/i);
+  });
+});
+
 describe('Issues page — submit form', () => {
   it('renders all form fields', async () => {
     render(<MemoryRouter><Issues /></MemoryRouter>);
