@@ -198,7 +198,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: ./.github/actions/cr-agent-setup
       - name: Fetch test evidence
@@ -278,7 +278,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: ./.github/actions/cr-agent-setup
       - name: Revise spec
@@ -336,7 +336,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: ./.github/actions/cr-agent-setup
       - name: Validate spec
@@ -473,7 +473,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: ./.github/actions/cr-agent-setup
       - name: Revise design
@@ -543,7 +543,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: ./.github/actions/cr-agent-setup
       - name: Generate implementation
@@ -684,7 +684,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: ./.github/actions/cr-agent-setup
       - name: Revise implementation
