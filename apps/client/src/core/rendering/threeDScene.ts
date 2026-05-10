@@ -20,7 +20,13 @@ import { logClientDebug } from '../debug/clientDebugLog';
 // @ts-expect-error
 import vtkImageMarchingCubes from '@kitware/vtk.js/Filters/General/ImageMarchingCubes';
 import type { Structure, Volume } from '@webtps/shared-types';
-import { buildStructureMaskVolume, downsampleVolume, hasRenderableContours } from './threeDGeometry';
+import {
+  buildStructureMaskVolume,
+  chooseStructureMaskStride,
+  deriveStrideVolume,
+  downsampleVolume,
+  hasRenderableContours,
+} from './threeDGeometry';
 
 export interface ThreeDStructureLayer {
   structure: Structure;
@@ -33,12 +39,31 @@ export interface ThreeDSceneSnapshot {
 }
 
 export interface ThreeDScene {
-  renderSnapshot: (snapshot: ThreeDSceneSnapshot) => { structureCount: number; ctReady: boolean };
+  renderSnapshot: (
+    snapshot: ThreeDSceneSnapshot,
+    options?: { signal?: AbortSignal }
+  ) => Promise<{ structureCount: number; ctReady: boolean; cancelled?: boolean }>;
   resize: () => void;
   resetCamera: () => void;
   rotateCamera: (azimuthDelta: number, elevationDelta?: number) => void;
   setCTVisible: (visible: boolean) => void;
   destroy: () => void;
+}
+
+// Yield to the browser between heavy work units so paints, input events, and
+// 2D viewport rendering can interleave with the synchronous vtk.js work.
+// requestIdleCallback is the right primitive — it specifically targets idle
+// time after rendering. Falls back to setTimeout(0) for browsers that don't
+// expose it (older Safari).
+function yieldToMainThread(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const ric = typeof window !== 'undefined' ? window.requestIdleCallback : undefined;
+    if (typeof ric === 'function') {
+      ric(() => resolve(), { timeout: 50 });
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
 }
 
 export class GpuUnavailableError extends Error {
@@ -177,14 +202,20 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   };
 
   return {
-    renderSnapshot(snapshot) {
+    async renderSnapshot(snapshot, options) {
+      const signal = options?.signal;
       const startedAt = performance.now();
+      const isAborted = () => signal?.aborted === true;
+
       clearMountedProps();
       pushDebug(
         `snapshot volume=${snapshot.volume?.seriesUID ?? 'none'} structures=${snapshot.structures.length}`
       );
 
-      // CT context rendering
+      // CT context rendering. After it lands we yield so the 2D viewports
+      // (which already started rendering on this same patient load) get a
+      // chance to commit their first frame before we move on to the
+      // marching-cubes work for each structure.
       let ctReady = false;
       if (snapshot.volume) {
         const nextCtSeriesUID = snapshot.volume.seriesUID;
@@ -203,6 +234,12 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
           }
         }
         ctReady = ctPropHandle !== null;
+      }
+
+      await yieldToMainThread();
+      if (isAborted()) {
+        pushDebug('snapshot cancelled after CT actor');
+        return { structureCount: 0, ctReady, cancelled: true };
       }
 
       let structureCount = 0;
@@ -226,16 +263,39 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
         } else {
           pushDebug(`structure cache hit id=${layer.structure.id}`);
         }
-        if (!structureProp) continue;
-        renderer.addActor(structureProp.actor);
-        mountedProps.push(structureProp);
-        structureCount += 1;
+        if (structureProp) {
+          renderer.addActor(structureProp.actor);
+          mountedProps.push(structureProp);
+          structureCount += 1;
+        }
+
+        // Yield between structures so input + 2D-viewport paint events can
+        // interleave with the synchronous mask + marching-cubes work.
+        await yieldToMainThread();
+        if (isAborted()) {
+          pushDebug(`snapshot cancelled after structure ${structureCount}`);
+          // Don't bail entirely — rendering whatever we have is better than a
+          // blank scene. Caller decides whether to swap to a follow-up snapshot.
+          break;
+        }
       }
 
       for (const [key, prop] of cachedStructureProps.entries()) {
         if (activeStructureKeys.has(key)) continue;
         disposeCachedProp(prop);
         cachedStructureProps.delete(key);
+      }
+
+      // Last yield + abort check before the synchronous renderWindow.render().
+      // The render itself can't be aborted (vtk.js draws into the WebGL context
+      // synchronously) — but if we already know the snapshot is stale we skip
+      // the GPU work and let the next snapshot's clearMountedProps drain the
+      // actors we just added. The next-snapshot path is the safety net for
+      // overlapping renders; this final check is the cheap escape hatch.
+      await yieldToMainThread();
+      if (isAborted()) {
+        pushDebug('snapshot cancelled before final render');
+        return { structureCount, ctReady, cancelled: true };
       }
 
       const hasSceneContent = structureCount > 0;
@@ -249,7 +309,7 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       pushDebug(
         `render ms=${elapsedMs} structureCount=${structureCount} mountedProps=${mountedProps.length} cached_structures=${cachedStructureProps.size}`
       );
-      return { structureCount, ctReady };
+      return { structureCount, ctReady, cancelled: isAborted() };
     },
     resize() {
       setSizeFromContainer(container, openGLRenderWindow);
@@ -327,15 +387,86 @@ function buildStructureCacheKey(
   ].join('::');
 }
 
+// Encode the per-axis direction sign into the spacing we hand to vtk.js.
+//
+// vtk.js's vtkImageMarchingCubes ignores the imageData's direction matrix and
+// computes voxel positions as `origin[a] + index * spacing[a]` (see
+// Filters/General/ImageMarchingCubes.js getVoxelPoints). For a HFP / FFS axial
+// CT (direction = diag(1, -1, -1) etc.) that places every voxel on the wrong
+// side of the volume origin, and the per-actor flip-axis differs between the
+// CT image (volume.origin) and each structure mask (each its own mask.origin),
+// so each structure ends up with a different offset relative to the CT.
+//
+// For axis-aligned (diagonal) direction matrices we can fold the per-axis
+// sign into the spacing and pass identity direction to vtk.js. Then
+// `origin + index * signedSpacing` matches `origin + direction · diag(spacing)
+// · index` exactly. Non-diagonal (oblique) volumes still need a transform-
+// based fix; this codepath assumes axial CTs which is what the rest of the
+// rendering pipeline expects.
+// Off-diagonal magnitude above which the volume's direction is treated as
+// oblique enough to fall outside the axis-aligned contract. Voxel sizes are
+// typically ~1 mm; an off-diagonal of 1e-3 corresponds to a ~0.06° basis
+// rotation, well below clinical-relevance.
+const OBLIQUE_DIRECTION_EPSILON = 1e-3;
+let obliqueDirectionWarned = false;
+
+function getDirectionSignedSpacing(
+  spacing: readonly [number, number, number],
+  directionCosines: readonly number[]
+): [number, number, number] {
+  if (directionCosines.length !== 9) return [spacing[0], spacing[1], spacing[2]];
+  // Detect oblique direction matrices and warn loudly. The contract here is
+  // strictly axis-aligned; tilted-gantry CTs (rare in RT) would silently
+  // produce a wrong mesh otherwise. Surface a specific named cause so it
+  // ends up in the deployed-workstation debug log alongside the other
+  // viewer error messages.
+  const offDiagonalMax = Math.max(
+    Math.abs(directionCosines[1] ?? 0),
+    Math.abs(directionCosines[2] ?? 0),
+    Math.abs(directionCosines[3] ?? 0),
+    Math.abs(directionCosines[5] ?? 0),
+    Math.abs(directionCosines[6] ?? 0),
+    Math.abs(directionCosines[7] ?? 0)
+  );
+  if (offDiagonalMax > OBLIQUE_DIRECTION_EPSILON && !obliqueDirectionWarned) {
+    obliqueDirectionWarned = true;
+    logClientDebug(
+      'ThreeDScene',
+      `oblique direction approximated as axis-aligned offDiagMax=${offDiagonalMax.toFixed(4)} ` +
+        `direction=[${directionCosines.map((v) => v.toFixed(3)).join(',')}] ` +
+        `— 3D meshes will be misregistered until the path is generalised`
+    );
+    console.warn(
+      '[ThreeDScene] Volume direction is non-diagonal (off-diagonal max=%s); ' +
+        'getDirectionSignedSpacing approximates as axis-aligned and meshes may misregister.',
+      offDiagonalMax.toFixed(4)
+    );
+  }
+  const sx = (directionCosines[0] || 0) >= 0 ? 1 : -1;
+  const sy = (directionCosines[4] || 0) >= 0 ? 1 : -1;
+  const sz = (directionCosines[8] || 0) >= 0 ? 1 : -1;
+  return [sx * spacing[0], sy * spacing[1], sz * spacing[2]];
+}
+
+// Identity direction handed to vtkImageData so vtk.js's other code paths (camera
+// reset bounds, picking, …) match the signed-spacing geometry we use in
+// marching cubes. WARNING: do NOT reuse imageData configured with this constant
+// for vtkVolume / vtkImageMapper without first auditing how their bounds and
+// VOI handling react to negative spacing — vtkMapper.getBounds() recomputes
+// from polydata points so marching-cubes output is fine, but volume-rendering
+// paths read renderer-level bounds that derive from imageData.
+const IDENTITY_DIRECTION_FLAT = Float64Array.from([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+
 function createCTActor(volume: Volume, pushDebug: (msg: string) => void): ScenePropHandle | null {
   const startedAt = performance.now();
   try {
     const downsampled = downsampleVolume(volume, 4);
+    const signedSpacing = getDirectionSignedSpacing(downsampled.spacing, downsampled.directionCosines);
     const imageData = vtkImageData.newInstance();
     imageData.setDimensions(...downsampled.dimensions);
-    imageData.setSpacing(downsampled.spacing);
+    imageData.setSpacing(signedSpacing);
     imageData.setOrigin(downsampled.origin);
-    imageData.setDirection(Float64Array.from(downsampled.directionCosines) as unknown as never);
+    imageData.setDirection(IDENTITY_DIRECTION_FLAT as unknown as never);
     imageData.getPointData().setScalars(
       vtkDataArray.newInstance({
         name: 'ct-scalars',
@@ -397,19 +528,30 @@ function createStructureActor(
     return null;
   }
   const startedAt = performance.now();
-  const maskVolume = buildStructureMaskVolume(structure, volume);
+  // Big external/skin contours produce 8-10 M-voxel masks, which marching-
+  // cubes turns into 1-2 M triangles. On integrated GPUs the upload + first
+  // render of that mesh dominates the perceived "load patient" delay (≈8 s
+  // out of 10). Drop the stride for those — full-resolution stays the
+  // default for the small structures (PTV, OARs, lungs).
+  const stride = chooseStructureMaskStride(structure, volume);
+  const maskGridVolume = stride > 1 ? deriveStrideVolume(volume, stride) : volume;
+  const maskVolume = buildStructureMaskVolume(structure, maskGridVolume);
   if (!maskVolume) {
     pushDebug(`structure skip id=${structure.id} reason=empty-mask`);
     return null;
   }
   const maskMs = Math.round(performance.now() - startedAt);
+  if (stride > 1) {
+    pushDebug(`structure stride id=${structure.id} stride=${stride} mask=${maskVolume.dimensions.join('x')}`);
+  }
 
   const marchingStart = performance.now();
+  const signedSpacing = getDirectionSignedSpacing(maskVolume.spacing, maskVolume.directionCosines);
   const imageData = vtkImageData.newInstance();
   imageData.setDimensions(...maskVolume.dimensions);
-  imageData.setSpacing(maskVolume.spacing);
+  imageData.setSpacing(signedSpacing);
   imageData.setOrigin(maskVolume.origin);
-  imageData.setDirection(Float64Array.from(maskVolume.directionCosines) as unknown as never);
+  imageData.setDirection(IDENTITY_DIRECTION_FLAT as unknown as never);
   imageData.getPointData().setScalars(
     vtkDataArray.newInstance({
       name: `${structure.id}-mask`,

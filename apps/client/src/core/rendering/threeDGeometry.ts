@@ -135,6 +135,77 @@ export function buildStructureMaskVolume(structure: Structure, volume: Volume): 
   };
 }
 
+// Cheap "metadata only" downsample for code paths that only need the volume
+// geometry (dimensions / spacing / origin / direction) and do not touch the
+// pixel data. buildStructureMaskVolume falls into this category — handing it a
+// stride-N grid lets us produce a mask at 1/N^3 the voxel count without
+// paying the O(dim^3) cost of copying the CT scalars.
+export function deriveStrideVolume(volume: Volume, stride: number): Volume {
+  const safeStride = Math.max(1, Math.floor(stride));
+  if (safeStride === 1) return volume;
+  return {
+    ...volume,
+    dimensions: [
+      Math.max(1, Math.ceil(volume.dimensions[0] / safeStride)),
+      Math.max(1, Math.ceil(volume.dimensions[1] / safeStride)),
+      Math.max(1, Math.ceil(volume.dimensions[2] / safeStride)),
+    ],
+    spacing: [
+      volume.spacing[0] * safeStride,
+      volume.spacing[1] * safeStride,
+      volume.spacing[2] * safeStride,
+    ],
+  };
+}
+
+// Approximate the voxel count a structure's mask would occupy on the supplied
+// volume grid. Computed straight from the contours' world-space bounding box
+// to avoid the cost of running each contour point through worldToContinuousVoxel
+// just to decide a stride. Good enough for axis-aligned (diagonal direction)
+// volumes — the rendering path already assumes that.
+export function estimateStructureVoxelExtent(structure: Structure, volume: Volume): number {
+  let minX = Number.POSITIVE_INFINITY, maxX = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY, maxY = Number.NEGATIVE_INFINITY;
+  let minZ = Number.POSITIVE_INFINITY, maxZ = Number.NEGATIVE_INFINITY;
+  for (const contour of structure.contours) {
+    if (!contour.isClosed || contour.points.length < 9) continue;
+    const points = contour.points;
+    for (let index = 0; index < points.length; index += 3) {
+      const x = points[index];
+      const y = points[index + 1];
+      const z = points[index + 2];
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      if (z < minZ) minZ = z;
+      if (z > maxZ) maxZ = z;
+    }
+  }
+  if (!Number.isFinite(minX)) return 0;
+  const dx = (maxX - minX) / Math.max(1e-6, Math.abs(volume.spacing[0]));
+  const dy = (maxY - minY) / Math.max(1e-6, Math.abs(volume.spacing[1]));
+  const dz = (maxZ - minZ) / Math.max(1e-6, Math.abs(volume.spacing[2]));
+  return Math.max(0, dx) * Math.max(0, dy) * Math.max(0, dz);
+}
+
+// Pick a mask grid stride for the structure. Capped at 4 — past that the
+// marching-cubes surface gets blocky enough to read as deliberate
+// low-res, and even on integrated GPUs stride 4 fits comfortably under
+// the slow-render threshold.
+export function chooseStructureMaskStride(structure: Structure, volume: Volume): number {
+  const estimatedVoxels = estimateStructureVoxelExtent(structure, volume);
+  // Sub-1 M-voxel structures (PTV, single OARs, vessels) keep full
+  // resolution. The body / skin / external typically lands in the tens of
+  // millions, where a stride of 2-4 turns a 9 MV mask into a 1 MV one and
+  // GPU upload drops from seconds to fractions of a second.
+  const fullResBudget = 1_000_000;
+  if (estimatedVoxels <= fullResBudget) return 1;
+  const ratio = estimatedVoxels / fullResBudget;
+  const stride = Math.ceil(Math.cbrt(ratio));
+  return Math.min(4, Math.max(1, stride));
+}
+
 export function downsampleVolume(volume: Volume, stride = 2): Volume {
   const safeStride = Math.max(1, Math.floor(stride));
   if (safeStride === 1) return volume;

@@ -162,6 +162,25 @@ export function cornerstoneMetadataProvider(type: string, imageId: string): unkn
       if (meta.windowCenter !== undefined && meta.windowWidth !== undefined) {
         return { windowCenter: meta.windowCenter, windowWidth: meta.windowWidth };
       }
+      // Some CT exports omit the WindowCenter / WindowWidth DICOM tags
+      // entirely. When that happens Cornerstone3D's setDefaultVolumeVOI
+      // falls back to fetching the middle slice with `ignoreCache: true`
+      // and computing min/max — and that fetch contends with the 199
+      // in-flight streaming requests for the volume, blocking the
+      // viewport.setVolumes() promise for several seconds on cold load.
+      // Hand it a modality-appropriate default so the slow path is never
+      // taken.
+      //
+      // These are first-paint placeholders, not clinical presets. CT 40/400
+      // is soft-tissue (thorax/abdomen); head CTs would prefer 35/80
+      // (brain) or 600/2800 (bone), MR varies by sequence. Users adjust
+      // windowing from the toolbar's W/L preset menu after load.
+      if (meta.modality === 'CT') {
+        return { windowCenter: 40, windowWidth: 400 };
+      }
+      if (meta.modality === 'MR') {
+        return { windowCenter: 600, windowWidth: 1500 };
+      }
       return undefined;
 
     default:

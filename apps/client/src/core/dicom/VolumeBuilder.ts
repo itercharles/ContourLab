@@ -2,6 +2,7 @@ import type { Volume } from '@webtps/shared-types';
 import type { ParsedSeries } from './DicomLoader';
 import type { LoadedSeries } from '../store/volumeStore';
 import { cornerstoneInit } from '../rendering/cornerstoneInit';
+import { logClientDebug } from '../debug/clientDebugLog';
 
 /**
  * Build a Cornerstone3D streaming volume from a parsed DICOM series.
@@ -54,10 +55,37 @@ export async function buildVolume(parsedSeries: ParsedSeries): Promise<LoadedSer
     windowWidth: csVolume.windowWidth ?? 400,
   };
 
+  // Diagnostic logs are useful when triaging direction / spacing / streaming
+  // issues but are noise during steady-state operation. Gate behind DEV so
+  // the production debug-log ring buffer doesn't fill with metadata that's
+  // already in the volume store.
+  if (import.meta.env.DEV) {
+    logClientDebug(
+      'VolumeBuilder',
+      `geometry uid=${seriesUID} dims=${csVolume.dimensions.join('x')} ` +
+        `origin=[${csVolume.origin.map((v) => v.toFixed(2)).join(',')}] ` +
+        `spacing=[${csVolume.spacing.map((v) => v.toFixed(3)).join(',')}] ` +
+        `direction=[${csVolume.direction.map((v) => v.toFixed(3)).join(',')}]`
+    );
+  }
+
   // Fire-and-forget: streaming loads frames in the background. Keep the shared
   // pixelData reference current so tools such as HU probe can read loaded voxels.
+  // The load callback fires once every imageId in the streaming volume has been
+  // fetched, parsed, and inserted into the volume's voxel manager. The wall-
+  // clock between createAndCacheVolume returning and this callback is the
+  // network fetch + parse time on a cold load — the dominant slice of "patient
+  // load" that's NOT 3D rendering. Gated to DEV for the same reason as above.
+  const loadStartedAt = performance.now();
   (volume as { load: (callback?: () => void) => void }).load(() => {
     sharedVolume.pixelData = getPixelData();
+    if (import.meta.env.DEV) {
+      logClientDebug(
+        'VolumeBuilder',
+        `streaming-loaded uid=${seriesUID} ms=${Math.round(performance.now() - loadStartedAt)} ` +
+          `imageIds=${imageIds.length}`
+      );
+    }
   });
 
   return {

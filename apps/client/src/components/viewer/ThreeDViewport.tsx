@@ -189,10 +189,24 @@ export default function ThreeDViewport() {
       `render queued #${attempt} series=${activeSeries?.seriesUID ?? 'none'} structures=${visibleStructures.length} contours=${contourCount}`
     );
 
-    // Defer the render via setTimeout so React can commit and the browser can paint
-    // before the heavy marching-cubes / mask-building work starts on the main thread.
+    // Defer the render until the browser is idle so the 2D viewports
+    // (axial/sagittal/coronal) commit their first frame before we start the
+    // heavy marching-cubes work. requestIdleCallback is the right primitive —
+    // it fires after layout/paint, never on the same tick as React's commit.
+    // The 2-second timeout is the fail-safe so we still render even on a
+    // page that never goes idle (e.g. continuous animations elsewhere). The
+    // AbortController lets us cancel an in-flight render if the user
+    // switches series mid-flight; the async renderSnapshot checks the
+    // signal between structures.
     renderAttemptRef.current = attempt;
-    const handle = window.setTimeout(() => {
+    const abort = new AbortController();
+    let scheduleHandle: number | null = null;
+    let timeoutHandle: number | null = null;
+    const ric = window.requestIdleCallback;
+    const cic = window.cancelIdleCallback;
+
+    const startSnapshot = () => {
+      if (abort.signal.aborted) return;
       const snapshot = {
         volume: activeSeries?.volume ?? null,
         structures: visibleStructures.map((structure) => ({ structure })),
@@ -202,10 +216,37 @@ export default function ThreeDViewport() {
       );
 
       const renderStart = performance.now();
-      const renderResult = (() => {
-        try {
-          return scene.renderSnapshot(snapshot);
-        } catch (error) {
+      scene
+        .renderSnapshot(snapshot, { signal: abort.signal })
+        .then((renderResult) => {
+          if (abort.signal.aborted) {
+            pushDebug(`render aborted #${attempt}`);
+            return;
+          }
+          lastRenderSignatureRef.current = renderSignature;
+          const elapsedMs = Math.round(performance.now() - renderStart);
+          pushDebug(
+            `render done #${attempt} ms=${elapsedMs} structureCount=${renderResult.structureCount} ctReady=${renderResult.ctReady}${
+              renderResult.cancelled ? ' cancelled=true' : ''
+            }`
+          );
+
+          setRenderError(null);
+          setCtReady(renderResult.ctReady);
+
+          const { structureCount, ctReady: newCtReady } = renderResult;
+          if (!activeSeries) {
+            setStatus('Load a series to view 3D structures.');
+            return;
+          }
+          const structPart =
+            structureCount === 0
+              ? 'No visible 3D structures yet.'
+              : `${structureCount} visible structure${structureCount === 1 ? '' : 's'}`;
+          setStatus(newCtReady ? `CT surface ready · ${structPart}` : structPart);
+        })
+        .catch((error: unknown) => {
+          if (abort.signal.aborted) return;
           console.error('3D viewport render failed', error);
           pushDebug(
             `render error #${attempt} ms=${Math.round(performance.now() - renderStart)} ${error instanceof Error ? error.message : String(error)}`
@@ -213,37 +254,23 @@ export default function ThreeDViewport() {
           const message = formatThreeDError(error, 'render', activeSeries?.seriesUID ?? null);
           setRenderError(message);
           setStatus(message);
-          return null;
-        }
-      })();
+        });
+    };
 
-      if (!renderResult) return;
+    if (typeof ric === 'function') {
+      scheduleHandle = ric(startSnapshot, { timeout: 2000 });
+    } else {
+      // Older Safari and the jsdom test runner don't expose
+      // requestIdleCallback. Use a small setTimeout — gives React's commit
+      // and a paint a chance, then fires.
+      timeoutHandle = window.setTimeout(startSnapshot, 16);
+    }
 
-      lastRenderSignatureRef.current = renderSignature;
-      const elapsedMs = Math.round(performance.now() - renderStart);
-      pushDebug(
-        `render done #${attempt} ms=${elapsedMs} structureCount=${renderResult.structureCount} ctReady=${renderResult.ctReady}`
-      );
-
-      // Clear any stale error now that a render has succeeded.
-      setRenderError(null);
-      setCtReady(renderResult.ctReady);
-
-      const { structureCount, ctReady: newCtReady } = renderResult;
-
-      if (!activeSeries) {
-        setStatus('Load a series to view 3D structures.');
-        return;
-      }
-
-      const structPart =
-        structureCount === 0
-          ? 'No visible 3D structures yet.'
-          : `${structureCount} visible structure${structureCount === 1 ? '' : 's'}`;
-      setStatus(newCtReady ? `CT surface ready · ${structPart}` : structPart);
-    }, 0);
-
-    return () => window.clearTimeout(handle);
+    return () => {
+      abort.abort();
+      if (scheduleHandle != null && typeof cic === 'function') cic(scheduleHandle);
+      if (timeoutHandle != null) window.clearTimeout(timeoutHandle);
+    };
   }, [activeSeries, refreshRevision, renderSignature, visibleStructures]);
 
   return (
