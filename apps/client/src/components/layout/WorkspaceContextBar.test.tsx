@@ -83,7 +83,7 @@ describe('WorkspaceContextBar @links:SRS-020', () => {
   it('shows empty active context before a patient and image set are loaded', () => {
     render(<WorkspaceContextBar />);
 
-    expect(screen.getByText('No active patient')).toBeTruthy();
+    expect(screen.getByText('Load Patient')).toBeTruthy();
     expect(screen.getByText('No active image set')).toBeTruthy();
     expect(screen.getByText('No active RTSS')).toBeTruthy();
     expect(screen.getByText('Synced')).toBeTruthy();

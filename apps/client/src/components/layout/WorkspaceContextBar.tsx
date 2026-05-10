@@ -48,6 +48,8 @@ export default function WorkspaceContextBar() {
     setLeftSidebarOpen(true);
   };
 
+  const hasPatient = !!activeLoadedSeries;
+
   return (
     <div className="flex h-9 flex-none items-stretch border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] text-[10px] text-[var(--color-text-sec)]">
       {/* Patient selector */}
@@ -55,29 +57,48 @@ export default function WorkspaceContextBar() {
         <button
           type="button"
           onClick={openPatientSelector}
-          title="Select patient"
-          className="flex min-w-0 items-center gap-2 px-3 text-left hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          title={hasPatient ? 'Switch patient' : 'Load patient — open patient browser'}
+          className={`group flex min-w-0 flex-1 items-center gap-2 px-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+            hasPatient
+              ? 'hover:bg-[var(--color-hover)]'
+              : 'bg-blue-950/20 hover:bg-blue-900/30'
+          }`}
         >
-          <svg aria-hidden="true" className="flex-none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg aria-hidden="true" className={`flex-none ${hasPatient ? 'text-[var(--color-text-sec)]' : 'text-blue-400'}`} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="10" cy="8" r="4" />
             <path d="M3 21a7 7 0 0 1 14 0" />
-            <path d="M19 8v6M16 11h6" />
+            {!hasPatient && <><path d="M19 8v6" /><path d="M16 11h6" /></>}
           </svg>
-          <span className="min-w-0 truncate text-[12px] font-semibold text-[var(--color-text-bright)]">
-            {formatPatientName(activeLoadedSeries?.patient)}
-          </span>
+          {hasPatient ? (
+            <>
+              <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-[var(--color-text-bright)]">
+                {formatPatientName(activeLoadedSeries.patient)}
+              </span>
+              {/* Switch hint — fades in on hover */}
+              <svg aria-hidden="true" className="flex-none text-[var(--color-text-muted)] opacity-0 transition-opacity duration-100 group-hover:opacity-70" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 4h11M9 1l3 3-3 3" />
+                <path d="M15 12H4M7 9l-3 3 3 3" />
+              </svg>
+            </>
+          ) : (
+            <span className="text-[12px] font-medium text-blue-400">
+              Load Patient
+            </span>
+          )}
         </button>
-        <button
-          type="button"
-          onClick={openWorkspaceSelector}
-          title="Choose image set and RTSS"
-          aria-label="Choose image set and RTSS"
-          className="flex w-7 flex-none items-center justify-center border-l border-[var(--color-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        >
-          <svg aria-hidden="true" className="flex-none" width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 6l4 4 4-4" />
-          </svg>
-        </button>
+        {hasPatient && (
+          <button
+            type="button"
+            onClick={openWorkspaceSelector}
+            title="Choose image set and RTSS"
+            aria-label="Choose image set and RTSS"
+            className="flex w-7 flex-none items-center justify-center border-l border-[var(--color-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <svg aria-hidden="true" className="flex-none" width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 6l4 4 4-4" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Context fields */}
