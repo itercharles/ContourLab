@@ -306,7 +306,7 @@ describe('Toolbar contour operations', () => {
   it('opens the prototype issue-driven AI coding notice from the top bar CTA', () => {
     renderToolbar();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Click Me' }));
+    fireEvent.click(screen.getByRole('button', { name: /about/i }));
 
     expect(screen.getByRole('dialog', { name: 'Issue-driven AI coding prototype' })).toBeTruthy();
     expect(screen.getByText(/does not contain any Elekta product code/i)).toBeTruthy();

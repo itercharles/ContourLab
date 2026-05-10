@@ -17,6 +17,7 @@ const ACTIVITY_TONE_CLASS: Record<ActivityItem['tone'], string> = {
 };
 
 const WEBTPS_REPO_URL = 'https://github.com/itercharles/WebTPS';
+const DHF_ARTIFACTS_URL = 'https://nightly.link/itercharles/WebTPS/workflows/ci-pipeline.yml/main/dhf-artifacts.zip';
 
 function formatActivityTime(value: string): string {
   const date = new Date(value);
@@ -136,9 +137,14 @@ export default function Toolbar() {
         <button
           type="button"
           onClick={() => setPrototypeInfoOpen(true)}
-          className="h-7 rounded bg-blue-900 px-4 text-[12px] font-bold text-white ring-1 ring-blue-400/70 transition-colors hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+          title="About this prototype"
+          className="flex h-7 items-center gap-1.5 rounded px-2 text-[11px] text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
-          Click Me
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4M12 8h.01" />
+          </svg>
+          About
         </button>
         <div className="flex items-center rounded border border-[var(--color-border)] bg-[var(--color-surface-alt)] p-0.5">
           <button
@@ -312,6 +318,35 @@ export default function Toolbar() {
             </div>
           </div>
         )}
+        <div className="h-4 w-px bg-[var(--color-border)]" />
+        {/* Change Requests */}
+        <Link
+          to="/issues"
+          reloadDocument
+          title="Change Requests"
+          aria-label="Change Requests"
+          className="flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
+        </Link>
+        {/* DHF Artifacts download */}
+        <a
+          href={DHF_ARTIFACTS_URL}
+          target="_blank"
+          rel="noreferrer"
+          title="Download latest DHF artifacts (dhf-artifacts.zip)"
+          aria-label="Download DHF artifacts"
+          className="flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+        </a>
         <div className="h-4 w-px bg-[var(--color-border)]" />
         <Link
           to="/settings"
