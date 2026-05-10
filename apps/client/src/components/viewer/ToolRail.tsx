@@ -289,12 +289,12 @@ export default function ToolRail() {
                   {/* Arrow */}
                   <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-l border-white/[0.08] bg-[var(--color-tooltip-bg)]" />
                   <span className="flex items-start justify-between gap-2">
-                    <span className="text-[12px] font-semibold leading-tight text-white">{tool.name}</span>
-                    <span className="mt-px rounded bg-white/10 px-1.5 py-px font-mono text-[10px] text-[var(--color-text-sec)]">{tool.shortcut}</span>
+                    <span className="text-[13px] font-semibold leading-tight text-white">{tool.name}</span>
+                    <span className="mt-px rounded bg-white/10 px-1.5 py-px font-mono text-[11px] text-[var(--color-text-sec)]">{tool.shortcut}</span>
                   </span>
-                  <span className="mt-1 block text-[11px] leading-snug text-[var(--color-text-sec)]">{tool.desc}</span>
+                  <span className="mt-1 block text-[12px] leading-snug text-[var(--color-text-sec)]">{tool.desc}</span>
                   {!tool.implemented && (
-                    <span className="mt-1 block text-[10px] text-[var(--color-text-muted)]">Not yet implemented</span>
+                    <span className="mt-1 block text-[11px] text-[var(--color-text-muted)]">Not yet implemented</span>
                   )}
                 </span>
               </button>

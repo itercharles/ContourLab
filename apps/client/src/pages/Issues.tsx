@@ -30,7 +30,7 @@ function PipelineHeader() {
         <div key={s} className="flex items-center">
           {i > 0 && <div className="w-5" />}
           <div className="flex w-9 justify-center">
-            <span className="text-[9px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{s}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{s}</span>
           </div>
         </div>
       ))}
@@ -157,7 +157,7 @@ export default function Issues() {
       <header className="border-b border-[var(--color-border)] bg-[var(--color-header)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
               WebTPS
             </p>
             <h1 className="mt-1 text-sm font-semibold text-[var(--color-text)]">Change Requests</h1>
@@ -165,7 +165,7 @@ export default function Issues() {
           <Link
             to="/workspace"
             reloadDocument
-            className="rounded bg-[var(--color-elevated)] px-3 py-1.5 text-[11px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="rounded bg-[var(--color-elevated)] px-3 py-1.5 text-[12px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             Back to Workspace
           </Link>
@@ -176,17 +176,17 @@ export default function Issues() {
         {/* Submit form */}
         <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
           <div className="border-b border-[var(--color-border)] px-3 py-2">
-            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
+            <h2 className="text-[12px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
               Submit a Change Request
             </h2>
-            <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+            <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">
               A change request can be an <span className="text-[var(--color-text-sec)]">enhancement</span> (new feature or improvement) or a <span className="text-[var(--color-text-sec)]">bug</span> (defect or unexpected behaviour). Your submission is logged as a GitHub issue and enters the formal change request pipeline.
             </p>
           </div>
 
           <form onSubmit={(e) => void onSubmit(e)} className="grid gap-3 px-3 py-3">
             <div className="grid gap-1.5">
-              <label htmlFor="issue-title" className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+              <label htmlFor="issue-title" className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
                 Title
               </label>
               <input
@@ -195,12 +195,12 @@ export default function Issues() {
                 onChange={(e) => setTitle(e.target.value)}
                 required
                 placeholder="Brief summary of the issue"
-                className="h-8 rounded border border-[var(--color-border-input)] bg-[var(--color-header)] px-2 text-[11px] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="h-8 rounded border border-[var(--color-border-input)] bg-[var(--color-header)] px-2 text-[12px] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
 
             <div className="grid gap-1.5">
-              <label htmlFor="issue-description" className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+              <label htmlFor="issue-description" className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
                 Description
               </label>
               <textarea
@@ -210,20 +210,20 @@ export default function Issues() {
                 required
                 rows={4}
                 placeholder="Describe the issue in detail — steps to reproduce, expected vs actual behaviour, etc."
-                className="resize-y rounded border border-[var(--color-border-input)] bg-[var(--color-header)] px-2 py-1.5 text-[11px] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="resize-y rounded border border-[var(--color-border-input)] bg-[var(--color-header)] px-2 py-1.5 text-[12px] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
 
             <div className="flex gap-3">
               <div className="grid gap-1.5">
-                <label htmlFor="issue-priority" className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+                <label htmlFor="issue-priority" className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
                   Priority
                 </label>
                 <select
                   id="issue-priority"
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
-                  className="h-8 rounded border border-[var(--color-border-input)] bg-[var(--color-header)] px-2 text-[11px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="h-8 rounded border border-[var(--color-border-input)] bg-[var(--color-header)] px-2 text-[12px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -233,14 +233,14 @@ export default function Issues() {
               </div>
 
               <div className="grid gap-1.5">
-                <label htmlFor="issue-category" className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+                <label htmlFor="issue-category" className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
                   Category
                 </label>
                 <select
                   id="issue-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="h-8 rounded border border-[var(--color-border-input)] bg-[var(--color-header)] px-2 text-[11px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="h-8 rounded border border-[var(--color-border-input)] bg-[var(--color-header)] px-2 text-[12px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="bug">Bug</option>
                   <option value="enhancement">Enhancement</option>
@@ -252,7 +252,7 @@ export default function Issues() {
 
             {submitState && (
               <div
-                className={`rounded border px-3 py-2 text-[11px] ${
+                className={`rounded border px-3 py-2 text-[12px] ${
                   submitState.type === 'success'
                     ? 'border-green-700/50 bg-green-900/20 text-green-300'
                     : 'border-red-700/50 bg-red-900/20 text-red-300'
@@ -279,7 +279,7 @@ export default function Issues() {
               <button
                 type="submit"
                 disabled={submitting || !title.trim() || !description.trim()}
-                className="h-8 rounded bg-blue-700 px-4 text-[11px] font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="h-8 rounded bg-blue-700 px-4 text-[12px] font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 {submitting ? 'Submitting…' : 'Submit Issue'}
               </button>
@@ -291,10 +291,10 @@ export default function Issues() {
         <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
           <div className="flex items-center justify-between border-b border-[var(--color-border)] px-3 py-2">
             <div>
-              <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
+              <h2 className="text-[12px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
                 Issue Status
               </h2>
-              <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+              <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">
                 All open issues and their current position in the pipeline.
               </p>
             </div>
@@ -302,14 +302,14 @@ export default function Issues() {
               type="button"
               onClick={() => void fetchIssues()}
               disabled={loading}
-              className="h-7 rounded bg-[var(--color-elevated)] px-3 text-[10px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="h-7 rounded bg-[var(--color-elevated)] px-3 text-[11px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               Refresh
             </button>
           </div>
 
           {loadError && (
-            <div className="border-b border-[var(--color-border)] px-3 py-2 text-[11px] text-red-400">
+            <div className="border-b border-[var(--color-border)] px-3 py-2 text-[12px] text-red-400">
               {loadError}
             </div>
           )}
@@ -317,8 +317,8 @@ export default function Issues() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-[var(--color-border)]">
-                <th className="w-12 px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">#</th>
-                <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Title</th>
+                <th className="w-12 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">#</th>
+                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Title</th>
                 <th className="w-80 px-3 py-2 text-left"><PipelineHeader /></th>
               </tr>
             </thead>
@@ -334,17 +334,17 @@ export default function Issues() {
               )}
               {!loading && items.length === 0 && !loadError && (
                 <tr>
-                  <td colSpan={3} className="px-3 py-4 text-center text-[11px] text-[var(--color-text-muted)]">
+                  <td colSpan={3} className="px-3 py-4 text-center text-[12px] text-[var(--color-text-muted)]">
                     No open issues found.
                   </td>
                 </tr>
               )}
               {!loading && items.map((item) => (
                 <tr key={item.number} className="border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-elevated)]/30">
-                  <td className="px-3 py-2.5 font-mono text-[11px] text-[var(--color-text-muted)]">
+                  <td className="px-3 py-2.5 font-mono text-[12px] text-[var(--color-text-muted)]">
                     {item.number}
                   </td>
-                  <td className="px-3 py-2.5 text-[11px] text-[var(--color-text)]">
+                  <td className="px-3 py-2.5 text-[12px] text-[var(--color-text)]">
                     <a
                       href={item.htmlUrl}
                       target="_blank"

@@ -16,10 +16,10 @@ export default function LeftSidebar() {
       <div className="border-b border-[var(--color-border)] bg-[var(--color-header)] px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
               Workspace Selector
             </p>
-            <p className="mt-0.5 truncate text-[10px] text-[var(--color-text-sec)]">
+            <p className="mt-0.5 truncate text-[11px] text-[var(--color-text-sec)]">
               Select patient, image, and RTSS
             </p>
           </div>
@@ -99,7 +99,7 @@ export default function LeftSidebar() {
       </div>
 
       <div className="flex items-center justify-between border-t border-[var(--color-border)] bg-[var(--color-base)] px-3 py-2">
-        <span className="text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">
+        <span className="text-[11px] uppercase tracking-widest text-[var(--color-text-muted)]">
           System
         </span>
         <div className="flex items-center gap-1">

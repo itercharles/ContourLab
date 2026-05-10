@@ -51,7 +51,7 @@ export default function WorkspaceContextBar() {
   const hasPatient = !!activeLoadedSeries;
 
   return (
-    <div className="flex h-9 flex-none items-stretch border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] text-[10px] text-[var(--color-text-sec)]">
+    <div className="flex h-9 flex-none items-stretch border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] text-[11px] text-[var(--color-text-sec)]">
       {/* Patient selector */}
       <div className="flex min-w-0 max-w-64 items-stretch border-r border-[var(--color-border)]">
         <button
@@ -71,7 +71,7 @@ export default function WorkspaceContextBar() {
           </svg>
           {hasPatient ? (
             <>
-              <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-[var(--color-text-bright)]">
+              <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[var(--color-text-bright)]">
                 {formatPatientName(activeLoadedSeries.patient)}
               </span>
               {/* Switch hint — fades in on hover */}
@@ -81,7 +81,7 @@ export default function WorkspaceContextBar() {
               </svg>
             </>
           ) : (
-            <span className="text-[12px] font-medium text-blue-400">
+            <span className="text-[13px] font-medium text-blue-400">
               Load Patient
             </span>
           )}
@@ -104,26 +104,26 @@ export default function WorkspaceContextBar() {
       {/* Context fields */}
       <div className="flex min-w-0 flex-1 items-stretch overflow-hidden">
         <div className="flex items-center gap-1.5 border-r border-[var(--color-border)] px-3">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">MRN</span>
-          <span className="font-mono text-[11px] text-[var(--color-text-bright)]">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">MRN</span>
+          <span className="font-mono text-[12px] text-[var(--color-text-bright)]">
             {activeLoadedSeries?.patient.mrn || activeLoadedSeries?.patient.id || '—'}
           </span>
         </div>
         <div className="flex min-w-0 items-center gap-1.5 border-r border-[var(--color-border)] px-3">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Study</span>
-          <span className="min-w-0 truncate text-[12px] font-medium text-[var(--color-text-bright)]" title={activeLoadedSeries?.study.studyDescription || activeLoadedSeries?.study.studyInstanceUID || 'No active study'}>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Study</span>
+          <span className="min-w-0 truncate text-[13px] font-medium text-[var(--color-text-bright)]" title={activeLoadedSeries?.study.studyDescription || activeLoadedSeries?.study.studyInstanceUID || 'No active study'}>
             {activeLoadedSeries?.study.studyDescription || activeLoadedSeries?.study.studyDate || 'No active study'}
           </span>
         </div>
         <div className="flex min-w-0 items-center gap-1.5 border-r border-[var(--color-border)] px-3">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Image</span>
-          <span className="min-w-0 truncate text-[12px] font-medium text-[var(--color-text-bright)]" title={activeLoadedSeries?.series.seriesDescription || activeLoadedSeries?.seriesUID || 'No active image set'}>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Image</span>
+          <span className="min-w-0 truncate text-[13px] font-medium text-[var(--color-text-bright)]" title={activeLoadedSeries?.series.seriesDescription || activeLoadedSeries?.seriesUID || 'No active image set'}>
             {activeLoadedSeries?.series.seriesDescription || activeLoadedSeries?.seriesUID || 'No active image set'}
           </span>
         </div>
         <div className="flex min-w-0 items-center gap-1.5 px-3">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">RTSS</span>
-          <span className="min-w-0 truncate text-[12px] font-medium text-[var(--color-text-bright)]" title={activeSeriesStructureSet?.source?.sopInstanceUID || activeSeriesStructureSet?.label || 'No active RTSS'}>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">RTSS</span>
+          <span className="min-w-0 truncate text-[13px] font-medium text-[var(--color-text-bright)]" title={activeSeriesStructureSet?.source?.sopInstanceUID || activeSeriesStructureSet?.label || 'No active RTSS'}>
             {activeSeriesStructureSet?.source?.type === 'rtstruct'
               ? formatRtstructLabel(activeSeriesStructureSet.source)
               : activeSeriesStructureSet?.label || 'No active RTSS'}
@@ -140,7 +140,7 @@ export default function WorkspaceContextBar() {
               : 'bg-[#10b981] shadow-[0_0_0_3px_rgba(16,185,129,0.15)]'
           }`}
         />
-        <span className={`text-[11px] ${isRepositoryDirty ? 'text-[#f59e0b]' : 'text-[var(--color-text-sec)]'}`}>
+        <span className={`text-[12px] ${isRepositoryDirty ? 'text-[#f59e0b]' : 'text-[var(--color-text-sec)]'}`}>
           {isRepositoryDirty ? 'Unsynced' : 'Synced'}
         </span>
       </div>

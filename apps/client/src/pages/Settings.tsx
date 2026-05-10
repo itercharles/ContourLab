@@ -79,7 +79,7 @@ export default function Settings() {
       <header className="border-b border-[var(--color-border)] bg-[var(--color-header)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
               WebTPS
             </p>
             <h1 className="mt-1 text-sm font-semibold text-[var(--color-text)]">Settings</h1>
@@ -87,7 +87,7 @@ export default function Settings() {
           <Link
             to="/workspace"
             reloadDocument
-            className="rounded bg-[var(--color-elevated)] px-3 py-1.5 text-[11px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="rounded bg-[var(--color-elevated)] px-3 py-1.5 text-[12px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             Back to Workspace
           </Link>
@@ -97,10 +97,10 @@ export default function Settings() {
       <main className="mx-auto max-w-5xl space-y-4 px-6 py-5">
         <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
           <div className="border-b border-[var(--color-border)] px-3 py-2">
-            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
+            <h2 className="text-[12px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
               Appearance
             </h2>
-            <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+            <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">
               Choose the interface theme. Viewport canvases always remain black for accurate image display.
             </p>
           </div>
@@ -109,7 +109,7 @@ export default function Settings() {
               <button
                 type="button"
                 onClick={() => setTheme('dark')}
-                className={`h-8 rounded px-4 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                className={`h-8 rounded px-4 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                   theme === 'dark'
                     ? 'bg-blue-900/40 text-blue-200'
                     : 'bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)]'
@@ -120,7 +120,7 @@ export default function Settings() {
               <button
                 type="button"
                 onClick={() => setTheme('light')}
-                className={`h-8 rounded px-4 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                className={`h-8 rounded px-4 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                   theme === 'light'
                     ? 'bg-blue-900/40 text-blue-200'
                     : 'bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)]'
@@ -134,16 +134,16 @@ export default function Settings() {
 
         <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
           <div className="border-b border-[var(--color-border)] px-3 py-2">
-            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
+            <h2 className="text-[12px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
               DICOM Repository
             </h2>
-            <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+            <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">
               Configure which DICOMweb repository WebTPS queries, loads from, imports into, and pushes RTSTRUCT objects to.
             </p>
           </div>
 
           <div className="grid gap-3 px-3 py-3">
-            <label htmlFor="dicomweb-endpoint" className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+            <label htmlFor="dicomweb-endpoint" className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
               DICOMweb endpoint
             </label>
             <div className="flex gap-2">
@@ -151,25 +151,25 @@ export default function Settings() {
                 id="dicomweb-endpoint"
                 value={endpoint}
                 onChange={(event) => setEndpoint(event.target.value)}
-                className="h-8 min-w-0 flex-1 rounded border border-[var(--color-border-input)] bg-[var(--color-header)] px-2 font-mono text-[11px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="h-8 min-w-0 flex-1 rounded border border-[var(--color-border-input)] bg-[var(--color-header)] px-2 font-mono text-[12px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="/dicom-web"
               />
               <button
                 type="button"
                 onClick={onSaveEndpoint}
-                className="h-8 rounded bg-blue-700 px-3 text-[11px] font-semibold text-white hover:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="h-8 rounded bg-blue-700 px-3 text-[12px] font-semibold text-white hover:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 Save
               </button>
               <button
                 type="button"
                 onClick={onResetEndpoint}
-                className="h-8 rounded bg-[var(--color-elevated)] px-3 text-[11px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="h-8 rounded bg-[var(--color-elevated)] px-3 text-[12px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 Reset
               </button>
             </div>
-            <p className="text-[10px] text-[var(--color-text-muted)]">
+            <p className="text-[11px] text-[var(--color-text-muted)]">
               Default: <span className="font-mono">{getDefaultDicomWebBaseUrl()}</span>
             </p>
           </div>
@@ -177,10 +177,10 @@ export default function Settings() {
 
         <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
           <div className="border-b border-[var(--color-border)] px-3 py-2">
-            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
+            <h2 className="text-[12px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
               Import DICOM Data
             </h2>
-            <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+            <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">
               Imports happen in the configured DICOM repository's upload UI. Once you've uploaded files there, return to WebTPS and your worklist refreshes automatically.
             </p>
           </div>
@@ -188,7 +188,7 @@ export default function Settings() {
             <button
               type="button"
               onClick={onOpenOrthancUi}
-              className="inline-flex h-8 items-center gap-1.5 rounded bg-[var(--color-elevated)] px-3 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-hover)]"
+              className="inline-flex h-8 items-center gap-1.5 rounded bg-[var(--color-elevated)] px-3 text-[12px] text-[var(--color-text)] hover:bg-[var(--color-hover)]"
             >
               Import DICOM Files
               <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -197,7 +197,7 @@ export default function Settings() {
                 <line x1="10" y1="14" x2="21" y2="3" />
               </svg>
             </button>
-            <p className="font-mono text-[10px] text-[var(--color-text-muted)]">
+            <p className="font-mono text-[11px] text-[var(--color-text-muted)]">
               {getOrthancUiUrl()}
             </p>
           </div>
@@ -207,17 +207,17 @@ export default function Settings() {
           <div className="border-b border-[var(--color-border)] px-3 py-2">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
+                <h2 className="text-[12px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
                   QA Rules
                 </h2>
-                <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+                <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">
                   Enable or disable contour and RTSS QA checks for this browser. Changes apply to the review workspace immediately after returning.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={onResetQaRules}
-                className="h-8 rounded bg-[var(--color-elevated)] px-3 text-[11px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="h-8 rounded bg-[var(--color-elevated)] px-3 text-[12px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 Reset QA Rules
               </button>
@@ -229,7 +229,7 @@ export default function Settings() {
               { label: 'RTSS QA', rules: rtssRules },
             ].map((section) => (
               <section key={section.label} className="border border-[var(--color-border)] bg-[var(--color-surface)]">
-                <div className="border-b border-[var(--color-border)] px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+                <div className="border-b border-[var(--color-border)] px-2 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
                   {section.label}
                 </div>
                 <div>
@@ -239,11 +239,11 @@ export default function Settings() {
                       className="grid grid-cols-[1fr_auto] gap-3 border-b border-[var(--color-border)] px-2 py-2 last:border-b-0"
                     >
                       <span>
-                        <span className="block text-[11px] font-semibold text-[var(--color-text)]">{rule.label}</span>
-                        <span className="mt-0.5 block text-[10px] text-[var(--color-text-muted)]">{rule.description}</span>
+                        <span className="block text-[12px] font-semibold text-[var(--color-text)]">{rule.label}</span>
+                        <span className="mt-0.5 block text-[11px] text-[var(--color-text-muted)]">{rule.description}</span>
                       </span>
                       <span className="flex items-center gap-2">
-                        <span className={`text-[9px] uppercase tracking-widest ${
+                        <span className={`text-[10px] uppercase tracking-widest ${
                           rule.severity === 'warning' ? 'text-[#f59e0b]' : 'text-[var(--color-text-muted)]'
                         }`}>
                           {rule.severity}
@@ -263,7 +263,7 @@ export default function Settings() {
             ))}
           </div>
           <div className="border-t border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
-            <p className="text-[10px] text-[var(--color-text-muted)]">
+            <p className="text-[11px] text-[var(--color-text-muted)]">
               Custom user-authored QA rules are not implemented yet. When added, they should target a constrained rule schema rather than arbitrary scripting.
             </p>
           </div>
@@ -271,20 +271,20 @@ export default function Settings() {
 
         <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
           <div className="border-b border-[var(--color-border)] px-3 py-2">
-            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
+            <h2 className="text-[12px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
               About
             </h2>
-            <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+            <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">
               WebTPS is a browser-based radiation therapy contour review workspace for repository-backed DICOM workflows.
             </p>
           </div>
           <div className="grid gap-2 px-3 py-3 md:grid-cols-3">
             {ABOUT_DETAILS.map((detail) => (
               <div key={detail.label} className="border border-[var(--color-border)] bg-[var(--color-base)] px-2 py-2">
-                <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+                <div className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
                   {detail.label}
                 </div>
-                <div className="mt-1 text-[11px] text-[var(--color-text)]">
+                <div className="mt-1 text-[12px] text-[var(--color-text)]">
                   {detail.value}
                 </div>
               </div>
@@ -293,7 +293,7 @@ export default function Settings() {
         </section>
 
         {status && (
-          <p className={`text-[11px] ${status.tone === 'error' ? 'text-red-400' : 'text-[var(--color-text-sec)]'}`}>
+          <p className={`text-[12px] ${status.tone === 'error' ? 'text-red-400' : 'text-[var(--color-text-sec)]'}`}>
             {status.message}
           </p>
         )}

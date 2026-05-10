@@ -103,7 +103,7 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
           orientation={orientation}
         />
       </ContourErrorBoundary>
-      <span className="absolute top-1 left-1 text-[10px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
+      <span className="absolute top-1 left-1 text-[11px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
         {label}
       </span>
       {contextMenu && (

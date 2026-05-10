@@ -40,7 +40,7 @@ function formatThreeDError(error: unknown, context: 'init' | 'resize' | 'render'
 function OverlayLabel({ children, className = '' }: { children: string; className?: string }) {
   return (
     <span
-      className={`pointer-events-none absolute left-1 top-1 z-10 bg-black/50 px-1 py-0.5 font-mono text-[10px] text-[#f97316] select-none ${className}`}
+      className={`pointer-events-none absolute left-1 top-1 z-10 bg-black/50 px-1 py-0.5 font-mono text-[11px] text-[#f97316] select-none ${className}`}
     >
       {children}
     </span>
@@ -276,7 +276,7 @@ export default function ThreeDViewport() {
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-black">
       <OverlayLabel>3D</OverlayLabel>
-      <div className="absolute right-1 top-1 z-10 flex items-center gap-1 rounded border border-[var(--color-border)] bg-black/70 px-1 py-1 text-[10px] text-[var(--color-text-bright)] backdrop-blur">
+      <div className="absolute right-1 top-1 z-10 flex items-center gap-1 rounded border border-[var(--color-border)] bg-black/70 px-1 py-1 text-[11px] text-[var(--color-text-bright)] backdrop-blur">
         <button
           type="button"
           onClick={() => {
@@ -374,7 +374,7 @@ export default function ThreeDViewport() {
         </button>
       </div>
       <div ref={containerRef} className="h-full w-full" aria-label="3D viewport" />
-      <div className="pointer-events-none absolute inset-x-2 bottom-2 z-10 flex items-center justify-between rounded border border-[var(--color-border)] bg-black/60 px-2 py-1 text-[10px] text-[var(--color-text-muted)] backdrop-blur">
+      <div className="pointer-events-none absolute inset-x-2 bottom-2 z-10 flex items-center justify-between rounded border border-[var(--color-border)] bg-black/60 px-2 py-1 text-[11px] text-[var(--color-text-muted)] backdrop-blur">
         <span>{status}</span>
         <span className="font-mono uppercase tracking-wide">
           {activeSeries ? activeSeries.series.seriesDescription || activeSeries.seriesUID : 'No series'}

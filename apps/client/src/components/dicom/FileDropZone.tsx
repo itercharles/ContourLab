@@ -183,7 +183,7 @@ export default function FileDropZone() {
 
         {isLoading && progress ? (
           <div className="w-full space-y-1">
-            <p className="text-[11px] text-[var(--color-text-sec)]">{progressLabel}</p>
+            <p className="text-[12px] text-[var(--color-text-sec)]">{progressLabel}</p>
             <div className="w-full bg-[var(--color-border)] rounded-full h-0.5">
               <div
                 className="bg-blue-500 h-0.5 rounded-full transition-all duration-100"
@@ -192,11 +192,11 @@ export default function FileDropZone() {
             </div>
           </div>
         ) : successCount !== null ? (
-          <p className="text-[11px] text-green-400">
+          <p className="text-[12px] text-green-400">
             ✓ {successCount} series loaded
           </p>
         ) : (
-          <p className={`text-[11px] leading-snug ${isDragOver ? 'text-blue-300' : 'text-[var(--color-text-muted)]'}`}>
+          <p className={`text-[12px] leading-snug ${isDragOver ? 'text-blue-300' : 'text-[var(--color-text-muted)]'}`}>
             Drop folder or files, or click
           </p>
         )}
@@ -216,7 +216,7 @@ export default function FileDropZone() {
       </div>
 
       {loadError && (
-        <p className="text-[11px] text-red-400 px-2 pt-1 break-words">{loadError}</p>
+        <p className="text-[12px] text-red-400 px-2 pt-1 break-words">{loadError}</p>
       )}
     </div>
   );

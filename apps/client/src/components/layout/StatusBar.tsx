@@ -43,7 +43,7 @@ export default function StatusBar() {
   const isRepositoryDirty = !!activeSeriesUID && repositoryDirtySeriesUIDs.includes(activeSeriesUID);
 
   return (
-    <footer className="flex h-6 flex-none items-center border-t border-[var(--color-border)] bg-[var(--color-header)] text-[10px] text-[var(--color-text-sec)]">
+    <footer className="flex h-6 flex-none items-center border-t border-[var(--color-border)] bg-[var(--color-header)] text-[11px] text-[var(--color-text-sec)]">
       <StatusItem label="tool" value={TOOL_LABELS[activeTool]} />
       <StatusItem label="view" value={activeViewport ?? 'n/a'} />
       <StatusItem label="slice" value={instanceCount > 0 ? `1/${instanceCount}` : 'n/a'} />

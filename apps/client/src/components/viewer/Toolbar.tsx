@@ -129,16 +129,16 @@ export default function Toolbar() {
     <div className="flex flex-none flex-col border-b border-[var(--color-border)] bg-[var(--color-header)]">
       <div className="relative flex h-9 items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-2">
         <div className="flex items-center gap-1.5 pr-1">
-          <div className="grid h-5 w-5 place-items-center rounded bg-blue-600 font-mono text-[10px] font-bold text-white">
+          <div className="grid h-5 w-5 place-items-center rounded bg-blue-600 font-mono text-[11px] font-bold text-white">
             W
           </div>
-          <span className="text-[12px] font-semibold tracking-tight text-[var(--color-text-bright)]">WebTPS</span>
+          <span className="text-[13px] font-semibold tracking-tight text-[var(--color-text-bright)]">WebTPS</span>
         </div>
         <button
           type="button"
           onClick={() => setPrototypeInfoOpen(true)}
           title="About this prototype"
-          className="flex h-7 items-center gap-1.5 rounded px-2 text-[11px] text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="flex h-7 items-center gap-1.5 rounded px-2 text-[12px] text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
@@ -149,10 +149,10 @@ export default function Toolbar() {
         <div className="flex items-center rounded border border-[var(--color-border)] bg-[var(--color-surface-alt)] p-0.5">
           <button
             type="button"
-            className="rounded bg-[var(--color-surface-alt)] px-2.5 py-1 text-[11px] font-medium text-[var(--color-text-bright)]"
+            className="rounded bg-[var(--color-surface-alt)] px-2.5 py-1 text-[12px] font-medium text-[var(--color-text-bright)]"
             title="Contour workspace"
           >
-            <span className="mr-1 font-mono text-[9px] text-[var(--color-text-muted)]">01</span>
+            <span className="mr-1 font-mono text-[10px] text-[var(--color-text-muted)]">01</span>
             Contour
           </button>
           {(['Review', 'Plan'] as const).map((label, index) => (
@@ -160,12 +160,12 @@ export default function Toolbar() {
               key={label}
               type="button"
               disabled
-              className="cursor-not-allowed rounded px-2.5 py-1 text-[11px] font-medium text-[var(--color-text-muted)]"
+              className="cursor-not-allowed rounded px-2.5 py-1 text-[12px] font-medium text-[var(--color-text-muted)]"
               title="Not implemented"
             >
-              <span className="mr-1 font-mono text-[9px]">{String(index + 2).padStart(2, '0')}</span>
+              <span className="mr-1 font-mono text-[10px]">{String(index + 2).padStart(2, '0')}</span>
               {label}
-              <span className="ml-1 text-[9px]">soon</span>
+              <span className="ml-1 text-[10px]">soon</span>
             </button>
           ))}
         </div>
@@ -215,7 +215,7 @@ export default function Toolbar() {
             <span
               key={initials}
               title={`Collaborator ${initials}`}
-              className="grid h-[22px] w-[22px] place-items-center rounded-full border-2 border-[var(--color-surface-alt)] text-[10px] font-bold text-white"
+              className="grid h-[22px] w-[22px] place-items-center rounded-full border-2 border-[var(--color-surface-alt)] text-[11px] font-bold text-white"
               style={{ background: color, marginLeft: i === 0 ? 0 : -6 }}
             >
               {initials}
@@ -272,21 +272,21 @@ export default function Toolbar() {
         {activityOpen && (
           <div className="absolute right-10 top-9 z-50 w-[360px] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] shadow-[0_12px_32px_rgba(0,0,0,0.45)]">
             <div className="flex h-8 items-center justify-between border-b border-[var(--color-border)] px-2">
-              <h2 className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
+              <h2 className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-sec)]">
                 Activity
               </h2>
               <button
                 type="button"
                 onClick={clearActivities}
                 disabled={activities.length === 0}
-                className="h-6 rounded px-2 text-[10px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:text-[var(--color-text-dim)] disabled:hover:bg-transparent"
+                className="h-6 rounded px-2 text-[11px] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:text-[var(--color-text-dim)] disabled:hover:bg-transparent"
               >
                 Clear
               </button>
             </div>
             <div className="max-h-[320px] overflow-auto">
               {activities.length === 0 ? (
-                <div className="px-3 py-4 text-[11px] text-[var(--color-text-muted)]">
+                <div className="px-3 py-4 text-[12px] text-[var(--color-text-muted)]">
                   No recent activity.
                 </div>
               ) : (
@@ -297,19 +297,19 @@ export default function Toolbar() {
                   >
                     <span className={`mt-1 h-2 w-2 rounded-full ${ACTIVITY_TONE_CLASS[activity.tone]}`} />
                     <span className="min-w-0">
-                      <span className="block truncate text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+                      <span className="block truncate text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
                         {activity.title}
                       </span>
-                      <span className="mt-0.5 block break-words text-[11px] leading-snug text-[var(--color-text-sec)]">
+                      <span className="mt-0.5 block break-words text-[12px] leading-snug text-[var(--color-text-sec)]">
                         {activity.message}
                       </span>
                       {activity.detail && (
-                        <span className="mt-1 block truncate font-mono text-[10px] text-[var(--color-text-muted)]">
+                        <span className="mt-1 block truncate font-mono text-[11px] text-[var(--color-text-muted)]">
                           {activity.detail}
                         </span>
                       )}
                     </span>
-                    <span className="font-mono text-[10px] text-[var(--color-text-muted)]">
+                    <span className="font-mono text-[11px] text-[var(--color-text-muted)]">
                       {formatActivityTime(activity.createdAt)}
                     </span>
                   </div>
@@ -389,7 +389,7 @@ export default function Toolbar() {
               </div>
 
               {/* Scrollable body */}
-              <div className="overflow-y-auto px-4 py-4 text-[12px] leading-relaxed text-[var(--color-text-sec)]">
+              <div className="overflow-y-auto px-4 py-4 text-[13px] leading-relaxed text-[var(--color-text-sec)]">
                 <p className="font-semibold text-[var(--color-text)]">
                   This prototype demonstrates issue-driven AI software development.
                   It does not contain any Elekta product code.
@@ -407,7 +407,7 @@ export default function Toolbar() {
                 </p>
 
                 {/* Workflow */}
-                <h3 className="mt-4 mb-3 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                <h3 className="mt-4 mb-3 text-[12px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
                   Workflow
                 </h3>
                 {(() => {
@@ -426,21 +426,21 @@ export default function Toolbar() {
                             <div className="flex w-14 shrink-0 flex-col items-center">
                               <div className="h-[14px]" />
                               <div className="h-px w-full bg-[var(--color-border)]" />
-                              <p className="mt-1 text-center text-[10px] leading-tight text-emerald-400">
+                              <p className="mt-1 text-center text-[11px] leading-tight text-emerald-400">
                                 {steps[i - 1].trigger}
                               </p>
                             </div>
                           )}
                           <div className="flex min-w-0 flex-1 flex-col items-center gap-1 text-center">
-                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${
                               actor === 'ai'   ? 'bg-blue-700 text-white' :
                               actor === 'auto' ? 'bg-emerald-900 text-emerald-300' :
                                                'bg-gray-700 text-gray-100'
                             }`}>
                               {i + 1}
                             </div>
-                            <p className="text-[11px] font-semibold text-[var(--color-text)]">{stage}</p>
-                            <p className="text-[10px] leading-tight text-[var(--color-text-muted)]">{desc}</p>
+                            <p className="text-[12px] font-semibold text-[var(--color-text)]">{stage}</p>
+                            <p className="text-[11px] leading-tight text-[var(--color-text-muted)]">{desc}</p>
                           </div>
                         </Fragment>
                       ))}
@@ -449,7 +449,7 @@ export default function Toolbar() {
                 })()}
 
                 {/* Open source tooling */}
-                <p className="mt-3 text-[11px] text-[var(--color-text-muted)]">
+                <p className="mt-3 text-[12px] text-[var(--color-text-muted)]">
                   The compliance and CR automation workflow is powered by{' '}
                   <a
                     href="https://github.com/itercharles/MedHarness"
@@ -468,7 +468,7 @@ export default function Toolbar() {
                     to="/issues"
                     reloadDocument
                     onClick={() => setPrototypeInfoOpen(false)}
-                    className="inline-flex h-8 items-center rounded bg-blue-800 px-3 text-[12px] font-bold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+                    className="inline-flex h-8 items-center rounded bg-blue-800 px-3 text-[13px] font-bold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
                   >
                     Submit or track an issue →
                   </Link>

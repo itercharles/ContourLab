@@ -1285,7 +1285,7 @@ export default function ContourOverlay({
             x={measurement.canvasPoints.at(-1)![0] + 6}
             y={measurement.canvasPoints.at(-1)![1] - 6}
             fill={selectedMeasurementId === measurement.id ? '#60a5fa' : '#eab308'}
-            fontSize="10"
+            fontSize="11"
             fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
             paintOrder="stroke"
             stroke="rgba(0,0,0,0.75)"
@@ -1335,7 +1335,7 @@ export default function ContourOverlay({
             x="16"
             y="22"
             fill="#e5e5e5"
-            fontSize="10"
+            fontSize="11"
             fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
           >
             {statusMessage}
