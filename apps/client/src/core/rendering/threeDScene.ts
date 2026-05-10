@@ -39,12 +39,35 @@ export interface ThreeDSceneSnapshot {
 }
 
 export interface ThreeDScene {
-  renderSnapshot: (snapshot: ThreeDSceneSnapshot) => { structureCount: number; ctReady: boolean };
+  renderSnapshot: (
+    snapshot: ThreeDSceneSnapshot,
+    options?: { signal?: AbortSignal }
+  ) => Promise<{ structureCount: number; ctReady: boolean; cancelled?: boolean }>;
   resize: () => void;
   resetCamera: () => void;
   rotateCamera: (azimuthDelta: number, elevationDelta?: number) => void;
   setCTVisible: (visible: boolean) => void;
   destroy: () => void;
+}
+
+// Yield to the browser between heavy work units so paints, input events, and
+// 2D viewport rendering can interleave with the synchronous vtk.js work.
+// requestIdleCallback is the right primitive — it specifically targets idle
+// time after rendering. Falls back to setTimeout(0) for browsers that don't
+// expose it (older Safari).
+function yieldToMainThread(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const ric = (typeof window !== 'undefined' &&
+      typeof (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number })
+        .requestIdleCallback === 'function')
+      ? (window as Window & { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback
+      : null;
+    if (ric) {
+      ric(() => resolve(), { timeout: 50 });
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
 }
 
 export class GpuUnavailableError extends Error {
@@ -183,14 +206,20 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
   };
 
   return {
-    renderSnapshot(snapshot) {
+    async renderSnapshot(snapshot, options) {
+      const signal = options?.signal;
       const startedAt = performance.now();
+      const isAborted = () => signal?.aborted === true;
+
       clearMountedProps();
       pushDebug(
         `snapshot volume=${snapshot.volume?.seriesUID ?? 'none'} structures=${snapshot.structures.length}`
       );
 
-      // CT context rendering
+      // CT context rendering. After it lands we yield so the 2D viewports
+      // (which already started rendering on this same patient load) get a
+      // chance to commit their first frame before we move on to the
+      // marching-cubes work for each structure.
       let ctReady = false;
       if (snapshot.volume) {
         const nextCtSeriesUID = snapshot.volume.seriesUID;
@@ -209,6 +238,12 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
           }
         }
         ctReady = ctPropHandle !== null;
+      }
+
+      await yieldToMainThread();
+      if (isAborted()) {
+        pushDebug('snapshot cancelled after CT actor');
+        return { structureCount: 0, ctReady, cancelled: true };
       }
 
       let structureCount = 0;
@@ -232,10 +267,21 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
         } else {
           pushDebug(`structure cache hit id=${layer.structure.id}`);
         }
-        if (!structureProp) continue;
-        renderer.addActor(structureProp.actor);
-        mountedProps.push(structureProp);
-        structureCount += 1;
+        if (structureProp) {
+          renderer.addActor(structureProp.actor);
+          mountedProps.push(structureProp);
+          structureCount += 1;
+        }
+
+        // Yield between structures so input + 2D-viewport paint events can
+        // interleave with the synchronous mask + marching-cubes work.
+        await yieldToMainThread();
+        if (isAborted()) {
+          pushDebug(`snapshot cancelled after structure ${structureCount}`);
+          // Don't bail entirely — rendering whatever we have is better than a
+          // blank scene. Caller decides whether to swap to a follow-up snapshot.
+          break;
+        }
       }
 
       for (const [key, prop] of cachedStructureProps.entries()) {
@@ -255,7 +301,7 @@ export function createThreeDScene(container: HTMLDivElement): ThreeDScene {
       pushDebug(
         `render ms=${elapsedMs} structureCount=${structureCount} mountedProps=${mountedProps.length} cached_structures=${cachedStructureProps.size}`
       );
-      return { structureCount, ctReady };
+      return { structureCount, ctReady, cancelled: isAborted() };
     },
     resize() {
       setSizeFromContainer(container, openGLRenderWindow);

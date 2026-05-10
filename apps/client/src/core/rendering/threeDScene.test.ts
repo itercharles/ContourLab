@@ -216,7 +216,7 @@ beforeEach(() => {
 });
 
 describe('threeDScene lifecycle', () => {
-  it('keeps the current camera on subsequent scene refreshes', () => {
+  it('keeps the current camera on subsequent scene refreshes', async () => {
     const container = document.createElement('div');
     container.getBoundingClientRect = () =>
       ({ width: 320, height: 240 } as DOMRect);
@@ -227,13 +227,13 @@ describe('threeDScene lifecycle', () => {
       structures: [{ structure }],
     };
 
-    scene.renderSnapshot(snapshot);
-    scene.renderSnapshot(snapshot);
+    await scene.renderSnapshot(snapshot);
+    await scene.renderSnapshot(snapshot);
 
     expect(mocks.renderer.resetCamera).toHaveBeenCalledTimes(1);
   });
 
-  it('disposes the previous vtk pipelines before replacing scene props', () => {
+  it('disposes the previous vtk pipelines before replacing scene props', async () => {
     const container = document.createElement('div');
     container.getBoundingClientRect = () =>
       ({ width: 320, height: 240 } as DOMRect);
@@ -244,7 +244,7 @@ describe('threeDScene lifecycle', () => {
       structures: [{ structure }],
     };
 
-    scene.renderSnapshot(snapshot);
+    await scene.renderSnapshot(snapshot);
 
     // CT actor is at index 0; structure actor is at index 1.
     const firstStructureActorDelete = mocks.tracked.actors[1].delete;
@@ -272,7 +272,7 @@ describe('threeDScene lifecycle', () => {
       ],
     };
 
-    scene.renderSnapshot(changedSnapshot);
+    await scene.renderSnapshot(changedSnapshot);
 
     expect(firstStructureActorDelete).toHaveBeenCalledTimes(1);
     expect(firstStructureImageDelete).toHaveBeenCalledTimes(1);
@@ -280,7 +280,7 @@ describe('threeDScene lifecycle', () => {
     expect(firstStructureMarchingDelete).toHaveBeenCalledTimes(1);
   });
 
-  it('reuses vtk pipelines for identical snapshots', () => {
+  it('reuses vtk pipelines for identical snapshots', async () => {
     const container = document.createElement('div');
     container.getBoundingClientRect = () =>
       ({ width: 320, height: 240 } as DOMRect);
@@ -291,11 +291,11 @@ describe('threeDScene lifecycle', () => {
       structures: [{ structure }],
     };
 
-    scene.renderSnapshot(snapshot);
+    await scene.renderSnapshot(snapshot);
     const actorCountAfterFirstRender = mocks.tracked.actors.length;
     const imageCountAfterFirstRender = mocks.tracked.images.length;
 
-    scene.renderSnapshot(snapshot);
+    await scene.renderSnapshot(snapshot);
 
     expect(mocks.tracked.actors.length).toBe(actorCountAfterFirstRender);
     expect(mocks.tracked.images.length).toBe(imageCountAfterFirstRender);
@@ -323,7 +323,7 @@ describe('threeDScene lifecycle', () => {
   // each per-structure mask flips around its own origin — producing a
   // different per-structure offset relative to the CT mesh. Lock down the
   // signed-spacing fix that compensates for this.
-  it('passes direction-signed spacing to vtk.js for HFP-style flipped volumes', () => {
+  it('passes direction-signed spacing to vtk.js for HFP-style flipped volumes', async () => {
     // HFP-style direction: K basis = -Z, J basis = -Y. With origin Z=2 and
     // spacing[2]=2 and dimZ=2, world Z range is [0, 2]. Place the contour at
     // Z=2 (top slice K=0) so worldToContinuousVoxel keeps it inside the
@@ -349,7 +349,7 @@ describe('threeDScene lifecycle', () => {
       ({ width: 320, height: 240 } as DOMRect);
 
     const scene = createThreeDScene(container);
-    scene.renderSnapshot({ volume: hfpVolume, structures: [{ structure: hfpStructure }] });
+    await scene.renderSnapshot({ volume: hfpVolume, structures: [{ structure: hfpStructure }] });
 
     // First image is the CT actor's data, second is the structure mask. The
     // tracked mock array's element type only exposes `delete`; the rest of

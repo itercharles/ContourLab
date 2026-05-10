@@ -6,7 +6,9 @@ import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
 
 const mocks = vi.hoisted(() => ({
-  renderSnapshot: vi.fn((snapshot) => ({
+  // renderSnapshot is async on the production interface; the tests await on
+  // mock results so the mock returns a resolved Promise.
+  renderSnapshot: vi.fn(async (snapshot) => ({
     structureCount: snapshot.structures.length,
     ctReady: true,
   })),
@@ -183,7 +185,7 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
   });
 
   it('surfaces the underlying error message when 3D rendering throws', async () => {
-    mocks.renderSnapshot.mockImplementation(() => {
+    mocks.renderSnapshot.mockImplementation(async () => {
       throw new Error('vtk blew up');
     });
 
