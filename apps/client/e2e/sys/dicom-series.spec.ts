@@ -45,7 +45,7 @@ async function setupDicomMockAndLoad(page: Page) {
     });
   });
   await page.goto('/');
-  await page.getByText('No active patient').waitFor();
+  await page.getByText('Load Patient').waitFor();
   await page.evaluate(() =>
     window.dispatchEvent(new CustomEvent('webtps:open-patient-selector')),
   );

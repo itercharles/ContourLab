@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Clinical workspace context @links:CRS-009', () => {
   test('workspace context is always present with default empty state @links:CRS-009', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('No active patient')).toBeVisible();
+    await expect(page.getByText('Load Patient')).toBeVisible();
     await expect(page.getByText('No active image set')).toBeVisible();
     await expect(page.getByText('Synced', { exact: true })).toBeVisible();
   });
@@ -17,7 +17,7 @@ test.describe('Clinical workspace context @links:CRS-009', () => {
 test.describe('Patient and study selection @links:CRS-008', () => {
   test('clinician can open the patient browser @links:CRS-008', async ({ page }) => {
     await page.goto('/');
-    await page.getByText('No active patient').waitFor();
+    await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
     });
@@ -28,7 +28,7 @@ test.describe('Patient and study selection @links:CRS-008', () => {
 
   test('clinician can search by patient name or MRN @links:CRS-008', async ({ page }) => {
     await page.goto('/');
-    await page.getByText('No active patient').waitFor();
+    await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
     });
@@ -40,7 +40,7 @@ test.describe('Patient and study selection @links:CRS-008', () => {
 
   test('clinician can close the patient browser @links:CRS-008', async ({ page }) => {
     await page.goto('/');
-    await page.getByText('No active patient').waitFor();
+    await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
     });

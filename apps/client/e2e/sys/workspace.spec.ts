@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Workspace context and patient selection @links:SYS-012,SYS-011', () => {
   test('workspace context bar is visible on load @links:SYS-012', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('No active patient')).toBeVisible();
+    await expect(page.getByText('Load Patient')).toBeVisible();
     await expect(page.getByText('No active image set')).toBeVisible();
     await expect(page.getByText('Synced', { exact: true })).toBeVisible();
   });
@@ -16,7 +16,7 @@ test.describe('Workspace context and patient selection @links:SYS-012,SYS-011', 
   test('patient browser opens from the workspace context command @links:SYS-011', async ({ page }) => {
     await page.goto('/');
     // Wait for the app to be interactive before dispatching the event
-    await page.getByText('No active patient').waitFor();
+    await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
     });
@@ -26,7 +26,7 @@ test.describe('Workspace context and patient selection @links:SYS-012,SYS-011', 
 
   test('patient browser can be closed with Escape @links:SYS-011', async ({ page }) => {
     await page.goto('/');
-    await page.getByText('No active patient').waitFor();
+    await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
     });
@@ -38,7 +38,7 @@ test.describe('Workspace context and patient selection @links:SYS-012,SYS-011', 
 
   test('patient browser search input is functional @links:SYS-011', async ({ page }) => {
     await page.goto('/');
-    await page.getByText('No active patient').waitFor();
+    await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
     });
