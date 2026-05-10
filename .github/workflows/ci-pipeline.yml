@@ -140,14 +140,33 @@ jobs:
     outputs:
       run_ci: ${{ steps.check.outputs.run_ci }}
     steps:
+      # Skip heavy CI only when the PR is in an early CR stage. Defensive
+      # default: a PR carrying `cr:stage/...` labels that don't match any
+      # known stage (typo, future stage, manual mis-label) emits a CI
+      # warning AND still runs full CI — safer to waste minutes than to
+      # silently skip a stage that ought to gate. PRs without any
+      # `cr:stage/` label are normal fix/feat/chore PRs and always run CI.
       - id: check
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
         run: |
-          LABELS="${{ join(github.event.pull_request.labels.*.name, ' ') }}"
-          if echo "$LABELS" | grep -qE 'cr:stage/(cr|spec|design)'; then
-            echo "run_ci=false" >> "$GITHUB_OUTPUT"
-          else
+          if ! echo "$LABELS" | grep -qE 'cr:stage/'; then
+            echo "Non-CR PR (no cr:stage/* label) — running full CI"
             echo "run_ci=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          if echo "$LABELS" | grep -qE 'cr:stage/(cr|spec|design)\b'; then
+            echo "Early CR stage detected (cr/spec/design) — skipping heavy CI"
+            echo "run_ci=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if echo "$LABELS" | grep -qE 'cr:stage/code\b'; then
+            echo "CR code stage — running full CI"
+            echo "run_ci=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::warning::PR carries cr:stage/* label(s) that match neither (cr|spec|design) nor code. Labels: $LABELS — running full CI by default."
+          echo "run_ci=true" >> "$GITHUB_OUTPUT"
 
   # ── DHF VALIDATION ────────────────────────────────────────────────────────
   # Phase 2: DHF schema + design traceability check.
@@ -188,14 +207,7 @@ jobs:
     if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.client == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-webtps-frontend
       - run: pnpm --filter @webtps/client lint
       - run: pnpm --filter @webtps/client typecheck
       - run: pnpm --filter @webtps/client build
@@ -207,10 +219,7 @@ jobs:
     if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.api == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-      - run: dotnet restore apps/api/api.csproj
+      - uses: ./.github/actions/setup-webtps-api
       - run: dotnet build apps/api/api.csproj --configuration Release --no-restore
       - name: Run API tests
         run: dotnet test apps/api.tests/WebTPS.Api.Tests.csproj --logger "junit;LogFilePath=../../test-results/api-junit.xml"
@@ -229,14 +238,7 @@ jobs:
     if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.shared_types == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-webtps-frontend
       - run: pnpm --filter @webtps/shared-types typecheck
       - run: pnpm --filter @webtps/shared-types build
 
@@ -247,18 +249,8 @@ jobs:
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-      - run: pnpm install --frozen-lockfile
-      - run: dotnet restore apps/api/api.csproj
+      - uses: ./.github/actions/setup-webtps-frontend
+      - uses: ./.github/actions/setup-webtps-api
       - name: Start DICOM repository
         run: pnpm repo:up
       - name: Start API
@@ -266,15 +258,12 @@ jobs:
       - name: Start frontend
         run: pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
       - name: Wait for services
-        run: |
-          for i in $(seq 1 40); do
-            curl -sf --max-time 10 http://127.0.0.1:4000/api/health > /dev/null 2>&1 && \
-            curl -sf --max-time 10 http://127.0.0.1:3000/ > /dev/null 2>&1 && \
-            echo "Services ready" && exit 0
-            echo "Waiting... ($i/40)"
-            sleep 3
-          done
-          echo "Services failed to become ready" && exit 1
+        uses: ./.github/actions/wait-for-services
+        with:
+          urls: |
+            http://127.0.0.1:4000/api/health
+            http://127.0.0.1:3000/
+          timeout-seconds: '120'
       - name: Smoke check
         run: pnpm local:doctor
       - name: Stop services
@@ -301,14 +290,7 @@ jobs:
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-webtps-frontend
       - name: Run SRS verification tests
         run: pnpm --filter @webtps/client test
       - name: Upload SRS test evidence
@@ -328,25 +310,20 @@ jobs:
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-webtps-frontend
 
       - name: Install Playwright
         uses: ./.github/actions/playwright-setup
 
       - name: Start frontend
-        run: |
-          pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
-          for i in $(seq 1 20); do
-            curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1 && echo "Frontend ready" && break
-            sleep 2
-          done
+        run: pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
+
+      - name: Wait for frontend
+        uses: ./.github/actions/wait-for-services
+        with:
+          urls: http://127.0.0.1:3000/
+          timeout-seconds: '60'
+          interval-seconds: '2'
 
       - name: Run SYS verification tests
         run: |
@@ -386,18 +363,8 @@ jobs:
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-      - run: pnpm install --frozen-lockfile
-      - run: dotnet restore apps/api/api.csproj
+      - uses: ./.github/actions/setup-webtps-frontend
+      - uses: ./.github/actions/setup-webtps-api
 
       - name: Start full stack (background)
         run: |
@@ -409,14 +376,12 @@ jobs:
         uses: ./.github/actions/playwright-setup
 
       - name: Wait for full stack
-        run: |
-          for i in $(seq 1 30); do
-            curl -sf http://127.0.0.1:4000/api/health > /dev/null 2>&1 && \
-            curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1 && echo "Services ready" && exit 0
-            echo "Waiting... ($i/30)"
-            sleep 3
-          done
-          echo "Services failed to become ready" && exit 1
+        uses: ./.github/actions/wait-for-services
+        with:
+          urls: |
+            http://127.0.0.1:4000/api/health
+            http://127.0.0.1:3000/
+          timeout-seconds: '90'
 
       - name: Run CRS validation tests
         run: |
@@ -607,75 +572,25 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Prepare persistent DICOM data directory
-        # Store orthanc-db in $HOME (outside the workspace) so checkout never
-        # touches it and the data persists across deployments.
-        # chmod 777 ensures Orthanc can write regardless of which UID it runs as.
-        run: |
-          WEBTPS_ORTHANC_DATA_DIR="${WEBTPS_ORTHANC_DATA_DIR:-$HOME/webtps-orthanc-db}"
-          mkdir -p "$WEBTPS_ORTHANC_DATA_DIR"
-          chmod 777 "$WEBTPS_ORTHANC_DATA_DIR"
-          echo "WEBTPS_ORTHANC_DATA_DIR=$WEBTPS_ORTHANC_DATA_DIR" >> "$GITHUB_ENV"
-          echo "Using WEBTPS_ORTHANC_DATA_DIR=$WEBTPS_ORTHANC_DATA_DIR"
-
-      - name: Ensure persistent DICOM repository
-        run: |
-          desired_image="$(docker compose -f docker-compose.deploy.yml config --images | grep '^orthancteam/orthanc:' | head -n 1)"
-          container_name="webtps-orthanc"
-
-          if [ -z "$desired_image" ]; then
-            echo "Could not resolve desired DICOM repository image from docker-compose.deploy.yml"
-            exit 1
-          fi
-
-          running_state="$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null || true)"
-          container_image_id="$(docker inspect -f '{{.Image}}' "$container_name" 2>/dev/null || true)"
-          container_config_image="$(docker inspect -f '{{.Config.Image}}' "$container_name" 2>/dev/null || true)"
-          desired_image_id="$(docker image inspect -f '{{.Id}}' "$desired_image" 2>/dev/null || true)"
-
-          if [ "$running_state" = "true" ] && [ -n "$desired_image_id" ] && [ "$container_image_id" = "$desired_image_id" ]; then
-            echo "DICOM repository is already running with $desired_image; leaving it unchanged."
-            exit 0
-          fi
-
-          if [ "$running_state" = "true" ] && [ -z "$desired_image_id" ] && [ "$container_config_image" = "$desired_image" ]; then
-            echo "DICOM repository is already running with $desired_image; leaving it unchanged."
-            exit 0
-          fi
-
-          echo "Starting or updating persistent DICOM repository with $desired_image."
-          docker compose -f docker-compose.deploy.yml up -d dicom-repo
-
-      - name: Persist deployment secrets
+      - name: Deploy WebTPS stack
         env:
           ISSUES_TOKEN: ${{ secrets.ISSUES_TOKEN }}
-        run: |
-          # Write ISSUES_TOKEN to a stable file outside the workspace so that
-          # manual docker-compose runs (container recreation, restarts) also
-          # pick up the token without needing CI/CD secrets in scope.
-          SECRETS_FILE="$HOME/.webtps-secrets.env"
-          if [ -n "$ISSUES_TOKEN" ]; then
-            printf 'ISSUES_TOKEN=%s\n' "$ISSUES_TOKEN" > "$SECRETS_FILE"
-            chmod 600 "$SECRETS_FILE"
-          fi
+        # All Docker orchestration lives in the script so manual ad-hoc
+        # redeploys can run the same code path. See scripts/deploy/wsl-deploy.sh
+        # for the env contract (WEBTPS_ORTHANC_DATA_DIR, SECRETS_FILE, etc.).
+        run: bash scripts/deploy/wsl-deploy.sh
 
-      - name: Deploy application containers
-        run: |
-          # Source persisted secrets so ISSUES_TOKEN is available to Docker Compose
-          # even when this step doesn't have the GitHub secret directly in scope.
-          set -a
-          [ -f "$HOME/.webtps-secrets.env" ] && . "$HOME/.webtps-secrets.env"
-          set +a
-          docker compose -f docker-compose.deploy.yml up -d --build --no-deps api client
+      - name: Verify deployment health
+        uses: ./.github/actions/wait-for-services
+        with:
+          urls: |
+            http://127.0.0.1:4001/api/health
+            http://127.0.0.1:3001/
+            http://127.0.0.1:8042/system
+          timeout-seconds: '90'
 
-      - name: Verify deployment
+      - name: Capture post-deploy snapshots
         run: |
-          for i in $(seq 1 30); do
-            curl -sf http://127.0.0.1:4001/api/health > /dev/null 2>&1 && \
-            curl -sf http://127.0.0.1:3001/ > /dev/null 2>&1 && echo "Services ready" && break
-            echo "Waiting for services... ($i/30)"
-            sleep 3
-          done
           curl -sf http://127.0.0.1:3001/ > /tmp/webtps-client.html
           curl -sf http://127.0.0.1:4001/api/health > /tmp/webtps-api-health.json
           curl -sf http://127.0.0.1:8042/system > /tmp/webtps-orthanc-system.json
