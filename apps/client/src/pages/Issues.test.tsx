@@ -25,6 +25,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('Issues page — heading', () => {
+  it('renders "Change Requests" as the page heading', async () => {
+    render(<MemoryRouter><Issues /></MemoryRouter>);
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Change Requests' })).toBeTruthy();
+  });
+});
+
 describe('Issues page — submit form', () => {
   it('renders all form fields', async () => {
     render(<MemoryRouter><Issues /></MemoryRouter>);

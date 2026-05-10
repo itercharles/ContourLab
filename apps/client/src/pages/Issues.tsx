@@ -160,7 +160,7 @@ export default function Issues() {
             <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
               WebTPS
             </p>
-            <h1 className="mt-1 text-sm font-semibold text-[var(--color-text)]">Issues</h1>
+            <h1 className="mt-1 text-sm font-semibold text-[var(--color-text)]">Change Requests</h1>
           </div>
           <Link
             to="/workspace"

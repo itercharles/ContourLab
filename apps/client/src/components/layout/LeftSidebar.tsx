@@ -107,8 +107,8 @@ export default function LeftSidebar() {
             to="/issues"
             reloadDocument
             className="flex h-6 w-6 items-center justify-center rounded bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            title="Issues"
-            aria-label="Issues"
+            title="Change Requests"
+            aria-label="Change Requests"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
