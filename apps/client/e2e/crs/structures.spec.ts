@@ -63,7 +63,7 @@ const FAKE_STRUCTURE_SET = {
 
 async function injectClinicalState(page: Page) {
   await page.goto('/');
-  await page.getByText('No active patient').waitFor();
+  await page.getByText('Load Patient').waitFor();
   await page.waitForFunction(() => !!(window as Record<string, unknown>)['__webtps_stores']);
 
   await page.evaluate(

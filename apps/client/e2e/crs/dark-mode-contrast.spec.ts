@@ -35,7 +35,7 @@ test.describe('dark mode WCAG AA contrast @links:CRS-011', () => {
     'patient browser and structure panel surfaces meet WCAG AA @links:CRS-011',
     async ({ page }) => {
       await page.goto('/');
-      await expect(page.getByText('No active patient')).toBeVisible();
+      await expect(page.getByText('Load Patient')).toBeVisible();
 
       const theme = await page.evaluate(
         () => document.documentElement.dataset['theme'] ?? 'dark'
