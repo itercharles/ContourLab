@@ -545,6 +545,8 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
+      - name: Fetch base ref for diff
+        run: git fetch origin main --depth 1
       - uses: ./.github/actions/cr-agent-setup
       - name: Generate implementation
         env:
@@ -686,6 +688,8 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
+      - name: Fetch base ref for diff
+        run: git fetch origin main --depth 1
       - uses: ./.github/actions/cr-agent-setup
       - name: Revise implementation
         env:
