@@ -1,274 +1,376 @@
-# WebTPS
+# MedHarness
 
-Web-based Treatment Planning System for radiation therapy.
+**AI harness and DHF tooling for medical device software teams.**
 
-## Repository Layout
+[![PyPI](https://img.shields.io/pypi/v/medharness)](https://pypi.org/project/medharness/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 
-```
-WebTPS/
-├── apps/
-│   ├── client/              — React 18 + TypeScript frontend (Vite, port 3000)
-│   └── api/                 — ASP.NET Core API gateway (port 4000)
-├── packages/
-│   └── shared-types/        — Canonical TypeScript data model interfaces
-├── DHF/                     — Design History File (items, config, documents)
-│   ├── items/               — YAML DHF items (CR, SYS, SRS, RISK, etc.)
-│   ├── config/              — DHF configuration (change-controlled)
-│   └── documents/           — Spec and plan templates
-├── docs/cr-specs/           — CR specification documents
-├── docs/                    — Architecture, ADRs, local development notes
-└── .github/workflows/       — CI/CD pipeline and CR automation
-```
+MedHarness structures how AI agents interact with a Design History File under
+IEC 62304 / FDA-regulated software projects. It pre-computes DHF context before
+an agent runs, enforces approval gates the agent must pass through, and commits
+decisions back into the DHF — so the engineer controls the feedback loop, not
+the agent.
 
-## Local Setup
+It combines two packages:
 
-### Prerequisites
+- **`medharness`** — CLI harness, CI gates, CR workflows, project scaffolding (`init`)
+- **`dhfkit`** — standalone DHF engine for items, traceability, document generation, schema validation
 
-- **Node.js 20+** — check with `node --version`. If you use a version manager
-  (`nvm`, `fnm`, or `volta`), run `nvm install 20 && nvm use 20` (or equivalent)
-  before proceeding.
-- **pnpm 9+** — check with `pnpm --version`. Install via Corepack if missing:
-  ```bash
-  corepack enable
-  corepack prepare pnpm@latest --activate
-  ```
-- **.NET SDK 10** — required for the API (`apps/api`). Download from
-  [dot.net](https://dot.net).
-- **Docker Desktop or Docker Engine with Compose** — required to run the local
-  Orthanc DICOM repository.
+---
 
-On Windows, install Docker Desktop with the **WSL2 backend** enabled and ensure
-it is running before executing setup or start commands. Run all commands from
-PowerShell, Windows Terminal, or a WSL shell.
-
-Required local ports: `3000` (frontend), `4000` (API), `8042` (Orthanc).
-
-> **Frontend-only mode:** If you only need the React client (no DICOM repository
-> or API), you can skip the .NET SDK and Docker requirements entirely:
-> ```bash
-> pnpm install
-> pnpm dev
-> ```
-> The app opens at `http://localhost:3000/workspace` and supports local file-drop
-> loading of DICOM files without any backend services.
-
-### One-Time Setup
+## Install
 
 ```bash
-pnpm local:setup
+pip install medharness[full]
 ```
 
-Installs JavaScript dependencies, restores the ASP.NET API, checks Docker, and
-starts the local Orthanc DICOM repository.
+`[full]` pulls in optional extras: `ai` (Gemini-based AI review) and `docs` (PDF export via WeasyPrint).
+Omit for a minimal install — the DHF engine (`dhfkit`) is always included.
 
-### Start The Full Local Environment
+Verify:
 
 ```bash
-pnpm local:up
+medharness --help
+dhfkit --help
 ```
 
-Starts or verifies the complete development stack:
-
-| Service | URL |
-|---------|-----|
-| Frontend | `http://127.0.0.1:3000/workspace` |
-| API | `http://127.0.0.1:4000/api/health` |
-| Orthanc DICOM repo | `http://127.0.0.1:8042` |
-| DICOMweb (via proxy) | `http://127.0.0.1:3000/dicom-web` |
-
-Press `Ctrl+C` to stop API/frontend processes. Orthanc keeps running with
-persisted Docker volume data.
-
-### Check The Local Environment
+**From source (development):**
 
 ```bash
-pnpm local:doctor
+git clone https://github.com/itercharles/MedHarness
+cd MedHarness
+pip install -e ".[dev]"
+pytest dhfkit/tests/ tests/
 ```
 
-Checks required commands, Docker daemon access, local ports, and HTTP health
-endpoints.
+---
 
-### Stop The Local Repository
+## Quick Start
+
+`medharness init` is zero-prompt — it scaffolds a single-repo project in the
+current directory. The project name is derived from the directory name.
 
 ```bash
-pnpm local:down
+mkdir my-medical-device && cd my-medical-device
+python -m venv .venv && source .venv/bin/activate
+pip install medharness
+medharness init
 ```
 
-Stops Docker Compose services. Orthanc data remains in the Docker volume unless
-the volume is explicitly deleted.
+After `init` completes, here's what exists on disk:
 
-### Manual Development Commands
+```
+my-medical-device/                  # single repo — DHF + source together
+├── DHF/
+│   ├── config/
+│   │   ├── global.yaml             # project name, lifecycle states
+│   │   └── doc_types/              # one YAML per type (SYS, CRS, SRS, SWDD, CR, …)
+│   ├── items/                      # one YAML file per requirement / risk / CR
+│   │   ├── 01_crs/                 # Customer Requirements (CRS-NNN.yaml)
+│   │   ├── 02_sys/                 # System Requirements (SYS-NNN.yaml)
+│   │   ├── 03_srs/                 # Software Requirements (SRS-NNN.yaml)
+│   │   ├── 06_cr/                  # Change Requests (CR-NNN.yaml)
+│   │   └── ...                     # Use Cases, SOUP, Risk, Defects, etc.
+│   ├── test-results/
+│   ├── documents/
+│   │   ├── specs/                  # Jinja2 spec templates (.j2)
+│   │   └── plans/                  # development_plan.md, verification_plan.md, …
+│   └── README.md
+├── .github/
+│   └── prompts/                    # optional prompt files for repo-local automation
+├── tests/                          # product test suite
+├── CLAUDE.md                       # agent entrypoint
+├── .gitignore
+└── README.md                       # project README
+```
+
+The scaffolded items are **starter samples** — replace them with your project's
+real requirements, architecture, and plans before using this for a regulated product.
+
+**Initialize git and push:**
 
 ```bash
-pnpm install      # install JS dependencies
-pnpm dev          # frontend only at http://localhost:3000
-pnpm api          # API only at http://localhost:4000
-pnpm repo:up      # Orthanc DICOM repo only at http://localhost:8042
-pnpm repo:down    # stop Orthanc
-pnpm repo:logs    # stream Orthanc container logs
+git init && git add -A
+git commit -m "feat: initialize My Medical Device with MedHarness"
+git remote add origin https://github.com/<org>/my-medical-device
+git push -u origin main
 ```
 
-The Vite dev server proxies `/api` → port `4000` and `/dicom-web` → port `8042`.
-No `.env` file is required — all defaults work out of the box.
+---
 
-### Importing DICOM Data
+## Automation Model
 
-The Orthanc repository ships with **no authentication** (open for local
-development). Its web UI at `http://127.0.0.1:8042` requires no login.
+MedHarness no longer ships prescribed GitHub workflow files as part of the
+product surface. The stable interface is the CLI.
 
-DICOM file import is delegated to **Orthanc Explorer 2** — clicking **Import
-DICOM** in WebTPS opens the Orthanc UI in a new tab. To load test data:
+Use the CLI directly from whichever automation layer you prefer:
+- GitHub Actions
+- GitLab CI
+- Jenkins
+- local scripts
+- internal orchestration systems
 
-1. Open `http://127.0.0.1:3000/workspace`.
-2. Click the **patient folder icon** in the left toolbar to open the Repository
-   panel, then click **"Open patient browser"**.
-3. Click **"+ Import DICOM"** in the modal header. A new tab opens at
-   Orthanc Explorer 2 (`http://<host>:8042/ui/app/index.html`). The exact host
-   is derived from the configured DICOMweb endpoint, so it works for local
-   (`localhost:8042`) and LAN (`<host-lan-ip>:8042`) setups without changing
-   any code.
-4. In the Orthanc tab, drag a folder of `.dcm` files onto the upload area
-   (Orthanc handles RTSTRUCT, RTPLAN, and RTDOSE alongside CT/MR slices).
-5. Return to the WebTPS tab — the worklist auto-refreshes when the tab regains
-   focus, and the new studies appear in the patient list.
-
-The same redirect button is also available from **Settings → Import DICOM
-Data**. DICOM data persists in a named Docker volume across restarts; run
-`pnpm repo:down && docker volume rm webtps_orthanc-db` to wipe it.
-
-Sample DICOM datasets for testing are available from:
-- [TCIA (The Cancer Imaging Archive)](https://www.cancerimagingarchive.net/) —
-  free public CT datasets
-- [OsiriX sample DICOM files](https://www.osirix-viewer.com/resources/dicom-image-library/) —
-  small pre-packaged studies
-
-More detail: [`docs/local_development.md`](docs/local_development.md).
-
-## Deployed Build
-
-The `CI Pipeline` deploy job runs on a Linux self-hosted runner and deploys the
-app as a Docker Compose stack. The deployed stack uses different host ports to
-avoid conflicting with the local dev server:
-
-| | Dev server | Deployed build |
-|--|------------|----------------|
-| Frontend | `http://127.0.0.1:3000` | `http://AP-vS9RB5xoet8i.int.elekta.com:3001` |
-| API | `http://127.0.0.1:4000` | `http://AP-vS9RB5xoet8i.int.elekta.com:4001` |
-| Orthanc | `http://127.0.0.1:8042` | `http://AP-vS9RB5xoet8i.int.elekta.com:8042` |
-
-Both can run simultaneously. Anyone on the Elekta network can reach the
-deployed build at `AP-vS9RB5xoet8i.int.elekta.com`. See
-[`docker-compose.deploy.yml`](docker-compose.deploy.yml) for the deployed stack
-and [`docs/local_development.md`](docs/local_development.md) for runner setup
-and operational commands.
-
-The deploy workflow updates only the API and frontend containers. The Orthanc
-DICOM repository is a persistent service and is not recreated for each app
-release. Its database is bind-mounted from the host at
-`${WEBTPS_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}`.
-
-## Testing
+Typical entrypoints are:
 
 ```bash
-pnpm --filter @webtps/client lint
-pnpm -r test          # all workspaces
-pnpm -r typecheck     # TypeScript check all workspaces
-dotnet build apps/api/api.csproj --configuration Release
+medharness ci dhf-validate --dhf DHF
+medharness ci test-coverage --dhf DHF --junit-dir test-results
+medharness --dhf DHF ci analyze-cr --cr CR-034
+medharness --dhf DHF ci design-cr --cr CR-034
+medharness --dhf DHF ci develop-cr --cr CR-034
+medharness --dhf DHF ci validate-design --cr CR-034
+medharness --dhf DHF ci validate-code --cr CR-034
+medharness --dhf DHF ci validate-branch --cr CR-034
+medharness ci cr-status --cr CR-034 --stage spec --pr 18
+medharness --dhf DHF ci evidence bundle --out-dir artifacts --junit-dir test-results
+medharness ci github-event --event "$GITHUB_EVENT_PATH"
 ```
 
-## CI
+## How a Change Request flows
 
-GitHub Actions validates:
-
-- Frontend lint, typecheck, test, and build
-- ASP.NET API restore and build
-- Shared types typecheck and build
-- Integration smoke startup of Orthanc + API + frontend via `pnpm local:doctor`
-- Main-branch DHF artifact generation: specification PDFs, plan PDFs, and
-  traceability PDF report
-
-## Change Process
-
-WebTPS uses a CR-driven workflow. Every non-trivial change — new feature, architecture
-decision, external dependency — starts with a Change Request (CR) in this repository.
-
-### How it works
-
-1. **Open an issue in WebTPS** — describe the requested change. Maintainers review
-   the issue and assign it to the current ISO-week milestone, e.g. `2026-W18`, when
-   it is accepted. The `issue-to-cr` workflow automatically opens a CR PR.
-2. **Approve the CR PR** — triggers automated analysis. The agent reads product strategy,
-   architecture, and DHF context, then opens a Spec PR in `docs/cr-specs/`.
-3. **Approve the Spec PR** — triggers automated DHF design. The agent opens a Design PR
-   updating items in `DHF/items/`.
-4. **Approve the Design PR** — triggers automated implementation. The agent opens an
-   Implementation PR in this repo.
-5. **Review the Implementation PR** — standard code review. Merge when satisfied.
-   `cr-complete.yml` closes the CR automatically on merge.
-
-No stage advances without explicit human approval. The agent cannot merge PRs.
-
-The active weekly milestone is calculated automatically by the `issue-to-cr`
-workflow using ISO-week naming such as `2026-W18`; maintainers only need to create
-that milestone in GitHub and assign accepted issues to it.
-
-### PR title format
-
-Always include the CR ID:
+Every non-trivial change starts as a **Change Request (CR)** in the DHF.
+CRs move through AI-assisted stages, each gated by human approval. How those
+stages are wired into automation is up to the client repo:
 
 ```
-feat(CR-042): add dose normalization to structure panel
-fix(CR-031): correct version string in About page
+Issue → CR review → analyze-cr → design-cr → develop-cr → cr-complete
 ```
 
-### Branch naming
+| Stage | Trigger | What MedHarness does |
+|-------|---------|---------------------|
+| **CR intake** | Issue milestoned | Creates CR item in DHF, opens draft PR (`cr workflow intake-github-issue-ci`) |
+| **analyze-cr** | CR PR approved | Runs Claude to write a spec, self-corrects against schema, commits to `docs/cr-specs/` (`ci analyze-cr`) |
+| **design-cr** | Spec PR approved | Runs Claude to create/update DHF items, validates schema + traceability (`ci design-cr`) |
+| **develop-cr** | Design PR approved | Runs Claude to implement code, opens implementation PR (`ci develop-cr`) |
+| **cr-complete** | PR merged | Transitions CR to `completed` in the DHF (`cr workflow complete-from-github-pr`) |
 
-`feature/`, `fix/`, `refactor/`, or `claude/` prefix. Never commit directly to `main`.
+When a PR receives review feedback, re-run the same command with `--pr N` to
+revise the existing output based on reviewer comments.
 
-### DHF impact
-
-If your change introduces a new capability, external library, architecture decision, or
-identified hazard — DHF items need updating. The Plan Spec PR will identify what is needed.
-
-### DHF commands
-
-DHF items live at `DHF/items/`. Use the `medharness` CLI:
+To let external automation decide whether a CR stage is ready to advance,
+use the CLI's machine-readable status surface rather than embedding policy in
+workflow YAML:
 
 ```bash
-medharness --dhf DHF dhf item list --type cr
-medharness --dhf DHF dhf item get CR-034
-medharness --dhf DHF dhf context for-stage develop --cr CR-034 --spec docs/cr-specs/CR-034-Spec.md
-medharness --dhf DHF dhf item transition CR-034 completed --by "agent"
+medharness ci cr-status --cr CR-034 --branch spec/CR-034 --pr 18
+```
+
+To catch deterministic issues before a PR is opened, client automation can run
+the same preflight validators directly:
+
+```bash
+medharness --dhf DHF ci validate-design --cr CR-034
+medharness --dhf DHF ci validate-code --cr CR-034 --since-ref origin/main
+medharness --dhf DHF ci validate-branch --cr CR-034 --since-ref origin/main
+```
+
+`validate-branch` requires the approved spec file to exist for the CR, but it
+does not require a fresh diff to that spec on the implementation branch. That
+matches the normal flow where a `feat/CR-*` branch is cut after the spec has
+already been merged.
+
+---
+
+## Test Coverage Gate
+
+The CI gate (`medharness ci test-coverage`) enforces that every verifiable requirement
+has at least one passing test linked to it.
+
+### JUnit XML contract
+
+Tests must emit JUnit XML with properties linking to DHF item IDs:
+
+```xml
+<testcase name="test_TC_SYS_005_001_validates_link_format">
+  <properties>
+    <property name="medharness.id" value="TC-SYS-005-001"/>
+    <property name="medharness.links" value="SYS-005"/>
+  </properties>
+</testcase>
+```
+
+All property names are defined as constants in `medharness/contracts.py`:
+
+| Property | Purpose |
+|----------|---------|
+| `medharness.id` | Test case identifier (e.g. `TC-SYS-005-001`) |
+| `medharness.links` | Comma-separated DHF item IDs the test covers |
+| `medharness.title` | Human-readable test title (optional) |
+| `medharness.reviewer` | Reviewer name (optional) |
+| `medharness.review_date` | Review date (optional) |
+| `medharness.review_status` | Review status (optional) |
+
+### Python / pytest
+
+Use pytest's `record_property` in `conftest.py`:
+
+```python
+@pytest.fixture(autouse=True)
+def _inject_medharness_metadata(request, record_property):
+    doc = request.function.__doc__ or ""
+    tc_id = extract_tc_id_from_name(request.node.name)
+    links = parse_links(doc)   # extract @links:SYS-005 from docstring
+    if tc_id:
+        record_property("medharness.id", tc_id)
+    if links:
+        record_property("medharness.links", ",".join(links))
+```
+
+### TypeScript / Vitest / Playwright
+
+Use custom JUnit reporters that emit `<properties>` blocks for `medharness.links`.
+Reference implementations are available in the [WebTPS](https://github.com/itercharles/WebTPS) repo.
+
+### Running the gate locally
+
+```bash
+# From project root
+pytest tests/ -q --junitxml=test-results/results.xml
+medharness --dhf DHF ci test-coverage --junit-dir test-results
+```
+
+Expect output like:
+
+```
+[test-coverage] SRS: 12/14 covered
+      ↳ uncovered: SRS-012
+      ↳ uncovered: SRS-008
+```
+
+The command exits non-zero when gaps exist, blocking CI.
+
+---
+
+## CLI Reference
+
+### Scaffold
+
+```bash
+medharness init                     # zero-prompt single-repo project setup
+```
+
+### DHF operations (run with `--dhf DHF`)
+
+```bash
+medharness --dhf DHF dhf item list --type SYS
+medharness --dhf DHF dhf item get SYS-001
+medharness --dhf DHF dhf item create --type SYS --data '{"title": "My req"}'
+medharness --dhf DHF dhf item update SYS-001 --data '{"title": "Updated"}'
+medharness --dhf DHF dhf item delete SYS-001
+medharness --dhf DHF dhf item transitions CR-001
+medharness --dhf DHF dhf item transition CR-001 approved --by "Alice"
 medharness --dhf DHF dhf validate schema
+medharness --dhf DHF dhf validate traceability
+medharness --dhf DHF dhf doc list
+medharness --dhf DHF dhf doc generate SYS
+medharness --dhf DHF dhf doc export SYS          # PDF output (requires `[docs]`)
+medharness --dhf DHF dhf test list
+medharness --dhf DHF dhf config doc-types
 ```
 
-## Build
+### CI gates
 
 ```bash
-pnpm -r build
+medharness ci dhf-validate --dhf DHF
+medharness ci test-coverage --dhf DHF --junit-dir test-results
+medharness ci evidence bundle --dhf DHF --out-dir artifacts
 ```
 
-## Architecture
+### CR generation commands
 
-See [`WebTPS_Plan_Spec.md`](WebTPS_Plan_Spec.md) for the full architecture
-specification, technology stack decisions, and phased feature roadmap.
+Encapsulate the full AI loop for each CR stage: prompt assembly (with embedded
+DHF impact skills) → `claude -p` invocation → validate → self-correct.
 
-### Phased Development
+```bash
+# Initial generation
+medharness --dhf DHF ci analyze-cr --cr CR-034   # write docs/cr-specs/CR-034-Spec.md
+medharness --dhf DHF ci design-cr  --cr CR-034   # create/update DHF items
+medharness --dhf DHF ci develop-cr --cr CR-034   # implement code
 
-- **Phase 1** (Months 1-4): Contouring — DICOM viewer, contour tools, AI
-  auto-segmentation, structure management, collaborative editing
-- **Phase 2** (Months 5-7): Review — dose visualization, DVH, plan comparison,
-  protocol compliance, report generation
-- **Phase 3** (Months 8-14): Planning — beam geometry, optimization engine,
-  dose calculation, MLC modeling, DICOM-RT export
+# Revision based on PR review feedback
+medharness --dhf DHF ci analyze-cr --cr CR-034 --pr 42
+medharness --dhf DHF ci design-cr  --cr CR-034 --pr 42
+medharness --dhf DHF ci develop-cr --cr CR-034 --pr 42
+```
 
-## Compliance
+`ANTHROPIC_MODEL` env var selects the Claude model. `GH_TOKEN` is required when
+`--pr` is used (fetches review comments from the GitHub API).
 
-Medical device compliance (IEC 62304, IEC 82304-1, ISO 14971) is managed in
-the `DHF/` directory of this repository. Each application feature must trace
-to a DHF item.
+Each command outputs JSON to stdout:
 
-## Agent Guidance
+```json
+{ "cr_id": "CR-034", "stage": "spec", "status": "ok",
+  "corrections": 0, "validation": "passed", "errors": [],
+  "spec_path": "docs/cr-specs/CR-034-Spec.md",
+  "spec_json_path": "docs/cr-specs/CR-034-Spec.json",
+  "started_at": "2026-05-11T14:23:45+00:00", "elapsed_ms": 28500 }
+```
 
-See [`CLAUDE.md`](CLAUDE.md) and the CR workflow in
-[`docs/cr_spec_workflow.md`](docs/cr_spec_workflow.md).
+### CR workflow commands
+
+```bash
+medharness cr workflow intake-github-issue-ci      # CR intake from issue
+medharness cr workflow complete-from-github-pr     # CR completion on PR merge
+```
+
+### Agent session helpers
+
+```bash
+medharness ci claude-session put <pr_number> <session_id>
+medharness ci claude-session get <pr_number>
+```
+
+---
+
+## Python API
+
+Use `DHFClient` for high-level operations (recommended for product repo automation):
+
+```python
+from medharness.client import DHFClient
+
+client = DHFClient(Path("DHF"))
+
+cr   = client.get_item("CR-034")
+spec = client.get_cr_context("CR-034")   # {"cr": {...}, "spec": "..."}
+client.transition_item("CR-034", "in_review", performed_by="alice")
+```
+
+Or use `dhfkit` standalone (no dependency on `medharness`):
+
+```python
+from dhfkit.local_adapter import LocalDHFAdapter
+
+adapter = LocalDHFAdapter(Path("DHF"))
+items  = adapter.list_items("SRS")
+```
+
+---
+
+## Repository layout
+
+| Directory | Purpose |
+|-----------|---------|
+| `medharness/` | CLI harness, CI gates, CR workflows, `init` scaffolding |
+| `dhfkit/` | DHF engine: items, lifecycle, traceability, document generation |
+| `dhfkit/templates/` | Starter DHF scaffold — config, specs, plans, sample items |
+| `tests/` | MedHarness and dhfkit test suites |
+| `docs/` | Architecture, ADRs, compatibility contracts |
+
+`dhfkit` has no dependency on `medharness` — the engine can be used standalone.
+
+---
+
+## Docs
+
+- [docs/architecture.md](docs/architecture.md) — packages, scaffold model, DHF lifecycle
+- [docs/compatibility-contracts.md](docs/compatibility-contracts.md) — stable public contracts
+- [docs/adr/](docs/adr/) — architecture decision records
+- [CHANGELOG.md](CHANGELOG.md) — version history
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).

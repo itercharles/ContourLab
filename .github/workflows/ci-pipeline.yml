@@ -1,16 +1,19 @@
-name: WebTPS Product CI/CD
+name: CI Pipeline
 
-run-name: Product CI/CD | ${{ github.event_name }} | ${{ github.event.pull_request.title || github.event.head_commit.message || github.ref_name }}
+# MedHarness's own CI — layer-based gates:
+#
+#   1. TESTING          — unit, integration, contract, dhfkit (parallel)
+#   2. COMPATIBILITY    — scaffold, example smoke, CLI, template checks
+#   3. AUDIT            — OSS build hygiene
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
   push:
-    branches: [ main, feat/* ]
+    branches: [ main ]
   pull_request:
     types: [opened, synchronize]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,580 +21,180 @@ permissions:
 
 jobs:
 
-  # ── CHANGE DETECTION ─────────────────────────────────────────────────────────
-  # Detects which workspaces changed so downstream jobs can skip irrelevant work.
-  # On main and workflow_dispatch all flags are forced true — full suite always runs.
+  # ── LAYER-BASED TESTING ──────────────────────────────────────────────────
 
-  changes:
-    name: Detect Changed Scope
+  tests-unit:
+    name: Test | Unit
     runs-on: ubuntu-latest
-    outputs:
-      client:       ${{ steps.scope.outputs.client }}
-      api:          ${{ steps.scope.outputs.api }}
-      shared_types: ${{ steps.scope.outputs.shared_types }}
-      dhf:          ${{ steps.scope.outputs.dhf }}
-      any_code:     ${{ steps.scope.outputs.any_code }}
-      skip_all:     ${{ steps.scope.outputs.skip_all }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          fetch-depth: 0
-
-      - name: Detect changed paths
-        id: scope
-        env:
-          EVENT: ${{ github.event_name }}
-          REF:   ${{ github.ref }}
-          BASE:  ${{ github.event.pull_request.base.ref }}
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
         run: |
-          # Always run full suite on main and manual triggers
-          if [ "$REF" = "refs/heads/main" ] || [ "$EVENT" = "workflow_dispatch" ]; then
-            echo "client=true"       >> "$GITHUB_OUTPUT"
-            echo "api=true"          >> "$GITHUB_OUTPUT"
-            echo "shared_types=true" >> "$GITHUB_OUTPUT"
-            echo "dhf=true"          >> "$GITHUB_OUTPUT"
-            echo "any_code=true"     >> "$GITHUB_OUTPUT"
-            echo "skip_all=false"    >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # For PRs compare against the base branch; for other pushes use previous commit
-          if [ "$EVENT" = "pull_request" ] && [ -n "$BASE" ]; then
-            CHANGED=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null || \
-                      git diff --name-only HEAD^1 HEAD 2>/dev/null || echo "UNKNOWN")
-          else
-            CHANGED=$(git diff --name-only HEAD^1 HEAD 2>/dev/null || echo "UNKNOWN")
-          fi
-
-          # If change list cannot be determined, run everything safely
-          if [ "$CHANGED" = "UNKNOWN" ] || [ -z "$CHANGED" ]; then
-            echo "client=true"       >> "$GITHUB_OUTPUT"
-            echo "api=true"          >> "$GITHUB_OUTPUT"
-            echo "shared_types=true" >> "$GITHUB_OUTPUT"
-            echo "dhf=true"          >> "$GITHUB_OUTPUT"
-            echo "any_code=true"     >> "$GITHUB_OUTPUT"
-            echo "skip_all=false"    >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          client=false api=false shared_types=false dhf=false
-
-          while IFS= read -r file; do
-            [[ -z "$file" ]] && continue
-            case "$file" in
-              apps/client/*)                 client=true ;;
-              apps/api/* | apps/api.tests/*) api=true ;;
-              packages/shared-types/*)       shared_types=true ;;
-              DHF/* | docs/cr-specs/*)       dhf=true ;;
-              .github/* | *.md | LICENSE)    ;;  # CI/docs only — no code impact
-              *)                             client=true; api=true ;;  # unknown: full run
-            esac
-          done <<< "$CHANGED"
-
-          # shared-types changes cascade to all JS workspaces
-          if [[ "$shared_types" == "true" ]]; then client=true; api=true; fi
-
-          any_code=false
-          [[ "$client" == "true" || "$api" == "true" ]] && any_code=true
-
-          # skip_all: nothing code or DHF-related changed (pure CI / docs PR)
-          skip_all=false
-          [[ "$any_code" == "false" && "$dhf" == "false" ]] && skip_all=true
-
-          echo "client=$client"             >> "$GITHUB_OUTPUT"
-          echo "api=$api"                   >> "$GITHUB_OUTPUT"
-          echo "shared_types=$shared_types" >> "$GITHUB_OUTPUT"
-          echo "dhf=$dhf"                   >> "$GITHUB_OUTPUT"
-          echo "any_code=$any_code"         >> "$GITHUB_OUTPUT"
-          echo "skip_all=$skip_all"         >> "$GITHUB_OUTPUT"
-
-  # ── CR VALIDATION ─────────────────────────────────────────────────────────
-  # Phase 1: PR title must contain a CR ID (or be a chore/ci/docs prefix).
-  # All design/spec/feat branches from the CR automation satisfy this rule.
-
-  cr-validation:
-    name: CR Validation
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Extract CR IDs from PR title
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
+          python -m pip install --upgrade pip
+          pip install pytest
+          pip install -e .
+      - name: Run unit tests
         run: |
-          CR_IDS=$(echo "$PR_TITLE" | grep -oE 'CR-[0-9]+' | sort -u | tr '\n' ' ' || true)
-          if [ -z "$CR_IDS" ]; then
-            if echo "$PR_TITLE" | grep -Eq '^(ci|chore|docs)(\(|:)'; then
-              echo "No CR ID — maintenance PR exempt."
-              exit 0
-            fi
-            echo "::error::No CR ID in PR title. Add e.g. 'feat(CR-042): description'"
-            exit 1
-          fi
-          echo "Found CR IDs: $CR_IDS"
+          export PYTHONPATH="${PYTHONPATH}:${PWD}"
+          pytest tests/unit/ -v
 
-  # ── STAGE GATE ────────────────────────────────────────────────────────────
-  # Skip heavy CI jobs when the PR is in an early CR stage (cr/spec/design).
-  # Code-stage PRs and pushes to main always run full CI.
-
-  stage-gate:
-    name: Stage Gate
+  tests-integration:
+    name: Test | Integration
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    outputs:
-      run_ci: ${{ steps.check.outputs.run_ci }}
-    steps:
-      # Skip heavy CI only when the PR is in an early CR stage. Defensive
-      # default: a PR carrying `cr:stage/...` labels that don't match any
-      # known stage (typo, future stage, manual mis-label) emits a CI
-      # warning AND still runs full CI — safer to waste minutes than to
-      # silently skip a stage that ought to gate. PRs without any
-      # `cr:stage/` label are normal fix/feat/chore PRs and always run CI.
-      - id: check
-        env:
-          LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
-        run: |
-          if ! echo "$LABELS" | grep -qE 'cr:stage/'; then
-            echo "Non-CR PR (no cr:stage/* label) — running full CI"
-            echo "run_ci=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if echo "$LABELS" | grep -qE 'cr:stage/(cr|spec|design)\b'; then
-            echo "Early CR stage detected (cr/spec/design) — skipping heavy CI"
-            echo "run_ci=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if echo "$LABELS" | grep -qE 'cr:stage/code\b'; then
-            echo "CR code stage — running full CI"
-            echo "run_ci=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "::warning::PR carries cr:stage/* label(s) that match neither (cr|spec|design) nor code. Labels: $LABELS — running full CI by default."
-          echo "run_ci=true" >> "$GITHUB_OUTPUT"
-
-  # ── DHF VALIDATION ────────────────────────────────────────────────────────
-  # Phase 2: DHF schema + design traceability check.
-  # Runs on every PR so spec/CR-* and design/CR-* branches are validated.
-
-  dhf-validation:
-    name: DHF Validation (schema + traceability)
-    runs-on: ubuntu-latest
-    needs: [cr-validation, changes]
-    if: always() && !failure() && !cancelled() && needs.changes.outputs.dhf == 'true'
-    steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/medharness-setup
-
-      - name: Run DHF validation
-        run: |
-          medharness ci dhf-validate \
-            --dhf DHF \
-            --run-schema \
-            --run-traceability \
-            --coverage-pair UC:CRS \
-            --coverage-pair CRS:SYS \
-            --coverage-pair SYS:SRS \
-            --coverage-pair SRS:SWDD \
-            --coverage-pair SYS:SYSARCH \
-            --coverage-pair RISK:RCM
-
-  # ── DEVELOPMENT TESTING ────────────────────────────────────────────────────
-  # Static analysis and compilation. Engineering feedback only — not compliance
-  # artifacts. All three jobs run in parallel.
-
-  dev-frontend:
-    name: Dev | Frontend (lint · typecheck · build)
-    runs-on: ubuntu-latest
-    needs: [cr-validation, stage-gate, changes]
-    if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.client == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-webtps-frontend
-      - run: pnpm --filter @webtps/client lint
-      - run: pnpm --filter @webtps/client typecheck
-      - run: pnpm --filter @webtps/client build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+          pip install -e .
+      - name: Run integration tests
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:${PWD}"
+          pytest tests/integration/ -v
 
-  dev-api:
-    name: Dev | API (restore · build · test)
+  tests-contract:
+    name: Test | Contract
     runs-on: ubuntu-latest
-    needs: [cr-validation, stage-gate, changes]
-    if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.api == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-webtps-api
-      - run: dotnet build apps/api/api.csproj --configuration Release --no-restore
-      - name: Run API tests
-        run: dotnet test apps/api.tests/WebTPS.Api.Tests.csproj --logger "junit;LogFilePath=../../test-results/api-junit.xml"
-      - name: Upload API test evidence
-        if: always()
-        uses: actions/upload-artifact@v4
+      - uses: actions/setup-python@v5
         with:
-          name: verify-srs-api-junit
-          path: test-results/api-junit.xml
-          if-no-files-found: error
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+          pip install -e .
+      - name: Run contract tests
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:${PWD}"
+          pytest tests/contract/ -v
 
-  dev-shared-types:
-    name: Dev | Shared Types (typecheck · build)
+  tests-dhf-util:
+    name: Test | dhfkit Engine
     runs-on: ubuntu-latest
-    needs: [cr-validation, stage-gate, changes]
-    if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.shared_types == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-webtps-frontend
-      - run: pnpm --filter @webtps/shared-types typecheck
-      - run: pnpm --filter @webtps/shared-types build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+          pip install -e .
+      - name: Run dhfkit tests
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:${PWD}"
+          pytest dhfkit/tests/ -v --ignore=dhfkit/tests/test_cli_doc_export.py
 
-  dev-integration:
-    name: Dev | Integration Smoke (full stack · health check)
+  # ── COMPATIBILITY CHECKS ─────────────────────────────────────────────────
+
+  check-scaffold:
+    name: Check | Scaffold
     runs-on: ubuntu-latest
-    needs: [dev-frontend, dev-api, dev-shared-types, changes]
-    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-webtps-frontend
-      - uses: ./.github/actions/setup-webtps-api
-      - name: Start DICOM repository
-        run: pnpm repo:up
-      - name: Start API
-        run: pnpm api > /tmp/webtps-api.log 2>&1 &
-      - name: Start frontend
-        run: pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
-      - name: Wait for services
-        uses: ./.github/actions/wait-for-services
+      - uses: actions/setup-python@v5
         with:
-          urls: |
-            http://127.0.0.1:4000/api/health
-            http://127.0.0.1:3000/
-          timeout-seconds: '120'
-      - name: Smoke check
-        run: pnpm local:doctor
-      - name: Stop services
-        if: always()
-        run: pnpm local:down
-      - name: Upload logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: dev-integration-logs
-          path: |
-            /tmp/webtps-api.log
-            /tmp/webtps-client.log
+          python-version: '3.11'
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Verify scaffold generates expected structure
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:${PWD}"
+          python -c "
+          from medharness.workflows.init import _scaffold_dhf
+          from pathlib import Path
+          import tempfile
+          with tempfile.TemporaryDirectory() as tmp:
+              dhf_dir = Path(tmp) / 'test-dhf'
+              _scaffold_dhf(dhf_dir)
+              assert (dhf_dir / 'DHF' / 'config' / 'global.yaml').exists()
+              assert (dhf_dir / 'DHF' / 'documents' / 'specs').exists()
+              assert (dhf_dir / 'DHF' / 'items').exists()
+              assert (dhf_dir / '.github' / 'prompts').exists()
+              print('OK: scaffold structure valid')
+          "
 
-  # ── VERIFICATION TESTING ───────────────────────────────────────────────────
-  # IEC 62304 §5.5–5.7. Formal evidence that software units and the integrated
-  # system satisfy their specified requirements. Results are DHF artifacts.
-  # Runs in parallel with validation testing, after dev builds pass.
-
-  verify-srs:
-    name: Verify | Test-SRS (Vitest · software requirements)
+  check-starter:
+    name: Check | Starter DHF
     runs-on: ubuntu-latest
-    needs: [dev-frontend, dev-shared-types, changes]
-    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-webtps-frontend
-      - name: Run SRS verification tests
-        run: pnpm --filter @webtps/client test
-      - name: Upload SRS test evidence
-        if: always()
-        uses: actions/upload-artifact@v4
+      - uses: actions/setup-python@v5
         with:
-          name: verify-srs-junit
-          path: apps/client/test-results/verification-junit.xml
-          if-no-files-found: error
+          python-version: '3.11'
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Scaffold starter DHF and run core workflow
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:${PWD}"
+          python -c "
+          from medharness.workflows.init import _scaffold_dhf, _replace_placeholders
+          from pathlib import Path
+          import tempfile, subprocess, sys
+          with tempfile.TemporaryDirectory() as tmp:
+              dhf_dir = Path(tmp) / 'starter-dhf'
+              _scaffold_dhf(dhf_dir)
+              _replace_placeholders(dhf_dir, 'Test Project')
+              dhf = str(dhf_dir / 'DHF')
+              subprocess.run([sys.executable, '-m', 'medharness', '--dhf', dhf, 'dhf', 'validate', 'schema'], check=True)
+              subprocess.run([sys.executable, '-m', 'medharness', '--dhf', dhf, 'dhf', 'item', 'list', '--type', 'CRS'], check=True)
+              subprocess.run([sys.executable, '-m', 'medharness', '--dhf', dhf, 'dhf', 'item', 'list', '--type', 'SYS'], check=True)
+              for dt in 'UC CRS SYS SRS SWDD SYSARCH RISK RCM CR'.split():
+                  subprocess.run([sys.executable, '-m', 'medharness', '--dhf', dhf, 'dhf', 'doc', 'generate', dt], check=True)
+              print('OK: starter DHF workflow valid')
+          "
 
-  verify-sys:
-    name: Verify | Test-SYS (Playwright · system requirements)
+  check-cli-entrypoints:
+    name: Check | CLI Entrypoints
     runs-on: ubuntu-latest
-    # SYS tests use page.route() mocks and window.__webtps_stores injection —
-    # they do not call the API or Orthanc, so only the frontend needs to run.
-    needs: [dev-frontend, dev-shared-types, changes]
-    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-webtps-frontend
-
-      - name: Install Playwright
-        uses: ./.github/actions/playwright-setup
-
-      - name: Start frontend
-        run: pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
-
-      - name: Wait for frontend
-        uses: ./.github/actions/wait-for-services
+      - uses: actions/setup-python@v5
         with:
-          urls: http://127.0.0.1:3000/
-          timeout-seconds: '60'
-          interval-seconds: '2'
-
-      - name: Run SYS verification tests
+          python-version: '3.11'
+      - name: Install
         run: |
-          pnpm --filter @webtps/client exec playwright test \
-            --project=sys \
-            --workers=2 \
-            --fully-parallel
-        env:
-          BASE_URL: http://127.0.0.1:3000
-          PLAYWRIGHT_JUNIT_OUTPUT_NAME: test-results/e2e-sys-junit.xml
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Verify CLI entrypoints
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:${PWD}"
+          python -m medharness --help > /dev/null
+          python -m medharness dhf --help > /dev/null
+          echo 'OK: both CLI entrypoints available'
 
-      - name: Upload SYS test evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: verify-sys-junit
-          path: apps/client/test-results/e2e-sys-junit.xml
-          if-no-files-found: error
+  # ── OSS BUILD HYGIENE AUDIT ───────────────────────────────────────────────
 
-      - name: Upload logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: verify-sys-logs
-          path: /tmp/webtps-client.log
-
-  # ── VALIDATION TESTING ─────────────────────────────────────────────────────
-  # IEC 62304 §5.8. Evidence that the system satisfies customer requirements
-  # and use cases as experienced through the clinical UI. Playwright drives the
-  # browser through complete clinical workflows. Runs in parallel with
-  # verification testing, after dev builds pass.
-
-  validate-crs:
-    name: Validate | Test-CRS (Playwright · clinical workflows)
+  audit-oss-delivery:
+    name: Audit | OSS Build Hygiene
     runs-on: ubuntu-latest
-    needs: [dev-frontend, dev-api, dev-shared-types, changes]
-    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-webtps-frontend
-      - uses: ./.github/actions/setup-webtps-api
-
-      - name: Start full stack (background)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install audit dependencies
         run: |
-          pnpm repo:up
-          pnpm api > /tmp/webtps-api.log 2>&1 &
-          pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/webtps-client.log 2>&1 &
-
-      - name: Install Playwright
-        uses: ./.github/actions/playwright-setup
-
-      - name: Wait for full stack
-        uses: ./.github/actions/wait-for-services
-        with:
-          urls: |
-            http://127.0.0.1:4000/api/health
-            http://127.0.0.1:3000/
-          timeout-seconds: '90'
-
-      - name: Run CRS validation tests
-        run: |
-          pnpm --filter @webtps/client exec playwright test \
-            --project=crs \
-            --workers=2 \
-            --fully-parallel
-        env:
-          BASE_URL: http://127.0.0.1:3000
-          PLAYWRIGHT_JUNIT_OUTPUT_NAME: test-results/e2e-crs-junit.xml
-      - name: Stop services
-        if: always()
-        run: pnpm local:down
-      - name: Upload CRS test evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: validate-crs-junit
-          path: apps/client/test-results/e2e-crs-junit.xml
-          if-no-files-found: error
-      - name: Upload logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: validate-crs-logs
-          path: |
-            /tmp/webtps-api.log
-            /tmp/webtps-client.log
-
-  # ── ACCEPTANCE GATE ───────────────────────────────────────────────────────
-  # Runs after all development, verification, and validation phases pass.
-  # Validates DHF traceability with test evidence included.
-  # On PR: this is the final gate. On main: continues to artifact generation
-  # and deployment.
-
-  compliance:
-    name: Test Coverage Gate (requirement → test)
-    runs-on: ubuntu-latest
-    needs: [dhf-validation, dev-integration, verify-srs, verify-sys, validate-crs, changes]
-    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
-    steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/medharness-setup
-
-      - name: Download SRS test evidence (Vitest)
-        uses: actions/download-artifact@v4
-        with:
-          name: verify-srs-junit
-          path: test-results/srs/
-
-      - name: Download SRS test evidence (API .NET)
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: verify-srs-api-junit
-          path: test-results/srs-api/
-
-      - name: Download SYS test evidence (Playwright)
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: verify-sys-junit
-          path: test-results/sys/
-
-      - name: Download CRS test evidence (Playwright)
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: validate-crs-junit
-          path: test-results/crs/
-
-      - name: Run requirement-test coverage gate
-        run: |
-          medharness ci test-coverage \
-            --dhf DHF \
-            --junit-dir test-results/srs \
-            --junit-dir test-results/srs-api \
-            --junit-dir test-results/sys \
-            --junit-dir test-results/crs \
-            --requirement-type SRS \
-            --requirement-type SYS \
-            --requirement-type CRS
-
-  # ── ARTIFACTS + DEPLOY (main only) ────────────────────────────────────────
-  # After acceptance passes on main: generate DHF documents, traceability PDF,
-  # and deploy the application.
-  # These run in parallel with each other.
-
-  generate-artifacts:
-    name: DHF Artifacts (evidence bundle)
-    runs-on: ubuntu-latest
-    needs: [compliance]
-    if: github.ref == 'refs/heads/main' && !failure() && !cancelled()
-    steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
-
-      - name: Install system dependencies for PDF export
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0
-
-      - uses: ./.github/actions/medharness-setup
-        with:
-          extras: '[docs]'
-
-      - name: Download SRS test evidence (Vitest)
-        uses: actions/download-artifact@v4
-        with:
-          name: verify-srs-junit
-          path: test-results/srs/
-
-      - name: Download SRS test evidence (API .NET)
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: verify-srs-api-junit
-          path: test-results/srs-api/
-
-      - name: Download SYS test evidence (Playwright)
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: verify-sys-junit
-          path: test-results/sys/
-
-      - name: Download CRS test evidence (Playwright)
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: validate-crs-junit
-          path: test-results/crs/
-
-      - name: Generate evidence bundle
-        run: |
-          medharness --dhf DHF ci evidence bundle \
-            --out-dir dhf-artifacts \
-            --traceability-type UC \
-            --traceability-type CRS \
-            --traceability-type SYS \
-            --traceability-type SRS \
-            --traceability-type SWDD \
-            --junit-dir test-results/srs \
-            --junit-dir test-results/srs-api \
-            --junit-dir test-results/sys \
-            --junit-dir test-results/crs \
-            --run-id "${{ github.run_id }}" \
-            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --commit "${{ github.sha }}" \
-            --continue-on-gate-failure
-
-      - name: Upload DHF artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: dhf-artifacts
-          path: dhf-artifacts/
-
-      - name: Upload combined test evidence for CR analysis
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: product-test-results
-          path: |
-            test-results/srs/
-            test-results/srs-api/
-            test-results/sys/
-            test-results/crs/
-          if-no-files-found: warn
-
-  deploy:
-    name: Deploy | Linux VM (Docker)
-    runs-on: [self-hosted, linux]
-    needs: [compliance]
-    if: github.ref == 'refs/heads/main' && !failure() && !cancelled()
-    steps:
-      - name: Fix workspace permissions
-        # Orthanc runs as root inside the container; chown its data dir back to
-        # the runner user before checkout wipes the workspace. No-op if the
-        # container is not yet running.
-        run: |
-          docker exec webtps-orthanc \
-            chown -R "$(id -u):$(id -g)" /var/lib/orthanc/db \
-            2>/dev/null || true
-
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Deploy WebTPS stack
-        env:
-          ISSUES_TOKEN: ${{ secrets.ISSUES_TOKEN }}
-        # All Docker orchestration lives in the script so manual ad-hoc
-        # redeploys can run the same code path. See scripts/deploy/wsl-deploy.sh
-        # for the env contract (WEBTPS_ORTHANC_DATA_DIR, SECRETS_FILE, etc.).
-        run: bash scripts/deploy/wsl-deploy.sh
-
-      - name: Verify deployment health
-        uses: ./.github/actions/wait-for-services
-        with:
-          urls: |
-            http://127.0.0.1:4001/api/health
-            http://127.0.0.1:3001/
-            http://127.0.0.1:8042/system
-          timeout-seconds: '90'
-
-      - name: Capture post-deploy snapshots
-        run: |
-          curl -sf http://127.0.0.1:3001/ > /tmp/webtps-client.html
-          curl -sf http://127.0.0.1:4001/api/health > /tmp/webtps-api-health.json
-          curl -sf http://127.0.0.1:8042/system > /tmp/webtps-orthanc-system.json
-          docker compose -f docker-compose.deploy.yml ps
+          python -m pip install --upgrade pip
+          pip install build
+          sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Run OSS delivery audit
+        run: bash scripts/audit_oss_delivery.sh
