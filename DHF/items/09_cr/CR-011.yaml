@@ -1,0 +1,20 @@
+id: CR-011
+title: Cannot select RTSS for the opened patient
+type: CR
+description: '**Priority:** medium
+
+  **Category:** enhancement
+
+
+  When a patient is opened, I cannot select which RTSS to be displayed.
+
+
+  Source issue: https://github.com/itercharles/WebTPS/issues/72'
+justification: Maintainer assigned this issue to the active release milestone, indicating
+  it is accepted for CR intake.
+priority: Medium
+requested_by: itercharles
+target_version: 2026-W20
+category: Feature
+content: ''
+status: planned
