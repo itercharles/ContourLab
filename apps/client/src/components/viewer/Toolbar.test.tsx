@@ -321,6 +321,14 @@ describe('Toolbar contour operations', () => {
     );
   });
 
+  it('links DHF artifacts to the direct API download route', () => {
+    renderToolbar();
+
+    const link = screen.getByRole('link', { name: 'DHF Artifacts' });
+    expect(link.getAttribute('href')).toBe('/api/dhf-artifacts/latest');
+    expect(link.getAttribute('download')).toBe('');
+  });
+
   it('saves active structure changes from the global title bar @links:SRS-018', async () => {
     useStructureStore.getState().markSeriesDirty('series-1');
 
