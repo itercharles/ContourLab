@@ -20,6 +20,18 @@ public class IssuesEndpointTests(WebApplicationFactory<Program> factory)
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
+    [Fact(DisplayName = "GET /api/dhf-artifacts/latest returns 503 when GITHUB_TOKEN is not configured")]
+    public async Task GetLatestDhfArtifacts_Returns503_WhenTokenNotConfigured()
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/dhf-artifacts/latest");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Contains("application/problem+json",
+            response.Content.Headers.ContentType?.MediaType ?? "");
+    }
+
     [Fact(DisplayName = "POST /api/issues returns 503 when GITHUB_TOKEN is not configured")]
     public async Task CreateIssue_Returns503_WhenTokenNotConfigured()
     {
