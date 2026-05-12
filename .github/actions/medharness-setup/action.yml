@@ -21,4 +21,4 @@ runs:
 
     - name: Install medharness
       shell: bash
-      run: pip install "medharness${{ inputs.extras }}==0.3.5"
+      run: pip install "medharness${{ inputs.extras }}==0.3.6"
