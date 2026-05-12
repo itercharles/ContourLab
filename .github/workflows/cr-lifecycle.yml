@@ -46,96 +46,70 @@ jobs:
     permissions:
       pull-requests: read
     outputs:
-      action: ${{ steps.ctx.outputs.action }}
-      cr_id: ${{ steps.ctx.outputs.cr_id }}
-      pr_number: ${{ steps.ctx.outputs.pr_number }}
-      branch: ${{ steps.ctx.outputs.branch }}
-      issue_number: ${{ steps.ctx.outputs.issue_number }}
+      action: ${{ steps.plan.outputs.action }}
+      cr_id: ${{ steps.plan.outputs.cr_id }}
+      pr_number: ${{ steps.enrich.outputs.pr_number }}
+      branch: ${{ steps.enrich.outputs.branch }}
+      issue_number: ${{ steps.enrich.outputs.issue_number }}
     steps:
-      - name: Determine action
-        id: ctx
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: ./.github/actions/medharness-setup
+
+      - name: Plan lifecycle action
+        id: plan
+        run: |
+          python -m medharness ci github-event \
+            --stage-label-prefix "cr:stage/" \
+            --dispatch-action cr=gen-spec \
+            --dispatch-action spec=gen-design \
+            --dispatch-action design=gen-code \
+            --dispatch-action code=code-approved \
+            --review-action "approved:cr=gen-spec" \
+            --review-action "approved:spec=gen-design" \
+            --review-action "approved:design=gen-code" \
+            --review-action "approved:code=code-approved" \
+            --review-action "changes_requested:cr=cr-no-revise" \
+            --review-action "changes_requested:spec=revise-spec" \
+            --review-action "changes_requested:design=revise-design" \
+            --review-action "changes_requested:code=revise-code" \
+            --pr-action "merged=noop" \
+            --pr-action "closed=cancel" \
+            --default-action noop \
+            --github-output "$GITHUB_OUTPUT" \
+            | tee /tmp/event-plan.json
+
+      - name: Enrich with PR number, branch, and linked issue
+        id: enrich
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          EVENT="${{ github.event_name }}"
+          CR_ID=$(jq -r '.cr_id // ""' /tmp/event-plan.json)
+          PR_NUMBER=$(jq -r '.pr_number // ""' /tmp/event-plan.json)
+          [ -z "$PR_NUMBER" ] && PR_NUMBER="${{ github.event.pull_request.number }}"
+          BRANCH=$(jq -r '.branch_ref // ""' /tmp/event-plan.json)
 
-          if [ "$EVENT" = "workflow_dispatch" ]; then
-            CR_ID="${{ inputs.cr_id }}"
-            STAGE="${{ inputs.stage }}"
-            PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" --head "feat/$CR_ID" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BRANCH="feat/$CR_ID"
+            PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" \
+              --head "$BRANCH" --json number --jq '.[0].number' 2>/dev/null || echo "")
             if [ -z "$PR_NUMBER" ]; then
-              echo "ERROR: no open PR found for feat/$CR_ID" >&2
+              echo "ERROR: no open PR found for $BRANCH" >&2
               exit 1
             fi
-            case "$STAGE" in
-              cr)     ACTION="gen-spec" ;;
-              spec)   ACTION="gen-design" ;;
-              design) ACTION="gen-code" ;;
-              code)   ACTION="code-approved" ;;
-            esac
-            ISSUE_NUMBER=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" \
-              --json closingIssuesReferences \
-              --jq '.closingIssuesReferences[0].number // empty' 2>/dev/null || echo "")
-            echo "action=$ACTION" >> "$GITHUB_OUTPUT"
-            echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
-            echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-            echo "branch=feat/$CR_ID" >> "$GITHUB_OUTPUT"
-            echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
-            exit 0
           fi
 
-          BRANCH="${{ github.event.pull_request.head.ref }}"
-          CR_ID=$(echo "$BRANCH" | grep -oE 'CR-[0-9]+')
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          MERGED="${{ github.event.pull_request.merged }}"
-          REVIEW_STATE="${{ github.event.review.state }}"
-
-          echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
-          ISSUE_NUMBER=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" \
-            --json closingIssuesReferences \
-            --jq '.closingIssuesReferences[0].number // empty' 2>/dev/null || echo "")
+          ISSUE_NUMBER=""
+          if [ -n "$PR_NUMBER" ]; then
+            ISSUE_NUMBER=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" \
+              --json closingIssuesReferences \
+              --jq '.closingIssuesReferences[0].number // empty' 2>/dev/null || echo "")
+          fi
           echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
-
-          if [ "$EVENT" = "pull_request" ] && [ "$MERGED" = "true" ]; then
-            echo "action=noop" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if [ "$EVENT" = "pull_request" ] && [ "$MERGED" = "false" ]; then
-            echo "action=cancel" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          STAGE=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json labels \
-            --jq '.labels[].name | select(startswith("cr:stage/")) | ltrimstr("cr:stage/")' \
-            | head -1)
-
-          if [ -z "$STAGE" ]; then
-            echo "ERROR: could not determine stage — no cr:stage/* label on PR $PR_NUMBER" >&2
-            exit 1
-          fi
-
-          if [ "$REVIEW_STATE" = "approved" ]; then
-            case "$STAGE" in
-              cr)     ACTION="gen-spec" ;;
-              spec)   ACTION="gen-design" ;;
-              design) ACTION="gen-code" ;;
-              code)   ACTION="code-approved" ;;
-            esac
-          elif [ "$REVIEW_STATE" = "changes_requested" ]; then
-            case "$STAGE" in
-              cr)     ACTION="cr-no-revise" ;;
-              spec)   ACTION="revise-spec" ;;
-              design) ACTION="revise-design" ;;
-              code)   ACTION="revise-code" ;;
-            esac
-          else
-            ACTION="noop"
-          fi
-          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
 
   # ── CANCEL ────────────────────────────────────────────────────────────────
 
@@ -234,6 +208,20 @@ jobs:
             exit 1
           fi
 
+      - name: Gate on triage disposition
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          DISPOSITION=$(jq -r '.analysis.disposition // "approve"' /tmp/analyze-out.json)
+          if echo "$DISPOSITION" | grep -qE '^(decline:|hold:)'; then
+            RATIONALE=$(jq -r '.analysis.decline_rationale // "No rationale provided."' /tmp/analyze-out.json)
+            BODY=$(printf '**%s triaged as `%s`**\n\n%s\n\nThe CR has been declined or placed on hold at the triage stage. No spec will be written. Close this PR or update the CR YAML and re-approve to reconsider.' "$CR_ID" "$DISPOSITION" "$RATIONALE")
+            gh pr comment "$PR_NUMBER" --body "$BODY"
+            exit 1
+          fi
+
       - name: Commit and advance to spec review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -247,9 +235,11 @@ jobs:
           if ! git diff --staged --quiet; then
             VALIDATION=$(jq -r '.validation // "unknown"' /tmp/analyze-out.json)
             CORRECTIONS=$(jq -r '.corrections // 0' /tmp/analyze-out.json)
+            DISPOSITION=$(jq -r '.analysis.disposition // "approve"' /tmp/analyze-out.json)
+            ROUTE=$(jq -r '.analysis.pipeline_route // "standard"' /tmp/analyze-out.json)
             git commit \
               -m "docs: spec for $CR_ID" \
-              -m "Validation: $VALIDATION ($CORRECTIONS correction(s))"
+              -m "Disposition: $DISPOSITION | Route: $ROUTE | Validation: $VALIDATION ($CORRECTIONS correction(s))"
             git push
             COMMITTED=true
           fi
@@ -263,6 +253,27 @@ jobs:
               --body "⚠️ Spec generation produced no output for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: cr) and check Claude logs."
             exit 1
           fi
+
+      - name: Post spec analysis summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          ROUTE=$(jq -r '.analysis.pipeline_route // "standard"' /tmp/analyze-out.json)
+          IMPACT=$(jq -r '.analysis.design_impact_summary // ""' /tmp/analyze-out.json)
+          PROPOSED=$(jq -r '[.analysis.proposed_new_items[]? | "- " + .type + ": " + .title] | join("\n")' /tmp/analyze-out.json)
+          NEEDS_TC=$(jq -r '[.analysis.test_plan.needs_new_tc[]?] | join(", ")' /tmp/analyze-out.json)
+
+          BODY="**Spec analysis for $CR_ID** | route: \`$ROUTE\`"$'\n'
+          [ -n "$IMPACT" ] && BODY="${BODY}"$'\n'"$IMPACT"$'\n'
+          if [ -n "$PROPOSED" ]; then
+            BODY="${BODY}"$'\n'"**Proposed new DHF items:**"$'\n'"$PROPOSED"$'\n'
+          fi
+          if [ -n "$NEEDS_TC" ]; then
+            BODY="${BODY}"$'\n'"**Test cases required for:** $NEEDS_TC"$'\n'
+          fi
+          gh pr comment "$PR_NUMBER" --body "$BODY"
 
   # ── SPEC: REVISE ──────────────────────────────────────────────────────────
 
@@ -353,22 +364,34 @@ jobs:
               "**Spec validation failed** for $CR_ID. Submit \`changes_requested\` to trigger a revision, then re-approve once the spec is updated."
             exit 1
           fi
-      - name: Check if design needed
+      - name: Check pipeline route
         id: design_check
         env:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
-          AFFECTED=$(awk '
-            /^affected_items:/ { found=1; next }
-            found && /^  - /  { count++ }
-            found && /^[a-z]/ { found=0 }
-            END { print count+0 }
-          ' "docs/cr-specs/${CR_ID}-Spec.md")
-          if [ "$AFFECTED" = "0" ]; then
+          ROUTE=$(jq -r '.pipeline_route // "standard"' "docs/cr-specs/${CR_ID}-Spec.json" 2>/dev/null || echo "standard")
+          echo "route=$ROUTE" >> "$GITHUB_OUTPUT"
+          if [ "$ROUTE" = "doc-only" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
+      - name: Preflight design validation
+        if: steps.design_check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          if ! python -m medharness ci validate-design \
+            --cr "$CR_ID" \
+            --dhf DHF \
+            --spec "docs/cr-specs/${CR_ID}-Spec.md"; then
+            gh pr comment "$PR_NUMBER" --body \
+              "⚠️ **Design preflight failed** for $CR_ID — spec references items that don't exist or the DHF has traceability gaps. Correct the affected items and re-approve."
+            exit 1
+          fi
+
       - name: Generate design
         if: steps.design_check.outputs.skip != 'true'
         env:
@@ -450,10 +473,11 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
           SKIP_DESIGN: ${{ steps.design_check.outputs.skip }}
+          ROUTE: ${{ steps.design_check.outputs.route }}
         run: |
           if [ "$SKIP_DESIGN" = "true" ]; then
             gh pr comment "$PR_NUMBER" \
-              --body "No DHF items affected by $CR_ID — design stage skipped. Approve to proceed to implementation."
+              --body "$CR_ID pipeline route is \`$ROUTE\` — design stage skipped. Approve to proceed to implementation."
           fi
           gh pr edit "$PR_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design"
           ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
