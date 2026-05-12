@@ -10,6 +10,14 @@ inputs:
     description: Python interpreter version
     required: false
     default: '3.11'
+  version:
+    description: PyPI version to install when no git ref override is set
+    required: false
+    default: '0.3.5'
+  git-ref:
+    description: Optional MedHarness git ref to install for downstream validation
+    required: false
+    default: 'codex/cr-a-structured-analyze-output'
 
 runs:
   using: composite
@@ -21,4 +29,9 @@ runs:
 
     - name: Install medharness
       shell: bash
-      run: pip install "medharness${{ inputs.extras }}==0.3.5"
+      run: |
+        if [ -n "${{ inputs.git-ref }}" ]; then
+          pip install "medharness${{ inputs.extras }} @ git+https://github.com/itercharles/MedHarness.git@${{ inputs.git-ref }}"
+        else
+          pip install "medharness${{ inputs.extras }}==${{ inputs.version }}"
+        fi
