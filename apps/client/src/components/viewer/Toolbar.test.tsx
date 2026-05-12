@@ -321,12 +321,13 @@ describe('Toolbar contour operations', () => {
     );
   });
 
-  it('links DHF artifacts to the direct API download route', () => {
+  it('links DHF artifacts to the nightly artifact bundle URL', () => {
     renderToolbar();
 
     const link = screen.getByRole('link', { name: 'DHF Artifacts' });
-    expect(link.getAttribute('href')).toBe('/api/dhf-artifacts/latest');
-    expect(link.getAttribute('download')).toBe('');
+    expect(link.getAttribute('href')).toBe('https://nightly.link/itercharles/WebTPS/workflows/ci-pipeline.yml/main/dhf-artifacts.zip');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noreferrer');
   });
 
   it('saves active structure changes from the global title bar @links:SRS-018', async () => {

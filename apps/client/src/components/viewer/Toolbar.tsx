@@ -17,7 +17,7 @@ const ACTIVITY_TONE_CLASS: Record<ActivityItem['tone'], string> = {
 };
 
 const WEBTPS_REPO_URL = 'https://github.com/itercharles/WebTPS';
-const DHF_ARTIFACTS_URL = '/api/dhf-artifacts/latest';
+const DHF_ARTIFACTS_URL = 'https://nightly.link/itercharles/WebTPS/workflows/ci-pipeline.yml/main/dhf-artifacts.zip';
 
 function formatActivityTime(value: string): string {
   const date = new Date(value);
@@ -335,8 +335,9 @@ export default function Toolbar() {
         {/* DHF Artifacts download — prototype highlight */}
         <a
           href={DHF_ARTIFACTS_URL}
-          download
-          title="Download the latest DHF artifacts from the most recent successful main CI run"
+          target="_blank"
+          rel="noreferrer"
+          title="Download latest DHF artifacts (dhf-artifacts.zip)"
           className="flex h-7 items-center gap-1.5 rounded border border-emerald-500/40 bg-emerald-950/20 px-2.5 text-[11px] font-medium text-emerald-400 transition-colors hover:bg-emerald-900/30 hover:text-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
