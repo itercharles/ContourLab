@@ -1,0 +1,16 @@
+id: CR-011
+title: remove the "submit or create an issue" in the about page.
+type: CR
+description: 'remove the "submit or create an issue" in the about page as there is
+  already an entrance in the main page.
+
+
+  Source issue: https://github.com/itercharles/WebTPS/issues/68'
+justification: remove the "submit or create an issue" in the about page as there is
+  already an entrance in the main page.
+priority: Medium
+requested_by: CharlesChenElekta
+target_version: 2026-W20
+category: Bug
+content: _No response_
+status: planned
