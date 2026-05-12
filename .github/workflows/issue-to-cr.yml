@@ -40,7 +40,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          medharness cr workflow intake-github-issue-ci \
+          python -m medharness cr workflow intake-github-issue-ci \
             --event "$GITHUB_EVENT_PATH" \
             --dhf-repo . \
             --source-repo "${{ github.repository }}" \
