@@ -211,7 +211,8 @@ jobs:
     if: |
       always() && !failure() && !cancelled() &&
       github.event_name == 'pull_request' &&
-      startsWith(github.event.pull_request.head.ref, 'feat/CR-')
+      startsWith(github.event.pull_request.head.ref, 'feat/CR-') &&
+      contains(github.event.pull_request.labels.*.name, 'cr:stage/code')
     steps:
       - uses: actions/checkout@v4
         with:
