@@ -169,7 +169,7 @@ jobs:
           echo "run_ci=true" >> "$GITHUB_OUTPUT"
 
   # ── DHF VALIDATION ────────────────────────────────────────────────────────
-  # Phase 2: DHF schema + design traceability check.
+  # Phase 2a: DHF schema + design traceability check.
   # Runs on every PR so spec/CR-* and design/CR-* branches are validated.
 
   dhf-validation:
@@ -195,6 +195,74 @@ jobs:
             --coverage-pair SRS:SWDD \
             --coverage-pair SYS:SYSARCH \
             --coverage-pair RISK:RCM
+
+  # ── CR BRANCH VALIDATION ─────────────────────────────────────────────────
+  # Phase 2b: For feat/CR-* implementation branches, verifies the branch
+  # carries the expected coupled change set (spec + DHF + code) and that all
+  # required test annotations (@links:<ID>) are present in the diff.
+  # Only runs on feat/CR-* PR branches — spec/design/cr branches skip this.
+
+  cr-branch-validation:
+    name: CR Branch Validation (coupled changes + test annotations)
+    runs-on: ubuntu-latest
+    needs: [cr-validation, changes]
+    permissions:
+      pull-requests: write
+    if: |
+      always() && !failure() && !cancelled() &&
+      github.event_name == 'pull_request' &&
+      startsWith(github.event.pull_request.head.ref, 'feat/CR-') &&
+      contains(github.event.pull_request.labels.*.name, 'cr:stage/code')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Fetch base for diff
+        run: git fetch origin main --depth 1
+      - uses: ./.github/actions/medharness-setup
+      - name: Validate branch coupling
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          CR_ID=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'CR-[0-9]+')
+          SPEC_JSON="docs/cr-specs/${CR_ID}-Spec.json"
+          ROUTE=$(jq -r '.pipeline_route // "standard"' "$SPEC_JSON" 2>/dev/null || echo "standard")
+
+          EXTRA_ARGS=""
+          if [ "$ROUTE" = "standard" ] || [ "$ROUTE" = "test-only" ]; then
+            EXTRA_ARGS="--code-path apps/ --code-path packages/"
+          fi
+          if ! medharness ci validate-branch \
+            --cr "$CR_ID" \
+            --spec "docs/cr-specs/${CR_ID}-Spec.md" \
+            --dhf DHF \
+            $EXTRA_ARGS; then
+            gh pr comment "$PR_NUMBER" --body \
+              "⚠️ **Branch validation failed** for $CR_ID — missing spec, DHF item changes, or code changes. See CI logs for details."
+            exit 1
+          fi
+
+      - name: Validate test annotations
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          CR_ID=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'CR-[0-9]+')
+          SPEC_JSON="docs/cr-specs/${CR_ID}-Spec.json"
+          ROUTE=$(jq -r '.pipeline_route // "standard"' "$SPEC_JSON" 2>/dev/null || echo "standard")
+          if [ "$ROUTE" != "standard" ] && [ "$ROUTE" != "test-only" ]; then
+            echo "Route $ROUTE does not require test annotations — skipping."
+            exit 0
+          fi
+          if ! medharness ci validate-code \
+            --cr "$CR_ID" \
+            --dhf DHF \
+            --spec "docs/cr-specs/${CR_ID}-Spec.md"; then
+            gh pr comment "$PR_NUMBER" --body \
+              "⚠️ **Test annotation check failed** for $CR_ID — one or more items in \`test_plan.needs_new_tc\` are missing \`@links:<ID>\` annotations. See CI logs for details."
+            exit 1
+          fi
 
   # ── DEVELOPMENT TESTING ────────────────────────────────────────────────────
   # Static analysis and compilation. Engineering feedback only — not compliance
