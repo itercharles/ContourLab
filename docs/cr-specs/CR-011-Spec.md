@@ -9,7 +9,7 @@ design_impact_summary: "Remove the redundant 'Submit or track an issue' CTA from
 test_plan:
   auto_covered: []
   needs_new_tc:
-    - "Update Toolbar.test.tsx: remove the assertion that the About dialog contains a 'Submit or track an issue' link; optionally assert the link is absent."
+    - "Update Toolbar.test.tsx: remove the assertion that the About dialog contains a 'Submit or track an issue' link; optionally assert the link is absent"
   must_be_manual:
     - "Open the About popup from the main workspace toolbar and confirm no issue-submission CTA is rendered."
 ---
