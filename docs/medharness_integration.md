@@ -29,7 +29,7 @@ workflow logic or the `medharness` package changes.
 
 ### MedHarness CLI Usage
 
-The current `medharness==0.3.7` contract in this repo is:
+The current `medharness==0.3.8` contract in this repo is:
 
 | Command | Expected form |
 | --- | --- |
