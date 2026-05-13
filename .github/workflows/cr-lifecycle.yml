@@ -166,6 +166,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -192,6 +193,27 @@ jobs:
         run: |
           set -o pipefail
           python -m medharness --dhf DHF ci analyze-cr --cr "$CR_ID" | tee /tmp/analyze-out.json
+
+      - name: Upload spec payload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medharness-spec-${{ needs.detect.outputs.cr_id }}
+          path: /tmp/analyze-out.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Surface warnings
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          [ ! -f /tmp/analyze-out.json ] && exit 0
+          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/analyze-out.json)
+          [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
+            --body "$(printf '⚠️ **Warnings during spec generation for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
 
       - name: Gate on spec validation
         env:
@@ -285,6 +307,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -302,6 +325,37 @@ jobs:
         run: |
           set -o pipefail
           python -m medharness --dhf DHF ci analyze-cr --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-spec-out.json
+
+      - name: Upload revise-spec payload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medharness-spec-revise-${{ needs.detect.outputs.cr_id }}-${{ github.run_id }}
+          path: /tmp/revise-spec-out.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Surface warnings and confirm PR feedback
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          [ ! -f /tmp/revise-spec-out.json ] && exit 0
+          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/revise-spec-out.json)
+          [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
+            --body "$(printf '⚠️ **Warnings during spec revision for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
+          HAS_FETCH_WARN=$(jq -r '.warnings[]? | select(.code == "github_feedback_env_missing") | .code' /tmp/revise-spec-out.json)
+          if [ -z "$HAS_FETCH_WARN" ]; then
+            COMMENTS=$(jq -r '.diagnostics.comments_count // 0' /tmp/revise-spec-out.json)
+            REVIEWS=$(jq -r '.diagnostics.reviews_count // 0' /tmp/revise-spec-out.json)
+            if [ "$COMMENTS" = "0" ] && [ "$REVIEWS" = "0" ]; then
+              echo "::warning::Spec revision for $CR_ID fetched 0 PR feedback items. If PR #$PR_NUMBER has reviewer comments, check GH_TOKEN pull-requests:read permission."
+            else
+              echo "PR feedback fetched: $COMMENTS comment(s), $REVIEWS review(s)"
+            fi
+          fi
 
       - name: Gate on spec validation
         env:
@@ -349,6 +403,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -404,6 +459,27 @@ jobs:
         run: |
           set -o pipefail
           python -m medharness --dhf DHF ci design-cr --cr "$CR_ID" | tee /tmp/design-out.json
+
+      - name: Upload design payload
+        if: always() && steps.design_check.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: medharness-design-${{ needs.detect.outputs.cr_id }}
+          path: /tmp/design-out.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Surface warnings
+        if: always() && steps.design_check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          [ ! -f /tmp/design-out.json ] && exit 0
+          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/design-out.json)
+          [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
+            --body "$(printf '⚠️ **Warnings during design generation for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
 
       - name: Gate on design validation
         if: steps.design_check.outputs.skip != 'true'
@@ -516,6 +592,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -533,6 +610,37 @@ jobs:
         run: |
           set -o pipefail
           python -m medharness --dhf DHF ci design-cr --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-design-out.json
+
+      - name: Upload revise-design payload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medharness-design-revise-${{ needs.detect.outputs.cr_id }}-${{ github.run_id }}
+          path: /tmp/revise-design-out.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Surface warnings and confirm PR feedback
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          [ ! -f /tmp/revise-design-out.json ] && exit 0
+          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/revise-design-out.json)
+          [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
+            --body "$(printf '⚠️ **Warnings during design revision for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
+          HAS_FETCH_WARN=$(jq -r '.warnings[]? | select(.code == "github_feedback_env_missing") | .code' /tmp/revise-design-out.json)
+          if [ -z "$HAS_FETCH_WARN" ]; then
+            COMMENTS=$(jq -r '.diagnostics.comments_count // 0' /tmp/revise-design-out.json)
+            REVIEWS=$(jq -r '.diagnostics.reviews_count // 0' /tmp/revise-design-out.json)
+            if [ "$COMMENTS" = "0" ] && [ "$REVIEWS" = "0" ]; then
+              echo "::warning::Design revision for $CR_ID fetched 0 PR feedback items. If PR #$PR_NUMBER has reviewer comments, check GH_TOKEN pull-requests:read permission."
+            else
+              echo "PR feedback fetched: $COMMENTS comment(s), $REVIEWS review(s)"
+            fi
+          fi
 
       - name: Gate on design validation
         env:
@@ -596,6 +704,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -614,6 +723,27 @@ jobs:
         run: |
           set -o pipefail
           python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" | tee /tmp/develop-out.json
+
+      - name: Upload develop payload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medharness-develop-${{ needs.detect.outputs.cr_id }}
+          path: /tmp/develop-out.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Surface warnings
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          [ ! -f /tmp/develop-out.json ] && exit 0
+          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/develop-out.json)
+          [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
+            --body "$(printf '⚠️ **Warnings during implementation generation for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
 
       - name: Gate on implementation validation
         env:
@@ -745,6 +875,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -764,6 +895,37 @@ jobs:
         run: |
           set -o pipefail
           python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-code-out.json
+
+      - name: Upload revise-code payload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medharness-develop-revise-${{ needs.detect.outputs.cr_id }}-${{ github.run_id }}
+          path: /tmp/revise-code-out.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Surface warnings and confirm PR feedback
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          [ ! -f /tmp/revise-code-out.json ] && exit 0
+          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/revise-code-out.json)
+          [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
+            --body "$(printf '⚠️ **Warnings during implementation revision for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
+          HAS_FETCH_WARN=$(jq -r '.warnings[]? | select(.code == "github_feedback_env_missing") | .code' /tmp/revise-code-out.json)
+          if [ -z "$HAS_FETCH_WARN" ]; then
+            COMMENTS=$(jq -r '.diagnostics.comments_count // 0' /tmp/revise-code-out.json)
+            REVIEWS=$(jq -r '.diagnostics.reviews_count // 0' /tmp/revise-code-out.json)
+            if [ "$COMMENTS" = "0" ] && [ "$REVIEWS" = "0" ]; then
+              echo "::warning::Implementation revision for $CR_ID fetched 0 PR feedback items. If PR #$PR_NUMBER has reviewer comments, check GH_TOKEN pull-requests:read permission."
+            else
+              echo "PR feedback fetched: $COMMENTS comment(s), $REVIEWS review(s)"
+            fi
+          fi
 
       - name: Gate on implementation validation
         env:
