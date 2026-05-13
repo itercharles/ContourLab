@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -12,6 +13,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CI_PIPELINE = REPO_ROOT / ".github" / "workflows" / "ci-pipeline.yml"
 CR_LIFECYCLE = REPO_ROOT / ".github" / "workflows" / "cr-lifecycle.yml"
 RESOLVE_DESIGN_ROUTE = REPO_ROOT / "scripts" / "ci" / "resolve_cr_design_route.py"
+MEDHARNESS_ACTION = REPO_ROOT / ".github" / "actions" / "medharness-setup" / "action.yml"
+REQUIREMENTS_TXT = REPO_ROOT / "requirements.txt"
 
 
 def iter_reference_specs() -> list[tuple[str, str]]:
@@ -106,6 +109,22 @@ def main() -> int:
             str(reference_spec_json),
         )
         require(code == 0, f"resolve_cr_design_route.py failed:\n{output}", errors)
+
+    action_text = MEDHARNESS_ACTION.read_text(encoding="utf-8")
+    req_text = REQUIREMENTS_TXT.read_text(encoding="utf-8")
+    action_match = re.search(r'medharness.*?==([0-9]+\.[0-9]+\.[0-9]+)', action_text)
+    req_match = re.search(r'medharness(?:\[[^\]]+\])?==([0-9]+\.[0-9]+\.[0-9]+)', req_text)
+    if action_match and req_match:
+        require(
+            action_match.group(1) == req_match.group(1),
+            f"medharness version mismatch: action pins {action_match.group(1)}, requirements.txt pins {req_match.group(1)}",
+            errors,
+        )
+    else:
+        if not action_match:
+            errors.append("medharness-setup/action.yml does not contain a pinned medharness==X.Y.Z install")
+        if not req_match:
+            errors.append("requirements.txt does not contain a pinned medharness==X.Y.Z line")
 
     ci_text = CI_PIPELINE.read_text(encoding="utf-8")
     cr_text = CR_LIFECYCLE.read_text(encoding="utf-8")
