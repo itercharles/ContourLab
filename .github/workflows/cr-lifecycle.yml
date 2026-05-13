@@ -7,9 +7,6 @@ run-name: >-
         github.event.pull_request.head.ref,
         github.event.review.state || (github.event.pull_request.merged == true && 'merged' || 'closed')) }}
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 on:
   pull_request_review:
     types: [submitted]
@@ -53,7 +50,7 @@ jobs:
       branch: ${{ steps.enrich.outputs.branch }}
       issue_number: ${{ steps.enrich.outputs.issue_number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
       - uses: ./.github/actions/medharness-setup
@@ -122,7 +119,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -170,7 +167,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
           token: ${{ secrets.ACTIONS_PAT }}
@@ -201,8 +198,8 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          STATUS=$(jq -r '.status // "unknown"' /tmp/analyze-out.json)
-          if [ "$STATUS" = "completed_with_errors" ]; then
+          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/analyze-out.json)
+          if [ "$OUTCOME" = "completed_with_errors" ]; then
             ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/analyze-out.json)
             BODY=$(printf '⚠️ **Spec validation has residual errors** for %s:\n\n%s\n\nFix the spec front-matter and submit `changes_requested` to trigger a revision.' "$CR_ID" "$ERRORS")
             gh pr comment "$PR_NUMBER" --body "$BODY"
@@ -215,9 +212,9 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          DISPOSITION=$(jq -r '.analysis.disposition // "approve"' /tmp/analyze-out.json)
+          DISPOSITION=$(jq -r '.artifacts.analysis.disposition // "approve"' /tmp/analyze-out.json)
           if echo "$DISPOSITION" | grep -qE '^(decline:|hold:)'; then
-            RATIONALE=$(jq -r '.analysis.decline_rationale // "No rationale provided."' /tmp/analyze-out.json)
+            RATIONALE=$(jq -r '.artifacts.analysis.decline_rationale // "No rationale provided."' /tmp/analyze-out.json)
             BODY=$(printf '**%s triaged as `%s`**\n\n%s\n\nThe CR has been declined or placed on hold at the triage stage. No spec will be written. Close this PR or update the CR YAML and re-approve to reconsider.' "$CR_ID" "$DISPOSITION" "$RATIONALE")
             gh pr comment "$PR_NUMBER" --body "$BODY"
             exit 1
@@ -234,13 +231,12 @@ jobs:
           git add docs/cr-specs/ DHF/items/
           COMMITTED=false
           if ! git diff --staged --quiet; then
-            VALIDATION=$(jq -r '.validation // "unknown"' /tmp/analyze-out.json)
-            CORRECTIONS=$(jq -r '.corrections // 0' /tmp/analyze-out.json)
-            DISPOSITION=$(jq -r '.analysis.disposition // "approve"' /tmp/analyze-out.json)
-            ROUTE=$(jq -r '.analysis.pipeline_route // "standard"' /tmp/analyze-out.json)
+            OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/analyze-out.json)
+            DISPOSITION=$(jq -r '.artifacts.analysis.disposition // "approve"' /tmp/analyze-out.json)
+            ROUTE=$(jq -r '.artifacts.analysis.pipeline_route // "standard"' /tmp/analyze-out.json)
             git commit \
               -m "docs: spec for $CR_ID" \
-              -m "Disposition: $DISPOSITION | Route: $ROUTE | Validation: $VALIDATION ($CORRECTIONS correction(s))"
+              -m "Disposition: $DISPOSITION | Route: $ROUTE | Outcome: $OUTCOME"
             git push
             COMMITTED=true
           fi
@@ -261,12 +257,14 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          ROUTE=$(jq -r '.analysis.pipeline_route // "standard"' /tmp/analyze-out.json)
-          IMPACT=$(jq -r '.analysis.design_impact_summary // ""' /tmp/analyze-out.json)
-          PROPOSED=$(jq -r '[.analysis.proposed_new_items[]? | "- " + .type + ": " + .title] | join("\n")' /tmp/analyze-out.json)
-          NEEDS_TC=$(jq -r '[.analysis.test_plan.needs_new_tc[]?] | join(", ")' /tmp/analyze-out.json)
+          ROUTE=$(jq -r '.artifacts.analysis.pipeline_route // "standard"' /tmp/analyze-out.json)
+          IMPACT=$(jq -r '.artifacts.analysis.design_impact_summary // ""' /tmp/analyze-out.json)
+          PROPOSED=$(jq -r '[.artifacts.analysis.proposed_new_items[]? | "- " + .type + ": " + .title] | join("\n")' /tmp/analyze-out.json)
+          NEEDS_TC=$(jq -r '[.artifacts.analysis.test_plan.needs_new_tc[]?] | join(", ")' /tmp/analyze-out.json)
+          SUMMARY=$(jq -r '.summary // ""' /tmp/analyze-out.json)
 
           BODY="**Spec analysis for $CR_ID** | route: \`$ROUTE\`"$'\n'
+          [ -n "$SUMMARY" ] && BODY="${BODY}"$'\n'"$SUMMARY"$'\n'
           [ -n "$IMPACT" ] && BODY="${BODY}"$'\n'"$IMPACT"$'\n'
           if [ -n "$PROPOSED" ]; then
             BODY="${BODY}"$'\n'"**Proposed new DHF items:**"$'\n'"$PROPOSED"$'\n'
@@ -287,7 +285,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
           token: ${{ secrets.ACTIONS_PAT }}
@@ -309,8 +307,8 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          STATUS=$(jq -r '.status // "unknown"' /tmp/revise-spec-out.json)
-          if [ "$STATUS" = "completed_with_errors" ]; then
+          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-spec-out.json)
+          if [ "$OUTCOME" = "completed_with_errors" ]; then
             ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/revise-spec-out.json)
             BODY=$(printf '⚠️ **Spec revision still has residual errors** for %s:\n\n%s' "$CR_ID" "$ERRORS")
             gh pr comment "$PR_NUMBER" --body "$BODY"
@@ -326,11 +324,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/cr-specs/ DHF/items/
           if ! git diff --staged --quiet; then
-            VALIDATION=$(jq -r '.validation // "unknown"' /tmp/revise-spec-out.json)
-            CORRECTIONS=$(jq -r '.corrections // 0' /tmp/revise-spec-out.json)
+            OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-spec-out.json)
             git commit \
               -m "docs: revise spec for $CR_ID" \
-              -m "Validation: $VALIDATION ($CORRECTIONS correction(s))"
+              -m "Outcome: $OUTCOME"
             git push
           fi
 
@@ -351,7 +348,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
           token: ${{ secrets.ACTIONS_PAT }}
@@ -412,8 +409,8 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          STATUS=$(jq -r '.status // "unknown"' /tmp/design-out.json)
-          if [ "$STATUS" = "completed_with_errors" ]; then
+          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/design-out.json)
+          if [ "$OUTCOME" = "completed_with_errors" ]; then
             ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/design-out.json)
             BODY=$(printf '⚠️ **Design validation has residual errors** for %s:\n\n%s\n\nReview the DHF items and submit `changes_requested` to trigger a design revision.' "$CR_ID" "$ERRORS")
             gh pr comment "$PR_NUMBER" --body "$BODY"
@@ -432,15 +429,14 @@ jobs:
           if ! git diff --staged --quiet; then
             COMMIT_BODY=""
             if [ -f /tmp/design-out.json ]; then
-              VALIDATION=$(jq -r '.validation // "unknown"' /tmp/design-out.json)
-              CORRECTIONS=$(jq -r '.corrections // 0' /tmp/design-out.json)
-              CREATED=$(jq -r '.items_changed.created | join(", ")' /tmp/design-out.json)
-              UPDATED=$(jq -r '.items_changed.updated | join(", ")' /tmp/design-out.json)
-              DELETED=$(jq -r '.items_changed.deleted | join(", ")' /tmp/design-out.json)
+              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/design-out.json)
+              CREATED=$(jq -r '.artifacts.items_changed.created | join(", ")' /tmp/design-out.json)
+              UPDATED=$(jq -r '.artifacts.items_changed.updated | join(", ")' /tmp/design-out.json)
+              DELETED=$(jq -r '.artifacts.items_changed.deleted | join(", ")' /tmp/design-out.json)
               [ -n "$CREATED" ] && COMMIT_BODY="${COMMIT_BODY}Created: ${CREATED}"$'\n'
               [ -n "$UPDATED" ] && COMMIT_BODY="${COMMIT_BODY}Updated: ${UPDATED}"$'\n'
               [ -n "$DELETED" ] && COMMIT_BODY="${COMMIT_BODY}Deleted: ${DELETED}"$'\n'
-              COMMIT_BODY="${COMMIT_BODY}Validation: ${VALIDATION} (${CORRECTIONS} correction(s))"
+              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
             fi
             if [ -n "$COMMIT_BODY" ]; then
               git commit -m "feat: design $CR_ID" -m "$COMMIT_BODY"
@@ -518,7 +514,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
           token: ${{ secrets.ACTIONS_PAT }}
@@ -540,8 +536,8 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          STATUS=$(jq -r '.status // "unknown"' /tmp/revise-design-out.json)
-          if [ "$STATUS" = "completed_with_errors" ]; then
+          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-design-out.json)
+          if [ "$OUTCOME" = "completed_with_errors" ]; then
             ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/revise-design-out.json)
             BODY=$(printf '⚠️ **Design revision still has residual errors** for %s:\n\n%s' "$CR_ID" "$ERRORS")
             gh pr comment "$PR_NUMBER" --body "$BODY"
@@ -559,15 +555,14 @@ jobs:
           if ! git diff --staged --quiet; then
             COMMIT_BODY=""
             if [ -f /tmp/revise-design-out.json ]; then
-              VALIDATION=$(jq -r '.validation // "unknown"' /tmp/revise-design-out.json)
-              CORRECTIONS=$(jq -r '.corrections // 0' /tmp/revise-design-out.json)
-              CREATED=$(jq -r '.items_changed.created | join(", ")' /tmp/revise-design-out.json)
-              UPDATED=$(jq -r '.items_changed.updated | join(", ")' /tmp/revise-design-out.json)
-              DELETED=$(jq -r '.items_changed.deleted | join(", ")' /tmp/revise-design-out.json)
+              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-design-out.json)
+              CREATED=$(jq -r '.artifacts.items_changed.created | join(", ")' /tmp/revise-design-out.json)
+              UPDATED=$(jq -r '.artifacts.items_changed.updated | join(", ")' /tmp/revise-design-out.json)
+              DELETED=$(jq -r '.artifacts.items_changed.deleted | join(", ")' /tmp/revise-design-out.json)
               [ -n "$CREATED" ] && COMMIT_BODY="${COMMIT_BODY}Created: ${CREATED}"$'\n'
               [ -n "$UPDATED" ] && COMMIT_BODY="${COMMIT_BODY}Updated: ${UPDATED}"$'\n'
               [ -n "$DELETED" ] && COMMIT_BODY="${COMMIT_BODY}Deleted: ${DELETED}"$'\n'
-              COMMIT_BODY="${COMMIT_BODY}Validation: ${VALIDATION} (${CORRECTIONS} correction(s))"
+              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
             fi
             if [ -n "$COMMIT_BODY" ]; then
               git commit -m "feat: revise design $CR_ID" -m "$COMMIT_BODY"
@@ -598,7 +593,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
           token: ${{ secrets.ACTIONS_PAT }}
@@ -621,8 +616,8 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          STATUS=$(jq -r '.status // "unknown"' /tmp/develop-out.json)
-          if [ "$STATUS" = "completed_with_errors" ]; then
+          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/develop-out.json)
+          if [ "$OUTCOME" = "completed_with_errors" ]; then
             ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/develop-out.json)
             BODY=$(printf '⚠️ **Implementation validation has residual errors** for %s:\n\n%s\n\nReview the code and submit `changes_requested` to trigger an implementation revision.' "$CR_ID" "$ERRORS")
             gh pr comment "$PR_NUMBER" --body "$BODY"
@@ -644,13 +639,12 @@ jobs:
           if ! git diff --staged --quiet; then
             COMMIT_BODY=""
             if [ -f /tmp/develop-out.json ]; then
-              VALIDATION=$(jq -r '.validation // "unknown"' /tmp/develop-out.json)
-              CORRECTIONS=$(jq -r '.corrections // 0' /tmp/develop-out.json)
-              CREATED_COUNT=$(jq -r '.files_changed.created | length' /tmp/develop-out.json)
-              UPDATED_COUNT=$(jq -r '.files_changed.updated | length' /tmp/develop-out.json)
-              DELETED_COUNT=$(jq -r '.files_changed.deleted | length' /tmp/develop-out.json)
+              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/develop-out.json)
+              CREATED_COUNT=$(jq -r '.artifacts.files_changed.created | length' /tmp/develop-out.json)
+              UPDATED_COUNT=$(jq -r '.artifacts.files_changed.updated | length' /tmp/develop-out.json)
+              DELETED_COUNT=$(jq -r '.artifacts.files_changed.deleted | length' /tmp/develop-out.json)
               COMMIT_BODY="Files: +${CREATED_COUNT} ~${UPDATED_COUNT} -${DELETED_COUNT}"$'\n'
-              COMMIT_BODY="${COMMIT_BODY}Validation: ${VALIDATION} (${CORRECTIONS} correction(s))"
+              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
             fi
             if [ -n "$COMMIT_BODY" ]; then
               git commit -m "feat: implement $CR_ID" -m "$COMMIT_BODY"
@@ -747,7 +741,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
           token: ${{ secrets.ACTIONS_PAT }}
@@ -771,8 +765,8 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          STATUS=$(jq -r '.status // "unknown"' /tmp/revise-code-out.json)
-          if [ "$STATUS" = "completed_with_errors" ]; then
+          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-code-out.json)
+          if [ "$OUTCOME" = "completed_with_errors" ]; then
             ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/revise-code-out.json)
             BODY=$(printf '⚠️ **Implementation revision still has residual errors** for %s:\n\n%s' "$CR_ID" "$ERRORS")
             gh pr comment "$PR_NUMBER" --body "$BODY"
@@ -790,13 +784,12 @@ jobs:
           if ! git diff --staged --quiet; then
             COMMIT_BODY=""
             if [ -f /tmp/revise-code-out.json ]; then
-              VALIDATION=$(jq -r '.validation // "unknown"' /tmp/revise-code-out.json)
-              CORRECTIONS=$(jq -r '.corrections // 0' /tmp/revise-code-out.json)
-              CREATED_COUNT=$(jq -r '.files_changed.created | length' /tmp/revise-code-out.json)
-              UPDATED_COUNT=$(jq -r '.files_changed.updated | length' /tmp/revise-code-out.json)
-              DELETED_COUNT=$(jq -r '.files_changed.deleted | length' /tmp/revise-code-out.json)
+              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-code-out.json)
+              CREATED_COUNT=$(jq -r '.artifacts.files_changed.created | length' /tmp/revise-code-out.json)
+              UPDATED_COUNT=$(jq -r '.artifacts.files_changed.updated | length' /tmp/revise-code-out.json)
+              DELETED_COUNT=$(jq -r '.artifacts.files_changed.deleted | length' /tmp/revise-code-out.json)
               COMMIT_BODY="Files: +${CREATED_COUNT} ~${UPDATED_COUNT} -${DELETED_COUNT}"$'\n'
-              COMMIT_BODY="${COMMIT_BODY}Validation: ${VALIDATION} (${CORRECTIONS} correction(s))"
+              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
             fi
             if [ -n "$COMMIT_BODY" ]; then
               git commit -m "fix: revise implementation $CR_ID" -m "$COMMIT_BODY"
