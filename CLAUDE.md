@@ -145,7 +145,7 @@ each gated by human approval:
 pushing, ask the user whether to open a PR or merge locally — do not decide unilaterally.
 
 - Branch: `feature/`, `fix/`, `refactor/`, `cr/CR-NNN`, `spec/CR-NNN`, `design/CR-NNN`, or `feat/CR-NNN`
-- Title: `feat(CR-042): description` — always include CR ID
+- Title: `feat(CR-042): description` — always include CR ID for CR-backed changes; use `chore(<scope>):` or `fix(<scope>):` for infra/housekeeping PRs with no CR
 - Body: change summary · DHF files updated (or reason not to) · validation run · manual testing remaining
 - After opening: monitor CI and review comments; every comment gets an explicit decision (fix / reply / defer / ask)
 
