@@ -90,7 +90,7 @@ jobs:
             echo "Review the CR definition in \`DHF/items/09_cr/$CR_ID.yaml\`, then approve to trigger AI spec generation."
             if [ "$SPEC_GENERATED" = "true" ]; then
               echo ""
-              echo "**Draft spec pre-generated** during intake (\`$SPEC_STATUS\`). Review \`docs/cr-specs/$CR_ID-Spec.md\` before approving — approving will advance directly to AI design generation."
+              echo "**Draft spec pre-generated** during intake (\`$SPEC_STATUS\`). Review \`docs/cr-specs/$CR_ID-Spec.md\` alongside the CR YAML — approving will run a spec revision pass, then advance to spec review."
             elif [ -n "$SPEC_ERROR" ]; then
               echo ""
               echo "_Note: Draft spec generation was attempted but did not complete (\`$SPEC_ERROR\`). Approving will trigger fresh spec generation._"

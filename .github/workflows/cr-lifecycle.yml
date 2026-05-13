@@ -190,6 +190,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
+          set -o pipefail
           python -m medharness --dhf DHF ci analyze-cr --cr "$CR_ID" | tee /tmp/analyze-out.json
 
       - name: Gate on spec validation
@@ -299,6 +300,7 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
+          set -o pipefail
           python -m medharness --dhf DHF ci analyze-cr --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-spec-out.json
 
       - name: Gate on spec validation
@@ -400,6 +402,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
+          set -o pipefail
           python -m medharness --dhf DHF ci design-cr --cr "$CR_ID" | tee /tmp/design-out.json
 
       - name: Gate on design validation
@@ -528,6 +531,7 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
+          set -o pipefail
           python -m medharness --dhf DHF ci design-cr --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-design-out.json
 
       - name: Gate on design validation
@@ -608,6 +612,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
+          set -o pipefail
           python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" | tee /tmp/develop-out.json
 
       - name: Gate on implementation validation
@@ -757,6 +762,7 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
+          set -o pipefail
           python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-code-out.json
 
       - name: Gate on implementation validation
