@@ -254,9 +254,8 @@ jobs:
             echo "Route $ROUTE does not require test annotations — skipping."
             exit 0
           fi
-          if ! medharness ci validate-code \
+          if ! medharness --dhf DHF ci validate-code \
             --cr "$CR_ID" \
-            --dhf DHF \
             --spec "docs/cr-specs/${CR_ID}-Spec.md"; then
             gh pr comment "$PR_NUMBER" --body \
               "⚠️ **Test annotation check failed** for $CR_ID — one or more items in \`test_plan.needs_new_tc\` are missing \`@links:<ID>\` annotations. See CI logs for details."
