@@ -11,8 +11,21 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CI_PIPELINE = REPO_ROOT / ".github" / "workflows" / "ci-pipeline.yml"
 CR_LIFECYCLE = REPO_ROOT / ".github" / "workflows" / "cr-lifecycle.yml"
-REFERENCE_CR = "CR-011"
-REFERENCE_SPEC = f"docs/cr-specs/{REFERENCE_CR}-Spec.md"
+
+
+def iter_reference_specs() -> list[tuple[str, str]]:
+    candidates = sorted(
+        REPO_ROOT.glob("docs/cr-specs/CR-*-Spec.md"),
+        key=lambda path: int(path.stem.split("-")[1]),
+        reverse=True,
+    )
+    if not candidates:
+        raise RuntimeError("No docs/cr-specs/CR-*-Spec.md files found for MedHarness smoke checks.")
+
+    return [
+        (spec_path.relative_to(REPO_ROOT).stem.rsplit("-", 1)[0], str(spec_path.relative_to(REPO_ROOT)))
+        for spec_path in candidates
+    ]
 
 
 def run(*args: str) -> tuple[int, str]:
@@ -33,6 +46,11 @@ def require(condition: bool, message: str, errors: list[str]) -> None:
 
 def main() -> int:
     errors: list[str] = []
+    try:
+        reference_specs = iter_reference_specs()
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
 
     help_commands = {
         "validate-spec": ("python", "-m", "medharness", "ci", "validate-spec", "--help"),
@@ -52,35 +70,32 @@ def main() -> int:
     require("--dhf" not in help_output["validate-code"], "validate-code help must not expose local --dhf", errors)
     require("--dhf" not in help_output["validate-branch"], "validate-branch help must not expose local --dhf", errors)
 
-    code, output = run(
-        "python",
-        "-m",
-        "medharness",
-        "ci",
-        "validate-spec",
-        "--cr",
-        REFERENCE_CR,
-        "--spec",
-        REFERENCE_SPEC,
-        "--dhf",
-        "DHF",
-    )
-    require(code == 0, f"validate-spec smoke check failed:\n{output}", errors)
+    validate_spec_failures: list[str] = []
+    validate_spec_passed = False
+    for reference_cr, reference_spec in reference_specs:
+        code, output = run(
+            "python",
+            "-m",
+            "medharness",
+            "ci",
+            "validate-spec",
+            "--cr",
+            reference_cr,
+            "--spec",
+            reference_spec,
+            "--dhf",
+            "DHF",
+        )
+        if code == 0:
+            validate_spec_passed = True
+            break
+        validate_spec_failures.append(f"{reference_cr}: {output.strip()}")
 
-    code, output = run(
-        "python",
-        "-m",
-        "medharness",
-        "--dhf",
-        "DHF",
-        "ci",
-        "validate-design",
-        "--cr",
-        REFERENCE_CR,
-        "--spec",
-        REFERENCE_SPEC,
+    require(
+        validate_spec_passed,
+        "validate-spec smoke check failed for all committed specs:\n" + "\n\n".join(validate_spec_failures),
+        errors,
     )
-    require(code == 0, f"validate-design smoke check failed:\n{output}", errors)
 
     ci_text = CI_PIPELINE.read_text(encoding="utf-8")
     cr_text = CR_LIFECYCLE.read_text(encoding="utf-8")

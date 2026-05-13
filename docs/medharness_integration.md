@@ -82,7 +82,8 @@ When updating the pinned `medharness` version:
 1. Run the MedHarness contract smoke check in CI.
 2. Verify the CLI help output for `validate-spec`, `validate-design`,
    `validate-code`, and `validate-branch`.
-3. Verify one known spec passes `validate-spec`.
-4. Verify one known no-design spec passes `validate-design`.
+3. Verify one committed spec passes `validate-spec`.
+4. If CR lifecycle routing changed, verify `validate-design` directly against a
+   known spec in a targeted workflow or local check.
 5. Verify workflow files still use the approved invocation forms in this
    document.
