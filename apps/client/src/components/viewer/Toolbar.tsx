@@ -460,18 +460,6 @@ export default function Toolbar() {
                   </a>
                   {' '}— open-source design-controlled development infrastructure for medical device teams.
                 </p>
-
-                {/* CTA */}
-                <div className="mt-4">
-                  <Link
-                    to="/issues"
-                    reloadDocument
-                    onClick={() => setPrototypeInfoOpen(false)}
-                    className="inline-flex h-8 items-center rounded bg-blue-800 px-3 text-[13px] font-bold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-                  >
-                    Submit or track an issue →
-                  </Link>
-                </div>
               </div>
             </div>
           </div>
