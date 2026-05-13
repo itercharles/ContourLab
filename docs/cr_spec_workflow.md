@@ -20,7 +20,9 @@ One `feat/CR-NNN` Draft PR carries all stages. Branch and PR are opened at
 intake and stay open until the implementation is approved and merged.
 
 ```
-feat/CR-NNN  ──commit: CR YAML──▶  commit: spec──▶  commit: design──▶  commit: code──▶  merge
+                                          ┌─ (standard + DHF impact) ──▶  commit: design ──┐
+feat/CR-NNN  ──commit: CR YAML──▶  commit: spec ──┤                                         ├──▶  commit: code ──▶  merge
+                                          └─ (code-only or doc-only) ─────────────────────┘
 ```
 
 Stage position is tracked by a `cr:stage/*` label on the PR:
@@ -47,11 +49,14 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
 - Output: `docs/cr-specs/CR-NNN-Spec.md` committed to branch; label rotated to `cr:stage/spec`
 - If `changes_requested`: CR YAML is human-authored — update it manually and re-approve
 
-### Stage 2 — Spec Review → Design
+### Stage 2 — Spec Review → Design (or direct to Code)
 
 - Trigger: reviewer **approves** PR at `cr:stage/spec`
 - Workflow: `cr-lifecycle.yml`
-- Output: DHF design items committed to branch; label rotated to `cr:stage/design`
+- Output depends on the spec's route:
+  - **Standard with DHF impact** (`pipeline_route: standard`, non-empty `affected_items` or `proposed_new_items`): DHF design items committed; label rotated to `cr:stage/design`
+  - **Code-only** (`pipeline_route: standard`, both `affected_items` and `proposed_new_items` empty): design skipped; proceeds directly to implementation; label rotated to `cr:stage/code`
+  - **Doc-only** (`pipeline_route: doc-only`): design skipped; proceeds directly to implementation; label rotated to `cr:stage/code`
 - If `changes_requested`: AI revises spec and pushes; re-approve to continue
 
 ### Stage 3 — Design Review → Implementation
