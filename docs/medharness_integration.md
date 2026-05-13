@@ -24,6 +24,8 @@ workflow logic or the `medharness` package changes.
 - WebTPS locally treats `affected_items: []` plus `proposed_new_items: []` as a
   code-only signal and may skip DHF design generation even when
   `pipeline_route` is still `standard`.
+- WebTPS resolves that policy through `scripts/ci/resolve_cr_design_route.py`
+  rather than duplicating the decision tree inline in workflow bash.
 
 ### MedHarness CLI Usage
 
@@ -59,14 +61,15 @@ The following workflow defects were fixed during CR-011:
 
 ### WebTPS
 
-- Add a lightweight contract smoke check to CI for the pinned `medharness`
-  version and the workflow invocation forms used in this repo.
-- Reduce duplicated bash routing logic where possible and prefer one
-  machine-readable source per decision.
-- Keep the local "code-only / no DHF impact" bypass aligned with the
-  `Spec.json` contract and warn when upstream routing disagrees.
-- Keep workflow permissions minimal, but do not override job permissions in a
-  way that drops `contents: read` for checkout.
+- Completed: a lightweight contract smoke check now guards the pinned
+  `medharness` version and the workflow invocation forms used in this repo.
+- Completed: design-route policy is centralized in
+  `scripts/ci/resolve_cr_design_route.py` instead of duplicated inline in
+  workflow bash.
+- Completed: the local "code-only / no DHF impact" bypass is aligned with the
+  `Spec.json` contract and warns when upstream routing disagrees.
+- Completed: workflow permissions were tightened without dropping
+  `contents: read` where checkout requires it.
 
 ### MedHarness
 

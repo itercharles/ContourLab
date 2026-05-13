@@ -11,6 +11,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CI_PIPELINE = REPO_ROOT / ".github" / "workflows" / "ci-pipeline.yml"
 CR_LIFECYCLE = REPO_ROOT / ".github" / "workflows" / "cr-lifecycle.yml"
+RESOLVE_DESIGN_ROUTE = REPO_ROOT / "scripts" / "ci" / "resolve_cr_design_route.py"
 
 
 def iter_reference_specs() -> list[tuple[str, str]]:
@@ -72,6 +73,7 @@ def main() -> int:
 
     validate_spec_failures: list[str] = []
     validate_spec_passed = False
+    reference_spec_json: str | None = None
     for reference_cr, reference_spec in reference_specs:
         code, output = run(
             "python",
@@ -88,6 +90,7 @@ def main() -> int:
         )
         if code == 0:
             validate_spec_passed = True
+            reference_spec_json = reference_spec.replace("-Spec.md", "-Spec.json")
             break
         validate_spec_failures.append(f"{reference_cr}: {output.strip()}")
 
@@ -96,6 +99,15 @@ def main() -> int:
         "validate-spec smoke check failed for all committed specs:\n" + "\n\n".join(validate_spec_failures),
         errors,
     )
+    require(RESOLVE_DESIGN_ROUTE.is_file(), "resolve_cr_design_route.py must exist", errors)
+    if reference_spec_json is not None:
+        code, output = run(
+            "python",
+            str(RESOLVE_DESIGN_ROUTE),
+            "--spec-json",
+            reference_spec_json,
+        )
+        require(code == 0, f"resolve_cr_design_route.py failed:\n{output}", errors)
 
     ci_text = CI_PIPELINE.read_text(encoding="utf-8")
     cr_text = CR_LIFECYCLE.read_text(encoding="utf-8")
@@ -116,8 +128,8 @@ def main() -> int:
         errors,
     )
     require(
-        "reason=code-only-no-dhf" in cr_text,
-        "cr-lifecycle.yml must preserve the code-only skip-design reason marker",
+        "python scripts/ci/resolve_cr_design_route.py" in cr_text,
+        "cr-lifecycle.yml must resolve design routing through resolve_cr_design_route.py",
         errors,
     )
     require(

@@ -377,32 +377,9 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
           SPEC_JSON="docs/cr-specs/${CR_ID}-Spec.json"
-          if [ ! -f "$SPEC_JSON" ]; then
-            echo "::error::Missing required spec JSON companion: $SPEC_JSON"
-            exit 1
-          fi
-          ROUTE=$(jq -er '.pipeline_route' "$SPEC_JSON")
-          AFFECTED_COUNT=$(jq -r '(.affected_items // []) | length' "$SPEC_JSON")
-          PROPOSED_COUNT=$(jq -r '(.proposed_new_items // []) | length' "$SPEC_JSON")
-          echo "route=$ROUTE" >> "$GITHUB_OUTPUT"
-          echo "affected_count=$AFFECTED_COUNT" >> "$GITHUB_OUTPUT"
-          echo "proposed_count=$PROPOSED_COUNT" >> "$GITHUB_OUTPUT"
-          if [ "$ROUTE" = "doc-only" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "reason=route-doc-only" >> "$GITHUB_OUTPUT"
-            echo "continue_to_code=false" >> "$GITHUB_OUTPUT"
-            echo "route_mismatch=false" >> "$GITHUB_OUTPUT"
-          elif [ "$ROUTE" = "standard" ] && [ "$AFFECTED_COUNT" = "0" ] && [ "$PROPOSED_COUNT" = "0" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "reason=code-only-no-dhf" >> "$GITHUB_OUTPUT"
-            echo "continue_to_code=true" >> "$GITHUB_OUTPUT"
-            echo "route_mismatch=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "reason=standard-design" >> "$GITHUB_OUTPUT"
-            echo "continue_to_code=false" >> "$GITHUB_OUTPUT"
-            echo "route_mismatch=false" >> "$GITHUB_OUTPUT"
-          fi
+          python scripts/ci/resolve_cr_design_route.py \
+            --spec-json "$SPEC_JSON" \
+            --github-output "$GITHUB_OUTPUT"
       - name: Preflight design validation
         if: steps.design_check.outputs.skip != 'true'
         env:
