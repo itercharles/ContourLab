@@ -2,9 +2,6 @@ name: WebTPS Product CI/CD
 
 run-name: Product CI/CD | ${{ github.event_name }} | ${{ github.event.pull_request.title || github.event.head_commit.message || github.ref_name }}
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 on:
   push:
     branches: [ main, feat/* ]
@@ -26,7 +23,7 @@ jobs:
     name: MedHarness Contract
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/medharness-setup
 
@@ -48,7 +45,7 @@ jobs:
       any_code:     ${{ steps.scope.outputs.any_code }}
       skip_all:     ${{ steps.scope.outputs.skip_all }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -194,7 +191,7 @@ jobs:
     if: always() && !failure() && !cancelled() && needs.changes.outputs.dhf == 'true'
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: ./.github/actions/medharness-setup
 
@@ -230,7 +227,7 @@ jobs:
       startsWith(github.event.pull_request.head.ref, 'feat/CR-') &&
       contains(github.event.pull_request.labels.*.name, 'cr:stage/code')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
       - name: Fetch base for diff
@@ -287,7 +284,7 @@ jobs:
     needs: [medharness-contract, cr-validation, stage-gate, changes]
     if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.client == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-webtps-frontend
       - run: pnpm --filter @webtps/client lint
       - run: pnpm --filter @webtps/client typecheck
@@ -299,7 +296,7 @@ jobs:
     needs: [medharness-contract, cr-validation, stage-gate, changes]
     if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.api == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-webtps-api
       - run: dotnet build apps/api/api.csproj --configuration Release --no-restore
       - name: Run API tests
@@ -318,7 +315,7 @@ jobs:
     needs: [medharness-contract, cr-validation, stage-gate, changes]
     if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.shared_types == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-webtps-frontend
       - run: pnpm --filter @webtps/shared-types typecheck
       - run: pnpm --filter @webtps/shared-types build
@@ -329,7 +326,7 @@ jobs:
     needs: [medharness-contract, dev-frontend, dev-api, dev-shared-types, changes]
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-webtps-frontend
       - uses: ./.github/actions/setup-webtps-api
       - name: Start DICOM repository
@@ -370,7 +367,7 @@ jobs:
     needs: [medharness-contract, dev-frontend, dev-shared-types, changes]
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-webtps-frontend
       - name: Run SRS verification tests
         run: pnpm --filter @webtps/client test
@@ -390,7 +387,7 @@ jobs:
     needs: [medharness-contract, dev-frontend, dev-shared-types, changes]
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-webtps-frontend
 
       - name: Install Playwright
@@ -443,7 +440,7 @@ jobs:
     needs: [medharness-contract, dev-frontend, dev-api, dev-shared-types, changes]
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-webtps-frontend
       - uses: ./.github/actions/setup-webtps-api
 
@@ -505,7 +502,7 @@ jobs:
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: ./.github/actions/medharness-setup
 
@@ -560,7 +557,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && !failure() && !cancelled()
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install system dependencies for PDF export
         run: |
@@ -651,7 +648,7 @@ jobs:
             2>/dev/null || true
 
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Deploy WebTPS stack
         env:
