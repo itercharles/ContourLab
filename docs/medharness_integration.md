@@ -40,56 +40,14 @@ The current `medharness==0.3.8` contract in this repo is:
 | `dhf-validate` | `medharness ci dhf-validate --dhf DHF ...` |
 | `test-coverage` | `medharness ci test-coverage --dhf DHF ...` |
 
-The important rule is that `validate-design`, `validate-code`, and
-`validate-branch` must receive the DHF path through the global `--dhf` option.
-Do not pass `--dhf` as a subcommand-local option for those commands.
-
-## CR-011 Failures Fixed
-
-The following workflow defects were fixed during CR-011:
-
-- `cr-lifecycle.yml` no longer passes the obsolete local `--dhf` flag to
-  `validate-design`.
-- `cr-lifecycle.yml` now fails hard when `CR-NNN-Spec.json` is missing.
-- `ci-pipeline.yml` restores `contents: read` for `CR Branch Validation`.
-- `ci-pipeline.yml` now calls `validate-branch` with global `--dhf`.
-- `ci-pipeline.yml` now calls `validate-code` with global `--dhf`.
-- CR-011 spec/test annotation text was normalized so deterministic
-  `@links:` matching succeeds.
-
-## Improvement Plan
-
-### WebTPS
-
-- Completed: a lightweight contract smoke check now guards the pinned
-  `medharness` version and the workflow invocation forms used in this repo.
-- Completed: design-route policy is centralized in
-  `scripts/ci/resolve_cr_design_route.py` instead of duplicated inline in
-  workflow bash.
-- Completed: the local "code-only / no DHF impact" bypass is aligned with the
-  `Spec.json` contract and warns when upstream routing disagrees.
-- Completed: workflow permissions were tightened without dropping
-  `contents: read` where checkout requires it.
-
-### MedHarness
-
-- Make CI subcommands consistent about DHF path handling.
-- Normalize spec paths internally before relative-path operations.
-- Make `test_plan.needs_new_tc` matching less brittle than literal prose plus
-  punctuation.
-- Improve route generation for code-only CRs where no DHF design updates are
-  required.
-- Add integration tests for the exact CLI forms used by downstream repos.
+`validate-design`, `validate-code`, and `validate-branch` receive the DHF path
+through the global `--dhf` option. Do not pass `--dhf` as a subcommand-local
+option for those commands.
 
 ## Operational Checklist For A MedHarness Bump
 
 When updating the pinned `medharness` version:
 
-1. Run the MedHarness contract smoke check in CI.
-2. Verify the CLI help output for `validate-spec`, `validate-design`,
-   `validate-code`, and `validate-branch`.
-3. Verify one committed spec passes `validate-spec`.
-4. If CR lifecycle routing changed, verify `validate-design` directly against a
-   known spec in a targeted workflow or local check.
-5. Verify workflow files still use the approved invocation forms in this
-   document.
+1. Update the version in `requirements.txt` and `.github/actions/medharness-setup/action.yml` — both must match or `check_medharness_contract.py` will fail.
+2. Run `python scripts/ci/check_medharness_contract.py` locally.
+3. Open a PR — the `medharness-contract` CI job verifies CLI help flag shapes, spec validation, and workflow invocation patterns automatically.
