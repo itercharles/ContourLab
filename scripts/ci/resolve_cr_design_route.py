@@ -27,8 +27,6 @@ def resolve_route(spec_data: dict[str, object]) -> dict[str, str]:
     if route == "doc-only":
         return {
             "route": route,
-            "affected_count": str(affected_count),
-            "proposed_count": str(proposed_count),
             "skip": "true",
             "reason": "route-doc-only",
             "continue_to_code": "false",
@@ -38,8 +36,6 @@ def resolve_route(spec_data: dict[str, object]) -> dict[str, str]:
     if route == "standard" and affected_count == 0 and proposed_count == 0:
         return {
             "route": route,
-            "affected_count": str(affected_count),
-            "proposed_count": str(proposed_count),
             "skip": "true",
             "reason": "code-only-no-dhf",
             "continue_to_code": "true",
@@ -48,8 +44,6 @@ def resolve_route(spec_data: dict[str, object]) -> dict[str, str]:
 
     return {
         "route": route,
-        "affected_count": str(affected_count),
-        "proposed_count": str(proposed_count),
         "skip": "false",
         "reason": "standard-design",
         "continue_to_code": "false",
@@ -67,12 +61,12 @@ def main() -> int:
     args = parse_args()
     spec_json_path = Path(args.spec_json)
     if not spec_json_path.is_file():
-        print(f"ERROR: Missing required spec JSON companion: {spec_json_path}", file=sys.stderr)
+        print(f"::error::Missing required spec JSON companion: {spec_json_path}", file=sys.stderr)
         return 1
 
     spec_data = json.loads(spec_json_path.read_text(encoding="utf-8"))
     if "pipeline_route" not in spec_data:
-        print(f"ERROR: Missing required pipeline_route in {spec_json_path}", file=sys.stderr)
+        print(f"::error::Missing required pipeline_route in {spec_json_path}", file=sys.stderr)
         return 1
 
     outputs = resolve_route(spec_data)

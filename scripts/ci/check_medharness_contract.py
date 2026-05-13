@@ -23,10 +23,7 @@ def iter_reference_specs() -> list[tuple[str, str]]:
     if not candidates:
         raise RuntimeError("No docs/cr-specs/CR-*-Spec.md files found for MedHarness smoke checks.")
 
-    return [
-        (spec_path.relative_to(REPO_ROOT).stem.rsplit("-", 1)[0], str(spec_path.relative_to(REPO_ROOT)))
-        for spec_path in candidates
-    ]
+    return [(spec_path.relative_to(REPO_ROOT).stem.rsplit("-", 1)[0], str(spec_path.relative_to(REPO_ROOT))) for spec_path in candidates]
 
 
 def run(*args: str) -> tuple[int, str]:
@@ -73,8 +70,9 @@ def main() -> int:
 
     validate_spec_failures: list[str] = []
     validate_spec_passed = False
-    reference_spec_json: str | None = None
+    reference_spec_json: Path | None = None
     for reference_cr, reference_spec in reference_specs:
+        reference_spec_path = Path(reference_spec)
         code, output = run(
             "python",
             "-m",
@@ -84,13 +82,13 @@ def main() -> int:
             "--cr",
             reference_cr,
             "--spec",
-            reference_spec,
+            str(reference_spec_path),
             "--dhf",
             "DHF",
         )
         if code == 0:
             validate_spec_passed = True
-            reference_spec_json = reference_spec.replace("-Spec.md", "-Spec.json")
+            reference_spec_json = reference_spec_path.with_name(reference_spec_path.name.replace("-Spec.md", "-Spec.json"))
             break
         validate_spec_failures.append(f"{reference_cr}: {output.strip()}")
 
@@ -105,7 +103,7 @@ def main() -> int:
             "python",
             str(RESOLVE_DESIGN_ROUTE),
             "--spec-json",
-            reference_spec_json,
+            str(reference_spec_json),
         )
         require(code == 0, f"resolve_cr_design_route.py failed:\n{output}", errors)
 
