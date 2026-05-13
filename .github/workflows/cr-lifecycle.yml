@@ -389,7 +389,7 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          if ! python -m medharness ci validate-design \
+          if ! python -m medharness --dhf DHF ci validate-design \
             --cr "$CR_ID" \
             --spec "docs/cr-specs/${CR_ID}-Spec.md"; then
             gh pr comment "$PR_NUMBER" --body \

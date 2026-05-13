@@ -207,6 +207,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [cr-validation, changes]
     permissions:
+      contents: read
       pull-requests: write
     if: |
       always() && !failure() && !cancelled() &&
@@ -233,10 +234,8 @@ jobs:
           if [ "$ROUTE" = "standard" ] || [ "$ROUTE" = "test-only" ]; then
             EXTRA_ARGS="--code-path apps/ --code-path packages/"
           fi
-          if ! medharness ci validate-branch \
+          if ! medharness --dhf DHF ci validate-branch \
             --cr "$CR_ID" \
-            --spec "docs/cr-specs/${CR_ID}-Spec.md" \
-            --dhf DHF \
             $EXTRA_ARGS; then
             gh pr comment "$PR_NUMBER" --body \
               "⚠️ **Branch validation failed** for $CR_ID — missing spec, DHF item changes, or code changes. See CI logs for details."
@@ -255,9 +254,8 @@ jobs:
             echo "Route $ROUTE does not require test annotations — skipping."
             exit 0
           fi
-          if ! medharness ci validate-code \
+          if ! medharness --dhf DHF ci validate-code \
             --cr "$CR_ID" \
-            --dhf DHF \
             --spec "docs/cr-specs/${CR_ID}-Spec.md"; then
             gh pr comment "$PR_NUMBER" --body \
               "⚠️ **Test annotation check failed** for $CR_ID — one or more items in \`test_plan.needs_new_tc\` are missing \`@links:<ID>\` annotations. See CI logs for details."
