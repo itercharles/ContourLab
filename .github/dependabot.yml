@@ -1,0 +1,13 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    # Scope updates to medharness only — other Python deps are dev/CI tooling
+    # that should be bumped intentionally, not automatically.
+    allow:
+      - dependency-name: medharness
+    commit-message:
+      prefix: chore(deps)
