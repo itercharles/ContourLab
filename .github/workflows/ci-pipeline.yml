@@ -234,10 +234,8 @@ jobs:
           if [ "$ROUTE" = "standard" ] || [ "$ROUTE" = "test-only" ]; then
             EXTRA_ARGS="--code-path apps/ --code-path packages/"
           fi
-          if ! medharness ci validate-branch \
+          if ! medharness --dhf DHF ci validate-branch \
             --cr "$CR_ID" \
-            --spec "docs/cr-specs/${CR_ID}-Spec.md" \
-            --dhf DHF \
             $EXTRA_ARGS; then
             gh pr comment "$PR_NUMBER" --body \
               "⚠️ **Branch validation failed** for $CR_ID — missing spec, DHF item changes, or code changes. See CI logs for details."
