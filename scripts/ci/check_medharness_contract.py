@@ -116,7 +116,12 @@ def main() -> int:
         errors,
     )
     require(
-        "reason=code-only-no-dhf" in cr_text and 'needs.gen-design.outputs.continue_to_code == \'true\'' in cr_text,
+        "reason=code-only-no-dhf" in cr_text,
+        "cr-lifecycle.yml must preserve the code-only skip-design reason marker",
+        errors,
+    )
+    require(
+        'needs.gen-design.outputs.continue_to_code == \'true\'' in cr_text,
         "cr-lifecycle.yml must preserve the code-only skip-design to direct-code path",
         errors,
     )
