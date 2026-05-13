@@ -116,6 +116,11 @@ def main() -> int:
         errors,
     )
     require(
+        "reason=code-only-no-dhf" in cr_text and 'needs.gen-design.outputs.continue_to_code == \'true\'' in cr_text,
+        "cr-lifecycle.yml must preserve the code-only skip-design to direct-code path",
+        errors,
+    )
+    require(
         "medharness ci validate-branch" not in ci_text,
         "ci-pipeline.yml still contains a local validate-branch invocation",
         errors,
