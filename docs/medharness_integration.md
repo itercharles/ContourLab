@@ -21,6 +21,9 @@ workflow logic or the `medharness` package changes.
 - `Spec.json` is the machine-readable companion emitted by `medharness`.
 - WebTPS CR lifecycle routing uses `Spec.json`.
 - Missing `Spec.json` is a CI failure, not a reason to silently default a route.
+- WebTPS locally treats `affected_items: []` plus `proposed_new_items: []` as a
+  code-only signal and may skip DHF design generation even when
+  `pipeline_route` is still `standard`.
 
 ### MedHarness CLI Usage
 
@@ -60,8 +63,8 @@ The following workflow defects were fixed during CR-011:
   version and the workflow invocation forms used in this repo.
 - Reduce duplicated bash routing logic where possible and prefer one
   machine-readable source per decision.
-- Decide whether WebTPS should locally treat "code-only / no DHF impact" as
-  "skip design" even when `pipeline_route` is not emitted that way upstream.
+- Keep the local "code-only / no DHF impact" bypass aligned with the
+  `Spec.json` contract and warn when upstream routing disagrees.
 - Keep workflow permissions minimal, but do not override job permissions in a
   way that drops `contents: read` for checkout.
 
