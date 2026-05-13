@@ -370,7 +370,12 @@ jobs:
         env:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
-          ROUTE=$(jq -r '.pipeline_route // "standard"' "docs/cr-specs/${CR_ID}-Spec.json" 2>/dev/null || echo "standard")
+          SPEC_JSON="docs/cr-specs/${CR_ID}-Spec.json"
+          if [ ! -f "$SPEC_JSON" ]; then
+            echo "::error::Missing required spec JSON companion: $SPEC_JSON"
+            exit 1
+          fi
+          ROUTE=$(jq -er '.pipeline_route' "$SPEC_JSON")
           echo "route=$ROUTE" >> "$GITHUB_OUTPUT"
           if [ "$ROUTE" = "doc-only" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -386,7 +391,6 @@ jobs:
         run: |
           if ! python -m medharness ci validate-design \
             --cr "$CR_ID" \
-            --dhf DHF \
             --spec "docs/cr-specs/${CR_ID}-Spec.md"; then
             gh pr comment "$PR_NUMBER" --body \
               "⚠️ **Design preflight failed** for $CR_ID — spec references items that don't exist or the DHF has traceability gaps. Correct the affected items and re-approve."
