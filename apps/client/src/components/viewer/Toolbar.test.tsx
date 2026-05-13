@@ -303,9 +303,7 @@ describe('Toolbar contour operations', () => {
     expect(screen.getByRole('button', { name: 'Inbox' }).getAttribute('title')).toBe('Inbox · 0 unread');
   });
 
-  it(
-    "opens the prototype issue-driven AI coding notice from the top bar CTA @links:Update Toolbar.test.tsx: remove the assertion that the About dialog contains a 'Submit or track an issue' link; optionally assert the link is absent",
-    () => {
+  it("does not render the 'Submit or track an issue' CTA in the About dialog", () => {
     renderToolbar();
 
     fireEvent.click(screen.getByRole('button', { name: /about/i }));
@@ -319,8 +317,7 @@ describe('Toolbar contour operations', () => {
     expect(screen.getByText('analyze')).toBeTruthy();
     expect(screen.getByText(/CI auto test/i)).toBeTruthy();
     expect(screen.queryByRole('link', { name: /Submit or track an issue/i })).toBeNull();
-  }
-  );
+  });
 
   it('links DHF artifacts to the direct API download route', () => {
     renderToolbar();
