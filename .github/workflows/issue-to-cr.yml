@@ -44,7 +44,6 @@ jobs:
             --dhf-repo . \
             --source-repo "${{ github.repository }}" \
             --marker-name webtps-cr \
-            --no-generate-spec \
             --write \
             --output /tmp/issue-to-cr.json \
             --github-output "$GITHUB_OUTPUT"

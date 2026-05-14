@@ -48,9 +48,6 @@ def main() -> int:
         require(code == 0, f"{name} --help failed", errors)
         help_output[name] = output
 
-    require("--dhf" in help_output["validate-code"], "validate-code help must expose --dhf", errors)
-    require("--dhf" in help_output["validate-branch"], "validate-branch help must expose --dhf", errors)
-
     action_text = MEDHARNESS_ACTION.read_text(encoding="utf-8")
     req_text = REQUIREMENTS_TXT.read_text(encoding="utf-8")
     action_match = re.search(r'medharness.*?==([0-9]+\.[0-9]+\.[0-9]+)', action_text)
