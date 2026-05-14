@@ -49,39 +49,37 @@ properties:
   target_types:
   - RELEASE
   label: Target Release
-icon: 📝
-page_enabled: true
-page_number: 9
 lifecycle:
   transitions:
   - from_states:
     - null
-    to_state: planned
+    to_state: new
   - from_states:
-    - planned
-    to_state: in_review
-    label: Start Analysis
-  - from_states:
-    - in_review
-    to_state: designing
+    - new
+    to_state: design
     label: Start Design
   - from_states:
-    - designing
-    to_state: implementing
+    - design
+    to_state: develop
     label: Start Implementation
   - from_states:
+    - new
+    - design
+    - develop
+    - planned
     - in_review
+    - designing
     - implementing
     to_state: completed
     label: Complete
   - from_states:
-    - implementing
-    to_state: designing
-    label: Return to Design
+    - new
+    - design
+    to_state: rejected
+    label: Reject
   - from_states:
-    - planned
-    - in_review
-    - designing
-    - implementing
+    - new
+    - design
+    - develop
     to_state: cancelled
     label: Cancel

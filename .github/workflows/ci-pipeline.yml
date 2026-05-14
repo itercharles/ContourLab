@@ -94,7 +94,7 @@ jobs:
               apps/client/*)                 client=true ;;
               apps/api/* | apps/api.tests/*) api=true ;;
               packages/shared-types/*)       shared_types=true ;;
-              DHF/* | docs/cr-specs/*)       dhf=true ;;
+              DHF/*)                         dhf=true ;;
               .github/* | *.md | LICENSE)    ;;  # CI/docs only — no code impact
               *)                             client=true; api=true ;;  # unknown: full run
             esac
@@ -142,7 +142,7 @@ jobs:
           echo "Found CR IDs: $CR_IDS"
 
   # ── STAGE GATE ────────────────────────────────────────────────────────────
-  # Skip heavy CI jobs when the PR is in an early CR stage (cr/spec/design).
+  # Skip heavy CI jobs when the PR is in an early CR stage (cr/design).
   # Code-stage PRs and pushes to main always run full CI.
 
   stage-gate:
@@ -167,8 +167,8 @@ jobs:
             echo "run_ci=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if echo "$LABELS" | grep -qE 'cr:stage/(cr|spec|design)\b'; then
-            echo "Early CR stage detected (cr/spec/design) — skipping heavy CI"
+          if echo "$LABELS" | grep -qE 'cr:stage/(cr|design)\b'; then
+            echo "Early CR stage detected (cr/design) — skipping heavy CI"
             echo "run_ci=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -177,12 +177,12 @@ jobs:
             echo "run_ci=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "::warning::PR carries cr:stage/* label(s) that match neither (cr|spec|design) nor code. Labels: $LABELS — running full CI by default."
+          echo "::warning::PR carries cr:stage/* label(s) that match neither (cr|design) nor code. Labels: $LABELS — running full CI by default."
           echo "run_ci=true" >> "$GITHUB_OUTPUT"
 
   # ── DHF VALIDATION ────────────────────────────────────────────────────────
   # Phase 2a: DHF schema + design traceability check.
-  # Runs on every PR so spec/CR-* and design/CR-* branches are validated.
+  # Runs on every PR so coupled DHF changes are validated continuously.
 
   dhf-validation:
     name: DHF Validation (schema + traceability)
@@ -210,9 +210,9 @@ jobs:
 
   # ── CR BRANCH VALIDATION ─────────────────────────────────────────────────
   # Phase 2b: For feat/CR-* implementation branches, verifies the branch
-  # carries the expected coupled change set (spec + DHF + code) and that all
+  # carries the expected coupled change set (DHF + code) and that all
   # required test annotations (@links:<ID>) are present in the diff.
-  # Only runs on feat/CR-* PR branches — spec/design/cr branches skip this.
+  # Only runs on feat/CR-* PR branches at implementation review.
 
   cr-branch-validation:
     name: CR Branch Validation (coupled changes + test annotations)
@@ -239,18 +239,12 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           CR_ID=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'CR-[0-9]+')
-          SPEC_JSON="docs/cr-specs/${CR_ID}-Spec.json"
-          ROUTE=$(jq -r '.pipeline_route // "standard"' "$SPEC_JSON" 2>/dev/null || echo "standard")
-
-          EXTRA_ARGS=""
-          if [ "$ROUTE" = "standard" ] || [ "$ROUTE" = "test-only" ]; then
-            EXTRA_ARGS="--code-path apps/ --code-path packages/"
-          fi
           if ! medharness --dhf DHF ci validate-branch \
             --cr "$CR_ID" \
-            $EXTRA_ARGS; then
+            --code-path apps/ \
+            --code-path packages/; then
             gh pr comment "$PR_NUMBER" --body \
-              "⚠️ **Branch validation failed** for $CR_ID — missing spec, DHF item changes, or code changes. See CI logs for details."
+              "⚠️ **Branch validation failed** for $CR_ID — missing required DHF item changes or code changes. See CI logs for details."
             exit 1
           fi
 
@@ -260,15 +254,8 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           CR_ID=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'CR-[0-9]+')
-          SPEC_JSON="docs/cr-specs/${CR_ID}-Spec.json"
-          ROUTE=$(jq -r '.pipeline_route // "standard"' "$SPEC_JSON" 2>/dev/null || echo "standard")
-          if [ "$ROUTE" != "standard" ] && [ "$ROUTE" != "test-only" ]; then
-            echo "Route $ROUTE does not require test annotations — skipping."
-            exit 0
-          fi
           if ! medharness --dhf DHF ci validate-code \
-            --cr "$CR_ID" \
-            --spec "docs/cr-specs/${CR_ID}-Spec.md"; then
+            --cr "$CR_ID"; then
             gh pr comment "$PR_NUMBER" --body \
               "⚠️ **Test annotation check failed** for $CR_ID — one or more items in \`test_plan.needs_new_tc\` are missing \`@links:<ID>\` annotations. See CI logs for details."
             exit 1

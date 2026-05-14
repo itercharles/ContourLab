@@ -59,7 +59,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh label create "cr:stage/cr"     --color "0075ca" --description "CR stage: awaiting CR review"     2>/dev/null || true
-          gh label create "cr:stage/spec"   --color "e4e669" --description "CR stage: awaiting spec review"   2>/dev/null || true
           gh label create "cr:stage/design" --color "d93f0b" --description "CR stage: awaiting design review" 2>/dev/null || true
           gh label create "cr:stage/code"   --color "0e8a16" --description "CR stage: awaiting code review"   2>/dev/null || true
 
@@ -71,30 +70,17 @@ jobs:
         run: |
           CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
           BRANCH="feat/$CR_ID"
-          SPEC_GENERATED=$(jq -r '.spec_generated // false' /tmp/issue-to-cr.json)
-          SPEC_STATUS=$(jq -r '.spec_status // ""' /tmp/issue-to-cr.json)
-          SPEC_ERROR=$(jq -r '.spec_error // ""' /tmp/issue-to-cr.json)
 
           git checkout -b "$BRANCH"
           git add DHF/items/
-          if [ "$SPEC_GENERATED" = "true" ]; then
-            git add docs/cr-specs/
-          fi
           git commit -m "cr: intake $CR_ID"
           git push --force-with-lease --set-upstream origin "$BRANCH"
 
           {
             echo "Closes #${{ github.event.issue.number }}"
             echo ""
-            echo "**Stage 1 of 4 — CR Review**"
-            echo "Review the CR definition in \`DHF/items/09_cr/$CR_ID.yaml\`, then approve to trigger AI spec generation."
-            if [ "$SPEC_GENERATED" = "true" ]; then
-              echo ""
-              echo "**Draft spec pre-generated** during intake (\`$SPEC_STATUS\`). Review \`docs/cr-specs/$CR_ID-Spec.md\` alongside the CR YAML — approving will run a spec revision pass, then advance to spec review."
-            elif [ -n "$SPEC_ERROR" ]; then
-              echo ""
-              echo "_Note: Draft spec generation was attempted but did not complete (\`$SPEC_ERROR\`). Approving will trigger fresh spec generation._"
-            fi
+            echo "**Stage 1 of 3 — CR Review**"
+            echo "Review the CR definition in \`DHF/items/09_cr/$CR_ID.yaml\`, then approve to trigger AI design generation."
           } > /tmp/pr-body.md
           PR_URL=$(gh pr view "$BRANCH" --json url,state -q 'select(.state=="OPEN") | .url' 2>/dev/null || true)
           if [ -z "$PR_URL" ]; then
@@ -109,15 +95,8 @@ jobs:
 
           gh issue edit "${{ github.event.issue.number }}" --add-label "cr:stage/cr"
 
-          python -m medharness --dhf DHF dhf item transition "$CR_ID" in_review \
-            --by "github-actions[bot]" --commit --push
-
           {
             echo "CR intake complete: **$CR_ID** — review PR: $PR_URL"
-            if [ "$SPEC_GENERATED" = "true" ]; then
-              echo ""
-              echo "Draft spec pre-generated during intake (status: \`$SPEC_STATUS\`). Review \`docs/cr-specs/$CR_ID-Spec.md\` in the PR."
-            fi
             echo ""
             echo "<!-- webtps-cr: $CR_ID -->"
             echo "<!-- webtps-cr-pr: $PR_URL -->"
