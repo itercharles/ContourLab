@@ -22,7 +22,7 @@ on:
         description: 'Stage to re-run'
         required: true
         type: choice
-        options: [cr, spec, design, code]
+        options: [cr, design, code]
 
 concurrency:
   group: cr-lifecycle-${{ github.event.pull_request.number || inputs.cr_id }}
@@ -30,8 +30,8 @@ concurrency:
 
 # ── DETECT ────────────────────────────────────────────────────────────────────
 # Determines what action to take and passes context to downstream jobs.
-# action values: gen-spec | gen-design | gen-code | code-approved |
-#                revise-spec | revise-design | revise-code |
+# action values: gen-design | gen-code | code-approved |
+#                revise-design | revise-code |
 #                cr-no-revise | cancel | noop
 
 jobs:
@@ -60,16 +60,13 @@ jobs:
         run: |
           python -m medharness ci github-event \
             --stage-label-prefix "cr:stage/" \
-            --dispatch-action cr=gen-spec \
-            --dispatch-action spec=gen-design \
+            --dispatch-action cr=gen-design \
             --dispatch-action design=gen-code \
             --dispatch-action code=code-approved \
-            --review-action "approved:cr=gen-spec" \
-            --review-action "approved:spec=gen-design" \
+            --review-action "approved:cr=gen-design" \
             --review-action "approved:design=gen-code" \
             --review-action "approved:code=code-approved" \
             --review-action "changes_requested:cr=cr-no-revise" \
-            --review-action "changes_requested:spec=revise-spec" \
             --review-action "changes_requested:design=revise-design" \
             --review-action "changes_requested:code=revise-code" \
             --pr-action "merged=noop" \
@@ -156,237 +153,6 @@ jobs:
             --repo "${{ github.repository }}" \
             --body "The CR YAML (\`DHF/items/09_cr/${{ needs.detect.outputs.cr_id }}.yaml\`) is human-authored — there is no AI revision path at this stage. Please update it manually and re-approve."
 
-  # ── SPEC: GENERATE ────────────────────────────────────────────────────────
-
-  gen-spec:
-    needs: [detect]
-    if: needs.detect.outputs.action == 'gen-spec'
-    name: "Generate Spec (${{ needs.detect.outputs.cr_id }})"
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      actions: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 1
-          token: ${{ secrets.ACTIONS_PAT }}
-          ref: ${{ needs.detect.outputs.branch }}
-      - uses: ./.github/actions/cr-agent-setup
-      - name: Fetch test evidence
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-        run: |
-          mkdir -p /tmp/test-artifacts
-          RUN_ID=$(gh run list --workflow ci-pipeline.yml --status success --limit 1 \
-            --json databaseId --jq '.[0].databaseId' 2>/dev/null || echo "")
-          [ -n "$RUN_ID" ] && gh run download "$RUN_ID" --name product-test-results \
-            --dir /tmp/test-artifacts 2>/dev/null || true
-      - name: Generate spec
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          ANTHROPIC_MODEL: ${{ vars.CR_ANALYZE_MODEL }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-        run: |
-          set -o pipefail
-          python -m medharness --dhf DHF ci analyze-cr --cr "$CR_ID" | tee /tmp/analyze-out.json
-
-      - name: Upload spec payload
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: medharness-spec-${{ needs.detect.outputs.cr_id }}
-          path: /tmp/analyze-out.json
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Surface warnings
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          [ ! -f /tmp/analyze-out.json ] && exit 0
-          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/analyze-out.json)
-          [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
-            --body "$(printf '⚠️ **Warnings during spec generation for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
-
-      - name: Gate on spec validation
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/analyze-out.json)
-          if [ "$OUTCOME" = "completed_with_errors" ]; then
-            ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/analyze-out.json)
-            BODY=$(printf '⚠️ **Spec validation has residual errors** for %s:\n\n%s\n\nFix the spec front-matter and submit `changes_requested` to trigger a revision.' "$CR_ID" "$ERRORS")
-            gh pr comment "$PR_NUMBER" --body "$BODY"
-            exit 1
-          fi
-
-      - name: Gate on triage disposition
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          DISPOSITION=$(jq -r '.artifacts.analysis.disposition // "approve"' /tmp/analyze-out.json)
-          if echo "$DISPOSITION" | grep -qE '^(decline:|hold:)'; then
-            RATIONALE=$(jq -r '.artifacts.analysis.decline_rationale // "No rationale provided."' /tmp/analyze-out.json)
-            BODY=$(printf '**%s triaged as `%s`**\n\n%s\n\nThe CR has been declined or placed on hold at the triage stage. No spec will be written. Close this PR or update the CR YAML and re-approve to reconsider.' "$CR_ID" "$DISPOSITION" "$RATIONALE")
-            gh pr comment "$PR_NUMBER" --body "$BODY"
-            exit 1
-          fi
-
-      - name: Commit and advance to spec review
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/cr-specs/ DHF/items/
-          COMMITTED=false
-          if ! git diff --staged --quiet; then
-            OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/analyze-out.json)
-            DISPOSITION=$(jq -r '.artifacts.analysis.disposition // "approve"' /tmp/analyze-out.json)
-            ROUTE=$(jq -r '.artifacts.analysis.pipeline_route // "standard"' /tmp/analyze-out.json)
-            git commit \
-              -m "docs: spec for $CR_ID" \
-              -m "Disposition: $DISPOSITION | Route: $ROUTE | Outcome: $OUTCOME"
-            git push
-            COMMITTED=true
-          fi
-          SPEC_EXISTS=$(git diff origin/main -- "docs/cr-specs/${CR_ID}-Spec.md" | grep -c "^+" || echo "0")
-          if [ "$COMMITTED" = "true" ] || [ "$SPEC_EXISTS" -gt "0" ]; then
-            gh pr edit "$PR_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/spec"
-            ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
-            [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/spec" 2>/dev/null || true
-          else
-            gh pr comment "$PR_NUMBER" \
-              --body "⚠️ Spec generation produced no output for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: cr) and check Claude logs."
-            exit 1
-          fi
-
-      - name: Post spec analysis summary
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          ROUTE=$(jq -r '.artifacts.analysis.pipeline_route // "standard"' /tmp/analyze-out.json)
-          IMPACT=$(jq -r '.artifacts.analysis.design_impact_summary // ""' /tmp/analyze-out.json)
-          PROPOSED=$(jq -r '[.artifacts.analysis.proposed_new_items[]? | "- " + .type + ": " + .title] | join("\n")' /tmp/analyze-out.json)
-          NEEDS_TC=$(jq -r '[.artifacts.analysis.test_plan.needs_new_tc[]?] | join(", ")' /tmp/analyze-out.json)
-          SUMMARY=$(jq -r '.summary // ""' /tmp/analyze-out.json)
-
-          BODY="**Spec analysis for $CR_ID** | route: \`$ROUTE\`"$'\n'
-          [ -n "$SUMMARY" ] && BODY="${BODY}"$'\n'"$SUMMARY"$'\n'
-          [ -n "$IMPACT" ] && BODY="${BODY}"$'\n'"$IMPACT"$'\n'
-          if [ -n "$PROPOSED" ]; then
-            BODY="${BODY}"$'\n'"**Proposed new DHF items:**"$'\n'"$PROPOSED"$'\n'
-          fi
-          if [ -n "$NEEDS_TC" ]; then
-            BODY="${BODY}"$'\n'"**Test cases required for:** $NEEDS_TC"$'\n'
-          fi
-          gh pr comment "$PR_NUMBER" --body "$BODY"
-
-  # ── SPEC: REVISE ──────────────────────────────────────────────────────────
-
-  revise-spec:
-    needs: [detect]
-    if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-spec'
-    name: "Revise Spec (${{ needs.detect.outputs.cr_id }})"
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      actions: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 1
-          token: ${{ secrets.ACTIONS_PAT }}
-          ref: ${{ needs.detect.outputs.branch }}
-      - uses: ./.github/actions/cr-agent-setup
-      - name: Revise spec
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          ANTHROPIC_MODEL: ${{ vars.CR_ANALYZE_MODEL }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          set -o pipefail
-          python -m medharness --dhf DHF ci analyze-cr --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-spec-out.json
-
-      - name: Upload revise-spec payload
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: medharness-spec-revise-${{ needs.detect.outputs.cr_id }}-${{ github.run_id }}
-          path: /tmp/revise-spec-out.json
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Surface warnings and confirm PR feedback
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          [ ! -f /tmp/revise-spec-out.json ] && exit 0
-          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/revise-spec-out.json)
-          [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
-            --body "$(printf '⚠️ **Warnings during spec revision for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
-          HAS_FETCH_WARN=$(jq -r '.warnings[]? | select(.code == "github_feedback_env_missing") | .code' /tmp/revise-spec-out.json)
-          if [ -z "$HAS_FETCH_WARN" ]; then
-            COMMENTS=$(jq -r '.diagnostics.comments_count // 0' /tmp/revise-spec-out.json)
-            REVIEWS=$(jq -r '.diagnostics.reviews_count // 0' /tmp/revise-spec-out.json)
-            if [ "$COMMENTS" = "0" ] && [ "$REVIEWS" = "0" ]; then
-              echo "::warning::Spec revision for $CR_ID fetched 0 PR feedback items. If PR #$PR_NUMBER has reviewer comments, check GH_TOKEN pull-requests:read permission."
-            else
-              echo "PR feedback fetched: $COMMENTS comment(s), $REVIEWS review(s)"
-            fi
-          fi
-
-      - name: Gate on spec validation
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-spec-out.json)
-          if [ "$OUTCOME" = "completed_with_errors" ]; then
-            ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/revise-spec-out.json)
-            BODY=$(printf '⚠️ **Spec revision still has residual errors** for %s:\n\n%s' "$CR_ID" "$ERRORS")
-            gh pr comment "$PR_NUMBER" --body "$BODY"
-            exit 1
-          fi
-
-      - name: Commit revision
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/cr-specs/ DHF/items/
-          if ! git diff --staged --quiet; then
-            OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-spec-out.json)
-            git commit \
-              -m "docs: revise spec for $CR_ID" \
-              -m "Outcome: $OUTCOME"
-            git push
-          fi
-
   # ── DESIGN: GENERATE ──────────────────────────────────────────────────────
 
   gen-design:
@@ -394,12 +160,6 @@ jobs:
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-design'
     name: "Generate Design (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
-    outputs:
-      skip_design: ${{ steps.design_check.outputs.skip }}
-      skip_reason: ${{ steps.design_check.outputs.reason }}
-      continue_to_code: ${{ steps.design_check.outputs.continue_to_code }}
-      route: ${{ steps.design_check.outputs.route }}
-      route_mismatch: ${{ steps.design_check.outputs.route_mismatch }}
     permissions:
       contents: write
       pull-requests: write
@@ -411,46 +171,7 @@ jobs:
           token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: ./.github/actions/cr-agent-setup
-      - name: Validate spec
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          if ! python -m medharness ci validate-spec \
-            --cr "$CR_ID" \
-            --spec "docs/cr-specs/${CR_ID}-Spec.md" \
-            --dhf DHF; then
-            gh pr comment "$PR_NUMBER" --body \
-              "**Spec validation failed** for $CR_ID. Submit \`changes_requested\` to trigger a revision, then re-approve once the spec is updated."
-            exit 1
-          fi
-      - name: Check pipeline route
-        id: design_check
-        env:
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-        run: |
-          SPEC_JSON="docs/cr-specs/${CR_ID}-Spec.json"
-          python scripts/ci/resolve_cr_design_route.py \
-            --spec-json "$SPEC_JSON" \
-            --github-output "$GITHUB_OUTPUT"
-      - name: Preflight design validation
-        if: steps.design_check.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          if ! python -m medharness --dhf DHF ci validate-design \
-            --cr "$CR_ID" \
-            --spec "docs/cr-specs/${CR_ID}-Spec.md"; then
-            gh pr comment "$PR_NUMBER" --body \
-              "⚠️ **Design preflight failed** for $CR_ID — spec references items that don't exist or the DHF has traceability gaps. Correct the affected items and re-approve."
-            exit 1
-          fi
-
       - name: Generate design
-        if: steps.design_check.outputs.skip != 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
@@ -458,39 +179,38 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF ci design-cr --cr "$CR_ID" | tee /tmp/design-out.json
+          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" | tee /tmp/generate-dhf-out.json
 
       - name: Upload design payload
-        if: always() && steps.design_check.outputs.skip != 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: medharness-design-${{ needs.detect.outputs.cr_id }}
-          path: /tmp/design-out.json
+          name: medharness-generate-dhf-${{ needs.detect.outputs.cr_id }}
+          path: /tmp/generate-dhf-out.json
           if-no-files-found: ignore
           retention-days: 14
 
       - name: Surface warnings
-        if: always() && steps.design_check.outputs.skip != 'true'
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          [ ! -f /tmp/design-out.json ] && exit 0
-          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/design-out.json)
+          [ ! -f /tmp/generate-dhf-out.json ] && exit 0
+          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/generate-dhf-out.json)
           [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
             --body "$(printf '⚠️ **Warnings during design generation for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
 
       - name: Gate on design validation
-        if: steps.design_check.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/design-out.json)
+          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/generate-dhf-out.json)
           if [ "$OUTCOME" = "completed_with_errors" ]; then
-            ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/design-out.json)
+            ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/generate-dhf-out.json)
             BODY=$(printf '⚠️ **Design validation has residual errors** for %s:\n\n%s\n\nReview the DHF items and submit `changes_requested` to trigger a design revision.' "$CR_ID" "$ERRORS")
             gh pr comment "$PR_NUMBER" --body "$BODY"
             exit 1
@@ -500,18 +220,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
-          SKIP_DESIGN: ${{ steps.design_check.outputs.skip }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add DHF/ docs/cr-specs/
+          git add DHF/
           if ! git diff --staged --quiet; then
             COMMIT_BODY=""
-            if [ -f /tmp/design-out.json ]; then
-              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/design-out.json)
-              CREATED=$(jq -r '.artifacts.items_changed.created | join(", ")' /tmp/design-out.json)
-              UPDATED=$(jq -r '.artifacts.items_changed.updated | join(", ")' /tmp/design-out.json)
-              DELETED=$(jq -r '.artifacts.items_changed.deleted | join(", ")' /tmp/design-out.json)
+            if [ -f /tmp/generate-dhf-out.json ]; then
+              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/generate-dhf-out.json)
+              CREATED=$(jq -r '.artifacts.items_changed.created | join(", ")' /tmp/generate-dhf-out.json)
+              UPDATED=$(jq -r '.artifacts.items_changed.updated | join(", ")' /tmp/generate-dhf-out.json)
+              DELETED=$(jq -r '.artifacts.items_changed.deleted | join(", ")' /tmp/generate-dhf-out.json)
               [ -n "$CREATED" ] && COMMIT_BODY="${COMMIT_BODY}Created: ${CREATED}"$'\n'
               [ -n "$UPDATED" ] && COMMIT_BODY="${COMMIT_BODY}Updated: ${UPDATED}"$'\n'
               [ -n "$DELETED" ] && COMMIT_BODY="${COMMIT_BODY}Deleted: ${DELETED}"$'\n'
@@ -524,8 +243,25 @@ jobs:
             fi
             git push
           fi
+      - name: Post design summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          [ ! -f /tmp/generate-dhf-out.json ] && exit 0
+          CREATED=$(jq -r '[.artifacts.items_changed.created[]?] | join(", ")' /tmp/generate-dhf-out.json)
+          UPDATED=$(jq -r '[.artifacts.items_changed.updated[]?] | join(", ")' /tmp/generate-dhf-out.json)
+          DELETED=$(jq -r '[.artifacts.items_changed.deleted[]?] | join(", ")' /tmp/generate-dhf-out.json)
+          SUMMARY=$(jq -r '.summary // ""' /tmp/generate-dhf-out.json)
+          BODY="**Design output for $CR_ID**"$'\n'
+          [ -n "$SUMMARY" ] && BODY="${BODY}"$'\n'"$SUMMARY"$'\n'
+          [ -n "$CREATED" ] && BODY="${BODY}"$'\n'"**Created:** $CREATED"$'\n'
+          [ -n "$UPDATED" ] && BODY="${BODY}"$'\n'"**Updated:** $UPDATED"$'\n'
+          [ -n "$DELETED" ] && BODY="${BODY}"$'\n'"**Deleted:** $DELETED"$'\n'
+          BODY="${BODY}"$'\n'"The implementation plan is written to \`DHF/items/09_cr/$CR_ID.yaml\` in \`implementation_notes\`."
+          gh pr comment "$PR_NUMBER" --body "$BODY"
       - name: Validate DHF traceability
-        if: steps.design_check.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
@@ -550,37 +286,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-          SKIP_DESIGN: ${{ steps.design_check.outputs.skip }}
-          SKIP_REASON: ${{ steps.design_check.outputs.reason }}
-          CONTINUE_TO_CODE: ${{ steps.design_check.outputs.continue_to_code }}
-          ROUTE: ${{ steps.design_check.outputs.route }}
-          ROUTE_MISMATCH: ${{ steps.design_check.outputs.route_mismatch }}
         run: |
-          if [ "$SKIP_DESIGN" != "true" ]; then
-            gh pr edit "$PR_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design"
-            ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
-            [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design" 2>/dev/null || true
-            exit 0
-          fi
-
-          if [ "$CONTINUE_TO_CODE" = "true" ]; then
-            if [ "$ROUTE_MISMATCH" = "true" ]; then
-              gh pr comment "$PR_NUMBER" \
-                --body "$CR_ID reports no DHF impact in \`Spec.json\` (\`affected_items: []\`, \`proposed_new_items: []\`) while \`pipeline_route\` is \`$ROUTE\`. WebTPS is skipping design locally and proceeding directly to implementation."
-            else
-              gh pr comment "$PR_NUMBER" \
-                --body "$CR_ID reports no DHF impact in \`Spec.json\` and does not require DHF design updates. WebTPS is skipping design and proceeding directly to implementation."
-            fi
-            exit 0
-          fi
-
-          if [ "$SKIP_REASON" = "route-doc-only" ]; then
-            gh pr comment "$PR_NUMBER" \
-              --body "$CR_ID pipeline route is \`$ROUTE\` — design stage skipped. Approve to proceed to implementation."
-          fi
-          gh pr edit "$PR_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design"
+          gh pr edit "$PR_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/design"
           ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
-          [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/spec" --add-label "cr:stage/design" 2>/dev/null || true
+          [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/design" 2>/dev/null || true
 
   # ── DESIGN: REVISE ────────────────────────────────────────────────────────
 
@@ -609,14 +318,14 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF ci design-cr --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-design-out.json
+          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-generate-dhf-out.json
 
       - name: Upload revise-design payload
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: medharness-design-revise-${{ needs.detect.outputs.cr_id }}-${{ github.run_id }}
-          path: /tmp/revise-design-out.json
+          name: medharness-generate-dhf-revise-${{ needs.detect.outputs.cr_id }}-${{ github.run_id }}
+          path: /tmp/revise-generate-dhf-out.json
           if-no-files-found: ignore
           retention-days: 14
 
@@ -627,14 +336,14 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          [ ! -f /tmp/revise-design-out.json ] && exit 0
-          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/revise-design-out.json)
+          [ ! -f /tmp/revise-generate-dhf-out.json ] && exit 0
+          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/revise-generate-dhf-out.json)
           [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
             --body "$(printf '⚠️ **Warnings during design revision for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
-          HAS_FETCH_WARN=$(jq -r '.warnings[]? | select(.code == "github_feedback_env_missing") | .code' /tmp/revise-design-out.json)
+          HAS_FETCH_WARN=$(jq -r '.warnings[]? | select(.code == "github_feedback_env_missing") | .code' /tmp/revise-generate-dhf-out.json)
           if [ -z "$HAS_FETCH_WARN" ]; then
-            COMMENTS=$(jq -r '.diagnostics.comments_count // 0' /tmp/revise-design-out.json)
-            REVIEWS=$(jq -r '.diagnostics.reviews_count // 0' /tmp/revise-design-out.json)
+            COMMENTS=$(jq -r '.diagnostics.comments_count // 0' /tmp/revise-generate-dhf-out.json)
+            REVIEWS=$(jq -r '.diagnostics.reviews_count // 0' /tmp/revise-generate-dhf-out.json)
             if [ "$COMMENTS" = "0" ] && [ "$REVIEWS" = "0" ]; then
               echo "::warning::Design revision for $CR_ID fetched 0 PR feedback items. If PR #$PR_NUMBER has reviewer comments, check GH_TOKEN pull-requests:read permission."
             else
@@ -648,9 +357,9 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-design-out.json)
+          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-generate-dhf-out.json)
           if [ "$OUTCOME" = "completed_with_errors" ]; then
-            ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/revise-design-out.json)
+            ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/revise-generate-dhf-out.json)
             BODY=$(printf '⚠️ **Design revision still has residual errors** for %s:\n\n%s' "$CR_ID" "$ERRORS")
             gh pr comment "$PR_NUMBER" --body "$BODY"
             exit 1
@@ -666,11 +375,11 @@ jobs:
           git add DHF/
           if ! git diff --staged --quiet; then
             COMMIT_BODY=""
-            if [ -f /tmp/revise-design-out.json ]; then
-              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-design-out.json)
-              CREATED=$(jq -r '.artifacts.items_changed.created | join(", ")' /tmp/revise-design-out.json)
-              UPDATED=$(jq -r '.artifacts.items_changed.updated | join(", ")' /tmp/revise-design-out.json)
-              DELETED=$(jq -r '.artifacts.items_changed.deleted | join(", ")' /tmp/revise-design-out.json)
+            if [ -f /tmp/revise-generate-dhf-out.json ]; then
+              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-generate-dhf-out.json)
+              CREATED=$(jq -r '.artifacts.items_changed.created | join(", ")' /tmp/revise-generate-dhf-out.json)
+              UPDATED=$(jq -r '.artifacts.items_changed.updated | join(", ")' /tmp/revise-generate-dhf-out.json)
+              DELETED=$(jq -r '.artifacts.items_changed.deleted | join(", ")' /tmp/revise-generate-dhf-out.json)
               [ -n "$CREATED" ] && COMMIT_BODY="${COMMIT_BODY}Created: ${CREATED}"$'\n'
               [ -n "$UPDATED" ] && COMMIT_BODY="${COMMIT_BODY}Updated: ${UPDATED}"$'\n'
               [ -n "$DELETED" ] && COMMIT_BODY="${COMMIT_BODY}Deleted: ${DELETED}"$'\n'
@@ -687,18 +396,8 @@ jobs:
   # ── CODE: GENERATE ────────────────────────────────────────────────────────
 
   gen-code:
-    needs: [detect, gen-design]
-    if: |
-      always() &&
-      needs.detect.result == 'success' &&
-      (
-        needs.detect.outputs.action == 'gen-code' ||
-        (
-          needs.detect.outputs.action == 'gen-design' &&
-          needs.gen-design.result == 'success' &&
-          needs.gen-design.outputs.continue_to_code == 'true'
-        )
-      )
+    needs: [detect]
+    if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-code'
     name: "Generate Code (${{ needs.detect.outputs.cr_id }})"
     runs-on: ubuntu-latest
     permissions:
@@ -764,8 +463,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-          ACTION: ${{ needs.detect.outputs.action }}
-          CONTINUE_TO_CODE: ${{ needs.gen-design.outputs.continue_to_code }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -790,7 +487,7 @@ jobs:
           fi
           git fetch origin main --depth 1
           CODE_EXISTS=$(git diff origin/main -- . \
-            ':(exclude)DHF/' ':(exclude)docs/cr-specs/' \
+            ':(exclude)DHF/' \
             | grep -c "^+" || echo "0")
           if [ "$COMMITTED" != "true" ] && [ "$CODE_EXISTS" = "0" ]; then
             gh pr comment "$PR_NUMBER" \
@@ -801,9 +498,6 @@ jobs:
             # Advance label BEFORE pushing so the PR-triggered CI run sees cr:stage/code
             # and the stage-gate allows dev tests (lint · typecheck · build) to run.
             FROM_LABEL="cr:stage/design"
-            if [ "$ACTION" = "gen-design" ] && [ "$CONTINUE_TO_CODE" = "true" ]; then
-              FROM_LABEL="cr:stage/spec"
-            fi
             gh pr edit "$PR_NUMBER" --remove-label "$FROM_LABEL" --add-label "cr:stage/code"
             gh pr ready "$PR_NUMBER"
             ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"

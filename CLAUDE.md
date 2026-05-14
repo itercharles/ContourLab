@@ -18,7 +18,6 @@ DHF/                   — Design History File (items, config, documents, test-r
 DHF/items/             — YAML DHF items by type (CR, SYS, SRS, RISK, etc.)
 DHF/config/            — DHF configuration (change-controlled)
 DHF/documents/         — Spec and plan templates
-docs/cr-specs/         — CR specification documents (authoritative plan specs)
 tests/dhf/             — DHF Python tests
 .github/workflows/     — CI pipeline and CR automation
 ```
@@ -57,17 +56,16 @@ medharness --dhf DHF dhf doc generate ALL             # regenerate spec document
 - **Proxy**: Vite proxies `/api` and `/ws` → `localhost:4000`; `/dicom-web` → Orthanc `localhost:8042`
 - **TypeScript**: strict mode throughout, no `any`
 - **Styling**: Tailwind only, no inline styles, dark clinical theme (see `/ux-design`)
-- **DHF**: DHF items live at `DHF/items/`. Use `medharness --dhf DHF dhf ...` commands. CR specs
-  live at `docs/cr-specs/`. Do not scatter direct DHF file reads across automation — use the
-  `medharness` CLI facade.
+- **DHF**: DHF items live at `DHF/items/`. Use `medharness --dhf DHF dhf ...` commands. The CR
+  design plan lives in the `implementation_notes` field of `DHF/items/09_cr/CR-NNN.yaml`. Do not
+  scatter direct DHF file reads across automation — use the `medharness` CLI facade.
 
 ### DHF Facade API Quick Reference
 
 ```bash
 # Get DHF context for a CR stage
-medharness --dhf DHF dhf context for-stage analyze --cr CR-034
-medharness --dhf DHF dhf context for-stage design --cr CR-034 --spec docs/cr-specs/CR-034-Spec.md
-medharness --dhf DHF dhf context for-stage develop --cr CR-034 --spec docs/cr-specs/CR-034-Spec.md
+medharness --dhf DHF dhf context for-stage design --cr CR-034
+medharness --dhf DHF dhf context for-stage develop --cr CR-034
 
 # Transition a CR
 medharness --dhf DHF dhf item transition CR-034 completed --by "agent"
@@ -86,26 +84,27 @@ medharness --dhf DHF dhf item list --type SRS
 
 ## Change Workflow
 
-Every non-trivial change starts from a CR in this repo and passes through four stages,
+Every non-trivial change starts from a CR in this repo and passes through three stages,
 each gated by human approval:
 
 | Stage | Branch | Produced by |
 |---|---|---|
-| 1. CR PR | `cr/CR-NNN` | Human |
-| 2. Spec PR | `spec/CR-NNN` | Agent (after CR PR approved) |
-| 3. Design PR | `design/CR-NNN` | Agent (after Spec PR approved) |
-| 4. Implementation PR | `feat/CR-NNN` | Agent (after Design PR approved) |
+| 1. CR Review | `feat/CR-NNN` | Human |
+| 2. Design Review | `feat/CR-NNN` | Agent (`generate-dhf` — DHF items + implementation plan) |
+| 3. Implementation Review | `feat/CR-NNN` | Agent (`develop-cr` — product code) |
+
+Design and implementation live on the same branch, each committed separately.
 
 ### CR Status Model
 
 | Status | Meaning |
 |---|---|
-| `draft` | CR created, not yet submitted |
-| `in_review` | CR PR open, awaiting human approval |
-| `designing` | CR approved; agent generating plan spec |
-| `implementing` | Plan approved; agent implementing; Implementation PR active |
+| `new` | CR created, awaiting design review |
+| `design` | `generate-dhf` running or design under review |
+| `develop` | `develop-cr` running or implementation under review |
 | `completed` | Implementation merged; DHF closed out |
-| `cancelled` | CR declined |
+| `rejected` | Triaged out during design |
+| `cancelled` | PR closed without merging |
 
 ### Agent Rules
 
@@ -126,7 +125,9 @@ each gated by human approval:
 3. **Tests** — write alongside every functional change: unit tests for pure logic, component
    tests for React components, regression tests for bug fixes. Colocate at `*.test.ts(x)`.
    Add `@links:SRS-xxx` or `@links:SYS-xxx` annotations to tests that verify DHF requirements.
-4. **Design** — invoke `/ux-design` before any UI work.
+4. **Design** — `generate-dhf` writes the implementation plan into the CR item's
+   `implementation_notes`; treat that as the primary input for `develop-cr`. Invoke
+   `/ux-design` before any UI work.
 5. **Modify** — keep changes in the workspace that owns the behavior; shared types first.
 6. **Validate locally**:
    ```bash
@@ -144,14 +145,14 @@ each gated by human approval:
 **Never commit directly to `main`.** Always work on a branch. Before merging or
 pushing, ask the user whether to open a PR or merge locally — do not decide unilaterally.
 
-- Branch: `feature/`, `fix/`, `refactor/`, `cr/CR-NNN`, `spec/CR-NNN`, `design/CR-NNN`, or `feat/CR-NNN`
+- Branch: `feature/`, `fix/`, `refactor/`, or `feat/CR-NNN`
 - Title: `feat(CR-042): description` — always include CR ID for CR-backed changes; use `chore(<scope>):` or `fix(<scope>):` for infra/housekeeping PRs with no CR
 - Body: change summary · DHF files updated (or reason not to) · validation run · manual testing remaining
 - After opening: monitor CI and review comments; every comment gets an explicit decision (fix / reply / defer / ask)
 
 ### Failure and Replan
 
-- If implementation review invalidates the approved plan: return to `designing`, revise plan spec, get re-approval before continuing
+- If implementation review invalidates the approved plan: return to `design`, revise the DHF items and `implementation_notes`, and get re-approval before continuing
 - If agent cannot produce a viable plan: surface the blocker to the human, do not enter implementation
 - Never merge without human approval; never advance stages based on AI-generated comments alone
 
@@ -188,7 +189,7 @@ pushing, ask the user whether to open a PR or merge locally — do not decide un
 ## Skills
 
 **CR workflow**
-- `/cr-implement <CR-ID>` — **primary entry point**: read Plan Spec, implement, write tests, update DHF, open PR
+- `/cr-implement <CR-ID>` — **primary entry point**: read the CR `implementation_notes`, implement, write tests, update DHF, open PR
 - `/cr-status` — list all CRs and their current lifecycle states
 
 **DHF operations**

@@ -12,21 +12,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CI_PIPELINE = REPO_ROOT / ".github" / "workflows" / "ci-pipeline.yml"
 CR_LIFECYCLE = REPO_ROOT / ".github" / "workflows" / "cr-lifecycle.yml"
-RESOLVE_DESIGN_ROUTE = REPO_ROOT / "scripts" / "ci" / "resolve_cr_design_route.py"
 MEDHARNESS_ACTION = REPO_ROOT / ".github" / "actions" / "medharness-setup" / "action.yml"
 REQUIREMENTS_TXT = REPO_ROOT / "requirements.txt"
-
-
-def iter_reference_specs() -> list[tuple[str, str]]:
-    candidates = sorted(
-        REPO_ROOT.glob("docs/cr-specs/CR-*-Spec.md"),
-        key=lambda path: int(path.stem.split("-")[1]),
-        reverse=True,
-    )
-    if not candidates:
-        raise RuntimeError("No docs/cr-specs/CR-*-Spec.md files found for MedHarness smoke checks.")
-
-    return [(spec_path.relative_to(REPO_ROOT).stem.rsplit("-", 1)[0], str(spec_path.relative_to(REPO_ROOT))) for spec_path in candidates]
 
 
 def run(*args: str) -> tuple[int, str]:
@@ -47,15 +34,10 @@ def require(condition: bool, message: str, errors: list[str]) -> None:
 
 def main() -> int:
     errors: list[str] = []
-    try:
-        reference_specs = iter_reference_specs()
-    except RuntimeError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 1
 
     help_commands = {
-        "validate-spec": ("python", "-m", "medharness", "ci", "validate-spec", "--help"),
-        "validate-design": ("python", "-m", "medharness", "ci", "validate-design", "--help"),
+        "generate-dhf": ("python", "-m", "medharness", "ci", "generate-dhf", "--help"),
+        "develop-cr": ("python", "-m", "medharness", "ci", "develop-cr", "--help"),
         "validate-code": ("python", "-m", "medharness", "ci", "validate-code", "--help"),
         "validate-branch": ("python", "-m", "medharness", "ci", "validate-branch", "--help"),
     }
@@ -66,49 +48,8 @@ def main() -> int:
         require(code == 0, f"{name} --help failed", errors)
         help_output[name] = output
 
-    require("--dhf" in help_output["validate-spec"], "validate-spec help must expose local --dhf", errors)
-    require("--dhf" not in help_output["validate-design"], "validate-design help must not expose local --dhf", errors)
-    require("--dhf" not in help_output["validate-code"], "validate-code help must not expose local --dhf", errors)
-    require("--dhf" not in help_output["validate-branch"], "validate-branch help must not expose local --dhf", errors)
-
-    validate_spec_failures: list[str] = []
-    validate_spec_passed = False
-    reference_spec_json: Path | None = None
-    for reference_cr, reference_spec in reference_specs:
-        reference_spec_path = Path(reference_spec)
-        code, output = run(
-            "python",
-            "-m",
-            "medharness",
-            "ci",
-            "validate-spec",
-            "--cr",
-            reference_cr,
-            "--spec",
-            str(reference_spec_path),
-            "--dhf",
-            "DHF",
-        )
-        if code == 0:
-            validate_spec_passed = True
-            reference_spec_json = reference_spec_path.with_name(reference_spec_path.name.replace("-Spec.md", "-Spec.json"))
-            break
-        validate_spec_failures.append(f"{reference_cr}: {output.strip()}")
-
-    require(
-        validate_spec_passed,
-        "validate-spec smoke check failed for all committed specs:\n" + "\n\n".join(validate_spec_failures),
-        errors,
-    )
-    require(RESOLVE_DESIGN_ROUTE.is_file(), "resolve_cr_design_route.py must exist", errors)
-    if reference_spec_json is not None:
-        code, output = run(
-            "python",
-            str(RESOLVE_DESIGN_ROUTE),
-            "--spec-json",
-            str(reference_spec_json),
-        )
-        require(code == 0, f"resolve_cr_design_route.py failed:\n{output}", errors)
+    require("--dhf" in help_output["validate-code"], "validate-code help must expose --dhf", errors)
+    require("--dhf" in help_output["validate-branch"], "validate-branch help must expose --dhf", errors)
 
     action_text = MEDHARNESS_ACTION.read_text(encoding="utf-8")
     req_text = REQUIREMENTS_TXT.read_text(encoding="utf-8")
@@ -130,6 +71,26 @@ def main() -> int:
     cr_text = CR_LIFECYCLE.read_text(encoding="utf-8")
 
     require(
+        "python -m medharness --dhf DHF ci generate-dhf" in cr_text,
+        "cr-lifecycle.yml must call generate-dhf with global --dhf",
+        errors,
+    )
+    require(
+        "python -m medharness --dhf DHF ci design-cr" not in cr_text,
+        "cr-lifecycle.yml must not call design-cr",
+        errors,
+    )
+    require(
+        "python -m medharness --dhf DHF ci analyze-cr" not in cr_text,
+        "cr-lifecycle.yml must not call analyze-cr",
+        errors,
+    )
+    require(
+        "python -m medharness --dhf DHF ci validate-design" not in cr_text,
+        "cr-lifecycle.yml must not call validate-design",
+        errors,
+    )
+    require(
         "medharness --dhf DHF ci validate-branch" in ci_text,
         "ci-pipeline.yml must call validate-branch with global --dhf",
         errors,
@@ -137,21 +98,6 @@ def main() -> int:
     require(
         "medharness --dhf DHF ci validate-code" in ci_text,
         "ci-pipeline.yml must call validate-code with global --dhf",
-        errors,
-    )
-    require(
-        "python -m medharness --dhf DHF ci validate-design" in cr_text,
-        "cr-lifecycle.yml must call validate-design with global --dhf",
-        errors,
-    )
-    require(
-        "python scripts/ci/resolve_cr_design_route.py" in cr_text,
-        "cr-lifecycle.yml must resolve design routing through resolve_cr_design_route.py",
-        errors,
-    )
-    require(
-        'needs.gen-design.outputs.continue_to_code == \'true\'' in cr_text,
-        "cr-lifecycle.yml must preserve the code-only skip-design to direct-code path",
         errors,
     )
     require(
@@ -165,8 +111,18 @@ def main() -> int:
         errors,
     )
     require(
-        "python -m medharness ci validate-design" not in cr_text,
-        "cr-lifecycle.yml still contains a local validate-design invocation",
+        "design-cr" not in cr_text,
+        "cr-lifecycle.yml still contains design-cr references",
+        errors,
+    )
+    require(
+        "analyze-cr" not in cr_text,
+        "cr-lifecycle.yml still contains analyze-cr references",
+        errors,
+    )
+    require(
+        "validate-design" not in cr_text,
+        "cr-lifecycle.yml still contains validate-design references",
         errors,
     )
 
