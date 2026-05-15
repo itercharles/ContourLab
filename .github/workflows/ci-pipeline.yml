@@ -137,7 +137,7 @@ jobs:
               exit 0
             fi
             # feat(ci|infra|chore|...): scoped to infrastructure, not a product feature
-            if echo "$PR_TITLE" | grep -Eq '^feat\((ci|infra|chore|deps|runner|workflow)\)'; then
+            if echo "$PR_TITLE" | grep -Eq '^feat\((ci|infra|chore|deps|runner|workflow|build|release|actions|docker)\)'; then
               echo "No CR ID — infrastructure feat exempt."
               exit 0
             fi

@@ -84,7 +84,7 @@ jobs:
             echo "Closes #${{ github.event.issue.number }}"
             echo ""
             echo "**Stage 1 of 2 — Design Review**"
-            echo "The AI-generated implementation plan will be posted as a comment below once design generation completes. Approve to trigger implementation."
+            echo "The AI-generated implementation plan will be posted as a comment below if design generation succeeds. Approve to trigger implementation."
           } > /tmp/pr-body.md
           PR_URL=$(gh pr view "$BRANCH" --json url,state -q 'select(.state=="OPEN") | .url' 2>/dev/null || true)
           if [ -z "$PR_URL" ]; then
@@ -202,12 +202,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          export CR_ID
           PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
           IMPL_NOTES=$(python3 - <<'PYEOF'
 import yaml, sys, os
 cr_id = os.environ["CR_ID"]
 path = f"DHF/items/09_cr/{cr_id}.yaml"
 if not os.path.exists(path):
+    print(f"::warning::CR YAML not found at {path}, skipping plan comment", file=sys.stderr)
     sys.exit(0)
 with open(path, encoding="utf-8") as f:
     d = yaml.safe_load(f)
@@ -216,7 +218,9 @@ print(notes)
 PYEOF
           )
           [ -z "$IMPL_NOTES" ] && exit 0
-          BODY="$(printf '## Implementation Plan\n\n%s' "$IMPL_NOTES")"
+          BODY="## Implementation Plan
+
+$IMPL_NOTES"
           gh pr comment "$PR_NUMBER" \
             --repo "${{ github.repository }}" \
             --body "$BODY"
