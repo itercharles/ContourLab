@@ -188,60 +188,71 @@ The deployed stack is defined in [`../docker-compose.deploy.yml`](../docker-comp
 
 ### First-time runner setup
 
-WebTPS now expects one Linux self-hosted runner VM that can handle both the
-normal CI/automation jobs and the deploy job. Keep it on Ubuntu 24.04 under
+WebTPS now expects multiple Linux self-hosted runner VMs under
 [Lima](https://lima-vm.io/) so workflow behavior stays close to
 `ubuntu-latest`, but runner selection remains switchable from GitHub repo
 variables.
 
-Recommended VM shape for this MacBook-hosted runner:
+The main CI VM and deploy runner can keep their existing shape. For the second
+codegen VM, use Ubuntu 24.04 with this minimum footprint:
 
-- 6 vCPU
-- 12-16 GB RAM
-- 60+ GB disk
+- 4 vCPU
+- 8 GiB RAM
+- 50-60 GiB disk
 
-Install these packages in the VM:
+Create that second VM once with:
+
+```bash
+limactl create --name=webtps-ci-codegen --vm-type=vz --cpus=4 --memory=8 --disk=60 template://ubuntu-24.04
+```
+
+Install these packages in each CI/codegen VM:
 
 - Git
 - Docker Engine
 - Docker Compose plugin
-- Node.js / pnpm prerequisites
+- curl
+- jq
 - Python 3
 - GitHub Actions runner service
 
-Register exactly one runner process and apply these labels to that single
-runner:
+Run three isolated pools backed by separate runner registrations:
 
-- `self-hosted`
-- `linux`
-- `webtps-local`
-- `webtps-deploy`
+- `webtps-ci`: one runner with labels `self-hosted`, `linux`, `webtps-local`
+- `webtps-ci-codegen`: one runner with labels `self-hosted`, `linux`,
+  `webtps-local-codegen`
+- deploy runner: one runner with labels `self-hosted`, `linux`,
+  `webtps-deploy`
 
-The workflows consume two repository variables as the runner control plane:
+Every VM runs exactly one runner process. Do not add a second runner to an
+existing VM. If more capacity is needed later, add another VM and another label
+pool instead of multi-registering on the same host.
+
+The workflows consume three repository variables as the runner control plane:
 
 - `WEBTPS_DEFAULT_RUNS_ON_JSON=["self-hosted","linux","webtps-local"]`
+- `WEBTPS_CODEGEN_RUNS_ON_JSON=["self-hosted","linux","webtps-local-codegen"]`
 - `WEBTPS_DEPLOY_RUNS_ON_JSON=["self-hosted","linux","webtps-deploy"]`
 
 The workflow files also carry in-repo fallbacks so scheduling still works
 before those variables are created:
 
 - non-deploy jobs fall back to `["ubuntu-latest"]`
+- codegen jobs fall back to `["ubuntu-latest"]`
 - deploy falls back to `["self-hosted","linux","webtps-deploy"]`
 
-One exception remains intentional for a single-runner rollout: the CR lifecycle
-implementation-generation jobs (`gen-code` / `revise-code`) stay on
-`ubuntu-latest`. `gen-code` pushes a PR update and then waits on the resulting
-PR CI run; if both jobs shared the same one-runner local pool, that handoff
-would deadlock.
+The CR lifecycle code generation jobs now use the dedicated codegen pool.
+`gen-code` and `revise-design` both push PR updates and then wait on follow-up
+CI. If codegen and the resulting PR CI shared a single-runner pool, the waiting
+job would occupy the only runner and the watched CI run would never start. That
+is why `webtps-local` and `webtps-local-codegen` must remain separate pools.
 
-The single-runner topology also means CI executes sequentially in practice even
-when the workflow graph exposes parallel jobs. That is deliberate for the local
-cutover because several jobs bind fixed ports such as `3000`, `4000`, and
-`8042`. Do not add a second runner process on this same VM unless those jobs
-are first isolated by port and local-state namespace.
+The normal CI pool still executes sequentially in practice because several jobs
+bind fixed ports such as `3000`, `4000`, and `8042`. Keep that isolation model
+intact when expanding capacity.
 
-That keeps the deploy job on the explicit deploy label while letting the normal
-CI jobs move back to GitHub-hosted next month with a settings-only rollback:
+Normal CI can still be rolled back to GitHub-hosted by changing only the repo
+variable:
 
 - `WEBTPS_DEFAULT_RUNS_ON_JSON=["ubuntu-latest"]`
 
@@ -251,34 +262,63 @@ Print the current expected labels and variable values with:
 bash scripts/ci/print_runner_contract.sh
 ```
 
-### Start and stop the runner VM
+### Start and stop the runner VMs
 
 After a full Mac restart, the GitHub Actions runner service inside the VM
-should start automatically, but the Lima VM itself may still need to be started
-manually:
+should start automatically, but the Lima VMs themselves may still need to be
+started manually:
 
 ```bash
 limactl start webtps-ci
+limactl start webtps-ci-codegen
 ```
 
-Confirm the VM, runner service, and GitHub-side runner state:
+Confirm the VMs, runner services, and GitHub-side runner state:
 
 ```bash
 limactl list
 limactl shell webtps-ci -- sudo ./actions-runner/svc.sh status
+limactl shell webtps-ci-codegen -- sudo ./actions-runner/svc.sh status
 gh api repos/itercharles/WebTPS/actions/runners \
-  --jq '.runners[] | select(.name=="webtps-ci") | {status: .status, busy: .busy, labels: [.labels[].name]}'
+  --jq '.runners[] | select(.name=="webtps-ci" or .name=="webtps-ci-codegen") | {name: .name, status: .status, busy: .busy, labels: [.labels[].name]}'
 ```
 
-To stop the local CI runner cleanly:
+Build the dedicated codegen VM from the same Ubuntu 24.04 base as the existing
+CI runner, but keep it isolated:
+
+```bash
+limactl start webtps-ci-codegen
+limactl shell webtps-ci-codegen
+```
+
+Inside `webtps-ci-codegen`, install the same minimum runner dependencies as the
+main CI VM:
+
+- Docker Engine
+- Docker Compose plugin
+- Git
+- curl
+- jq
+- Python 3
+- GitHub Actions runner service
+
+Register exactly one runner in that VM with labels:
+
+- `self-hosted`
+- `linux`
+- `webtps-local-codegen`
+
+Do not attach `webtps-local` or `webtps-deploy` to that runner.
+
+To stop the local CI runners cleanly:
 
 ```bash
 limactl stop webtps-ci
+limactl stop webtps-ci-codegen
 ```
 
-That stops the VM and therefore the runner. GitHub should then show
-`webtps-ci` as offline.
-
+That stops each VM and therefore its runner. GitHub should then show
+`webtps-ci` and `webtps-ci-codegen` as offline.
 The deploy workflow still relies on Docker access from the runner user. Before
 the automated workflow runs, confirm that inside the VM:
 
