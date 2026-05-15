@@ -146,6 +146,11 @@ def main() -> int:
         "issue-to-cr.yml must call generate-dhf inline — design is generated at intake in 0.5",
         errors,
     )
+    require(
+        "completed_with_errors" in issue_to_cr_text,
+        "issue-to-cr.yml must gate on completed_with_errors from generate-dhf",
+        errors,
+    )
 
     if errors:
         for error in errors:

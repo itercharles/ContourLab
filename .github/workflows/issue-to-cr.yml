@@ -59,16 +59,56 @@ jobs:
           gh label create "cr:stage/design" --color "d93f0b" --description "CR stage: awaiting design review" 2>/dev/null || true
           gh label create "cr:stage/code"   --color "0e8a16" --description "CR stage: awaiting code review"   2>/dev/null || true
 
-      - name: Create feat branch and commit CR
+      # Push the CR commit before design generation so a branch + PR always
+      # exists even if generate-dhf later fails — enabling manual rerun.
+      - name: Create feat branch, commit CR, push
+        id: create_branch
         if: steps.prepare.outputs.should_create == 'true'
         run: |
           CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
           git checkout -b "feat/$CR_ID"
           git add DHF/items/
           git commit -m "cr: intake $CR_ID"
+          git push --force-with-lease --set-upstream origin "feat/$CR_ID"
+
+      - name: Open draft PR
+        id: open_pr
+        if: steps.create_branch.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          BRANCH="feat/$CR_ID"
+          {
+            echo "Closes #${{ github.event.issue.number }}"
+            echo ""
+            echo "**Stage 1 of 2 — Design Review**"
+            echo "Review the AI-generated design in \`DHF/items/09_cr/$CR_ID.yaml\` (\`implementation_notes\`), then approve to trigger implementation."
+          } > /tmp/pr-body.md
+          PR_URL=$(gh pr view "$BRANCH" --json url,state -q 'select(.state=="OPEN") | .url' 2>/dev/null || true)
+          if [ -z "$PR_URL" ]; then
+            PR_URL=$(gh pr create \
+              --head "$BRANCH" \
+              --base main \
+              --draft \
+              --title "feat($CR_ID): $ISSUE_TITLE" \
+              --body-file /tmp/pr-body.md \
+              --label "cr:stage/design")
+          fi
+          gh issue edit "${{ github.event.issue.number }}" --add-label "cr:stage/design"
+          PR_NUMBER=$(gh pr view "$BRANCH" --json number --jq '.number' 2>/dev/null || echo "")
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          {
+            echo "CR intake complete: **$CR_ID** — design generating, review PR: $PR_URL"
+            echo ""
+            echo "<!-- webtps-cr: $CR_ID -->"
+            echo "<!-- webtps-cr-pr: $PR_URL -->"
+          } | gh issue comment "${{ github.event.issue.number }}" --body-file -
 
       - name: Generate design
-        if: steps.prepare.outputs.should_create == 'true'
+        id: generate_design
+        if: steps.open_pr.outcome == 'success'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
@@ -87,15 +127,35 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Commit design and open PR
-        if: steps.prepare.outputs.should_create == 'true'
+      # Gate blocks on both process failure and completed_with_errors so
+      # malformed design output is never silently approved into implementation.
+      - name: Gate on design outcome
+        id: gate_design
+        if: always() && steps.open_pr.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
           CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
-          BRANCH="feat/$CR_ID"
+          PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
+          if [ "${{ steps.generate_design.outcome }}" != "success" ]; then
+            gh pr comment "$PR_NUMBER" \
+              --repo "${{ github.repository }}" \
+              --body "⚠️ **Design generation failed** for $CR_ID — re-trigger via Actions → cr-lifecycle.yml → workflow_dispatch (stage: design) once the cause is resolved."
+            exit 1
+          fi
+          [ ! -f /tmp/generate-dhf-out.json ] && exit 0
+          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/generate-dhf-out.json)
+          if [ "$OUTCOME" = "completed_with_errors" ]; then
+            ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/generate-dhf-out.json)
+            BODY=$(printf '⚠️ **Design validation has residual errors** for %s:\n\n%s\n\nCorrect the DHF items and re-trigger via Actions → cr-lifecycle.yml → workflow_dispatch (stage: design).' "$CR_ID" "$ERRORS")
+            gh pr comment "$PR_NUMBER" --body "$BODY"
+            exit 1
+          fi
 
+      - name: Commit design and push
+        if: always() && steps.gate_design.outcome == 'success'
+        run: |
+          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
           git add DHF/
           if ! git diff --staged --quiet; then
             COMMIT_BODY=""
@@ -112,51 +172,27 @@ jobs:
             else
               git commit -m "feat: design $CR_ID"
             fi
+            git push
           fi
 
-
-          git push --force-with-lease --set-upstream origin "$BRANCH"
-
-          {
-            echo "Closes #${{ github.event.issue.number }}"
-            echo ""
-            echo "**Stage 1 of 2 — Design Review**"
-            echo "Review the AI-generated design in \`DHF/items/09_cr/$CR_ID.yaml\` (\`implementation_notes\`), then approve to trigger implementation."
-          } > /tmp/pr-body.md
-
-          PR_URL=$(gh pr view "$BRANCH" --json url,state -q 'select(.state=="OPEN") | .url' 2>/dev/null || true)
-          if [ -z "$PR_URL" ]; then
-            PR_URL=$(gh pr create \
-              --head "$BRANCH" \
-              --base main \
-              --draft \
-              --title "feat($CR_ID): $ISSUE_TITLE" \
-              --body-file /tmp/pr-body.md \
-              --label "cr:stage/design")
-          fi
-
-          gh issue edit "${{ github.event.issue.number }}" --add-label "cr:stage/design"
-
-          PR_NUMBER=$(gh pr view "$BRANCH" --json number --jq '.number' 2>/dev/null || echo "")
-          if [ -n "$PR_NUMBER" ] && [ -f /tmp/generate-dhf-out.json ]; then
-            CREATED=$(jq -r '[.artifacts.items_changed.created[]?] | join(", ")' /tmp/generate-dhf-out.json)
-            UPDATED=$(jq -r '[.artifacts.items_changed.updated[]?] | join(", ")' /tmp/generate-dhf-out.json)
-            DESIGN_SUMMARY=$(jq -r '.summary // ""' /tmp/generate-dhf-out.json)
-            WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/generate-dhf-out.json)
-            BODY="**Design output for $CR_ID**"$'\n'
-            [ -n "$DESIGN_SUMMARY" ] && BODY="${BODY}"$'\n'"$DESIGN_SUMMARY"$'\n'
-            [ -n "$CREATED" ] && BODY="${BODY}"$'\n'"**Created:** $CREATED"$'\n'
-            [ -n "$UPDATED" ] && BODY="${BODY}"$'\n'"**Updated:** $UPDATED"$'\n'
-            [ -n "$WARNINGS" ] && BODY="${BODY}"$'\n'"⚠️ **Warnings:**"$'\n'"$WARNINGS"$'\n'
-            BODY="${BODY}"$'\n'"The implementation plan is written to \`DHF/items/09_cr/$CR_ID.yaml\` in \`implementation_notes\`."
-            gh pr comment "$PR_NUMBER" \
-              --repo "${{ github.repository }}" \
-              --body "$BODY"
-          fi
-
-          {
-            echo "CR intake and design complete: **$CR_ID** — review PR: $PR_URL"
-            echo ""
-            echo "<!-- webtps-cr: $CR_ID -->"
-            echo "<!-- webtps-cr-pr: $PR_URL -->"
-          } | gh issue comment "${{ github.event.issue.number }}" --body-file -
+      - name: Post design summary
+        if: always() && steps.gate_design.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
+          [ ! -f /tmp/generate-dhf-out.json ] && exit 0
+          CREATED=$(jq -r '[.artifacts.items_changed.created[]?] | join(", ")' /tmp/generate-dhf-out.json)
+          UPDATED=$(jq -r '[.artifacts.items_changed.updated[]?] | join(", ")' /tmp/generate-dhf-out.json)
+          DESIGN_SUMMARY=$(jq -r '.summary // ""' /tmp/generate-dhf-out.json)
+          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/generate-dhf-out.json)
+          BODY="**Design output for $CR_ID**"$'\n'
+          [ -n "$DESIGN_SUMMARY" ] && BODY="${BODY}"$'\n'"$DESIGN_SUMMARY"$'\n'
+          [ -n "$CREATED" ] && BODY="${BODY}"$'\n'"**Created:** $CREATED"$'\n'
+          [ -n "$UPDATED" ] && BODY="${BODY}"$'\n'"**Updated:** $UPDATED"$'\n'
+          [ -n "$WARNINGS" ] && BODY="${BODY}"$'\n'"⚠️ **Warnings:**"$'\n'"$WARNINGS"$'\n'
+          BODY="${BODY}"$'\n'"The implementation plan is written to \`DHF/items/09_cr/$CR_ID.yaml\` in \`implementation_notes\`."
+          gh pr comment "$PR_NUMBER" \
+            --repo "${{ github.repository }}" \
+            --body "$BODY"
