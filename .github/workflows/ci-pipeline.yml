@@ -21,7 +21,7 @@ jobs:
 
   medharness-contract:
     name: MedHarness Contract
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     steps:
       - uses: actions/checkout@v5
 
@@ -36,7 +36,7 @@ jobs:
 
   changes:
     name: Detect Changed Scope
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     outputs:
       client:       ${{ steps.scope.outputs.client }}
       api:          ${{ steps.scope.outputs.api }}
@@ -123,7 +123,7 @@ jobs:
 
   cr-validation:
     name: CR Validation
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     if: github.event_name == 'pull_request'
     steps:
       - name: Extract CR IDs from PR title
@@ -147,7 +147,7 @@ jobs:
 
   stage-gate:
     name: Stage Gate
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     if: github.event_name == 'pull_request'
     outputs:
       run_ci: ${{ steps.check.outputs.run_ci }}
@@ -186,7 +186,7 @@ jobs:
 
   dhf-validation:
     name: DHF Validation (schema + traceability)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     needs: [medharness-contract, cr-validation, changes]
     if: always() && !failure() && !cancelled() && needs.changes.outputs.dhf == 'true'
     steps:
@@ -216,7 +216,7 @@ jobs:
 
   cr-branch-validation:
     name: CR Branch Validation (coupled changes + test annotations)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     needs: [medharness-contract, cr-validation, changes]
     permissions:
       contents: read
@@ -267,7 +267,7 @@ jobs:
 
   dev-frontend:
     name: Dev | Frontend (lint · typecheck · build)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     needs: [medharness-contract, cr-validation, stage-gate, changes]
     if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.client == 'true'
     steps:
@@ -279,7 +279,7 @@ jobs:
 
   dev-api:
     name: Dev | API (restore · build · test)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     needs: [medharness-contract, cr-validation, stage-gate, changes]
     if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.api == 'true'
     steps:
@@ -298,7 +298,7 @@ jobs:
 
   dev-shared-types:
     name: Dev | Shared Types (typecheck · build)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     needs: [medharness-contract, cr-validation, stage-gate, changes]
     if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.shared_types == 'true'
     steps:
@@ -309,7 +309,7 @@ jobs:
 
   dev-integration:
     name: Dev | Integration Smoke (full stack · health check)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     needs: [medharness-contract, dev-frontend, dev-api, dev-shared-types, changes]
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
@@ -350,7 +350,7 @@ jobs:
 
   verify-srs:
     name: Verify | Test-SRS (Vitest · software requirements)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     needs: [medharness-contract, dev-frontend, dev-shared-types, changes]
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
@@ -368,7 +368,7 @@ jobs:
 
   verify-sys:
     name: Verify | Test-SYS (Playwright · system requirements)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     # SYS tests use page.route() mocks and window.__webtps_stores injection —
     # they do not call the API or Orthanc, so only the frontend needs to run.
     needs: [medharness-contract, dev-frontend, dev-shared-types, changes]
@@ -423,7 +423,7 @@ jobs:
 
   validate-crs:
     name: Validate | Test-CRS (Playwright · clinical workflows)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     needs: [medharness-contract, dev-frontend, dev-api, dev-shared-types, changes]
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
@@ -484,7 +484,7 @@ jobs:
 
   compliance:
     name: Test Coverage Gate (requirement → test)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     needs: [medharness-contract, dhf-validation, dev-integration, verify-srs, verify-sys, validate-crs, changes]
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
@@ -539,7 +539,7 @@ jobs:
 
   generate-artifacts:
     name: DHF Artifacts (evidence bundle)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     needs: [compliance]
     if: github.ref == 'refs/heads/main' && !failure() && !cancelled()
     steps:
@@ -621,7 +621,7 @@ jobs:
 
   deploy:
     name: Deploy | Linux VM (Docker)
-    runs-on: [self-hosted, linux]
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEPLOY_RUNS_ON_JSON) }}
     needs: [compliance]
     if: github.ref == 'refs/heads/main' && !failure() && !cancelled()
     steps:

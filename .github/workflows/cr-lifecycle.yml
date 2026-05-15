@@ -39,7 +39,7 @@ jobs:
     if: |
       startsWith(github.event.pull_request.head.ref, 'feat/CR-') ||
       github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     permissions:
       contents: read
       pull-requests: read
@@ -109,7 +109,7 @@ jobs:
     needs: [detect]
     if: needs.detect.outputs.action == 'cancel'
     name: "Cancel CR (${{ needs.detect.outputs.cr_id }})"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     permissions:
       contents: write
     steps:
@@ -138,7 +138,7 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-design'
     name: "Generate Design (${{ needs.detect.outputs.cr_id }})"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     permissions:
       contents: write
       pull-requests: write
@@ -276,7 +276,7 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-design'
     name: "Revise Design (${{ needs.detect.outputs.cr_id }})"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     permissions:
       contents: write
       pull-requests: write
@@ -378,7 +378,7 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-code'
     name: "Generate Code (${{ needs.detect.outputs.cr_id }})"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     permissions:
       contents: write
       pull-requests: write
@@ -544,7 +544,7 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-code'
     name: "Revise Code (${{ needs.detect.outputs.cr_id }})"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     permissions:
       contents: write
       pull-requests: write
@@ -646,7 +646,7 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'code-approved'
     name: "Code Approved — Ready to Merge"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     permissions:
       pull-requests: write
     steps:

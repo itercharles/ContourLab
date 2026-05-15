@@ -10,7 +10,7 @@ on:
 jobs:
   complete-cr:
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'feat/CR-')
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     permissions:
       contents: write
     steps:
@@ -36,7 +36,7 @@ jobs:
   # [skip ci].
   trigger-ci-on-main:
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'feat/CR-')
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
     permissions:
       actions: write
     steps:
