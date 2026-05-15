@@ -314,7 +314,7 @@ describe('Toolbar contour operations', () => {
     expect(screen.getByRole('link', { name: 'github.com/itercharles/WebTPS' }).getAttribute('href')).toBe(
       'https://github.com/itercharles/WebTPS'
     );
-    expect(screen.getByText('analyze')).toBeTruthy();
+    expect(screen.queryByText('analyze')).toBeNull();
     expect(screen.getByText(/CI auto test/i)).toBeTruthy();
     expect(screen.queryByRole('link', { name: /Submit or track an issue/i })).toBeNull();
   });
