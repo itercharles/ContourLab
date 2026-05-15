@@ -266,9 +266,18 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          gh pr edit "$PR_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/design"
+          REPO="${{ github.repository }}"
+          gh api -X DELETE "repos/${REPO}/issues/${PR_NUMBER}/labels/cr%3Astage%2Fcr" \
+            2>/dev/null || true
+          gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/labels" \
+            -f "labels[]=cr:stage/design"
           ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
-          [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/design" 2>/dev/null || true
+          if [ -n "$ISSUE_NUMBER" ]; then
+            gh api -X DELETE "repos/${REPO}/issues/${ISSUE_NUMBER}/labels/cr%3Astage%2Fcr" \
+              2>/dev/null || true
+            gh api -X POST "repos/${REPO}/issues/${ISSUE_NUMBER}/labels" \
+              -f "labels[]=cr:stage/design" 2>/dev/null || true
+          fi
 
   # ── DESIGN: REVISE ────────────────────────────────────────────────────────
 
@@ -481,12 +490,21 @@ jobs:
           if [ "$COMMITTED" = "true" ]; then
             # Advance label BEFORE pushing so the PR-triggered CI run sees cr:stage/code
             # and the stage-gate allows dev tests (lint · typecheck · build) to run.
-            FROM_LABEL="cr:stage/design"
-            gh pr edit "$PR_NUMBER" --remove-label "$FROM_LABEL" --add-label "cr:stage/code"
-            gh pr ready "$PR_NUMBER"
+            # Use REST API directly — gh pr edit uses a deprecated projectCards GraphQL
+            # query that exits 1 even when the label operation itself succeeds.
+            REPO="${{ github.repository }}"
+            gh api -X DELETE "repos/${REPO}/issues/${PR_NUMBER}/labels/cr%3Astage%2Fdesign" \
+              2>/dev/null || true
+            gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/labels" \
+              -f "labels[]=cr:stage/code"
+            gh pr ready "$PR_NUMBER" 2>/dev/null || true
             ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
-            [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" \
-              --remove-label "$FROM_LABEL" --add-label "cr:stage/code" 2>/dev/null || true
+            if [ -n "$ISSUE_NUMBER" ]; then
+              gh api -X DELETE "repos/${REPO}/issues/${ISSUE_NUMBER}/labels/cr%3Astage%2Fdesign" \
+                2>/dev/null || true
+              gh api -X POST "repos/${REPO}/issues/${ISSUE_NUMBER}/labels" \
+                -f "labels[]=cr:stage/code" 2>/dev/null || true
+            fi
           fi
           echo "COMMITTED=$COMMITTED" >> "$GITHUB_ENV"
       - name: Push and wait for CI
