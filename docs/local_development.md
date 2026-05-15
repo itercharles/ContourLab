@@ -234,6 +234,12 @@ implementation-generation jobs (`gen-code` / `revise-code`) stay on
 PR CI run; if both jobs shared the same one-runner local pool, that handoff
 would deadlock.
 
+The single-runner topology also means CI executes sequentially in practice even
+when the workflow graph exposes parallel jobs. That is deliberate for the local
+cutover because several jobs bind fixed ports such as `3000`, `4000`, and
+`8042`. Do not add a second runner process on this same VM unless those jobs
+are first isolated by port and local-state namespace.
+
 That keeps the deploy job on the explicit deploy label while letting the normal
 CI jobs move back to GitHub-hosted next month with a settings-only rollback:
 

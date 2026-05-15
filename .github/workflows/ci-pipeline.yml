@@ -548,8 +548,15 @@ jobs:
 
       - name: Install system dependencies for PDF export
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0
+          if dpkg -s libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0 >/dev/null 2>&1; then
+            exit 0
+          fi
+          sudo -n true >/dev/null 2>&1 || {
+            echo "::error::generate-artifacts requires passwordless sudo to install WeasyPrint PDF dependencies on self-hosted Linux."
+            exit 1
+          }
+          sudo -n apt-get update
+          sudo -n apt-get install -y libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0
 
       - uses: ./.github/actions/medharness-setup
         with:

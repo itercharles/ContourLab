@@ -23,7 +23,7 @@ runs:
   steps:
     - uses: actions/setup-dotnet@v4
       env:
-        DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
+        DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet-${{ github.run_id }}-${{ github.job }}
       with:
         dotnet-version: ${{ inputs.dotnet-version }}
 
@@ -31,5 +31,5 @@ runs:
       if: inputs.restore == 'true'
       shell: bash
       env:
-        DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
+        DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet-${{ github.run_id }}-${{ github.job }}
       run: dotnet restore "${{ inputs.project }}"

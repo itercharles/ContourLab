@@ -27,3 +27,10 @@ Suggested gh commands:
 gh variable set WEBTPS_DEFAULT_RUNS_ON_JSON --body '["self-hosted","linux","webtps-local"]'
 gh variable set WEBTPS_DEPLOY_RUNS_ON_JSON --body '["self-hosted","linux","webtps-deploy"]'
 EOF
+
+if command -v gh >/dev/null 2>&1; then
+  if gh variable list >/tmp/webtps-gh-variables.txt 2>/dev/null; then
+    printf '\nCurrent repo variable values:\n'
+    grep '^WEBTPS_.*RUNS_ON_JSON' /tmp/webtps-gh-variables.txt || true
+  fi
+fi
