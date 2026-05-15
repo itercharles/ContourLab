@@ -1,0 +1,15 @@
+id: CR-012
+title: Update the about box
+type: CR
+description: 'the workflow in the about box should be updated, the analyze phase has
+  been removed.
+
+
+  Source issue: https://github.com/itercharles/WebTPS/issues/91'
+justification: the actual workflow has been changed.
+priority: Medium
+requested_by: itercharles
+target_version: 2026-W20
+category: Feature
+content: the workflow in about dialog match the current cr-lifecycle workflow.
+status: new
