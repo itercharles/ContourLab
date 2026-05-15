@@ -276,10 +276,9 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-design'
     name: "Revise Design (${{ needs.detect.outputs.cr_id }})"
-    # Codegen and the PR CI it waits on cannot share a single-runner pool.
-    # Keep the normal CI pool on webtps-local and route codegen to the
-    # separate webtps-local-codegen pool to avoid deadlock.
-    runs-on: ${{ vars.WEBTPS_CODEGEN_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_CODEGEN_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    # Long-running AI generation should stay off the normal CI runner pool so
+    # standard PR validation does not queue behind a design revision.
+    runs-on: ${{ fromJSON(vars.WEBTPS_CODEGEN_RUNS_ON_JSON || '["ubuntu-latest"]') }}
     permissions:
       contents: write
       pull-requests: write
@@ -384,7 +383,7 @@ jobs:
     # Codegen and the PR CI it waits on cannot share a single-runner pool.
     # Keep the normal CI pool on webtps-local and route codegen to the
     # separate webtps-local-codegen pool to avoid deadlock.
-    runs-on: ${{ vars.WEBTPS_CODEGEN_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_CODEGEN_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    runs-on: ${{ fromJSON(vars.WEBTPS_CODEGEN_RUNS_ON_JSON || '["ubuntu-latest"]') }}
     permissions:
       contents: write
       pull-requests: write
