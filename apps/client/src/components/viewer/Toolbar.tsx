@@ -412,7 +412,6 @@ export default function Toolbar() {
                 {(() => {
                   const steps: Array<{ actor: 'human' | 'ai' | 'auto'; stage: string; desc: string; trigger: string | null }> = [
                     { actor: 'human', stage: 'open',      desc: 'human submit & triage',                          trigger: 'triage' },
-                    { actor: 'ai',    stage: 'analyze',   desc: 'AI to analyze request and generate plan',          trigger: 'approve' },
                     { actor: 'ai',    stage: 'design',    desc: 'AI to update the DHF',                             trigger: 'approve' },
                     { actor: 'ai',    stage: 'implement', desc: 'AI to generate code',                              trigger: 'approve + CI' },
                     { actor: 'auto',  stage: 'deployed',  desc: 'CI auto test · report · deploy',                   trigger: null },
