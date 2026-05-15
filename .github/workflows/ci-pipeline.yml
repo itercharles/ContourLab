@@ -132,7 +132,7 @@ jobs:
         run: |
           CR_IDS=$(echo "$PR_TITLE" | grep -oE 'CR-[0-9]+' | sort -u | tr '\n' ' ' || true)
           if [ -z "$CR_IDS" ]; then
-            if echo "$PR_TITLE" | grep -Eq '^(ci|chore|docs)(\(|:)'; then
+            if echo "$PR_TITLE" | grep -Eq '^(ci|chore|docs|fix|refactor|test|perf)(\(|:)'; then
               echo "No CR ID — maintenance PR exempt."
               exit 0
             fi
