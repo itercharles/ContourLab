@@ -251,6 +251,34 @@ Print the current expected labels and variable values with:
 bash scripts/ci/print_runner_contract.sh
 ```
 
+### Start and stop the runner VM
+
+After a full Mac restart, the GitHub Actions runner service inside the VM
+should start automatically, but the Lima VM itself may still need to be started
+manually:
+
+```bash
+limactl start webtps-ci
+```
+
+Confirm the VM, runner service, and GitHub-side runner state:
+
+```bash
+limactl list
+limactl shell webtps-ci -- sudo ./actions-runner/svc.sh status
+gh api repos/itercharles/WebTPS/actions/runners \
+  --jq '.runners[] | select(.name=="webtps-ci") | {status: .status, busy: .busy, labels: [.labels[].name]}'
+```
+
+To stop the local CI runner cleanly:
+
+```bash
+limactl stop webtps-ci
+```
+
+That stops the VM and therefore the runner. GitHub should then show
+`webtps-ci` as offline.
+
 The deploy workflow still relies on Docker access from the runner user. Before
 the automated workflow runs, confirm that inside the VM:
 

@@ -26,6 +26,13 @@ Rollback for non-deploy jobs:
 Suggested gh commands:
 gh variable set WEBTPS_DEFAULT_RUNS_ON_JSON --body '["self-hosted","linux","webtps-local"]'
 gh variable set WEBTPS_DEPLOY_RUNS_ON_JSON --body '["self-hosted","linux","webtps-deploy"]'
+
+Start after reboot:
+limactl start webtps-ci
+limactl shell webtps-ci -- sudo ./actions-runner/svc.sh status
+
+Stop the local runner VM:
+limactl stop webtps-ci
 EOF
 
 if command -v gh >/dev/null 2>&1; then
