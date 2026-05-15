@@ -26,6 +26,9 @@ gh variable set WEBTPS_DEFAULT_RUNS_ON_JSON --body '["self-hosted","linux","webt
 gh variable set WEBTPS_CODEGEN_RUNS_ON_JSON --body '["self-hosted","linux","webtps-local-codegen"]'
 gh variable set WEBTPS_DEPLOY_RUNS_ON_JSON --body '["self-hosted","linux","webtps-deploy"]'
 
+Required packages in each CI/codegen VM:
+Git, Docker Engine, Docker Compose plugin, curl, jq, gh (GitHub CLI), Python 3
+
 Create the second Lima VM:
 limactl create --name=webtps-ci-codegen --vm-type=vz --cpus=4 --memory=8 --disk=60 template://ubuntu-24.04
 

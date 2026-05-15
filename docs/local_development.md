@@ -213,6 +213,7 @@ Install these packages in each CI/codegen VM:
 - Docker Compose plugin
 - curl
 - jq
+- gh (GitHub CLI)
 - Python 3
 - GitHub Actions runner service
 
@@ -299,6 +300,7 @@ main CI VM:
 - Git
 - curl
 - jq
+- gh (GitHub CLI)
 - Python 3
 - GitHub Actions runner service
 
