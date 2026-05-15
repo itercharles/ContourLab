@@ -222,6 +222,18 @@ The workflows consume two repository variables as the runner control plane:
 - `WEBTPS_DEFAULT_RUNS_ON_JSON=["self-hosted","linux","webtps-local"]`
 - `WEBTPS_DEPLOY_RUNS_ON_JSON=["self-hosted","linux","webtps-deploy"]`
 
+The workflow files also carry in-repo fallbacks so scheduling still works
+before those variables are created:
+
+- non-deploy jobs fall back to `["ubuntu-latest"]`
+- deploy falls back to `["self-hosted","linux","webtps-deploy"]`
+
+One exception remains intentional for a single-runner rollout: the CR lifecycle
+implementation-generation jobs (`gen-code` / `revise-code`) stay on
+`ubuntu-latest`. `gen-code` pushes a PR update and then waits on the resulting
+PR CI run; if both jobs shared the same one-runner local pool, that handoff
+would deadlock.
+
 That keeps the deploy job on the explicit deploy label while letting the normal
 CI jobs move back to GitHub-hosted next month with a settings-only rollback:
 

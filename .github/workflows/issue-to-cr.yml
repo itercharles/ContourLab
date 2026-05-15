@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   create-cr:
-    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
+    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v5
         with:

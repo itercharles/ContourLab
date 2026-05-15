@@ -10,7 +10,7 @@ on:
 jobs:
   complete-cr:
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'feat/CR-')
-    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
+    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: write
     steps:
@@ -36,7 +36,7 @@ jobs:
   # [skip ci].
   trigger-ci-on-main:
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'feat/CR-')
-    runs-on: ${{ fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) }}
+    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       actions: write
     steps:
