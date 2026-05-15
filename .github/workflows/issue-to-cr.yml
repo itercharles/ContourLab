@@ -84,7 +84,7 @@ jobs:
             echo "Closes #${{ github.event.issue.number }}"
             echo ""
             echo "**Stage 1 of 2 — Design Review**"
-            echo "Review the AI-generated design in \`DHF/items/09_cr/$CR_ID.yaml\` (\`implementation_notes\`), then approve to trigger implementation."
+            echo "The AI-generated implementation plan will be posted as a comment below once design generation completes. Approve to trigger implementation."
           } > /tmp/pr-body.md
           PR_URL=$(gh pr view "$BRANCH" --json url,state -q 'select(.state=="OPEN") | .url' 2>/dev/null || true)
           if [ -z "$PR_URL" ]; then
@@ -192,7 +192,31 @@ jobs:
           [ -n "$CREATED" ] && BODY="${BODY}"$'\n'"**Created:** $CREATED"$'\n'
           [ -n "$UPDATED" ] && BODY="${BODY}"$'\n'"**Updated:** $UPDATED"$'\n'
           [ -n "$WARNINGS" ] && BODY="${BODY}"$'\n'"⚠️ **Warnings:**"$'\n'"$WARNINGS"$'\n'
-          BODY="${BODY}"$'\n'"The implementation plan is written to \`DHF/items/09_cr/$CR_ID.yaml\` in \`implementation_notes\`."
+          gh pr comment "$PR_NUMBER" \
+            --repo "${{ github.repository }}" \
+            --body "$BODY"
+
+      - name: Post implementation plan
+        if: always() && steps.gate_design.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
+          IMPL_NOTES=$(python3 - <<'PYEOF'
+import yaml, sys, os
+cr_id = os.environ["CR_ID"]
+path = f"DHF/items/09_cr/{cr_id}.yaml"
+if not os.path.exists(path):
+    sys.exit(0)
+with open(path, encoding="utf-8") as f:
+    d = yaml.safe_load(f)
+notes = (d.get("implementation_notes") or "").strip()
+print(notes)
+PYEOF
+          )
+          [ -z "$IMPL_NOTES" ] && exit 0
+          BODY="$(printf '## Implementation Plan\n\n%s' "$IMPL_NOTES")"
           gh pr comment "$PR_NUMBER" \
             --repo "${{ github.repository }}" \
             --body "$BODY"
