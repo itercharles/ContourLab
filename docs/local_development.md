@@ -274,7 +274,6 @@ limactl start webtps-ci-codegen
 ```
 
 Confirm the VMs, runner services, and GitHub-side runner state:
->>>>>>> 1c5ba6d (ci: isolate codegen runner pool)
 
 ```bash
 limactl list
