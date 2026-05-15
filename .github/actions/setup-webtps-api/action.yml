@@ -22,10 +22,14 @@ runs:
   using: composite
   steps:
     - uses: actions/setup-dotnet@v4
+      env:
+        DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
       with:
         dotnet-version: ${{ inputs.dotnet-version }}
 
     - name: Restore API project
       if: inputs.restore == 'true'
       shell: bash
+      env:
+        DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
       run: dotnet restore "${{ inputs.project }}"
