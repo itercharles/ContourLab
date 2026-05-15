@@ -13,3 +13,47 @@ target_version: 2026-W20
 category: Feature
 content: the workflow in about dialog match the current cr-lifecycle workflow.
 status: new
+implementation_notes: "## Overview\nCR-012 updates the about box workflow diagram\
+  \ in `Toolbar.tsx` to reflect the current three-stage CR lifecycle (CR Review →\
+  \ Design Review → Implementation Review). The `analyze` phase — a formerly separate\
+  \ step between CR submission and DHF design — has been removed from the workflow.\
+  \ The about box currently shows a five-step diagram that includes the obsolete `analyze`\
+  \ stage; this CR removes it so the diagram matches the actual process documented\
+  \ in CLAUDE.md.\n\n## Current State\nThe about box is a modal dialog rendered in\
+  \ `apps/client/src/components/viewer/Toolbar.tsx`, triggered by clicking the \"\
+  About\" button in the top toolbar (line 139). Modal visibility is controlled by\
+  \ the `prototypeInfoOpen` state (line 32).\n\nThe workflow diagram is defined at\
+  \ approx. lines 413–420 inside the `prototypeInfoOpen` render block as a `steps`\
+  \ constant with five entries:\n\n- open (human, trigger: 'triage')\n- analyze (ai,\
+  \ trigger: 'approve')   ← THIS IS THE OBSOLETE STEP TO REMOVE\n- design (ai, trigger:\
+  \ 'approve')\n- implement (ai, trigger: 'approve + CI')\n- deployed (auto, trigger:\
+  \ null)\n\nThe array is rendered as a horizontal row of numbered circles with stage\
+  \ labels and connector trigger labels between them (lines 421–446). Circle numbers\
+  \ are derived from array index (`i + 1`) so they re-number automatically when an\
+  \ entry is removed.\n\n## Changes Required\n- **`apps/client/src/components/viewer/Toolbar.tsx`**\
+  \ — modify existing: Remove the single `analyze` entry from the `steps` array (one\
+  \ line deletion). No render logic changes required; the loop handles any array length.\
+  \ No TypeScript type changes needed.\n\n## Implementation Steps\n1. Open `apps/client/src/components/viewer/Toolbar.tsx`.\n\
+  2. Locate the `steps` array inside the IIFE under the `prototypeInfoOpen` block\
+  \ (approx. line 413).\n3. Delete the `analyze` entry:\n   `{ actor: 'ai', stage:\
+  \ 'analyze', desc: 'AI to analyze request and generate plan', trigger: 'approve'\
+  \ },`\n4. Leave all other entries and trigger values unchanged. The `open` step's\
+  \ `trigger: 'triage'` remains correct — human triage still initiates design.\n5.\
+  \ Run `pnpm --filter @webtps/client typecheck` — expect zero errors.\n6. Run `pnpm\
+  \ --filter @webtps/client test` — existing Toolbar tests must pass.\n7. Open the\
+  \ app, click About in the toolbar, verify four stages shown: open → design → implement\
+  \ → deployed.\n\n## Edge Cases & Constraints\n- The render loop derives step numbers\
+  \ from array index (`i + 1`), so the diagram automatically re-numbers 1–4 after\
+  \ the deletion.\n- The trigger connector labels between steps are read from `steps[i\
+  \ - 1].trigger` for the preceding step, so removing `analyze` (which carried `trigger:\
+  \ 'approve'` as its own outgoing label) is handled correctly — the connector between\
+  \ `open` and `design` will now show `open`'s trigger value (`'triage'`), which remains\
+  \ accurate.\n- No test covers the about box dialog content specifically; `Toolbar.test.tsx`\
+  \ tests other toolbar behavior and should be unaffected.\n\n## Tests\n- **Manual\
+  \ confirmation**: Click About in toolbar, verify workflow shows exactly four stages\
+  \ (open, design, implement, deployed) with no `analyze` stage present.\n- **Regression**:\
+  \ `pnpm --filter @webtps/client test` — all existing Toolbar tests must continue\
+  \ to pass.\n- No new automated test is warranted: the workflow diagram is purely\
+  \ informational UI with no linked SRS requirement."
+affected_items:
+- CR-012
