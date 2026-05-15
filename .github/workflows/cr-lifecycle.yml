@@ -22,7 +22,7 @@ on:
         description: 'Stage to re-run'
         required: true
         type: choice
-        options: [cr, design, code]
+        options: [design, code]
 
 concurrency:
   group: cr-lifecycle-${{ github.event.pull_request.number || inputs.cr_id }}
@@ -32,7 +32,7 @@ concurrency:
 # Determines what action to take and passes context to downstream jobs.
 # action values: gen-design | gen-code | code-approved |
 #                revise-design | revise-code |
-#                cr-no-revise | cancel | noop
+#                cancel | noop
 
 jobs:
   detect:
@@ -60,13 +60,10 @@ jobs:
         run: |
           python -m medharness ci github-event \
             --stage-label-prefix "cr:stage/" \
-            --dispatch-action cr=gen-design \
             --dispatch-action design=gen-code \
             --dispatch-action code=code-approved \
-            --review-action "approved:cr=gen-design" \
             --review-action "approved:design=gen-code" \
             --review-action "approved:code=code-approved" \
-            --review-action "changes_requested:cr=cr-no-revise" \
             --review-action "changes_requested:design=revise-design" \
             --review-action "changes_requested:code=revise-code" \
             --pr-action "merged=noop" \
@@ -134,24 +131,6 @@ jobs:
           python -m medharness --dhf DHF dhf item transition \
             "$CR_ID" cancelled \
             --by "github-actions[bot]" --commit --push
-
-  # ── CR STAGE: no AI revision ───────────────────────────────────────────────
-
-  cr-no-revise:
-    needs: [detect]
-    if: needs.detect.outputs.action == 'cr-no-revise'
-    name: "CR Stage: No AI Revision"
-    runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-    steps:
-      - name: Comment
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh pr comment "${{ needs.detect.outputs.pr_number }}" \
-            --repo "${{ github.repository }}" \
-            --body "The CR YAML (\`DHF/items/09_cr/${{ needs.detect.outputs.cr_id }}.yaml\`) is human-authored — there is no AI revision path at this stage. Please update it manually and re-approve."
 
   # ── DESIGN: GENERATE ──────────────────────────────────────────────────────
 

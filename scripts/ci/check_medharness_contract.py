@@ -12,6 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CI_PIPELINE = REPO_ROOT / ".github" / "workflows" / "ci-pipeline.yml"
 CR_LIFECYCLE = REPO_ROOT / ".github" / "workflows" / "cr-lifecycle.yml"
+ISSUE_TO_CR = REPO_ROOT / ".github" / "workflows" / "issue-to-cr.yml"
 MEDHARNESS_ACTION = REPO_ROOT / ".github" / "actions" / "medharness-setup" / "action.yml"
 REQUIREMENTS_TXT = REPO_ROOT / "requirements.txt"
 
@@ -66,6 +67,7 @@ def main() -> int:
 
     ci_text = CI_PIPELINE.read_text(encoding="utf-8")
     cr_text = CR_LIFECYCLE.read_text(encoding="utf-8")
+    issue_to_cr_text = ISSUE_TO_CR.read_text(encoding="utf-8")
 
     require(
         "python -m medharness --dhf DHF ci generate-dhf" in cr_text,
@@ -120,6 +122,28 @@ def main() -> int:
     require(
         "validate-design" not in cr_text,
         "cr-lifecycle.yml still contains validate-design references",
+        errors,
+    )
+
+    # MedHarness 0.5: CR review stage eliminated — intake goes straight to design.
+    require(
+        "cr=gen-design" not in cr_text,
+        "cr-lifecycle.yml must not have cr=gen-design dispatch action — CR review stage removed in 0.5",
+        errors,
+    )
+    require(
+        "cr-no-revise" not in cr_text,
+        "cr-lifecycle.yml must not reference cr-no-revise — CR review stage removed in 0.5",
+        errors,
+    )
+    require(
+        '--label "cr:stage/cr"' not in issue_to_cr_text,
+        "issue-to-cr.yml must not open PRs with cr:stage/cr label — CR review stage removed in 0.5",
+        errors,
+    )
+    require(
+        "python -m medharness --dhf DHF ci generate-dhf" in issue_to_cr_text,
+        "issue-to-cr.yml must call generate-dhf inline — design is generated at intake in 0.5",
         errors,
     )
 
