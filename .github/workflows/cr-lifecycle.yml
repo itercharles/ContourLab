@@ -39,7 +39,7 @@ jobs:
     if: |
       startsWith(github.event.pull_request.head.ref, 'feat/CR-') ||
       github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: read
       pull-requests: read
@@ -109,7 +109,7 @@ jobs:
     needs: [detect]
     if: needs.detect.outputs.action == 'cancel'
     name: "Cancel CR (${{ needs.detect.outputs.cr_id }})"
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: write
     steps:
@@ -138,7 +138,7 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-design'
     name: "Generate Design (${{ needs.detect.outputs.cr_id }})"
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: write
       pull-requests: write
@@ -276,6 +276,9 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-design'
     name: "Revise Design (${{ needs.detect.outputs.cr_id }})"
+    # Keep implementation generation off the single local runner. This job
+    # pushes a PR update and then watches the resulting CI run; if both share a
+    # one-runner pool, the watched CI run can never start.
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -378,6 +381,8 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-code'
     name: "Generate Code (${{ needs.detect.outputs.cr_id }})"
+    # Keep implementation revision on hosted Linux too so follow-up codegen
+    # does not contend with the single local CI runner.
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -544,7 +549,7 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-code'
     name: "Revise Code (${{ needs.detect.outputs.cr_id }})"
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: write
       pull-requests: write
@@ -646,7 +651,7 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'code-approved'
     name: "Code Approved — Ready to Merge"
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       pull-requests: write
     steps:

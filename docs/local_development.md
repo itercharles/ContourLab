@@ -188,11 +188,71 @@ The deployed stack is defined in [`../docker-compose.deploy.yml`](../docker-comp
 
 ### First-time runner setup
 
-The Linux runner only needs Git, Docker Engine, the Docker Compose plugin, and a
-GitHub Actions self-hosted runner registered with the `self-hosted` and `linux`
-labels. Node.js, pnpm, and .NET are supplied by Docker build images.
+WebTPS now expects one Linux self-hosted runner VM that can handle both the
+normal CI/automation jobs and the deploy job. Keep it on Ubuntu 24.04 under
+[Lima](https://lima-vm.io/) so workflow behavior stays close to
+`ubuntu-latest`, but runner selection remains switchable from GitHub repo
+variables.
 
-Before the automated workflow runs, confirm Docker access from the runner user:
+Recommended VM shape for this MacBook-hosted runner:
+
+- 6 vCPU
+- 12-16 GB RAM
+- 60+ GB disk
+
+Install these packages in the VM:
+
+- Git
+- Docker Engine
+- Docker Compose plugin
+- Node.js / pnpm prerequisites
+- Python 3
+- GitHub Actions runner service
+
+Register exactly one runner process and apply these labels to that single
+runner:
+
+- `self-hosted`
+- `linux`
+- `webtps-local`
+- `webtps-deploy`
+
+The workflows consume two repository variables as the runner control plane:
+
+- `WEBTPS_DEFAULT_RUNS_ON_JSON=["self-hosted","linux","webtps-local"]`
+- `WEBTPS_DEPLOY_RUNS_ON_JSON=["self-hosted","linux","webtps-deploy"]`
+
+The workflow files also carry in-repo fallbacks so scheduling still works
+before those variables are created:
+
+- non-deploy jobs fall back to `["ubuntu-latest"]`
+- deploy falls back to `["self-hosted","linux","webtps-deploy"]`
+
+One exception remains intentional for a single-runner rollout: the CR lifecycle
+implementation-generation jobs (`gen-code` / `revise-code`) stay on
+`ubuntu-latest`. `gen-code` pushes a PR update and then waits on the resulting
+PR CI run; if both jobs shared the same one-runner local pool, that handoff
+would deadlock.
+
+The single-runner topology also means CI executes sequentially in practice even
+when the workflow graph exposes parallel jobs. That is deliberate for the local
+cutover because several jobs bind fixed ports such as `3000`, `4000`, and
+`8042`. Do not add a second runner process on this same VM unless those jobs
+are first isolated by port and local-state namespace.
+
+That keeps the deploy job on the explicit deploy label while letting the normal
+CI jobs move back to GitHub-hosted next month with a settings-only rollback:
+
+- `WEBTPS_DEFAULT_RUNS_ON_JSON=["ubuntu-latest"]`
+
+Print the current expected labels and variable values with:
+
+```bash
+bash scripts/ci/print_runner_contract.sh
+```
+
+The deploy workflow still relies on Docker access from the runner user. Before
+the automated workflow runs, confirm that inside the VM:
 
 ```bash
 docker version
