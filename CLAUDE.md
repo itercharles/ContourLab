@@ -41,7 +41,7 @@ pnpm -r typecheck                         # typecheck all workspaces
 pnpm -r build                             # build all workspaces
 
 # DHF operations (Python)
-pip install medharness                    # one-time setup (or: pip install -r requirements.txt)
+pip install -r requirements.txt           # one-time setup (pins medharness==0.6.1)
 medharness --dhf DHF dhf item list --type cr          # list all CRs
 medharness --dhf DHF dhf item get CR-NNN              # get CR details
 medharness --dhf DHF dhf item transition CR-NNN <state> --by "Author"
@@ -63,9 +63,11 @@ medharness --dhf DHF dhf doc generate ALL             # regenerate spec document
 ### DHF Facade API Quick Reference
 
 ```bash
-# Get DHF context for a CR stage
-medharness --dhf DHF dhf context for-stage design --cr CR-034
-medharness --dhf DHF dhf context for-stage develop --cr CR-034
+# Get CR implementation context (spec + DHF overview) for AI/CI consumption
+medharness --dhf DHF dhf context implementation --cr CR-034 --out-dir /tmp/cr-context
+
+# Print human-readable traceability coverage report
+medharness --dhf DHF dhf report
 
 # Transition a CR
 medharness --dhf DHF dhf item transition CR-034 completed --by "agent"
@@ -107,6 +109,9 @@ Design and implementation live on the same branch, each committed separately.
 | `cancelled` | PR closed without merging |
 
 ### Agent Rules
+
+0. **Start from latest main** — before beginning any new task, always check out `main` and pull
+   the latest: `git checkout main && git pull origin main`. Branch from there.
 
 1. **Pre-analyze** — run `/pre-analyze`; classify the change (docs, bugfix, feature,
    architecture); check against product/technical strategy; identify DHF impact
