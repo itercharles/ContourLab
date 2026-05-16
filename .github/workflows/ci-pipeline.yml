@@ -213,6 +213,11 @@ jobs:
             --coverage-pair SYS:SYSARCH \
             --coverage-pair RISK:RCM
 
+      - name: Print traceability report
+        if: always()
+        continue-on-error: true
+        run: medharness --dhf DHF dhf report
+
   # ── CR BRANCH VALIDATION ─────────────────────────────────────────────────
   # Phase 2b: For feat/CR-* implementation branches, verifies the branch
   # carries the expected coupled change set (DHF + code) and that all

@@ -41,6 +41,11 @@ def main() -> int:
         "develop-cr": ("python", "-m", "medharness", "ci", "develop-cr", "--help"),
         "validate-code": ("python", "-m", "medharness", "ci", "validate-code", "--help"),
         "validate-branch": ("python", "-m", "medharness", "ci", "validate-branch", "--help"),
+        # 0.6.1 commands
+        "claude-session-get": ("python", "-m", "medharness", "ci", "claude-session", "get", "--help"),
+        "claude-session-put": ("python", "-m", "medharness", "ci", "claude-session", "put", "--help"),
+        "dhf-report": ("python", "-m", "medharness", "dhf", "report", "--help"),
+        "dhf-context-implementation": ("python", "-m", "medharness", "dhf", "context", "implementation", "--help"),
     }
 
     help_output: dict[str, str] = {}
@@ -149,6 +154,23 @@ def main() -> int:
     require(
         "completed_with_errors" in issue_to_cr_text,
         "issue-to-cr.yml must gate on completed_with_errors from generate-dhf",
+        errors,
+    )
+
+    # MedHarness 0.6.1: dhf report + dhf context implementation adopted.
+    require(
+        "medharness --dhf DHF dhf report" in ci_text,
+        "ci-pipeline.yml must emit a dhf report step (0.6.1) for human-readable traceability output",
+        errors,
+    )
+    require(
+        "medharness --dhf DHF dhf context implementation" in issue_to_cr_text,
+        "issue-to-cr.yml must use dhf context implementation (0.6.1) to post the plan comment — no inline YAML parsing",
+        errors,
+    )
+    require(
+        "yaml.safe_load" not in issue_to_cr_text,
+        "issue-to-cr.yml must not parse CR YAML inline — use dhf context implementation (0.6.1)",
         errors,
     )
 

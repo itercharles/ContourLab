@@ -202,21 +202,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
-          export CR_ID
           PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
-          IMPL_NOTES=$(python3 - <<'PYEOF'
-import yaml, sys, os
-cr_id = os.environ["CR_ID"]
-path = f"DHF/items/09_cr/{cr_id}.yaml"
-if not os.path.exists(path):
-    print(f"::warning::CR YAML not found at {path}, skipping plan comment", file=sys.stderr)
-    sys.exit(0)
-with open(path, encoding="utf-8") as f:
-    d = yaml.safe_load(f)
-notes = (d.get("implementation_notes") or "").strip()
-print(notes)
-PYEOF
-          )
+          PATHS=$(medharness --dhf DHF dhf context implementation \
+            --cr "$CR_ID" \
+            --out-dir "/tmp/cr-context-$CR_ID") || { echo "::warning::dhf context implementation failed, skipping plan comment"; exit 0; }
+          CR_FILE=$(echo "$PATHS" | jq -r '.cr')
+          IMPL_NOTES=$(jq -r '(.implementation_notes // "") | ltrimstr("\n") | rtrimstr("\n")' "$CR_FILE")
           [ -z "$IMPL_NOTES" ] && exit 0
           BODY="## Implementation Plan
 
