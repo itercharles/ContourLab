@@ -7,7 +7,7 @@
 | Field | Value |
 |-------|-------|
 | **Document ID** | MODULE-SPEC |
-| **Version** | 1.0 |
+| **Version** | 1.2 |
 | **Generated** | 2026-05-16 |
 | **Status** | Draft |
 | **Project** | DHF Project |
