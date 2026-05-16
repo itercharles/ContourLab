@@ -156,9 +156,10 @@ jobs:
           ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" | tee /tmp/generate-dhf-out.json
+          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/generate-dhf-out.json
 
       - name: Upload design payload
         if: always()
@@ -412,9 +413,10 @@ jobs:
           ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" | tee /tmp/develop-out.json
+          python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/develop-out.json
 
       - name: Upload develop payload
         if: always()
