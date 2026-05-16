@@ -103,6 +103,18 @@ jobs:
           fi
           echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
 
+      - name: CR status (observability)
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CR_ID=$(jq -r '.cr_id // ""' /tmp/event-plan.json)
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          [ -n "$CR_ID" ] && medharness --dhf DHF ci cr-status \
+            --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} \
+            --branch "${{ github.head_ref || github.ref_name }}"
+
   # ── CANCEL ────────────────────────────────────────────────────────────────
 
   cancel-cr:
@@ -407,6 +419,13 @@ jobs:
       - name: Fetch base ref for diff
         run: git fetch origin main --depth 1
       - uses: ./.github/actions/cr-agent-setup
+      - name: Verify design approval
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          medharness ci approve-gate --cr "$CR_ID" --stage design --pr "$PR_NUMBER"
       - name: Generate implementation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

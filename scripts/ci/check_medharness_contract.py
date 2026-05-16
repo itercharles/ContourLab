@@ -46,6 +46,9 @@ def main() -> int:
         "claude-session-put": ("python", "-m", "medharness", "ci", "claude-session", "put", "--help"),
         "dhf-report": ("python", "-m", "medharness", "dhf", "report", "--help"),
         "dhf-context-implementation": ("python", "-m", "medharness", "dhf", "context", "implementation", "--help"),
+        # 0.6.2 commands
+        "ci-approve-gate": ("python", "-m", "medharness", "ci", "approve-gate", "--help"),
+        "ci-cr-status": ("python", "-m", "medharness", "ci", "cr-status", "--help"),
     }
 
     help_output: dict[str, str] = {}
@@ -171,6 +174,18 @@ def main() -> int:
     require(
         "yaml.safe_load" not in issue_to_cr_text,
         "issue-to-cr.yml must not parse CR YAML inline — use dhf context implementation (0.6.1)",
+        errors,
+    )
+
+    # MedHarness 0.6.2: approve-gate + cr-status adopted.
+    require(
+        "medharness ci approve-gate" in cr_text,
+        "cr-lifecycle.yml must call approve-gate before develop-cr to guard against event misclassification (0.6.2)",
+        errors,
+    )
+    require(
+        "medharness --dhf DHF ci cr-status" in cr_text,
+        "cr-lifecycle.yml must emit a cr-status step (0.6.2) for observability in the detect job",
         errors,
     )
 
