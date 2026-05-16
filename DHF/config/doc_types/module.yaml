@@ -1,7 +1,9 @@
 code: MODULE
+role: software_module
 name: Software Module
 prefix: MODULE-
 directory: 04_modules
+has_verification: false
 properties:
 - id
 - name: title
