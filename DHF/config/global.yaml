@@ -143,7 +143,7 @@ document_specifications:
     output: DHF/documents/specs/Use_Case_Specification.md
     doc_type_name: Use Case
   CRS:
-    source: crs_specification.md.j2
+    source: customer_requirement_specification.md.j2
     output: DHF/documents/specs/Customer_Requirement_Specification.md
     doc_type_name: Customer Requirement
   SYS:
@@ -163,7 +163,7 @@ document_specifications:
     output: DHF/documents/specs/Software_Detailed_Design_Document.md
     doc_type_name: Software Detailed Design Document
   SYSARCH:
-    source: architecture_specification.md.j2
+    source: architecture_design_specification.md.j2
     output: DHF/documents/specs/System_Architecture_Specification.md
     doc_type_name: System Architecture Specification
   RISK:
