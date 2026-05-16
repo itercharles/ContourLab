@@ -205,9 +205,9 @@ jobs:
           PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
           PATHS=$(medharness --dhf DHF dhf context implementation \
             --cr "$CR_ID" \
-            --out-dir /tmp/cr-context)
+            --out-dir "/tmp/cr-context-$CR_ID") || { echo "::warning::dhf context implementation failed, skipping plan comment"; exit 0; }
           CR_FILE=$(echo "$PATHS" | jq -r '.cr')
-          IMPL_NOTES=$(jq -r '.implementation_notes // ""' "$CR_FILE" | sed '/^[[:space:]]*$/d')
+          IMPL_NOTES=$(jq -r '(.implementation_notes // "") | ltrimstr("\n") | rtrimstr("\n")' "$CR_FILE")
           [ -z "$IMPL_NOTES" ] && exit 0
           BODY="## Implementation Plan
 

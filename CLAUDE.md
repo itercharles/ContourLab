@@ -41,7 +41,7 @@ pnpm -r typecheck                         # typecheck all workspaces
 pnpm -r build                             # build all workspaces
 
 # DHF operations (Python)
-pip install -r requirements.txt           # one-time setup (pins medharness==0.6.1)
+pip install -r requirements.txt           # one-time setup
 medharness --dhf DHF dhf item list --type cr          # list all CRs
 medharness --dhf DHF dhf item get CR-NNN              # get CR details
 medharness --dhf DHF dhf item transition CR-NNN <state> --by "Author"
