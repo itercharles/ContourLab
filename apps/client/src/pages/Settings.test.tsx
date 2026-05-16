@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Settings from './Settings';
+import { version } from '../../package.json';
 import * as qaRuleConfig from '../core/qa/qaRuleConfig';
 
 const mocks = vi.hoisted(() => ({
@@ -100,7 +101,7 @@ describe('Settings', () => {
 
     expect(screen.getByRole('heading', { name: 'About' })).toBeTruthy();
     expect(screen.getByText('Version')).toBeTruthy();
-    expect(screen.getByText('0.1.0')).toBeTruthy();
+    expect(screen.getByText(version)).toBeTruthy();
     expect(screen.getByText('Contour review and RTSTRUCT round-trip')).toBeTruthy();
   });
 });
