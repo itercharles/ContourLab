@@ -6,8 +6,9 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
-import yaml
 from pathlib import Path
+
+import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -30,13 +31,28 @@ def run(*args: str) -> tuple[int, str]:
     return result.returncode, f"{result.stdout}{result.stderr}"
 
 
+def _normalize_gha_yaml(text: str) -> str:
+    """Strip GHA-specific syntax so yaml.safe_load can parse workflow files.
+
+    GitHub Actions YAML files can contain constructs that confuse standard YAML
+    parsers: ${{ expr }} template expressions and bare $VARIABLE references at
+    column 0 inside run: | block scalars (e.g. shell string continuations).
+    """
+    text = re.sub(r"\$\{\{[^}]*?\}\}", "GHA_EXPR", text)
+    text = re.sub(r"^\$\w[^\n]*", "", text, flags=re.MULTILINE)
+    return text
+
+
 def check_workflow_step_refs(workflow_texts: dict[str, str]) -> list[str]:
     """Return error strings for any steps.X if-condition reference with no matching id in the same job."""
     violations: list[str] = []
     for filename, text in workflow_texts.items():
         try:
-            doc = yaml.safe_load(text)
-        except yaml.YAMLError:
+            doc = yaml.safe_load(_normalize_gha_yaml(text))
+        except yaml.YAMLError as exc:
+            violations.append(
+                f"{filename}: YAML parse failed — step-ref check skipped: {exc}"
+            )
             continue
         if not isinstance(doc, dict):
             continue
@@ -57,7 +73,7 @@ def check_workflow_step_refs(workflow_texts: dict[str, str]) -> list[str]:
                 if not if_expr:
                     continue
                 step_label = step.get("name") or step.get("id") or "<unnamed>"
-                for ref in re.findall(r"steps\.(\w+)", str(if_expr)):
+                for ref in re.findall(r"steps\.(\w+)\.(?:outputs|outcome|conclusion|result)", str(if_expr)):
                     if ref not in defined_ids:
                         violations.append(
                             f"{filename}: job '{job_name}': step '{step_label}' "
