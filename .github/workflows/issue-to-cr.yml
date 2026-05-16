@@ -115,8 +115,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
           set -o pipefail
-          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" | tee /tmp/generate-dhf-out.json
+          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/generate-dhf-out.json
 
       - name: Upload design payload
         if: always() && steps.prepare.outputs.should_create == 'true'
@@ -127,33 +128,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      # Gate blocks on both process failure and completed_with_errors so
-      # malformed design output is never silently approved into implementation.
-      - name: Gate on design outcome
-        id: gate_design
-        if: always() && steps.open_pr.outcome == 'success'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
-          PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
-          if [ "${{ steps.generate_design.outcome }}" != "success" ]; then
-            gh pr comment "$PR_NUMBER" \
-              --repo "${{ github.repository }}" \
-              --body "⚠️ **Design generation failed** for $CR_ID — re-trigger via Actions → cr-lifecycle.yml → workflow_dispatch (stage: design) once the cause is resolved."
-            exit 1
-          fi
-          [ ! -f /tmp/generate-dhf-out.json ] && exit 0
-          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/generate-dhf-out.json)
-          if [ "$OUTCOME" = "completed_with_errors" ]; then
-            ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/generate-dhf-out.json)
-            BODY=$(printf '⚠️ **Design validation has residual errors** for %s:\n\n%s\n\nCorrect the DHF items and re-trigger via Actions → cr-lifecycle.yml → workflow_dispatch (stage: design).' "$CR_ID" "$ERRORS")
-            gh pr comment "$PR_NUMBER" --body "$BODY"
-            exit 1
-          fi
-
       - name: Commit design and push
-        if: always() && steps.gate_design.outcome == 'success'
+        if: always() && steps.generate_design.outcome == 'success'
         run: |
           CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
           git add DHF/
@@ -176,7 +152,7 @@ jobs:
           fi
 
       - name: Post design summary
-        if: always() && steps.gate_design.outcome == 'success'
+        if: always() && steps.generate_design.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -186,18 +162,16 @@ jobs:
           CREATED=$(jq -r '[.artifacts.items_changed.created[]?] | join(", ")' /tmp/generate-dhf-out.json)
           UPDATED=$(jq -r '[.artifacts.items_changed.updated[]?] | join(", ")' /tmp/generate-dhf-out.json)
           DESIGN_SUMMARY=$(jq -r '.summary // ""' /tmp/generate-dhf-out.json)
-          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/generate-dhf-out.json)
           BODY="**Design output for $CR_ID**"$'\n'
           [ -n "$DESIGN_SUMMARY" ] && BODY="${BODY}"$'\n'"$DESIGN_SUMMARY"$'\n'
           [ -n "$CREATED" ] && BODY="${BODY}"$'\n'"**Created:** $CREATED"$'\n'
           [ -n "$UPDATED" ] && BODY="${BODY}"$'\n'"**Updated:** $UPDATED"$'\n'
-          [ -n "$WARNINGS" ] && BODY="${BODY}"$'\n'"⚠️ **Warnings:**"$'\n'"$WARNINGS"$'\n'
           gh pr comment "$PR_NUMBER" \
             --repo "${{ github.repository }}" \
             --body "$BODY"
 
       - name: Post implementation plan
-        if: always() && steps.gate_design.outcome == 'success'
+        if: always() && steps.generate_design.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

@@ -52,6 +52,8 @@ def main() -> int:
         # 0.6.2 commands
         "ci-approve-gate": ("python", "-m", "medharness", "ci", "approve-gate", "--help"),
         "ci-cr-status": ("python", "-m", "medharness", "ci", "cr-status", "--help"),
+        # 0.6.3 commands
+        "ci-advance-stage": ("python", "-m", "medharness", "ci", "advance-stage", "--help"),
     }
 
     help_output: dict[str, str] = {}
@@ -157,11 +159,8 @@ def main() -> int:
         "issue-to-cr.yml must call generate-dhf inline — design is generated at intake in 0.5",
         errors,
     )
-    require(
-        "completed_with_errors" in issue_to_cr_text,
-        "issue-to-cr.yml must gate on completed_with_errors from generate-dhf",
-        errors,
-    )
+    # 0.6.3: generate-dhf exits 1 on completed_with_errors — workflow gates on exit code,
+    # not by parsing JSON and checking the outcome field.
 
     # MedHarness 0.6.1: dhf report + dhf context implementation adopted.
     require(
@@ -189,6 +188,13 @@ def main() -> int:
     require(
         "medharness --dhf DHF ci cr-status" in cr_text,
         "cr-lifecycle.yml must emit a cr-status step (0.6.2) for observability in the detect job",
+        errors,
+    )
+
+    # MedHarness 0.6.3: advance-stage replaces manual gh api label management.
+    require(
+        "medharness ci advance-stage" in cr_text,
+        "cr-lifecycle.yml must use ci advance-stage for label management — no raw gh api label calls (0.6.3)",
         errors,
     )
 

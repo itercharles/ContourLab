@@ -182,32 +182,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Surface warnings
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          [ ! -f /tmp/generate-dhf-out.json ] && exit 0
-          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/generate-dhf-out.json)
-          [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
-            --body "$(printf '⚠️ **Warnings during design generation for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
-
-      - name: Gate on design validation
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/generate-dhf-out.json)
-          if [ "$OUTCOME" = "completed_with_errors" ]; then
-            ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/generate-dhf-out.json)
-            BODY=$(printf '⚠️ **Design validation has residual errors** for %s:\n\n%s\n\nReview the DHF items and submit `changes_requested` to trigger a design revision.' "$CR_ID" "$ERRORS")
-            gh pr comment "$PR_NUMBER" --body "$BODY"
-            exit 1
-          fi
-
       - name: Commit design
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -235,6 +209,7 @@ jobs:
             fi
             git push
           fi
+
       - name: Post design summary
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -253,6 +228,7 @@ jobs:
           [ -n "$DELETED" ] && BODY="${BODY}"$'\n'"**Deleted:** $DELETED"$'\n'
           BODY="${BODY}"$'\n'"The implementation plan is written to \`DHF/items/09_cr/$CR_ID.yaml\` in \`implementation_notes\`."
           gh pr comment "$PR_NUMBER" --body "$BODY"
+
       - name: Validate DHF traceability
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -273,24 +249,18 @@ jobs:
               --body "⚠️ DHF traceability check failed after design generation for $CR_ID. Correct the DHF items and re-approve to retry."
             exit 1
           fi
+
       - name: Advance to next review stage
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+          ISSUE_NUMBER: ${{ needs.detect.outputs.issue_number }}
         run: |
-          REPO="${{ github.repository }}"
-          gh api -X DELETE "repos/${REPO}/issues/${PR_NUMBER}/labels/cr%3Astage%2Fcr" \
-            2>/dev/null || true
-          gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/labels" \
-            -f "labels[]=cr:stage/design"
-          ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
-          if [ -n "$ISSUE_NUMBER" ]; then
-            gh api -X DELETE "repos/${REPO}/issues/${ISSUE_NUMBER}/labels/cr%3Astage%2Fcr" \
-              2>/dev/null || true
-            gh api -X POST "repos/${REPO}/issues/${ISSUE_NUMBER}/labels" \
-              -f "labels[]=cr:stage/design" 2>/dev/null || true
-          fi
+          medharness ci advance-stage \
+            --pr "$PR_NUMBER" \
+            --from-stage cr \
+            --to-stage design \
+            ${ISSUE_NUMBER:+--issue "$ISSUE_NUMBER"}
 
   # ── DESIGN: REVISE ────────────────────────────────────────────────────────
 
@@ -331,42 +301,6 @@ jobs:
           path: /tmp/revise-generate-dhf-out.json
           if-no-files-found: ignore
           retention-days: 14
-
-      - name: Surface warnings and confirm PR feedback
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          [ ! -f /tmp/revise-generate-dhf-out.json ] && exit 0
-          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/revise-generate-dhf-out.json)
-          [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
-            --body "$(printf '⚠️ **Warnings during design revision for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
-          HAS_FETCH_WARN=$(jq -r '.warnings[]? | select(.code == "github_feedback_env_missing") | .code' /tmp/revise-generate-dhf-out.json)
-          if [ -z "$HAS_FETCH_WARN" ]; then
-            COMMENTS=$(jq -r '.diagnostics.comments_count // 0' /tmp/revise-generate-dhf-out.json)
-            REVIEWS=$(jq -r '.diagnostics.reviews_count // 0' /tmp/revise-generate-dhf-out.json)
-            if [ "$COMMENTS" = "0" ] && [ "$REVIEWS" = "0" ]; then
-              echo "::warning::Design revision for $CR_ID fetched 0 PR feedback items. If PR #$PR_NUMBER has reviewer comments, check GH_TOKEN pull-requests:read permission."
-            else
-              echo "PR feedback fetched: $COMMENTS comment(s), $REVIEWS review(s)"
-            fi
-          fi
-
-      - name: Gate on design validation
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-generate-dhf-out.json)
-          if [ "$OUTCOME" = "completed_with_errors" ]; then
-            ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/revise-generate-dhf-out.json)
-            BODY=$(printf '⚠️ **Design revision still has residual errors** for %s:\n\n%s' "$CR_ID" "$ERRORS")
-            gh pr comment "$PR_NUMBER" --body "$BODY"
-            exit 1
-          fi
 
       - name: Commit revision
         env:
@@ -446,32 +380,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Surface warnings
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          [ ! -f /tmp/develop-out.json ] && exit 0
-          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/develop-out.json)
-          [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
-            --body "$(printf '⚠️ **Warnings during implementation generation for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
-
-      - name: Gate on implementation validation
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/develop-out.json)
-          if [ "$OUTCOME" = "completed_with_errors" ]; then
-            ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/develop-out.json)
-            BODY=$(printf '⚠️ **Implementation validation has residual errors** for %s:\n\n%s\n\nReview the code and submit `changes_requested` to trigger an implementation revision.' "$CR_ID" "$ERRORS")
-            gh pr comment "$PR_NUMBER" --body "$BODY"
-            exit 1
-          fi
-
       - name: Commit implementation
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -508,26 +416,24 @@ jobs:
               --body "⚠️ Implementation produced no code changes for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: design) and check Claude logs."
             exit 1
           fi
-          if [ "$COMMITTED" = "true" ]; then
-            # Advance label BEFORE pushing so the PR-triggered CI run sees cr:stage/code
-            # and the stage-gate allows dev tests (lint · typecheck · build) to run.
-            # Use REST API directly — gh pr edit uses a deprecated projectCards GraphQL
-            # query that exits 1 even when the label operation itself succeeds.
-            REPO="${{ github.repository }}"
-            gh api -X DELETE "repos/${REPO}/issues/${PR_NUMBER}/labels/cr%3Astage%2Fdesign" \
-              2>/dev/null || true
-            gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/labels" \
-              -f "labels[]=cr:stage/code"
-            gh pr ready "$PR_NUMBER" 2>/dev/null || true
-            ISSUE_NUMBER="${{ needs.detect.outputs.issue_number }}"
-            if [ -n "$ISSUE_NUMBER" ]; then
-              gh api -X DELETE "repos/${REPO}/issues/${ISSUE_NUMBER}/labels/cr%3Astage%2Fdesign" \
-                2>/dev/null || true
-              gh api -X POST "repos/${REPO}/issues/${ISSUE_NUMBER}/labels" \
-                -f "labels[]=cr:stage/code" 2>/dev/null || true
-            fi
-          fi
           echo "COMMITTED=$COMMITTED" >> "$GITHUB_ENV"
+
+      - name: Advance to next review stage
+        # Advance label BEFORE pushing so the PR-triggered CI run sees cr:stage/code
+        # and the stage-gate allows dev tests (lint · typecheck · build) to run.
+        if: env.COMMITTED == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+          ISSUE_NUMBER: ${{ needs.detect.outputs.issue_number }}
+        run: |
+          medharness ci advance-stage \
+            --pr "$PR_NUMBER" \
+            --from-stage design \
+            --to-stage code \
+            ${ISSUE_NUMBER:+--issue "$ISSUE_NUMBER"}
+          gh pr ready "$PR_NUMBER" 2>/dev/null || true
+
       - name: Push and wait for CI
         # We push manually here rather than letting the checkout push because
         # we need to watch the resulting CI run. Squash-merging the feat/* branch
@@ -621,42 +527,6 @@ jobs:
           path: /tmp/revise-code-out.json
           if-no-files-found: ignore
           retention-days: 14
-
-      - name: Surface warnings and confirm PR feedback
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          [ ! -f /tmp/revise-code-out.json ] && exit 0
-          WARNINGS=$(jq -r '.warnings[]? | "- `\(.code)`: \(.message)"' /tmp/revise-code-out.json)
-          [ -n "$WARNINGS" ] && gh pr comment "$PR_NUMBER" \
-            --body "$(printf '⚠️ **Warnings during implementation revision for %s:**\n\n%s' "$CR_ID" "$WARNINGS")" || true
-          HAS_FETCH_WARN=$(jq -r '.warnings[]? | select(.code == "github_feedback_env_missing") | .code' /tmp/revise-code-out.json)
-          if [ -z "$HAS_FETCH_WARN" ]; then
-            COMMENTS=$(jq -r '.diagnostics.comments_count // 0' /tmp/revise-code-out.json)
-            REVIEWS=$(jq -r '.diagnostics.reviews_count // 0' /tmp/revise-code-out.json)
-            if [ "$COMMENTS" = "0" ] && [ "$REVIEWS" = "0" ]; then
-              echo "::warning::Implementation revision for $CR_ID fetched 0 PR feedback items. If PR #$PR_NUMBER has reviewer comments, check GH_TOKEN pull-requests:read permission."
-            else
-              echo "PR feedback fetched: $COMMENTS comment(s), $REVIEWS review(s)"
-            fi
-          fi
-
-      - name: Gate on implementation validation
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-code-out.json)
-          if [ "$OUTCOME" = "completed_with_errors" ]; then
-            ERRORS=$(jq -r '.errors[] | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/revise-code-out.json)
-            BODY=$(printf '⚠️ **Implementation revision still has residual errors** for %s:\n\n%s' "$CR_ID" "$ERRORS")
-            gh pr comment "$PR_NUMBER" --body "$BODY"
-            exit 1
-          fi
 
       - name: Commit revision
         env:
