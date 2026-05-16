@@ -36,7 +36,12 @@ async function main() {
   ok = ok && frontendPort && apiPort && orthancPort && frontend.ok && api.ok && orthanc.ok;
 
   printSection('DHF');
-  ok = (await checkCommand('medharness', ['--dhf', 'DHF', 'doctor'], 'MedHarness DHF')) && ok;
+  const medharnessFound = await capture('medharness', ['--version']);
+  if (medharnessFound.ok) {
+    ok = (await checkCommand('medharness', ['--dhf', 'DHF', 'doctor'], 'MedHarness DHF')) && ok;
+  } else {
+    console.log('SKIP MedHarness DHF (not installed — run: pip install -r requirements.txt)');
+  }
 
   printSection('Summary');
   if (ok) {
