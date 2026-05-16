@@ -13,7 +13,7 @@ pinned `medharness` CLI. Keep it in sync with `requirements.txt` and
 - Code review output: `docs/reviews/CR-NNN-Code-Review.md` (written by `develop-cr` review step)
 - MedHarness version pin: [medharness-setup action](../.github/actions/medharness-setup/action.yml)
 
-## Current Contract — `medharness==0.6.2`
+## Current Contract — `medharness==0.6.3`
 
 ### CR Lifecycle Commands
 
@@ -24,6 +24,7 @@ pinned `medharness` CLI. Keep it in sync with `requirements.txt` and
 | `ci generate-dhf` | `issue-to-cr.yml`, `cr-lifecycle.yml` | `python -m medharness --dhf DHF ci generate-dhf --cr CR-NNN [--pr N]` |
 | `ci develop-cr` | `cr-lifecycle.yml` | `python -m medharness --dhf DHF ci develop-cr --cr CR-NNN [--pr N]` |
 | `ci approve-gate` | `cr-lifecycle.yml` gen-code | `medharness ci approve-gate --cr CR-NNN --stage design --pr N` |
+| `ci advance-stage` | `cr-lifecycle.yml` gen-design, gen-code | `medharness ci advance-stage --pr N --from-stage STAGE --to-stage STAGE [--issue N]` |
 | `ci cr-status` | `cr-lifecycle.yml` detect | `medharness --dhf DHF ci cr-status --cr CR-NNN [--pr N] [--branch REF]` |
 | `cr workflow complete-from-github-pr` | `cr-complete.yml` | `medharness cr workflow complete-from-github-pr ...` |
 | `dhf item transition` | `cr-lifecycle.yml` cancel | `medharness --dhf DHF dhf item transition CR-NNN cancelled --by "..." --commit --push` |
@@ -44,6 +45,25 @@ pinned `medharness` CLI. Keep it in sync with `requirements.txt` and
 |---|---|---|
 | `dhf report` | `ci-pipeline.yml` dhf-validation | `medharness --dhf DHF dhf report` |
 | `dhf context implementation` | `issue-to-cr.yml` | `medharness --dhf DHF dhf context implementation --cr CR-NNN --out-dir /tmp/...` |
+
+### Auto-post PR Comments (0.6.3)
+
+`generate-dhf` and `develop-cr` automatically post PR comments when `--pr N` is
+supplied:
+
+- **Warnings comment** — posted if any warnings are present (e.g., GitHub
+  feedback env vars missing).
+- **Error comment** — posted if the outcome is `completed_with_errors`.
+
+Both commands now exit non-zero on `completed_with_errors` as well as
+`tool_error`, so workflows gate on exit code alone. The "Surface warnings" and
+"Gate on outcome" workflow steps are no longer needed.
+
+### Stage Label Management (0.6.3)
+
+`ci advance-stage` replaces direct `gh api -X DELETE/POST` label management.
+It atomically removes the from-stage label and adds the to-stage label on both
+the PR and optionally a linked issue. Uses `--label-prefix cr:stage/` by default.
 
 ### Session Threading (0.6.2)
 
