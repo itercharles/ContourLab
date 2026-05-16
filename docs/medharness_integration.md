@@ -3,51 +3,88 @@
 ## Purpose
 
 This document defines the operational contract between WebTPS workflows and the
-pinned `medharness` CLI. The goal is to keep CR automation stable when either
-workflow logic or the `medharness` package changes.
+pinned `medharness` CLI. Keep it in sync with `requirements.txt` and
+`scripts/ci/check_medharness_contract.py` whenever the pin is bumped.
 
 ## Sources Of Truth
 
-- Human-reviewed CR plan: `docs/cr-specs/CR-NNN-Spec.md`
-- Machine-readable CR metadata: `docs/cr-specs/CR-NNN-Spec.json`
-- DHF root in this repository: `DHF/`
+- DHF root: `DHF/`
+- CR item YAML: `DHF/items/09_cr/CR-NNN.yaml` (implementation plan lives in `implementation_notes`)
+- Code review output: `docs/reviews/CR-NNN-Code-Review.md` (written by `develop-cr` review step)
 - MedHarness version pin: [medharness-setup action](../.github/actions/medharness-setup/action.yml)
 
-## Contract
+## Current Contract — `medharness==0.6.2`
 
-### Spec Inputs
+### CR Lifecycle Commands
 
-- `Spec.md` is the reviewed document.
-- `Spec.json` is the machine-readable companion emitted by `medharness`.
-- WebTPS CR lifecycle routing uses `Spec.json`.
-- Missing `Spec.json` is a CI failure, not a reason to silently default a route.
-- WebTPS locally treats `affected_items: []` plus `proposed_new_items: []` as a
-  code-only signal and may skip DHF design generation even when
-  `pipeline_route` is still `standard`.
-- WebTPS resolves that policy through `scripts/ci/resolve_cr_design_route.py`
-  rather than duplicating the decision tree inline in workflow bash.
+| Command | Workflow | Expected form |
+|---|---|---|
+| `cr workflow intake-github-issue-ci` | `issue-to-cr.yml` | `medharness cr workflow intake-github-issue-ci --issue N ...` |
+| `ci github-event` | `cr-lifecycle.yml` detect | `medharness ci github-event --stage-label-prefix "cr:stage/" ...` |
+| `ci generate-dhf` | `issue-to-cr.yml`, `cr-lifecycle.yml` | `python -m medharness --dhf DHF ci generate-dhf --cr CR-NNN [--pr N]` |
+| `ci develop-cr` | `cr-lifecycle.yml` | `python -m medharness --dhf DHF ci develop-cr --cr CR-NNN [--pr N]` |
+| `ci approve-gate` | `cr-lifecycle.yml` gen-code | `medharness ci approve-gate --cr CR-NNN --stage design --pr N` |
+| `ci cr-status` | `cr-lifecycle.yml` detect | `medharness --dhf DHF ci cr-status --cr CR-NNN [--pr N] [--branch REF]` |
+| `cr workflow complete-from-github-pr` | `cr-complete.yml` | `medharness cr workflow complete-from-github-pr ...` |
+| `dhf item transition` | `cr-lifecycle.yml` cancel | `medharness --dhf DHF dhf item transition CR-NNN cancelled --by "..." --commit --push` |
 
-### MedHarness CLI Usage
+### CI Gate Commands
 
-The current `medharness==0.3.8` contract in this repo is:
+| Command | Workflow | Expected form |
+|---|---|---|
+| `ci dhf-validate` | `ci-pipeline.yml` | `medharness ci dhf-validate --dhf DHF ...` |
+| `ci validate-branch` | `ci-pipeline.yml` | `medharness --dhf DHF ci validate-branch ...` |
+| `ci validate-code` | `ci-pipeline.yml` | `medharness --dhf DHF ci validate-code ...` |
+| `ci test-coverage` | `ci-pipeline.yml` compliance | `medharness ci test-coverage --dhf DHF --junit-dir ... --requirement-type SRS/SYS/CRS` |
+| `ci evidence bundle` | `ci-pipeline.yml` generate-artifacts | `medharness --dhf DHF ci evidence bundle --out-dir ... --junit-dir ...` |
 
-| Command | Expected form |
-| --- | --- |
-| `validate-spec` | `python -m medharness ci validate-spec --cr <CR> --spec <PATH> --dhf DHF` |
-| `validate-design` | `python -m medharness --dhf DHF ci validate-design --cr <CR> --spec <PATH>` |
-| `validate-code` | `medharness --dhf DHF ci validate-code --cr <CR> --spec <PATH>` |
-| `validate-branch` | `medharness --dhf DHF ci validate-branch --cr <CR> [--code-path ...]` |
-| `dhf-validate` | `medharness ci dhf-validate --dhf DHF ...` |
-| `test-coverage` | `medharness ci test-coverage --dhf DHF ...` |
+### DHF Helper Commands
 
-`validate-design`, `validate-code`, and `validate-branch` receive the DHF path
-through the global `--dhf` option. Do not pass `--dhf` as a subcommand-local
-option for those commands.
+| Command | Workflow | Expected form |
+|---|---|---|
+| `dhf report` | `ci-pipeline.yml` dhf-validation | `medharness --dhf DHF dhf report` |
+| `dhf context implementation` | `issue-to-cr.yml` | `medharness --dhf DHF dhf context implementation --cr CR-NNN --out-dir /tmp/...` |
+
+### Session Threading (0.6.2)
+
+`generate-dhf` and `develop-cr` automatically manage Claude session IDs when
+`--pr N` is supplied. The session ID is stored in a PR comment after each run
+and resumed on the next run for the same PR — no explicit `ci claude-session
+get/put` calls are needed in workflows. The `ci claude-session` commands remain
+available for manual inspection or custom tooling.
+
+### `--dhf` Global Flag
+
+All commands that read DHF items require the global `--dhf DHF` flag before the
+subcommand. Commands that operate only via GitHub API (`ci approve-gate`,
+`ci github-event`) do not take `--dhf`.
+
+## Removed Commands
+
+These commands existed in earlier versions and must not appear in workflows:
+
+| Removed | Replaced by |
+|---|---|
+| `ci validate-spec` | `ci generate-dhf` (0.4+) |
+| `ci validate-design` | `ci generate-dhf` (0.4+) |
+| `ci design-cr` | `ci generate-dhf` (0.5+) |
+| `ci analyze-cr` | `ci generate-dhf` (0.5+) |
+| `cr=gen-design` dispatch | `--dispatch-action design=gen-code` in `ci github-event` (0.5+) |
+
+## Code Review Output
+
+`develop-cr`'s soft review step instructs Claude to write its review to
+`docs/reviews/CR-NNN-Code-Review.md`. The `gen-code` workflow step commits all
+changes with `git add -A`, so the review file is included in the implementation
+commit automatically. The `docs/reviews/` directory is tracked in git via
+`.gitkeep` to ensure it exists before Claude runs.
 
 ## Operational Checklist For A MedHarness Bump
 
 When updating the pinned `medharness` version:
 
-1. Update the version in `requirements.txt` and `.github/actions/medharness-setup/action.yml` — both must match or `check_medharness_contract.py` will fail.
-2. Run `python scripts/ci/check_medharness_contract.py` locally.
-3. Open a PR — the `medharness-contract` CI job verifies CLI help flag shapes, spec validation, and workflow invocation patterns automatically.
+1. Update `requirements.txt` and `.github/actions/medharness-setup/action.yml` — both must match or the `medharness-contract` CI job will fail.
+2. Run `python scripts/ci/check_medharness_contract.py` locally — verifies help flag shapes and workflow invocation patterns.
+3. Run `medharness --dhf DHF doctor` locally — verifies Claude CLI, gh CLI, DHF config, and adapter health.
+4. Add any new commands adopted in this bump to the contract check's `help_commands` dict and add enforcement rules for commands used in workflows.
+5. Open a PR — CI validates the contract automatically.

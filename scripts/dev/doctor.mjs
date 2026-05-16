@@ -35,6 +35,9 @@ async function main() {
 
   ok = ok && frontendPort && apiPort && orthancPort && frontend.ok && api.ok && orthanc.ok;
 
+  printSection('DHF');
+  ok = (await checkCommand('medharness', ['--dhf', 'DHF', 'doctor'], 'MedHarness DHF')) && ok;
+
   printSection('Summary');
   if (ok) {
     console.log('Local WebTPS environment is healthy.');
