@@ -42,6 +42,9 @@ def main() -> int:
         "validate-code": ("python", "-m", "medharness", "ci", "validate-code", "--help"),
         "validate-branch": ("python", "-m", "medharness", "ci", "validate-branch", "--help"),
         # 0.6.1 commands
+        # claude-session get/put are smoke-checked for install completeness but are
+        # NOT called explicitly in workflows — session threading is handled internally
+        # by generate-dhf and develop-cr when --pr is supplied.
         "claude-session-get": ("python", "-m", "medharness", "ci", "claude-session", "get", "--help"),
         "claude-session-put": ("python", "-m", "medharness", "ci", "claude-session", "put", "--help"),
         "dhf-report": ("python", "-m", "medharness", "dhf", "report", "--help"),
