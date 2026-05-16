@@ -66,8 +66,18 @@ medharness --dhf DHF dhf doc generate ALL             # regenerate spec document
 # Get CR implementation context (spec + DHF overview) for AI/CI consumption
 medharness --dhf DHF dhf context implementation --cr CR-034 --out-dir /tmp/cr-context
 
+# Get scoped context for a specific workflow stage (analyze / design / develop)
+medharness --dhf DHF dhf context for-stage develop --cr CR-034
+
 # Print human-readable traceability coverage report
 medharness --dhf DHF dhf report
+
+# Validate DHF schema and traceability locally
+medharness --dhf DHF dhf validate schema
+medharness --dhf DHF dhf validate traceability
+
+# Check CR stage and approval status (machine-readable JSON)
+medharness --dhf DHF ci cr-status --cr CR-034 --pr 42
 
 # Transition a CR
 medharness --dhf DHF dhf item transition CR-034 completed --by "agent"
