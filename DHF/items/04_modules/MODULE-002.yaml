@@ -1,0 +1,13 @@
+id: MODULE-002
+title: DicomLoader
+content: |-
+  Implements the DICOMweb loading pipeline using QIDO-RS (metadata queries),
+  WADO-RS (image retrieval), and STOW-RS (import). Responsible for querying
+  available planning CT series, constructing Cornerstone3D image identifiers,
+  and managing the patient/study worklist with foreground and background refresh
+  cadences.
+
+  Interfaces: queries the DICOMweb repository via Vite proxy (/dicom-web →
+  Orthanc); writes loaded series and metadata into volumeStore; hands image
+  identifiers to RenderingEngine for display.
+type: MODULE

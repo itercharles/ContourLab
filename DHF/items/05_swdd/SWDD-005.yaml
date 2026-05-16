@@ -9,3 +9,4 @@ content: |-
   { status, service, timestamp }. Additional controllers will be added for
   DICOM series management, plan persistence, and dose calculation in future phases.
 implements: [SRS-017]
+module: [MODULE-006]

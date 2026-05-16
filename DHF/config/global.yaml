@@ -95,6 +95,11 @@ traceability_matrices:
   path:
   - SYS
   - SYSARCH
+- name: Module to Detailed Design
+  description: Every software module has at least one detailed design item
+  path:
+  - MODULE
+  - SWDD
 - name: Risk to Control Measures
   description: Risks to risk control measures
   path:
@@ -111,6 +116,11 @@ required_traceability:
   direction: upstream
   field: implements
   target_type: SRS
+  min_count: 1
+- source_type: SWDD
+  direction: upstream
+  field: module
+  target_type: MODULE
   min_count: 1
 - source_type: RCM
   direction: upstream
@@ -129,39 +139,43 @@ required_traceability:
 
 document_specifications:
   UC:
-    template: requirements_specification.md.j2
+    source: requirements_specification.md.j2
     output: DHF/documents/specs/Use_Case_Specification.md
     doc_type_name: Use Case
   CRS:
-    template: crs_specification.md.j2
+    source: customer_requirement_specification.md.j2
     output: DHF/documents/specs/Customer_Requirement_Specification.md
     doc_type_name: Customer Requirement
   SYS:
-    template: requirements_specification.md.j2
+    source: requirements_specification.md.j2
     output: DHF/documents/specs/System_Requirement_Specification.md
     doc_type_name: System Requirement
   SRS:
-    template: requirements_specification.md.j2
+    source: requirements_specification.md.j2
     output: DHF/documents/specs/Software_Requirement_Specification.md
     doc_type_name: Software Requirement Specification
+  MODULE:
+    source: software_design_document.md.j2
+    output: DHF/documents/specs/Software_Design_Document.md
+    doc_type_name: Software Module
   SWDD:
-    template: requirements_specification.md.j2
+    source: requirements_specification.md.j2
     output: DHF/documents/specs/Software_Detailed_Design_Document.md
     doc_type_name: Software Detailed Design Document
   SYSARCH:
-    template: architecture_specification.md.j2
+    source: architecture_design_specification.md.j2
     output: DHF/documents/specs/System_Architecture_Specification.md
     doc_type_name: System Architecture Specification
   RISK:
-    template: risk_specification.md.j2
+    source: risk_specification.md.j2
     output: DHF/documents/specs/Risk_Analysis_Specification.md
     doc_type_name: Risk Analysis
   RCM:
-    template: rcm_specification.md.j2
+    source: rcm_specification.md.j2
     output: DHF/documents/specs/Risk_Control_Measures_Specification.md
     doc_type_name: Risk Control Measures
   CR:
-    template: change_request_specification.md.j2
+    source: change_request_specification.md.j2
     output: DHF/documents/specs/Change_Request_Specification.md
     doc_type_name: Change Request
 

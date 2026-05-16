@@ -29,3 +29,4 @@ content: |-
   Local development uses an Orthanc DICOMweb repository running via Docker,
   but the client-side repository contract is vendor-neutral DICOMweb.
 implements: [SRS-001, SRS-002]
+module: [MODULE-002]

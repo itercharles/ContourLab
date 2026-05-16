@@ -1,0 +1,13 @@
+id: MODULE-005
+title: PersistenceLayer
+content: |-
+  Handles durable storage and DICOM exchange for structure data. Responsible for
+  auto-saving structure drafts to browser localStorage keyed by series UID,
+  loading drafts on study open, exchanging complete structure sets with the DICOM
+  repository as RTSTRUCT objects via STOW-RS and WADO-RS, and detecting version
+  divergence between the active workspace and the repository copy.
+
+  Interfaces: reads structureStore for the current workspace state; writes to
+  localStorage and the DICOMweb repository; surfaces quality and version-diff
+  summaries to the UI via structureStore.
+type: MODULE

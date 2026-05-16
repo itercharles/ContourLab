@@ -14,3 +14,4 @@ content: |-
   The function is called during structure creation when no explicit type is
   provided. It has no side effects and is tested in isolation.
 implements: [SRS-005]
+module: [MODULE-007]

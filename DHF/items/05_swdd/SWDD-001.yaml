@@ -14,3 +14,4 @@ content: |-
   Float32Array contour points must NOT be mutated through Immer drafts.
   ContourSlice objects must be replaced entirely (not patched in place).
 implements: [SRS-007, SRS-008]
+module: [MODULE-001]

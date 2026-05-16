@@ -1,0 +1,12 @@
+id: MODULE-003
+title: RenderingEngine
+content: |-
+  Wraps Cornerstone3D to manage 2D and 3D viewports. Responsible for rendering
+  CT image stacks, keeping contour overlays registered during pan/zoom/scroll
+  transforms, and reconstructing 3D surface geometry from contour slices using
+  marching squares / surface reconstruction.
+
+  Interfaces: receives image identifiers from DicomLoader; reads contour data
+  from structureStore; renders into React-owned canvas elements; exposes viewport
+  event callbacks (right-click, crosshair sync) to ViewportUI.
+type: MODULE

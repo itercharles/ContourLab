@@ -100,3 +100,4 @@ content: |-
   remain disabled so viewport pan, zoom, and scroll stay controlled by
   Cornerstone tools.
 implements: [SRS-007, SRS-008, SRS-011, SRS-012, SRS-014]
+module: [MODULE-004]

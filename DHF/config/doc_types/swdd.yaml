@@ -15,6 +15,11 @@ properties:
   target_types:
   - SRS
   label: Implements
+- name: module
+  format: relationship
+  target_types:
+  - MODULE
+  label: Module
 icon: 📋
 page_enabled: true
 page_number: 10

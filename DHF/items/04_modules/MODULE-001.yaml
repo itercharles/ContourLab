@@ -1,0 +1,17 @@
+id: MODULE-001
+title: StateStore
+content: |-
+  Manages all application state using Zustand stores with Immer middleware for
+  immutable updates. Three stores partition responsibility: volumeStore (loaded
+  DICOM series, active series UID, loading state), structureStore (structure
+  sets, structures, contour slices, active structure), and uiStore (active tool,
+  window/level preset, brush radius, sidebar state, viewport layout).
+
+  Stores are accessed via useXxxStore() hooks in React components and via
+  useXxxStore.getState() in non-React code. Float32Array contour points must not
+  be mutated through Immer drafts; ContourSlice objects must be replaced entirely.
+
+  Interfaces: exposes typed hooks to all React components; receives commands from
+  ContourEngine and DicomLoader; drives RenderingEngine and PersistenceLayer
+  through reactive subscriptions.
+type: MODULE

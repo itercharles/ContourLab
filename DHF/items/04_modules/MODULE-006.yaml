@@ -1,0 +1,10 @@
+id: MODULE-006
+title: ApiBackend
+content: |-
+  ASP.NET Core 10 Web API serving as the application backend. Currently exposes
+  a health endpoint and provides the extension point for server-side features.
+  Runs on port 4000; the Vite dev server proxies /api to this process.
+
+  Interfaces: HTTP REST API consumed by the React client; no direct dependency
+  on the DICOM repository (all DICOMweb calls are client-to-Orthanc via proxy).
+type: MODULE
