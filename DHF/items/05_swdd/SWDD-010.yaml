@@ -2,6 +2,7 @@ id: SWDD-010
 implements:
 - SRS-018
 - SRS-019
+module: [MODULE-008]
 title: Viewport maximize feature - UI state and layout rendering
 content: 'uiStore extends the existing Zustand state with maximizedViewport field:
   "AXIAL" | "SAGITTAL" | "CORONAL" | null (initially null). toggleMaximizeViewport(viewportId:

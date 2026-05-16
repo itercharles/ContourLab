@@ -16,3 +16,4 @@ content: |-
   repository. On failure, the workflow uploads API and frontend logs as build
   artifacts and always stops Docker services with `pnpm local:down`.
 implements: [SRS-017]
+module: [MODULE-009]

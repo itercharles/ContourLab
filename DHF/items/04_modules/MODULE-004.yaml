@@ -1,0 +1,12 @@
+id: MODULE-004
+title: ContourEngine
+content: |-
+  Owns contour editing logic and undo/redo history. ContourEngine processes user
+  drawing input and applies contour changes to structureStore via the command
+  pattern (UndoRedoManager). UndoRedoManager maintains a 50-level command stack;
+  new push() clears the redo stack; overflow evicts the oldest entry.
+
+  Interfaces: receives pointer events from RenderingEngine canvas; writes contour
+  mutations to structureStore; exposes undo()/redo() to the toolbar; triggers
+  PersistenceLayer auto-save on each committed edit.
+type: MODULE

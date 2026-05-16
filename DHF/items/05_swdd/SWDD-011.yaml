@@ -30,3 +30,4 @@ content: |-
   - The UI polls loaded voxel availability so the 3D scene can populate after
     Cornerstone streaming completes without requiring a second user action.
 implements: [SRS-028, SRS-029]
+module: [MODULE-003]

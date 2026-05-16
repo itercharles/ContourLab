@@ -1,0 +1,14 @@
+id: MODULE-009
+title: CIPipeline
+content: |-
+  GitHub Actions workflow configuration for build, test, and deployment
+  automation. Implements the multi-phase CI pipeline: development builds
+  (frontend lint/typecheck, API build, shared-types), verification testing
+  (Vitest SRS tests, Playwright system tests), validation testing (clinical
+  workflow tests), compliance gate (requirement coverage), and deployment to
+  self-hosted workstation via Docker.
+
+  Interfaces: triggered by GitHub pull request and push events; reads from
+  the DHF repository for compliance checks; writes evidence bundles and
+  deployment artifacts.
+type: MODULE

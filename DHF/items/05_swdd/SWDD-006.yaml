@@ -242,3 +242,4 @@ content: |-
   the Orthanc Explorer UI; the redirect URL is derived from the same DICOMweb
   endpoint configuration via getOrthancUiUrl().
 implements: [SRS-009, SRS-010, SRS-013, SRS-015]
+module: [MODULE-005]

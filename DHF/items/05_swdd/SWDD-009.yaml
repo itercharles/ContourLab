@@ -15,3 +15,4 @@ content: |-
   and return the result. The function is pure, has no side effects, and is
   tested against known polygon shapes with verified area expectations.
 implements: [SRS-006]
+module: [MODULE-007]
