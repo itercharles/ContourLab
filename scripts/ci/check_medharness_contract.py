@@ -6,6 +6,7 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+import yaml
 from pathlib import Path
 
 
@@ -13,6 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CI_PIPELINE = REPO_ROOT / ".github" / "workflows" / "ci-pipeline.yml"
 CR_LIFECYCLE = REPO_ROOT / ".github" / "workflows" / "cr-lifecycle.yml"
 ISSUE_TO_CR = REPO_ROOT / ".github" / "workflows" / "issue-to-cr.yml"
+CR_COMPLETE = REPO_ROOT / ".github" / "workflows" / "cr-complete.yml"
 MEDHARNESS_ACTION = REPO_ROOT / ".github" / "actions" / "medharness-setup" / "action.yml"
 REQUIREMENTS_TXT = REPO_ROOT / "requirements.txt"
 
@@ -26,6 +28,42 @@ def run(*args: str) -> tuple[int, str]:
         check=False,
     )
     return result.returncode, f"{result.stdout}{result.stderr}"
+
+
+def check_workflow_step_refs(workflow_texts: dict[str, str]) -> list[str]:
+    """Return error strings for any steps.X if-condition reference with no matching id in the same job."""
+    violations: list[str] = []
+    for filename, text in workflow_texts.items():
+        try:
+            doc = yaml.safe_load(text)
+        except yaml.YAMLError:
+            continue
+        if not isinstance(doc, dict):
+            continue
+        for job_name, job in (doc.get("jobs") or {}).items():
+            if not isinstance(job, dict):
+                continue
+            steps = job.get("steps") or []
+            if not isinstance(steps, list):
+                continue
+            defined_ids = {
+                step["id"] for step in steps
+                if isinstance(step, dict) and "id" in step
+            }
+            for step in steps:
+                if not isinstance(step, dict):
+                    continue
+                if_expr = step.get("if")
+                if not if_expr:
+                    continue
+                step_label = step.get("name") or step.get("id") or "<unnamed>"
+                for ref in re.findall(r"steps\.(\w+)", str(if_expr)):
+                    if ref not in defined_ids:
+                        violations.append(
+                            f"{filename}: job '{job_name}': step '{step_label}' "
+                            f"references undefined step id 'steps.{ref}' in if condition"
+                        )
+    return violations
 
 
 def require(condition: bool, message: str, errors: list[str]) -> None:
@@ -81,6 +119,7 @@ def main() -> int:
     ci_text = CI_PIPELINE.read_text(encoding="utf-8")
     cr_text = CR_LIFECYCLE.read_text(encoding="utf-8")
     issue_to_cr_text = ISSUE_TO_CR.read_text(encoding="utf-8")
+    cr_complete_text = CR_COMPLETE.read_text(encoding="utf-8")
 
     require(
         "python -m medharness --dhf DHF ci generate-dhf" in cr_text,
@@ -197,6 +236,14 @@ def main() -> int:
         "cr-lifecycle.yml must use ci advance-stage for label management — no raw gh api label calls (0.6.3)",
         errors,
     )
+
+    for v in check_workflow_step_refs({
+        "ci-pipeline.yml": ci_text,
+        "cr-lifecycle.yml": cr_text,
+        "issue-to-cr.yml": issue_to_cr_text,
+        "cr-complete.yml": cr_complete_text,
+    }):
+        require(False, v, errors)
 
     if errors:
         for error in errors:
