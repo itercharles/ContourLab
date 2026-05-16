@@ -13,7 +13,7 @@ pinned `medharness` CLI. Keep it in sync with `requirements.txt` and
 - Code review output: `docs/reviews/CR-NNN-Code-Review.md` (written by `develop-cr` review step)
 - MedHarness version pin: [medharness-setup action](../.github/actions/medharness-setup/action.yml)
 
-## Current Contract — `medharness==0.6.3`
+## Current Contract — `medharness==0.6.4`
 
 ### CR Lifecycle Commands
 
