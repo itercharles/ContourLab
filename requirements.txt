@@ -1,1 +1,1 @@
-medharness[full]==0.6.1
+medharness[full]==0.6.2
