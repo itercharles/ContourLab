@@ -154,6 +154,10 @@ document_specifications:
     template: requirements_specification.md.j2
     output: DHF/documents/specs/Software_Requirement_Specification.md
     doc_type_name: Software Requirement Specification
+  MODULE:
+    template: module_specification.md.j2
+    output: DHF/documents/specs/Software_Design_Document.md
+    doc_type_name: Software Module
   SWDD:
     template: requirements_specification.md.j2
     output: DHF/documents/specs/Software_Detailed_Design_Document.md
