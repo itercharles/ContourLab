@@ -115,9 +115,27 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
-          PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
           set -o pipefail
-          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/generate-dhf-out.json
+          # No --pr here: passing --pr switches generate-dhf into revision mode
+          # (reads PR review feedback), which is wrong on a brand-new draft PR.
+          # Revision mode is only used by cr-lifecycle.yml revise-design.
+          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" | tee /tmp/generate-dhf-out.json
+
+      - name: Post design failure comment
+        if: always() && steps.open_pr.outcome == 'success' && steps.generate_design.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
+          ERRORS=$(jq -r '.errors[]? | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/generate-dhf-out.json 2>/dev/null || echo "")
+          if [ -n "$ERRORS" ]; then
+            BODY=$(printf '⚠️ **Design validation has residual errors** for %s:\n\n%s\n\nCorrect the DHF items and re-trigger via Actions → cr-lifecycle.yml → workflow_dispatch (stage: design).' "$CR_ID" "$ERRORS")
+          else
+            BODY="⚠️ **Design generation failed** for $CR_ID — re-trigger via Actions → cr-lifecycle.yml → workflow_dispatch (stage: design) once the cause is resolved."
+          fi
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "$BODY" || true
+          exit 1
 
       - name: Upload design payload
         if: always() && steps.prepare.outputs.should_create == 'true'
