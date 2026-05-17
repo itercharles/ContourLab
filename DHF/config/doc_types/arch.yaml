@@ -1,4 +1,5 @@
 code: ARCH
+role: architecture
 name: System Architecture
 prefix: ARCH-
 directory: 06_sys_arch
