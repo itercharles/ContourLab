@@ -542,6 +542,15 @@ jobs:
             --requirement-type SYS \
             --requirement-type CRS
 
+      - name: Run verification completeness gate
+        run: |
+          medharness --dhf DHF ci validate-verification \
+            --junit-dir test-results/srs \
+            --junit-dir test-results/srs-api \
+            --junit-dir test-results/sys \
+            --requirement-type SRS \
+            --requirement-type SYS
+
   # ── ARTIFACTS + DEPLOY (main only) ────────────────────────────────────────
   # After acceptance passes on main: generate DHF documents, traceability PDF,
   # and deploy the application.
