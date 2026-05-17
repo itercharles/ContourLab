@@ -201,9 +201,7 @@ jobs:
           CR_FILE=$(echo "$PATHS" | jq -r '.cr')
           IMPL_NOTES=$(jq -r '(.implementation_notes // "") | ltrimstr("\n") | rtrimstr("\n")' "$CR_FILE")
           [ -z "$IMPL_NOTES" ] && exit 0
-          BODY="## Implementation Plan
-
-$IMPL_NOTES"
+          BODY=$(printf '## Implementation Plan\n\n%s' "$IMPL_NOTES")
           gh pr comment "$PR_NUMBER" \
             --repo "${{ github.repository }}" \
             --body "$BODY"
