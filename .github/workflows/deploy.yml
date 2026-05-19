@@ -23,7 +23,7 @@ jobs:
         # Orthanc runs as root inside the container; chown its data dir back to
         # the runner user before checkout wipes the workspace.
         run: |
-          docker exec contourlab-orthanc \
+          docker exec webtps-orthanc \
             chown -R "$(id -u):$(id -g)" /var/lib/orthanc/db \
             2>/dev/null || true
 

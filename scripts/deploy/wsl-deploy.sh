@@ -50,7 +50,7 @@ export CONTOURLAB_ORTHANC_DATA_DIR
 # 2. Ensure persistent DICOM repository
 desired_image="$(docker compose -f "$COMPOSE_FILE" config --images \
   | grep '^orthancteam/orthanc:' | head -n 1 || true)"
-container_name="contourlab-orthanc"
+container_name="webtps-orthanc"
 
 if [ -z "$desired_image" ]; then
   echo "::error::wsl-deploy: could not resolve desired DICOM repository image from $COMPOSE_FILE"
@@ -78,13 +78,9 @@ if [ "$orthanc_ok" = "true" ]; then
   echo "DICOM repository already running with $desired_image; leaving it unchanged."
 else
   echo "Starting or updating persistent DICOM repository with $desired_image."
-  # Remove the named container unconditionally so its port binding is released
-  # before compose creates a fresh one. This handles containers left by a
-  # previous compose project after a repo rename.
-  docker rm -f "$container_name" 2>/dev/null || true
-  # Also evict any other container that still holds port 8042.
-  conflict=$(docker ps -q --filter "publish=8042" 2>/dev/null || true)
-  [ -n "$conflict" ] && docker rm -f $conflict 2>/dev/null || true
+  # Remove transitional containers created during the brief contourlab-rename
+  # period so their port bindings are released before compose starts webtps-orthanc.
+  docker rm -f contourlab-orthanc 2>/dev/null || true
   docker compose -f "$COMPOSE_FILE" up -d dicom-repo
 fi
 
@@ -102,12 +98,9 @@ set -a
 [ -f "$SECRETS_FILE" ] && . "$SECRETS_FILE"
 set +a
 
-# Evict any orphaned containers (e.g. from a previous compose project after a
-# repo rename) that are still holding the ports the app services need.
-for _port in 3001 4001; do
-  _conflict=$(docker ps -q --filter "publish=$_port" 2>/dev/null || true)
-  [ -n "$_conflict" ] && docker rm -f $_conflict 2>/dev/null || true
-done
+# Remove transitional containers from the brief contourlab-rename period so
+# their port bindings are free when compose recreates webtps-client/api.
+docker rm -f contourlab-client contourlab-api 2>/dev/null || true
 
 docker compose -f "$COMPOSE_FILE" up -d --build --no-deps api client
 
