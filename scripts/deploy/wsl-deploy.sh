@@ -32,6 +32,11 @@
 
 set -euo pipefail
 
+# Keep the compose project name consistent with the original WebTPS deployment
+# so that docker compose recognises existing webtps-* containers as its own
+# and does a proper stop → recreate rather than a conflicting create.
+export COMPOSE_PROJECT_NAME=webtps
+
 CONTOURLAB_ORTHANC_DATA_DIR="${CONTOURLAB_ORTHANC_DATA_DIR:-$HOME/contourlab-orthanc-db}"
 SECRETS_FILE="${SECRETS_FILE:-$HOME/.contourlab-secrets.env}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.deploy.yml}"
