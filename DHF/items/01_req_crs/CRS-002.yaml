@@ -1,0 +1,10 @@
+id: CRS-002
+title: Clinicians shall draw and edit contours on image slices
+content: |-
+  As a physician or dosimetrist, I need to draw target volumes and organs at
+  risk on image slices using freehand, polygon, and brush tools, with the
+  ability to undo/redo up to 50 actions.
+user_group: Physician / Dosimetrist
+derives_from:
+  - UC-002
+priority: Critical

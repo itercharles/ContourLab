@@ -1,0 +1,15 @@
+.git
+.github
+.pnpm-store
+node_modules
+**/node_modules
+**/dist
+**/build
+**/bin
+**/obj
+**/coverage
+**/test-results
+apps/api/publish
+docker/orthanc/orthanc-db
+deploy-data
+*.log

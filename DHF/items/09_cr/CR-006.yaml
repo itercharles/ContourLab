@@ -1,0 +1,23 @@
+id: CR-006
+title: maximum a certain view
+type: CR
+description: '**Priority:** medium
+
+  **Category:** enhancement
+
+
+  User shall be to maximize a view when he right click and select the "full screen"
+  in the right menu. User can maximize the transverse or any other views.  Maximize
+  means this view occupies all the view display area, but all the other panel still
+  there.
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/51'
+justification: Maintainer assigned this issue to the active release milestone, indicating
+  it is accepted for CR intake.
+priority: Medium
+requested_by: itercharles
+target_version: 2026-W19
+category: Feature
+content: ''
+status: completed

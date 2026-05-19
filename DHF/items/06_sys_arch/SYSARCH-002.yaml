@@ -1,0 +1,27 @@
+id: SYSARCH-002
+title: DICOMweb Repository Interface
+status: approved
+content: |-
+  External DICOMweb-compatible storage system providing DICOM object persistence
+  and query capabilities. Accessed by the browser client directly via the /dicom-web
+  reverse proxy path.
+
+  Development environment: Orthanc (Docker, no authentication, port 8042)
+  Production environment: Hospital PACS or VNA with DICOMweb support
+
+  Exposed DICOMweb services:
+  - QIDO-RS: query studies, series, and instances by DICOM attributes
+  - WADO-RS: retrieve DICOM objects (bulk data, metadata, rendered frames)
+  - STOW-RS: store DICOM objects (CT series metadata, RTSTRUCT uploads)
+
+  Configuration:
+  - Dev: Vite proxies /dicom-web → http://localhost:8042 (no auth)
+  - Prod: reverse proxy to hospital PACS/VNA (auth configured per deployment)
+
+  The repository is the system of record for all patient imaging data and
+  finalized structure sets. It is not owned or operated by ContourLab.
+design:
+- SYS-001
+- SYS-006
+- SYS-007
+- SYS-011

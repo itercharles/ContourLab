@@ -1,0 +1,28 @@
+id: SWDD-010
+implements:
+- SRS-018
+- SRS-019
+module: [MODULE-008]
+title: Viewport maximize feature - UI state and layout rendering
+content: 'uiStore extends the existing Zustand state with maximizedViewport field:
+  "AXIAL" | "SAGITTAL" | "CORONAL" | null (initially null). toggleMaximizeViewport(viewportId:
+  string | null) toggles between maximized and normal state; resetMaximizeViewport()
+  unconditionally clears the maximized state for patient change events.
+
+
+  ImageViewer renders viewports conditionally based on maximizedViewport state: when
+  null, render standard three-pane grid with equal proportions; when set to a viewport
+  ID, render that viewport with flex-1 w-full and hide siblings using Tailwind hidden
+  class. Flex layout transitions are optional for Phase A.
+
+
+  Viewport components add onContextMenu handler to the Cornerstone3D canvas. A ContextMenu
+  component renders conditionally at cursor location with "Maximize View" or "Restore
+  View" option. Clicking the option calls toggleMaximizeViewport().
+
+
+  Keyboard handler listens for Escape key on ImageViewer; when maximizedViewport is
+  set, calls resetMaximizeViewport(). Patient/study change effect calls resetMaximizeViewport()
+  to auto-restore layout. All other workspace panels (repository browser, structure
+  list, toolbar) remain visible and unchanged.'
+type: SWDD

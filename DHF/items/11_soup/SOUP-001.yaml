@@ -1,0 +1,19 @@
+id: SOUP-001
+title: vtk.js — VTK-based 3D rendering for the browser
+name: "@kitware/vtk.js"
+version: "^34.15.1"
+manufacturer: Kitware, Inc.
+license: BSD-3-Clause
+purpose: |-
+  Provides the vtk.js rendering pipeline used by ThreeDViewport for 3D clinical
+  review. Responsibilities include OpenGL render window management, volume actor
+  and mapper creation, marching-cubes surface extraction (vtkImageMarchingCubes),
+  and interactive camera control (TrackballCamera interactor style). Used
+  exclusively in the review viewport; no path to treatment planning calculations.
+homepage: https://kitware.github.io/vtk-js
+cve_count: "0"
+risk_rating: Low
+safety_class: C (non-safety-critical display aid; clinician must verify contours
+  independently in the 2D MPR views)
+verification_method: Unit and component tests mock the vtk.js pipeline; E2E test
+  validates viewport presence and status readout under injected state.

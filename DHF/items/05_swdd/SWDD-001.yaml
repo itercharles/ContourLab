@@ -1,0 +1,17 @@
+id: SWDD-001
+title: Zustand + Immer stores for application state
+content: |-
+  Application state is managed via three Zustand stores using the Immer
+  middleware for immutable updates:
+  - volumeStore: loaded DICOM series, active series UID, loading/error state
+  - structureStore: structure sets, structures, contour slices, active structure
+  - uiStore: active tool, window/level preset, brush radius, sidebar state,
+    crosshairs enabled, active viewport
+
+  Stores are accessed via useXxxStore() hooks in components or
+  useXxxStore.getState() in non-React code (managers, engines).
+
+  Float32Array contour points must NOT be mutated through Immer drafts.
+  ContourSlice objects must be replaced entirely (not patched in place).
+implements: [SRS-007, SRS-008]
+module: [MODULE-001]

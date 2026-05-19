@@ -1,0 +1,79 @@
+name: wait-for-services
+description: |
+  Poll one or more HTTP endpoints until each returns a successful response, or
+  fail with a single named cause when the deadline elapses. Replaces hand-
+  rolled curl loops that drifted in three places (40×3s, 30×3s, 20×2s, 30×2s)
+  with one parameterised primitive. Used by dev-integration, verify-sys,
+  validate-crs, and the deployed health check.
+
+inputs:
+  urls:
+    description: |
+      Newline- or comma-separated list of URLs to probe. Each must respond
+      with a non-failing HTTP status (curl -sf) before the wait succeeds.
+    required: true
+  timeout-seconds:
+    description: Maximum total wait time in seconds
+    required: false
+    default: '120'
+  interval-seconds:
+    description: Seconds between probes
+    required: false
+    default: '3'
+  curl-max-time:
+    description: Per-request curl --max-time in seconds
+    required: false
+    default: '10'
+
+runs:
+  using: composite
+  steps:
+    - name: Wait for services
+      shell: bash
+      env:
+        WFS_URLS: ${{ inputs.urls }}
+        WFS_TIMEOUT: ${{ inputs.timeout-seconds }}
+        WFS_INTERVAL: ${{ inputs.interval-seconds }}
+        WFS_CURL_MAX_TIME: ${{ inputs.curl-max-time }}
+      run: |
+        set -u
+        # Accept either comma- or newline-separated lists; ignore blanks.
+        URLS=$(printf '%s' "$WFS_URLS" | tr ',' '\n' | awk 'NF')
+        if [ -z "$URLS" ]; then
+          echo "::error::wait-for-services: no URLs supplied"
+          exit 1
+        fi
+        START=$(date +%s)
+        DEADLINE=$((START + WFS_TIMEOUT))
+        ATTEMPT=0
+        while :; do
+          ATTEMPT=$((ATTEMPT + 1))
+          ALL_OK=true
+          while IFS= read -r url; do
+            [ -z "$url" ] && continue
+            if ! curl -sf --max-time "$WFS_CURL_MAX_TIME" "$url" > /dev/null 2>&1; then
+              ALL_OK=false
+              break
+            fi
+          done <<< "$URLS"
+
+          if [ "$ALL_OK" = "true" ]; then
+            ELAPSED=$(( $(date +%s) - START ))
+            echo "Services ready after ${ELAPSED}s (attempt $ATTEMPT)"
+            exit 0
+          fi
+
+          NOW=$(date +%s)
+          if [ "$NOW" -ge "$DEADLINE" ]; then
+            echo "::error::wait-for-services: timed out after ${WFS_TIMEOUT}s. URLs:"
+            while IFS= read -r url; do
+              [ -z "$url" ] && continue
+              STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time "$WFS_CURL_MAX_TIME" "$url" 2>/dev/null || echo "unreachable")
+              echo "  $url -> $STATUS"
+            done <<< "$URLS"
+            exit 1
+          fi
+          REMAINING=$((DEADLINE - NOW))
+          echo "Waiting for services... (attempt $ATTEMPT, ${REMAINING}s remaining)"
+          sleep "$WFS_INTERVAL"
+        done

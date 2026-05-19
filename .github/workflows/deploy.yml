@@ -1,0 +1,54 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch or SHA to deploy (default: main)'
+        required: false
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy | Linux VM (Docker)
+    runs-on: ${{ vars.CONTOURLAB_DEPLOY_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEPLOY_RUNS_ON_JSON) || fromJSON('["self-hosted","linux","contourlab-deploy"]') }}
+    environment: production
+    if: github.actor == 'itercharles'
+    steps:
+      - name: Fix workspace permissions
+        # Orthanc runs as root inside the container; chown its data dir back to
+        # the runner user before checkout wipes the workspace.
+        run: |
+          docker exec contourlab-orthanc \
+            chown -R "$(id -u):$(id -g)" /var/lib/orthanc/db \
+            2>/dev/null || true
+
+      - name: Check out code
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Deploy ContourLab stack
+        env:
+          ISSUES_TOKEN: ${{ secrets.ISSUES_TOKEN }}
+        run: bash scripts/deploy/wsl-deploy.sh
+
+      - name: Verify deployment health
+        uses: ./.github/actions/wait-for-services
+        with:
+          urls: |
+            http://127.0.0.1:4001/api/health
+            http://127.0.0.1:3001/
+            http://127.0.0.1:8042/system
+          timeout-seconds: '90'
+
+      - name: Capture post-deploy snapshots
+        run: |
+          curl -sf http://127.0.0.1:3001/ > /tmp/contourlab-client.html
+          curl -sf http://127.0.0.1:4001/api/health > /tmp/contourlab-api-health.json
+          curl -sf http://127.0.0.1:8042/system > /tmp/contourlab-orthanc-system.json
+          docker compose -f docker-compose.deploy.yml ps

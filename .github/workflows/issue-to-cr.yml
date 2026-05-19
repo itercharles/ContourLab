@@ -1,0 +1,211 @@
+name: ContourLab CR Issue Intake
+
+run-name: "CR Issue Intake | #${{ github.event.issue.number }} | ${{ github.event.issue.title }}"
+
+on:
+  issues:
+    types: [milestoned]
+
+concurrency:
+  group: issue-to-cr-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+  pull-requests: write
+
+jobs:
+  create-cr:
+    if: github.event.issue.user.login == github.repository_owner
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.ACTIONS_PAT }}
+          fetch-depth: 0
+
+      - uses: ./.github/actions/cr-agent-setup
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Prepare CR from issue
+        id: prepare
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          medharness cr workflow intake-github-issue-ci \
+            --event "$GITHUB_EVENT_PATH" \
+            --dhf-repo . \
+            --source-repo "${{ github.repository }}" \
+            --marker-name contourlab-cr \
+            --write \
+            --output /tmp/issue-to-cr.json \
+            --github-output "$GITHUB_OUTPUT"
+          cat /tmp/issue-to-cr.json
+
+      - name: Stop when issue is not ready for CR intake
+        if: steps.prepare.outputs.should_create != 'true'
+        run: echo "${{ steps.prepare.outputs.reason }}"
+
+      - name: Create stage labels
+        if: steps.prepare.outputs.should_create == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "cr:stage/design" --color "d93f0b" --description "CR stage: awaiting design review" 2>/dev/null || true
+          gh label create "cr:stage/code"   --color "0e8a16" --description "CR stage: awaiting code review"   2>/dev/null || true
+
+      # Push the CR commit before design generation so a branch + PR always
+      # exists even if generate-dhf later fails — enabling manual rerun.
+      - name: Create feat branch, commit CR, push
+        id: create_branch
+        if: steps.prepare.outputs.should_create == 'true'
+        run: |
+          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          git checkout -b "feat/$CR_ID"
+          git add DHF/items/
+          git commit -m "cr: intake $CR_ID"
+          git push --force-with-lease --set-upstream origin "feat/$CR_ID"
+
+      - name: Open draft PR
+        id: open_pr
+        if: steps.create_branch.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          BRANCH="feat/$CR_ID"
+          {
+            echo "Closes #${{ github.event.issue.number }}"
+            echo ""
+            echo "**Stage 1 of 2 — Design Review**"
+            echo "The AI-generated implementation plan will be posted as a comment below if design generation succeeds. Approve to trigger implementation."
+          } > /tmp/pr-body.md
+          PR_URL=$(gh pr view "$BRANCH" --json url,state -q 'select(.state=="OPEN") | .url' 2>/dev/null || true)
+          if [ -z "$PR_URL" ]; then
+            PR_URL=$(gh pr create \
+              --head "$BRANCH" \
+              --base main \
+              --draft \
+              --title "feat($CR_ID): $ISSUE_TITLE" \
+              --body-file /tmp/pr-body.md \
+              --label "cr:stage/design")
+          fi
+          gh issue edit "${{ github.event.issue.number }}" --add-label "cr:stage/design"
+          PR_NUMBER=$(gh pr view "$BRANCH" --json number --jq '.number' 2>/dev/null || echo "")
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          {
+            echo "CR intake complete: **$CR_ID** — design generating, review PR: $PR_URL"
+            echo ""
+            echo "<!-- contourlab-cr: $CR_ID -->"
+            echo "<!-- contourlab-cr-pr: $PR_URL -->"
+          } | gh issue comment "${{ github.event.issue.number }}" --body-file -
+
+      - name: Generate design
+        id: generate_design
+        if: steps.open_pr.outcome == 'success'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          set -o pipefail
+          # No --pr here: passing --pr switches generate-dhf into revision mode
+          # (reads PR review feedback), which is wrong on a brand-new draft PR.
+          # Revision mode is only used by cr-lifecycle.yml revise-design.
+          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" | tee /tmp/generate-dhf-out.json
+
+      - name: Post design failure comment
+        if: always() && steps.open_pr.outcome == 'success' && steps.generate_design.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
+          ERRORS=$(jq -r '.errors[]? | "- **\(.field)**: \(.issue)\n  _Fix:_ \(.fix)"' /tmp/generate-dhf-out.json 2>/dev/null || echo "")
+          if [ -n "$ERRORS" ]; then
+            BODY=$(printf '⚠️ **Design validation has residual errors** for %s:\n\n%s\n\nCorrect the DHF items and re-trigger via Actions → cr-lifecycle.yml → workflow_dispatch (stage: design).' "$CR_ID" "$ERRORS")
+          else
+            BODY="⚠️ **Design generation failed** for $CR_ID — re-trigger via Actions → cr-lifecycle.yml → workflow_dispatch (stage: design) once the cause is resolved."
+          fi
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "$BODY" || true
+          exit 1
+
+      - name: Upload design payload
+        if: always() && steps.prepare.outputs.should_create == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: medharness-generate-dhf-intake-${{ github.run_id }}
+          path: /tmp/generate-dhf-out.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Commit design and push
+        if: always() && steps.generate_design.outcome == 'success'
+        run: |
+          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          git add DHF/
+          if ! git diff --staged --quiet; then
+            COMMIT_BODY=""
+            if [ -f /tmp/generate-dhf-out.json ]; then
+              CREATED=$(jq -r '.artifacts.items_changed.created | join(", ")' /tmp/generate-dhf-out.json)
+              UPDATED=$(jq -r '.artifacts.items_changed.updated | join(", ")' /tmp/generate-dhf-out.json)
+              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/generate-dhf-out.json)
+              [ -n "$CREATED" ] && COMMIT_BODY="${COMMIT_BODY}Created: ${CREATED}"$'\n'
+              [ -n "$UPDATED" ] && COMMIT_BODY="${COMMIT_BODY}Updated: ${UPDATED}"$'\n'
+              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
+            fi
+            if [ -n "$COMMIT_BODY" ]; then
+              git commit -m "feat: design $CR_ID" -m "$COMMIT_BODY"
+            else
+              git commit -m "feat: design $CR_ID"
+            fi
+            git push
+          fi
+
+      - name: Post design summary
+        if: always() && steps.generate_design.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
+          [ ! -f /tmp/generate-dhf-out.json ] && exit 0
+          CREATED=$(jq -r '[.artifacts.items_changed.created[]?] | join(", ")' /tmp/generate-dhf-out.json)
+          UPDATED=$(jq -r '[.artifacts.items_changed.updated[]?] | join(", ")' /tmp/generate-dhf-out.json)
+          DESIGN_SUMMARY=$(jq -r '.summary // ""' /tmp/generate-dhf-out.json)
+          BODY="**Design output for $CR_ID**"$'\n'
+          [ -n "$DESIGN_SUMMARY" ] && BODY="${BODY}"$'\n'"$DESIGN_SUMMARY"$'\n'
+          [ -n "$CREATED" ] && BODY="${BODY}"$'\n'"**Created:** $CREATED"$'\n'
+          [ -n "$UPDATED" ] && BODY="${BODY}"$'\n'"**Updated:** $UPDATED"$'\n'
+          gh pr comment "$PR_NUMBER" \
+            --repo "${{ github.repository }}" \
+            --body "$BODY"
+
+      - name: Post implementation plan
+        if: always() && steps.generate_design.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
+          PATHS=$(medharness --dhf DHF dhf context implementation \
+            --cr "$CR_ID" \
+            --out-dir "/tmp/cr-context-$CR_ID") || { echo "::warning::dhf context implementation failed, skipping plan comment"; exit 0; }
+          CR_FILE=$(echo "$PATHS" | jq -r '.cr')
+          IMPL_NOTES=$(jq -r '(.implementation_notes // "") | ltrimstr("\n") | rtrimstr("\n")' "$CR_FILE")
+          [ -z "$IMPL_NOTES" ] && exit 0
+          BODY=$(printf '## Implementation Plan\n\n%s' "$IMPL_NOTES")
+          gh pr comment "$PR_NUMBER" \
+            --repo "${{ github.repository }}" \
+            --body "$BODY"

@@ -1,0 +1,14 @@
+id: SYS-002
+title: System shall render axial, sagittal, and coronal viewports simultaneously
+content: |-
+  Using Cornerstone3D, the system shall render three synchronized orthogonal
+  viewports. Scrolling in one view shall update the crosshair position visible
+  in all three views. Window/level changes shall apply globally across all
+  viewports.
+category: Functional
+verification_method:
+  - Test
+  - Demonstration
+critical_safety: false
+satisfies:
+  - CRS-001

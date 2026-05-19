@@ -1,0 +1,102 @@
+name: Complete CR In DHF
+
+run-name: CR completion | #${{ github.event.pull_request.number }}
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  complete-cr:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'feat/CR-')
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: write
+    outputs:
+      cr_id: ${{ steps.complete.outputs.cr_id }}
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - uses: ./.github/actions/medharness-setup
+
+      - name: Complete CR
+        id: complete
+        run: |
+          RESULT=$(medharness cr workflow complete-from-github-pr \
+            --dhf-repo . \
+            --event "$GITHUB_EVENT_PATH" \
+            --by "github-actions[bot]" \
+            --push)
+          echo "$RESULT"
+          CR_ID=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cr_id',''))" 2>/dev/null || true)
+          echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
+
+  closure-gate:
+    needs: complete-cr
+    if: needs.complete-cr.outputs.cr_id != ''
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/medharness-setup
+
+      - name: Download test evidence from latest CI run
+        # Artifacts live in ci-pipeline.yml, not in this workflow. Fetch from
+        # the most recent successful ci-pipeline run on main.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RUN_ID=$(gh run list \
+            --workflow ci-pipeline.yml \
+            --branch main \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            -q '.[0].databaseId' 2>/dev/null || true)
+          if [ -n "$RUN_ID" ]; then
+            mkdir -p test-results/srs test-results/srs-api test-results/sys
+            gh run download "$RUN_ID" -n verify-srs-junit     -D test-results/srs/     2>/dev/null || true
+            gh run download "$RUN_ID" -n verify-srs-api-junit -D test-results/srs-api/ 2>/dev/null || true
+            gh run download "$RUN_ID" -n verify-sys-junit     -D test-results/sys/     2>/dev/null || true
+            echo "Downloaded test evidence from ci-pipeline run $RUN_ID"
+          else
+            echo "No successful ci-pipeline run found — closure gate will check structural completeness only"
+          fi
+
+      - name: Run CR closure gate
+        env:
+          CR_ID: ${{ needs.complete-cr.outputs.cr_id }}
+        run: |
+          medharness --dhf DHF ci cr-complete \
+            --cr "$CR_ID" \
+            --junit-dir test-results/srs \
+            --junit-dir test-results/srs-api \
+            --junit-dir test-results/sys
+
+  # Squash merges of a CR branch can inherit [skip ci] from intermediate
+  # lifecycle / transition commits, which suppresses the push-to-main Product
+  # CI/CD run. Fire it explicitly via workflow_dispatch — that event ignores
+  # [skip ci].
+  trigger-ci-on-main:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'feat/CR-')
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      actions: write
+    steps:
+      - name: Trigger Product CI/CD on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run ci-pipeline.yml --ref main

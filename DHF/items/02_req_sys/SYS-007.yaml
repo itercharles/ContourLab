@@ -1,0 +1,16 @@
+id: SYS-007
+title: System shall retrieve and load RTSTRUCT objects from the DICOM repository
+content: |-
+  The system shall query the connected DICOMweb repository for RT Structure Set
+  objects associated with the active patient study, present candidates in
+  newest-first order under the corresponding image-set context, and load a
+  user-selected object by activating the matching image series and replacing the
+  active in-memory structure set. The loaded object shall be marked as the
+  active repository source.
+category: Functional
+verification_method:
+  - Test
+  - Demonstration
+critical_safety: true
+satisfies:
+  - CRS-006

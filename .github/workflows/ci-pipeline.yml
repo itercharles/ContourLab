@@ -1,0 +1,650 @@
+name: ContourLab Product CI/CD
+
+run-name: Product CI/CD | ${{ github.event_name }} | ${{ github.event.pull_request.title || github.event.head_commit.message || github.ref_name }}
+
+on:
+  push:
+    branches: [ main, feat/* ]
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+
+  # ── MEDHARNESS CONTRACT ────────────────────────────────────────────────────
+  # Fast smoke check for the pinned medharness version and the exact CLI forms
+  # this repository relies on.
+
+  medharness-contract:
+    name: MedHarness Contract
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/medharness-setup
+
+      - name: Validate MedHarness contract
+        run: python scripts/ci/check_medharness_contract.py
+
+  # ── CHANGE DETECTION ─────────────────────────────────────────────────────────
+  # Detects which workspaces changed so downstream jobs can skip irrelevant work.
+  # On main and workflow_dispatch all flags are forced true — full suite always runs.
+
+  changes:
+    name: Detect Changed Scope
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    outputs:
+      client:       ${{ steps.scope.outputs.client }}
+      api:          ${{ steps.scope.outputs.api }}
+      shared_types: ${{ steps.scope.outputs.shared_types }}
+      dhf:          ${{ steps.scope.outputs.dhf }}
+      any_code:     ${{ steps.scope.outputs.any_code }}
+      skip_all:     ${{ steps.scope.outputs.skip_all }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          REF:   ${{ github.ref }}
+          BASE:  ${{ github.event.pull_request.base.ref }}
+        run: |
+          # Always run full suite on main and manual triggers
+          if [ "$REF" = "refs/heads/main" ] || [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "client=true"       >> "$GITHUB_OUTPUT"
+            echo "api=true"          >> "$GITHUB_OUTPUT"
+            echo "shared_types=true" >> "$GITHUB_OUTPUT"
+            echo "dhf=true"          >> "$GITHUB_OUTPUT"
+            echo "any_code=true"     >> "$GITHUB_OUTPUT"
+            echo "skip_all=false"    >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # For PRs compare against the base branch; for other pushes use previous commit
+          if [ "$EVENT" = "pull_request" ] && [ -n "$BASE" ]; then
+            CHANGED=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null || \
+                      git diff --name-only HEAD^1 HEAD 2>/dev/null || echo "UNKNOWN")
+          else
+            CHANGED=$(git diff --name-only HEAD^1 HEAD 2>/dev/null || echo "UNKNOWN")
+          fi
+
+          # If change list cannot be determined, run everything safely
+          if [ "$CHANGED" = "UNKNOWN" ] || [ -z "$CHANGED" ]; then
+            echo "client=true"       >> "$GITHUB_OUTPUT"
+            echo "api=true"          >> "$GITHUB_OUTPUT"
+            echo "shared_types=true" >> "$GITHUB_OUTPUT"
+            echo "dhf=true"          >> "$GITHUB_OUTPUT"
+            echo "any_code=true"     >> "$GITHUB_OUTPUT"
+            echo "skip_all=false"    >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          client=false api=false shared_types=false dhf=false
+
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+            case "$file" in
+              apps/client/*)                 client=true ;;
+              apps/api/* | apps/api.tests/*) api=true ;;
+              packages/shared-types/*)       shared_types=true ;;
+              DHF/*)                         dhf=true ;;
+              .github/* | *.md | LICENSE)    ;;  # CI/docs only — no code impact
+              *)                             client=true; api=true ;;  # unknown: full run
+            esac
+          done <<< "$CHANGED"
+
+          # shared-types changes cascade to all JS workspaces
+          if [[ "$shared_types" == "true" ]]; then client=true; api=true; fi
+
+          any_code=false
+          [[ "$client" == "true" || "$api" == "true" ]] && any_code=true
+
+          # skip_all: nothing code or DHF-related changed (pure CI / docs PR)
+          skip_all=false
+          [[ "$any_code" == "false" && "$dhf" == "false" ]] && skip_all=true
+
+          echo "client=$client"             >> "$GITHUB_OUTPUT"
+          echo "api=$api"                   >> "$GITHUB_OUTPUT"
+          echo "shared_types=$shared_types" >> "$GITHUB_OUTPUT"
+          echo "dhf=$dhf"                   >> "$GITHUB_OUTPUT"
+          echo "any_code=$any_code"         >> "$GITHUB_OUTPUT"
+          echo "skip_all=$skip_all"         >> "$GITHUB_OUTPUT"
+
+  # ── CR VALIDATION ─────────────────────────────────────────────────────────
+  # Phase 1: PR title must contain a CR ID (or be a chore/ci/docs prefix).
+  # All design/spec/feat branches from the CR automation satisfy this rule.
+
+  cr-validation:
+    name: CR Validation
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Extract CR IDs from PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          CR_IDS=$(echo "$PR_TITLE" | grep -oE 'CR-[0-9]+' | sort -u | tr '\n' ' ' || true)
+          if [ -z "$CR_IDS" ]; then
+            if echo "$PR_TITLE" | grep -Eq '^(ci|chore|docs|fix|refactor|test|perf)(\(|:)'; then
+              echo "No CR ID — maintenance PR exempt."
+              exit 0
+            fi
+            # feat(ci|infra|chore|...): scoped to infrastructure, not a product feature
+            if echo "$PR_TITLE" | grep -Eq '^feat\((ci|infra|chore|deps|runner|workflow|build|release|actions|docker)\)'; then
+              echo "No CR ID — infrastructure feat exempt."
+              exit 0
+            fi
+            echo "::error::No CR ID in PR title. Add e.g. 'feat(CR-042): description'"
+            exit 1
+          fi
+          echo "Found CR IDs: $CR_IDS"
+
+  # ── STAGE GATE ────────────────────────────────────────────────────────────
+  # Skip heavy CI jobs when the PR is in an early CR stage (cr/design).
+  # Code-stage PRs and pushes to main always run full CI.
+
+  stage-gate:
+    name: Stage Gate
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    if: github.event_name == 'pull_request'
+    outputs:
+      run_ci: ${{ steps.check.outputs.run_ci }}
+    steps:
+      # Skip heavy CI only when the PR is in an early CR stage. Defensive
+      # default: a PR carrying `cr:stage/...` labels that don't match any
+      # known stage (typo, future stage, manual mis-label) emits a CI
+      # warning AND still runs full CI — safer to waste minutes than to
+      # silently skip a stage that ought to gate. PRs without any
+      # `cr:stage/` label are normal fix/feat/chore PRs and always run CI.
+      - id: check
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+        run: |
+          if ! echo "$LABELS" | grep -qE 'cr:stage/'; then
+            echo "Non-CR PR (no cr:stage/* label) — running full CI"
+            echo "run_ci=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if echo "$LABELS" | grep -qE 'cr:stage/(cr|design)\b'; then
+            echo "Early CR stage detected (cr/design) — skipping heavy CI"
+            echo "run_ci=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if echo "$LABELS" | grep -qE 'cr:stage/code\b'; then
+            echo "CR code stage — running full CI"
+            echo "run_ci=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::warning::PR carries cr:stage/* label(s) that match neither (cr|design) nor code. Labels: $LABELS — running full CI by default."
+          echo "run_ci=true" >> "$GITHUB_OUTPUT"
+
+  # ── DHF VALIDATION ────────────────────────────────────────────────────────
+  # Phase 2a: DHF schema + design traceability check.
+  # Runs on every PR so coupled DHF changes are validated continuously.
+
+  dhf-validation:
+    name: DHF Validation (schema + traceability)
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    needs: [medharness-contract, cr-validation, changes]
+    if: always() && !failure() && !cancelled() && needs.changes.outputs.dhf == 'true'
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v5
+
+      - uses: ./.github/actions/medharness-setup
+
+      - name: Run DHF validation
+        run: |
+          medharness ci dhf-validate \
+            --dhf DHF \
+            --run-schema \
+            --run-traceability \
+            --coverage-pair UC:CRS \
+            --coverage-pair CRS:SYS \
+            --coverage-pair SYS:SRS \
+            --coverage-pair SRS:SWDD \
+            --coverage-pair SYS:SYSARCH \
+            --coverage-pair RISK:RCM
+
+      - name: Print traceability report
+        if: always()
+        continue-on-error: true
+        run: dhfkit --dhf DHF report
+
+  # ── CR BRANCH VALIDATION ─────────────────────────────────────────────────
+  # Phase 2b: For feat/CR-* implementation branches, verifies the branch
+  # carries the expected coupled change set (DHF + code) and that all
+  # required test annotations (@links:<ID>) are present in the diff.
+  # Only runs on feat/CR-* PR branches at implementation review.
+
+  cr-branch-validation:
+    name: CR Branch Validation (coupled changes + test annotations)
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    needs: [medharness-contract, cr-validation, changes]
+    permissions:
+      contents: read
+      pull-requests: write
+    if: |
+      always() && !failure() && !cancelled() &&
+      github.event_name == 'pull_request' &&
+      startsWith(github.event.pull_request.head.ref, 'feat/CR-') &&
+      contains(github.event.pull_request.labels.*.name, 'cr:stage/code')
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - name: Fetch base for diff
+        run: git fetch origin main --depth 1
+      - uses: ./.github/actions/medharness-setup
+      - name: Validate branch coupling
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          CR_ID=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'CR-[0-9]+')
+          if ! medharness --dhf DHF ci validate-branch \
+            --cr "$CR_ID" \
+            --code-path apps/ \
+            --code-path packages/; then
+            gh pr comment "$PR_NUMBER" --body \
+              "⚠️ **Branch validation failed** for $CR_ID — missing required DHF item changes or code changes. See CI logs for details."
+            exit 1
+          fi
+
+      - name: Validate test annotations
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          CR_ID=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'CR-[0-9]+')
+          if ! medharness --dhf DHF ci validate-code \
+            --cr "$CR_ID"; then
+            gh pr comment "$PR_NUMBER" --body \
+              "⚠️ **Test annotation check failed** for $CR_ID — one or more items in \`test_plan.needs_new_tc\` are missing \`@links:<ID>\` annotations. See CI logs for details."
+            exit 1
+          fi
+
+  # ── DEVELOPMENT TESTING ────────────────────────────────────────────────────
+  # Static analysis and compilation. Engineering feedback only — not compliance
+  # artifacts. All three jobs run in parallel.
+
+  dev-frontend:
+    name: Dev | Frontend (lint · typecheck · build)
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    needs: [medharness-contract, cr-validation, stage-gate, changes]
+    if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.client == 'true'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-contourlab-frontend
+      - run: pnpm --filter @contourlab/client lint
+      - run: pnpm --filter @contourlab/client typecheck
+      - run: pnpm --filter @contourlab/client build
+
+  dev-api:
+    name: Dev | API (restore · build · test)
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    needs: [medharness-contract, cr-validation, stage-gate, changes]
+    if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.api == 'true'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-contourlab-api
+      - run: dotnet build apps/api/api.csproj --configuration Release --no-restore
+      - name: Run API tests
+        run: dotnet test apps/api.tests/ContourLab.Api.Tests.csproj --logger "junit;LogFilePath=../../test-results/api-junit.xml"
+      - name: Upload API test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-srs-api-junit
+          path: test-results/api-junit.xml
+          if-no-files-found: error
+
+  dev-shared-types:
+    name: Dev | Shared Types (typecheck · build)
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    needs: [medharness-contract, cr-validation, stage-gate, changes]
+    if: always() && !failure() && !cancelled() && needs.stage-gate.outputs.run_ci != 'false' && needs.changes.outputs.shared_types == 'true'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-contourlab-frontend
+      - run: pnpm --filter @contourlab/shared-types typecheck
+      - run: pnpm --filter @contourlab/shared-types build
+
+  dev-integration:
+    name: Dev | Integration Smoke (full stack · health check)
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    needs: [medharness-contract, dev-frontend, dev-api, dev-shared-types, changes]
+    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-contourlab-frontend
+      - uses: ./.github/actions/setup-contourlab-api
+      - name: Start DICOM repository
+        run: pnpm repo:up
+      - name: Start API
+        run: pnpm api > /tmp/contourlab-api.log 2>&1 &
+      - name: Start frontend
+        run: pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/contourlab-client.log 2>&1 &
+      - name: Wait for services
+        uses: ./.github/actions/wait-for-services
+        with:
+          urls: |
+            http://127.0.0.1:4000/api/health
+            http://127.0.0.1:3000/
+          timeout-seconds: '120'
+      - name: Smoke check
+        run: pnpm local:doctor
+      - name: Stop services
+        if: always()
+        run: pnpm local:down
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-integration-logs
+          path: |
+            /tmp/contourlab-api.log
+            /tmp/contourlab-client.log
+
+  # ── VERIFICATION TESTING ───────────────────────────────────────────────────
+  # IEC 62304 §5.5–5.7. Formal evidence that software units and the integrated
+  # system satisfy their specified requirements. Results are DHF artifacts.
+  # Runs in parallel with validation testing, after dev builds pass.
+
+  verify-srs:
+    name: Verify | Test-SRS (Vitest · software requirements)
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    needs: [medharness-contract, dev-frontend, dev-shared-types, changes]
+    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-contourlab-frontend
+      - name: Run SRS verification tests
+        run: pnpm --filter @contourlab/client test
+      - name: Upload SRS test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-srs-junit
+          path: apps/client/test-results/verification-junit.xml
+          if-no-files-found: error
+
+  verify-sys:
+    name: Verify | Test-SYS (Playwright · system requirements)
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    # SYS tests use page.route() mocks and window.__contourlab_stores injection —
+    # they do not call the API or Orthanc, so only the frontend needs to run.
+    needs: [medharness-contract, dev-frontend, dev-shared-types, changes]
+    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-contourlab-frontend
+
+      - name: Install Playwright
+        uses: ./.github/actions/playwright-setup
+
+      - name: Start frontend
+        run: pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/contourlab-client.log 2>&1 &
+
+      - name: Wait for frontend
+        uses: ./.github/actions/wait-for-services
+        with:
+          urls: http://127.0.0.1:3000/
+          timeout-seconds: '60'
+          interval-seconds: '2'
+
+      - name: Run SYS verification tests
+        run: |
+          pnpm --filter @contourlab/client exec playwright test \
+            --project=sys \
+            --workers=2 \
+            --fully-parallel
+        env:
+          BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: test-results/e2e-sys-junit.xml
+
+      - name: Upload SYS test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-sys-junit
+          path: apps/client/test-results/e2e-sys-junit.xml
+          if-no-files-found: error
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-sys-logs
+          path: /tmp/contourlab-client.log
+
+  # ── VALIDATION TESTING ─────────────────────────────────────────────────────
+  # IEC 62304 §5.8. Evidence that the system satisfies customer requirements
+  # and use cases as experienced through the clinical UI. Playwright drives the
+  # browser through complete clinical workflows. Runs in parallel with
+  # verification testing, after dev builds pass.
+
+  validate-crs:
+    name: Validate | Test-CRS (Playwright · clinical workflows)
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    needs: [medharness-contract, dev-frontend, dev-api, dev-shared-types, changes]
+    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-contourlab-frontend
+      - uses: ./.github/actions/setup-contourlab-api
+
+      - name: Start full stack (background)
+        run: |
+          pnpm repo:up
+          pnpm api > /tmp/contourlab-api.log 2>&1 &
+          pnpm --dir apps/client exec vite --host 127.0.0.1 --port 3000 > /tmp/contourlab-client.log 2>&1 &
+
+      - name: Install Playwright
+        uses: ./.github/actions/playwright-setup
+
+      - name: Wait for full stack
+        uses: ./.github/actions/wait-for-services
+        with:
+          urls: |
+            http://127.0.0.1:4000/api/health
+            http://127.0.0.1:3000/
+          timeout-seconds: '90'
+
+      - name: Run CRS validation tests
+        run: |
+          pnpm --filter @contourlab/client exec playwright test \
+            --project=crs \
+            --workers=2 \
+            --fully-parallel
+        env:
+          BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: test-results/e2e-crs-junit.xml
+      - name: Stop services
+        if: always()
+        run: pnpm local:down
+      - name: Upload CRS test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-crs-junit
+          path: apps/client/test-results/e2e-crs-junit.xml
+          if-no-files-found: error
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-crs-logs
+          path: |
+            /tmp/contourlab-api.log
+            /tmp/contourlab-client.log
+
+  # ── ACCEPTANCE GATE ───────────────────────────────────────────────────────
+  # Runs after all development, verification, and validation phases pass.
+  # Validates DHF traceability with test evidence included.
+  # On PR: this is the final gate. On main: continues to artifact generation
+  # and deployment.
+
+  compliance:
+    name: Test Coverage Gate (requirement → test)
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    needs: [medharness-contract, dhf-validation, dev-integration, verify-srs, verify-sys, validate-crs, changes]
+    if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v5
+
+      - uses: ./.github/actions/medharness-setup
+
+      - name: Download SRS test evidence (Vitest)
+        uses: actions/download-artifact@v4
+        with:
+          name: verify-srs-junit
+          path: test-results/srs/
+
+      - name: Download SRS test evidence (API .NET)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: verify-srs-api-junit
+          path: test-results/srs-api/
+
+      - name: Download SYS test evidence (Playwright)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: verify-sys-junit
+          path: test-results/sys/
+
+      - name: Download CRS test evidence (Playwright)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: validate-crs-junit
+          path: test-results/crs/
+
+      - name: Run requirement-test coverage gate
+        run: |
+          medharness ci test-coverage \
+            --dhf DHF \
+            --junit-dir test-results/srs \
+            --junit-dir test-results/srs-api \
+            --junit-dir test-results/sys \
+            --junit-dir test-results/crs \
+            --requirement-type SRS \
+            --requirement-type SYS \
+            --requirement-type CRS
+
+      - name: Run verification completeness gate
+        run: |
+          medharness ci validate-verification \
+            --dhf DHF \
+            --junit-dir test-results/srs \
+            --junit-dir test-results/srs-api \
+            --junit-dir test-results/sys \
+            --requirement-type SRS \
+            --requirement-type SYS
+
+  # ── ARTIFACTS (main only) ─────────────────────────────────────────────────
+  # After acceptance passes on main: generate DHF documents and traceability PDF.
+  # Deployment is manual — trigger the Deploy workflow from the Actions tab.
+
+  generate-artifacts:
+    name: DHF Artifacts (evidence bundle)
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    needs: [compliance]
+    if: github.ref == 'refs/heads/main' && !failure() && !cancelled()
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v5
+
+      - name: Install system dependencies for PDF export
+        run: |
+          if dpkg -s libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0 >/dev/null 2>&1; then
+            exit 0
+          fi
+          sudo -n true >/dev/null 2>&1 || {
+            echo "::error::generate-artifacts requires passwordless sudo to install WeasyPrint PDF dependencies on self-hosted Linux."
+            exit 1
+          }
+          sudo -n apt-get update
+          sudo -n apt-get install -y libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0
+
+      - uses: ./.github/actions/medharness-setup
+        with:
+          extras: '[docs]'
+
+      - name: Download SRS test evidence (Vitest)
+        uses: actions/download-artifact@v4
+        with:
+          name: verify-srs-junit
+          path: test-results/srs/
+
+      - name: Download SRS test evidence (API .NET)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: verify-srs-api-junit
+          path: test-results/srs-api/
+
+      - name: Download SYS test evidence (Playwright)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: verify-sys-junit
+          path: test-results/sys/
+
+      - name: Download CRS test evidence (Playwright)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: validate-crs-junit
+          path: test-results/crs/
+
+      - name: Generate evidence bundle
+        run: |
+          medharness --dhf DHF ci evidence bundle \
+            --out-dir dhf-artifacts \
+            --traceability-type UC \
+            --traceability-type CRS \
+            --traceability-type SYS \
+            --traceability-type SRS \
+            --traceability-type SWDD \
+            --junit-dir test-results/srs \
+            --junit-dir test-results/srs-api \
+            --junit-dir test-results/sys \
+            --junit-dir test-results/crs \
+            --run-id "${{ github.run_id }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --commit "${{ github.sha }}" \
+            --continue-on-gate-failure
+
+      - name: Upload DHF artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dhf-artifacts
+          path: dhf-artifacts/
+
+      - name: Upload combined test evidence for CR analysis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: product-test-results
+          path: |
+            test-results/srs/
+            test-results/srs-api/
+            test-results/sys/
+            test-results/crs/
+          if-no-files-found: warn
+

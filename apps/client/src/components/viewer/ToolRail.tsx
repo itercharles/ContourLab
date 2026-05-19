@@ -1,0 +1,308 @@
+import { MPRController } from '../../core/rendering/MPRController';
+import { useStructureStore } from '../../core/store/structureStore';
+import {
+  useUIStore,
+  type StructureOperationPanel,
+  type ViewerTool,
+} from '../../core/store/uiStore';
+import { useVolumeStore } from '../../core/store/volumeStore';
+import { logClientDebug } from '../../core/debug/clientDebugLog';
+
+type ToolIconName =
+  | 'pointer'
+  | 'pan'
+  | 'zoom'
+  | 'windowlevel'
+  | 'scroll'
+  | 'crosshair'
+  | 'measure'
+  | 'angle'
+  | 'area'
+  | 'hu'
+  | 'edit'
+  | 'brush'
+  | 'pen'
+  | 'polygon'
+  | 'eraser'
+  | 'interpolate'
+  | 'margin'
+  | 'boolean';
+
+interface ToolRailItem {
+  id: ViewerTool | string;
+  name: string;
+  icon: ToolIconName;
+  shortcut: string;
+  desc: string;
+  implemented: boolean;
+}
+
+const CORNERSTONE_TOOL_NAME: Partial<Record<ViewerTool, string>> = {
+  windowLevel: 'WindowLevel',
+  zoom: 'Zoom',
+  pan: 'Pan',
+  scroll: 'StackScroll',
+};
+
+const CONTOUR_TOOLS = new Set<ViewerTool>(['edit', 'freehand', 'polygon', 'brush', 'eraser']);
+
+const TOOL_GROUPS: Array<{ id: string; items: ToolRailItem[] }> = [
+  {
+    id: 'nav',
+    items: [
+      { id: 'pointer', name: 'Select', icon: 'pointer', shortcut: 'V', desc: 'Pick structures & annotation handles', implemented: false },
+      { id: 'pan', name: 'Pan', icon: 'pan', shortcut: 'P', desc: 'Drag the image around the viewport', implemented: true },
+      { id: 'zoom', name: 'Zoom', icon: 'zoom', shortcut: 'Z', desc: 'Zoom in / out on cursor position', implemented: true },
+      { id: 'scroll', name: 'Scroll', icon: 'scroll', shortcut: 'S', desc: 'Scroll through image slices', implemented: true },
+      { id: 'windowLevel', name: 'Window / Level', icon: 'windowlevel', shortcut: 'W', desc: 'Adjust CT gray-scale mapping', implemented: true },
+      { id: 'crosshairs', name: 'Crosshairs', icon: 'crosshair', shortcut: 'C', desc: 'Toggle crosshair reference lines', implemented: true },
+    ],
+  },
+  {
+    id: 'measure',
+    items: [
+      { id: 'measureDistance', name: 'Distance', icon: 'measure', shortcut: 'M', desc: 'Measure a linear distance in mm', implemented: true },
+      { id: 'measureAngle', name: 'Angle', icon: 'angle', shortcut: 'A', desc: 'Measure an angle between two lines', implemented: true },
+      { id: 'measureArea', name: 'Area', icon: 'area', shortcut: 'R', desc: 'Measure a region area in cm²', implemented: true },
+      { id: 'huProbe', name: 'HU Probe', icon: 'hu', shortcut: 'H', desc: 'Sample Hounsfield unit at a point', implemented: true },
+    ],
+  },
+  {
+    id: 'contour',
+    items: [
+      { id: 'edit', name: 'Edit contour', icon: 'edit', shortcut: 'D', desc: 'Move and delete existing contour points', implemented: true },
+      { id: 'freehand', name: 'Freehand', icon: 'pen', shortcut: 'F', desc: 'Draw a closed contour freehand', implemented: true },
+      { id: 'polygon', name: 'Polygon', icon: 'polygon', shortcut: 'G', desc: 'Click vertices to form a polygon contour', implemented: true },
+      { id: 'brush', name: 'Brush', icon: 'brush', shortcut: 'B', desc: 'Paint contour with a circular brush', implemented: true },
+      { id: 'eraser', name: 'Eraser', icon: 'eraser', shortcut: 'E', desc: 'Erase parts of an existing contour', implemented: true },
+    ],
+  },
+  {
+    id: 'structure',
+    items: [
+      { id: 'interpolate', name: 'Interpolate slices', icon: 'interpolate', shortcut: 'I', desc: 'Open slice interpolation controls for the active structure', implemented: true },
+      { id: 'margin', name: 'Margin', icon: 'margin', shortcut: 'G', desc: 'Open expand / contract controls for the active structure', implemented: true },
+      { id: 'boolean', name: 'Boolean ops', icon: 'boolean', shortcut: 'O', desc: 'Open union / intersect / subtract controls', implemented: true },
+    ],
+  },
+];
+
+function ToolIcon({ name }: { name: ToolIconName }) {
+  const props = {
+    width: 15,
+    height: 15,
+    viewBox: '0 0 16 16',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.4,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  };
+  switch (name) {
+    case 'pointer':
+      return <svg {...props}><path d="M3 2l4 11 2-5 5-2z" /></svg>;
+    case 'pan':
+      return <svg {...props}><path d="M8 2v6M8 8l-2-2M8 8l2-2M8 8v5a3 3 0 0 1-3-3V6M8 8l2 2v3a3 3 0 0 0 3-3V6" /></svg>;
+    case 'zoom':
+      return <svg {...props}><circle cx="7" cy="7" r="4" /><path d="M10 10l4 4M5 7h4M7 5v4" /></svg>;
+    case 'windowlevel':
+      return <svg {...props}><circle cx="8" cy="8" r="5.5" /><path d="M8 2.5v11M3 8a5 5 0 0 1 5-5v10a5 5 0 0 1-5-5z" fill="currentColor" stroke="none" opacity="0.35" /></svg>;
+    case 'scroll':
+      return <svg {...props}><rect x="5" y="2" width="6" height="12" rx="1.5" /><path d="M8 4.5v2.2M3 5 1.5 6.5 3 8M13 8l1.5 1.5L13 11" /></svg>;
+    case 'crosshair':
+      return <svg {...props}><path d="M8 1v4M8 11v4M1 8h4M11 8h4" /><circle cx="8" cy="8" r="2" /></svg>;
+    case 'measure':
+      return <svg {...props}><path d="M2 10l8-8 4 4-8 8z" /><path d="M4 8l1 1M6 6l1 1M8 4l1 1M10 6l1 1" /></svg>;
+    case 'angle':
+      return <svg {...props}><path d="M2.5 13 7 6l6 3" /><path d="M5.7 8.1c.9.8 1.8 1.2 3.1 1.3" /></svg>;
+    case 'area':
+      return <svg {...props}><path d="M3 4 8 2.5 13 6.5 10 13 3.5 11 2 7z" /><path d="M3 4 10 13" opacity=".45" /></svg>;
+    case 'hu':
+      return <svg {...props}><circle cx="8" cy="8" r="2.5" /><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2" /></svg>;
+    case 'edit':
+      return <svg {...props}><path d="M3 5 8 2.5 13 6 10 13 4 11z" /><circle cx="3" cy="5" r="1" fill="currentColor" /><circle cx="8" cy="2.5" r="1" fill="currentColor" /><circle cx="13" cy="6" r="1" fill="currentColor" /></svg>;
+    case 'brush':
+      return <svg {...props}><path d="M11 2l3 3-6 6-3-3z" /><path d="M5 8l-2 6 6-2" /></svg>;
+    case 'pen':
+      return <svg {...props}><path d="M10 2l4 4-9 9H2v-3z" /></svg>;
+    case 'polygon':
+      return <svg {...props}><path d="M8 2l5 3v6l-5 3-5-3V5z" /><circle cx="8" cy="2" r="1" fill="currentColor" /><circle cx="13" cy="5" r="1" fill="currentColor" /><circle cx="3" cy="11" r="1" fill="currentColor" /></svg>;
+    case 'eraser':
+      return <svg {...props}><path d="M3 11l5-5 4 4-5 5H4z" /><path d="M8 6l4 4M2 14h10" /></svg>;
+    case 'interpolate':
+      return <svg {...props}><path d="M2 4h4M10 4h4M2 8h12M2 12h4M10 12h4" strokeDasharray="2 1.5" /></svg>;
+    case 'margin':
+      return <svg {...props}><rect x="4" y="4" width="8" height="8" rx="1" /><rect x="2" y="2" width="12" height="12" rx="1" strokeDasharray="2 1.5" /></svg>;
+    case 'boolean':
+      return <svg {...props}><circle cx="6" cy="8" r="4" /><circle cx="10" cy="8" r="4" /></svg>;
+    default:
+      return <svg {...props}><circle cx="8" cy="8" r="6" /><path d="M8 7v4M8 5v.01" /></svg>;
+  }
+}
+
+export default function ToolRail() {
+  const activeTool = useUIStore((s) => s.activeTool);
+  const setActiveTool = useUIStore((s) => s.setActiveTool);
+  const activeStructureOperationPanel = useUIStore((s) => s.activeStructureOperationPanel);
+  const setActiveStructureOperationPanel = useUIStore((s) => s.setActiveStructureOperationPanel);
+  const setActiveViewport = useUIStore((s) => s.setActiveViewport);
+  const setRightSidebarOpen = useUIStore((s) => s.setRightSidebarOpen);
+  const crosshairsEnabled = useUIStore((s) => s.crosshairsEnabled);
+  const setCrosshairsEnabled = useUIStore((s) => s.setCrosshairsEnabled);
+  const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
+  const structureSets = useStructureStore((s) => s.structureSets);
+  const activeStructureSetId = useStructureStore((s) => s.activeStructureSetId);
+  const activeStructureId = useStructureStore((s) => s.activeStructureId);
+
+  const activeStructureSet = structureSets.find(
+    (structureSet) =>
+      structureSet.id === activeStructureSetId &&
+      structureSet.referencedSeriesUID === activeSeriesUID
+  );
+  const activeStructure = activeStructureSet?.structures.find(
+    (structure) => structure.id === activeStructureId
+  );
+  const canUseContourTool =
+    !!activeSeriesUID &&
+    !!activeStructureSet &&
+    !!activeStructure &&
+    !(activeStructure.isLocked ?? false);
+
+  const isStructureOperation = (tool: string): tool is Exclude<StructureOperationPanel, null> =>
+    tool === 'margin' || tool === 'interpolate' || tool === 'boolean';
+
+  const activateTool = async (tool: ViewerTool) => {
+    if (tool === 'crosshairs') {
+      const next = !crosshairsEnabled;
+      setCrosshairsEnabled(next);
+      try {
+        if (next) {
+          await MPRController.enableCrosshairs();
+        } else {
+          await MPRController.disableCrosshairs();
+        }
+      } catch {
+        // The tool group may not exist yet while the viewer is initializing.
+      }
+      return;
+    }
+
+    const cornerstoneTool = CORNERSTONE_TOOL_NAME[tool];
+    if (activeTool === tool) {
+      setActiveTool('none');
+      if (cornerstoneTool) {
+        try {
+          await MPRController.clearPrimaryTool();
+        } catch {
+          // The tool group may not exist yet while the viewer is initializing.
+        }
+      }
+      return;
+    }
+
+    setActiveTool(tool);
+
+    if (CONTOUR_TOOLS.has(tool)) {
+      setActiveViewport('AXIAL');
+      if (!canUseContourTool) {
+        // Open the structure panel so the user can create or select a structure.
+        // The ContourOverlay will show a status message explaining what is needed.
+        setRightSidebarOpen(true);
+      }
+      try {
+        // Clear any active navigation binding so the viewport cursor resets.
+        await MPRController.clearPrimaryTool();
+      } catch {
+        // The tool group may not exist yet while the viewer is initializing.
+      }
+      return;
+    }
+
+    if (cornerstoneTool) {
+      try {
+        await MPRController.setActiveTool(cornerstoneTool);
+      } catch {
+        // The tool group may not exist yet while the viewer is initializing.
+      }
+    }
+  };
+
+  const activateStructureOperation = (operation: Exclude<StructureOperationPanel, null>) => {
+    if (!canUseContourTool) {
+      setRightSidebarOpen(true);
+      setActiveViewport('AXIAL');
+      logClientDebug('ToolRail', `${operation}:blocked missing drawable structure`);
+      return;
+    }
+
+    setRightSidebarOpen(true);
+    setActiveViewport('AXIAL');
+    setActiveStructureOperationPanel(
+      activeStructureOperationPanel === operation ? null : operation
+    );
+  };
+
+  return (
+    <nav className="flex w-10 flex-none flex-col items-center gap-1 border-r border-[var(--color-border)] bg-[var(--color-surface-alt)] py-1.5" aria-label="Tools">
+      {TOOL_GROUPS.map((group, groupIndex) => (
+        <div key={group.id} className="flex flex-col items-center gap-0.5">
+          {groupIndex > 0 && <div className="my-1 h-px w-5 bg-[var(--color-border)]" />}
+          {group.items.map((tool) => {
+            const isActive =
+              tool.id === 'crosshairs'
+                ? crosshairsEnabled
+                : isStructureOperation(tool.id)
+                  ? activeStructureOperationPanel === tool.id
+                  : tool.id === activeTool;
+            return (
+              <button
+                key={tool.id}
+                type="button"
+                aria-label={`${tool.name} (${tool.shortcut})`}
+                disabled={!tool.implemented}
+                data-active={isActive}
+                onClick={() => {
+                  if (!tool.implemented) return;
+                  if (isStructureOperation(tool.id)) {
+                    activateStructureOperation(tool.id);
+                    return;
+                  }
+                  void activateTool(tool.id as ViewerTool);
+                }}
+                className={`tool-btn relative flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-sec)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                  isActive
+                    ? 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6] ring-1 ring-[rgba(59,130,246,0.35)]'
+                    : 'hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)]'
+                } disabled:cursor-not-allowed disabled:text-[var(--color-text-dim)] disabled:hover:bg-transparent`}
+              >
+                {isActive && <span className="absolute -left-[7px] bottom-1.5 top-1.5 w-0.5 rounded bg-[#3b82f6]" />}
+                <ToolIcon name={tool.icon} />
+                <span className="pointer-events-none absolute bottom-0 right-0.5 font-mono text-[8px] leading-none text-[var(--color-text-muted)]">
+                  {tool.shortcut[0]}
+                </span>
+                {/* Rich tooltip */}
+                <span
+                  className="tool-tooltip absolute left-full top-1/2 z-50 ml-2.5 w-max max-w-[220px] rounded border border-white/[0.08] bg-[var(--color-tooltip-bg)] px-2.5 py-1.5 text-left shadow-[0_8px_28px_rgba(0,0,0,0.45)]"
+                  role="tooltip"
+                >
+                  {/* Arrow */}
+                  <span className="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-l border-white/[0.08] bg-[var(--color-tooltip-bg)]" />
+                  <span className="flex items-start justify-between gap-2">
+                    <span className="text-[13px] font-semibold leading-tight text-white">{tool.name}</span>
+                    <span className="mt-px rounded bg-white/10 px-1.5 py-px font-mono text-[11px] text-[var(--color-text-sec)]">{tool.shortcut}</span>
+                  </span>
+                  <span className="mt-1 block text-[12px] leading-snug text-[var(--color-text-sec)]">{tool.desc}</span>
+                  {!tool.implemented && (
+                    <span className="mt-1 block text-[11px] text-[var(--color-text-muted)]">Not yet implemented</span>
+                  )}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ))}
+      <div className="flex-1" />
+    </nav>
+  );
+}

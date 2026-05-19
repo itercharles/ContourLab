@@ -1,0 +1,11 @@
+id: MODULE-007
+title: StructureUtilities
+content: |-
+  Stateless utility functions for structure data computation. Provides TG-263
+  structure type inference from name strings (prefix/suffix matching against the
+  TG-263 standard) and structure volume calculation using the shoelace formula
+  applied per-slice with slice thickness integration.
+
+  Interfaces: pure functions with no side effects; called by PersistenceLayer
+  for quality summaries and by the UI for display metadata.
+type: MODULE

@@ -1,0 +1,16 @@
+id: CR-005
+title: remove this information in the "click me" page
+type: CR
+description: "**Priority:** medium\n**Category:** bug\n\nremove this information from\
+  \ \"click me\" page - \n\n\"How to get access\n\nGitHub issue creation requires\
+  \ repository write access. If you do not have access, send your GitHub username\
+  \ to Charles Chen to be added as a collaborator.\"\n\nas the system has already\
+  \ provide a different approach to create it.\n\nSource issue: https://github.com/itercharles/ContourLab/issues/46"
+justification: Maintainer assigned this issue to the active release milestone, indicating
+  it is accepted for CR intake.
+priority: Medium
+requested_by: itercharles
+target_version: 2026-W19
+category: Feature
+content: ''
+status: completed

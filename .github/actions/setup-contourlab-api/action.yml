@@ -1,0 +1,35 @@
+name: setup-contourlab-api
+description: |
+  Install the .NET SDK and restore the API project's NuGet packages. Single
+  source of truth for the .NET version across dev-api, dev-integration, and
+  validate-crs.
+
+inputs:
+  dotnet-version:
+    description: .NET SDK version (matches global.json convention)
+    required: false
+    default: '10.0.x'
+  restore:
+    description: Whether to run `dotnet restore` after install
+    required: false
+    default: 'true'
+  project:
+    description: Project file to restore (only used when restore=true)
+    required: false
+    default: 'apps/api/api.csproj'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@v5
+      env:
+        DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet-${{ github.run_id }}-${{ github.job }}
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+
+    - name: Restore API project
+      if: inputs.restore == 'true'
+      shell: bash
+      env:
+        DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet-${{ github.run_id }}-${{ github.job }}
+      run: dotnet restore "${{ inputs.project }}"

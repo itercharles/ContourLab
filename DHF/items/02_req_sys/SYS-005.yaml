@@ -1,0 +1,15 @@
+id: SYS-005
+title: System shall preserve editable structure drafts in browser-local storage
+content: |-
+  The system shall automatically serialize and store editable structure draft
+  data in browser-local storage keyed by SeriesInstanceUID after each edit that
+  marks the series dirty. When the same series is loaded and no in-memory
+  structure data exists, the system shall attempt to restore the local draft.
+  Routine draft saving shall not require ContourLab backend persistence.
+category: Functional
+verification_method:
+  - Test
+  - Demonstration
+critical_safety: true
+satisfies:
+  - CRS-002

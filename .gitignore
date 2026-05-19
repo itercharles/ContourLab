@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.next/
+*.tsbuildinfo
+
+# .NET build output
+**/bin/
+**/obj/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Test artifacts
+coverage/
+*.lcov
+*-test-results.xml
+.pytest_cache/
+test-results/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# DICOM data (large binary files)
+*.dcm
+*.nii
+*.nii.gz
+deploy-data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vite
+*.local
+
+# Claude Code local settings (may contain secrets)
+.claude/settings.local.json
+
+# Turbo
+.turbo/

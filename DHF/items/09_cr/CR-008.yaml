@@ -1,0 +1,39 @@
+id: CR-008
+title: Delegate DICOM file import to the Orthanc repository UI
+type: CR
+description: |-
+  **Priority:** medium
+
+  **Category:** refactor
+
+
+  The TPS currently handles DICOM file upload itself via
+  `uploadDicomWebStudies()`, which bundles all selected files into a single
+  STOW-RS multipart POST. This drops RTSTRUCT files when uploading folders
+  (the alphabetically-tail file is silently lost) and never inspects
+  Orthanc's STOW-RS response, so partial failures look like success.
+
+
+  Replace both the **Patient browser → Import DICOM** and **Settings → Import
+  DICOM Files** controls with a button that opens the configured Orthanc
+  Explorer UI in a new tab. Orthanc's native upload flow handles RTSTRUCT,
+  RTPLAN, RTDOSE, drag-drop, batch progress, and per-file failure surfacing.
+  After upload, the user returns to ContourLab and the worklist auto-refreshes.
+
+
+  Affects:
+
+  - SRS-010: revised wording — local DICOM import is delegated to the
+    repository UI rather than performed in-app.
+
+  - SWDD-006: `uploadDicomWebStudies` removed; new `getOrthancUiUrl` helper
+    derives the redirect target from the existing DICOMweb endpoint config.
+justification: Eliminates a class of silent-failure bugs (RTSTRUCT drop, unhandled
+  STOW-RS response) by delegating to Orthanc's mature upload flow. Net code deletion
+  in the client.
+priority: Medium
+requested_by: itercharles
+target_version: 2026-W19
+category: Refactor
+content: ''
+status: completed

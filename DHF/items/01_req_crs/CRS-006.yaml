@@ -1,0 +1,10 @@
+id: CRS-006
+title: Clinicians shall load an RTSTRUCT from the DICOM repository into the active workspace
+content: |-
+  As a physician or dosimetrist, I need to retrieve a previously saved RTSTRUCT
+  from the repository and load it into the active workspace so I can continue
+  editing or reviewing existing structures.
+user_group: Physician / Dosimetrist / Radiation Therapist
+derives_from:
+  - UC-004
+priority: Critical

@@ -1,0 +1,24 @@
+name: medharness setup
+description: Install Python and medharness with pip cache. Single source of truth for the medharness version.
+
+inputs:
+  extras:
+    description: Optional extras spec, e.g. "[docs]" for WeasyPrint PDF support
+    required: false
+    default: ''
+  python-version:
+    description: Python interpreter version
+    required: false
+    default: '3.11'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: 'pip'
+
+    - name: Install medharness
+      shell: bash
+      run: pip install "medharness${{ inputs.extras }}==0.8.0"

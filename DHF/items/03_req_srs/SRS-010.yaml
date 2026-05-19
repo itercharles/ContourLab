@@ -1,0 +1,58 @@
+id: SRS-010
+title: Software shall exchange structure sets with the DICOM repository as RTSTRUCT
+content: |-
+  Push Changes shall be disabled when the active image series has no local
+  structure changes that are unsynchronized with the DICOM repository. Local
+  browser draft auto-save shall not clear the repository synchronization
+  pending state. When repository-unsynchronized local changes exist, the client
+  software shall convert the active structure set for the active image series
+  into a DICOM RT Structure Set object, preserving study, series,
+  frame-of-reference, and referenced SOP instance metadata, and upload the
+  object to the connected DICOMweb repository using STOW-RS. The exported RT
+  Structure Set object shall include RT Referenced Study and RT Referenced
+  Series metadata for the active image series so repository reload can
+  associate the structure set with the correct image set. After successful
+  upload, the client software shall associate the active in-memory structure
+  set with the newly generated RT Structure Set SOP Instance UID, clear the
+  active image series repository synchronization pending state, and show the
+  new object as the active repository source. The
+  client software shall also query and retrieve RT Structure Set objects from
+  the connected DICOMweb repository for the selected patient study, present
+  available RT Structure Set candidates only under an active or user-expanded
+  image-set context when the RT Structure Set metadata references that image
+  set's SeriesInstanceUID, in newest-first order, identify the latest and active RT Structure Set rows,
+  display compact review metadata including timestamp, SOP identifier, and ROI
+  count when available,
+  reserve plan rows under each RT Structure Set candidate, load a user-selected
+  RT Structure Set by activating the corresponding patient and planning CT image series, replace the
+  active-series in-memory structures with the selected object, display the
+  active repository source in the RT Structure Set candidate row and right-side
+  structure information panel, display persistent workspace context in the top
+  operation bar for the active patient, active image series, active RT
+  Structure Set or structure set, and repository synchronization state, convert
+  the selected object into editable ContourLab structures, and preserve referenced
+  SOP instance and contour point metadata for slice matching. The repository
+  navigation panel shall visually separate repository actions, patient context,
+  image sets, and RT Structure Sets so the patient/image/structure selection
+  workflow is clear. Patient selection shall be presented as a focused patient
+  browser with search, patient identity, MRN, study/image context, active
+  patient indication, filter tabs, treatment-site/study/status/assignee/last
+  activity columns, and explicit close/Escape dismissal. Selecting a patient
+  shall automatically activate the newest planning CT image series and retrieve
+  the newest matching RT Structure Set when one is available; manual image and
+  RT Structure Set switching shall be available only from the patient-context
+  selector for non-default workflows. RT Structure Sets shall not be displayed
+  as a patient-level list before the user chooses or expands an image set. The client
+  software shall provide a settings page for configuring the active DICOMweb
+  repository endpoint and a control that opens the configured DICOMweb
+  repository's native upload UI in a new tab for importing local DICOM files
+  into that repository. The same control shall be available from the patient
+  browser. Repository refresh shall remain available from the patient context
+  area of the main workspace and shall visually indicate when background
+  polling detects repository worklist changes. Push Changes shall remain
+  available from the central top operation bar. Repository endpoint selection
+  and the local DICOM import control shall be handled outside the main
+  clinical workspace.
+derives_from: [SYS-006, SYS-007, SYS-011, SYS-012]
+verification_method: [Test, Demonstration]
+critical_safety: true

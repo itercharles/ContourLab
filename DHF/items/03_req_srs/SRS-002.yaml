@@ -1,0 +1,11 @@
+id: SRS-002
+title: Software shall construct WADO-RS image identifiers and register metadata for Cornerstone3D
+content: |-
+  For each SOP instance returned by repository metadata, the software shall
+  construct a WADO-RS frame image identifier, register the corresponding
+  DICOMweb metadata with the Cornerstone WADO-RS metadata manager, and sort
+  instances within the selected series by instance number, falling back to
+  slice location where required.
+derives_from: [SYS-001]
+verification_method: [Test]
+critical_safety: false

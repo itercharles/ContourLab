@@ -1,0 +1,35 @@
+services:
+  client:
+    build:
+      context: .
+      dockerfile: apps/client/Dockerfile
+    image: contourlab-client:latest
+    container_name: contourlab-client
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: contourlab-api:latest
+    container_name: contourlab-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:4000
+      GITHUB_TOKEN: ${ISSUES_TOKEN}
+    ports:
+      - "4001:4000"
+    restart: unless-stopped
+
+  dicom-repo:
+    image: orthancteam/orthanc:latest
+    container_name: contourlab-orthanc
+    ports:
+      - "8042:8042"
+      - "4242:4242"
+    volumes:
+      - ./docker/orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
+      - ${CONTOURLAB_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}:/var/lib/orthanc/db
+    restart: unless-stopped

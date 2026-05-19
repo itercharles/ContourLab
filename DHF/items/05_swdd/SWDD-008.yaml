@@ -1,0 +1,17 @@
+id: SWDD-008
+title: TG-263 structure type inference from name
+content: |-
+  inferStructureType(name: string): StructureType matches the uppercased
+  structure name against TG-263 patterns in priority order:
+
+  - contains "GTV"                    → GTV
+  - contains "CTV"                    → CTV
+  - contains "PTV" or "ITV"           → PTV
+  - contains "EXTERNAL" or "BODY"     → EXTERNAL
+  - contains "AVOID"                  → AVOIDANCE
+  - otherwise                         → OAR
+
+  The function is called during structure creation when no explicit type is
+  provided. It has no side effects and is tested in isolation.
+implements: [SRS-005]
+module: [MODULE-007]

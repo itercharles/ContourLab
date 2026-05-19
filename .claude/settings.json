@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm *)",
+      "Bash(dotnet *)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git push *)",
+      "Bash(node scripts/*)",
+      "Bash(docker compose *)"
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import sys,json,subprocess; d=json.load(sys.stdin); p=d.get('file_path',''); checks={'apps/client':'pnpm --filter @contourlab/client typecheck 2>&1','apps/api':'dotnet build apps/api/api.csproj --no-restore -v q 2>&1','packages/shared-types':'pnpm --filter @contourlab/shared-types typecheck 2>&1'}; [subprocess.run(cmd,shell=True) for prefix,cmd in checks.items() if p.startswith(prefix)]\" 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

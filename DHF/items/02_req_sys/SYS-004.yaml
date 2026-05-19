@@ -1,0 +1,15 @@
+id: SYS-004
+title: System shall provide freehand, polygon, brush, and eraser contouring tools
+content: |-
+  The system shall provide contouring tools operating on the active viewport.
+  Freehand and polygon tools produce closed ContourSlice polygons. Brush and
+  eraser tools provide per-slice contour correction operations compatible with
+  the stored ContourSlice representation. All edits shall be undoable up to 50
+  levels via Cmd/Ctrl+Z.
+category: Functional
+verification_method:
+  - Test
+  - Demonstration
+critical_safety: true
+satisfies:
+  - CRS-002

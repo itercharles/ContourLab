@@ -1,0 +1,582 @@
+name: ContourLab CR Lifecycle
+
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch'
+    && format('{0} | re-run stage:{1}', inputs.cr_id, inputs.stage)
+    || format('CR lifecycle | {0} | {1}',
+        github.event.pull_request.head.ref,
+        github.event.review.state || (github.event.pull_request.merged == true && 'merged' || 'closed')) }}
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      cr_id:
+        description: 'CR ID (e.g. CR-034)'
+        required: true
+        type: string
+      stage:
+        description: 'Stage to re-run'
+        required: true
+        type: choice
+        options: [design, code]
+
+concurrency:
+  group: cr-lifecycle-${{ github.event.pull_request.number || inputs.cr_id }}
+  cancel-in-progress: true
+
+# ── DETECT ────────────────────────────────────────────────────────────────────
+# Determines what action to take and passes context to downstream jobs.
+# action values: gen-design | gen-code | code-approved |
+#                revise-design | revise-code |
+#                cancel | noop
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  detect:
+    if: |
+      (startsWith(github.event.pull_request.head.ref, 'feat/CR-') &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      action: ${{ steps.plan.outputs.action }}
+      cr_id: ${{ steps.plan.outputs.cr_id }}
+      pr_number: ${{ steps.enrich.outputs.pr_number }}
+      branch: ${{ steps.enrich.outputs.branch }}
+      issue_number: ${{ steps.enrich.outputs.issue_number }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - uses: ./.github/actions/medharness-setup
+
+      - name: Plan lifecycle action
+        id: plan
+        run: |
+          python -m medharness ci github-event \
+            --stage-label-prefix "cr:stage/" \
+            --dispatch-action design=gen-code \
+            --dispatch-action code=code-approved \
+            --review-action "approved:design=gen-code" \
+            --review-action "approved:code=code-approved" \
+            --review-action "changes_requested:design=revise-design" \
+            --review-action "changes_requested:code=revise-code" \
+            --pr-action "merged=noop" \
+            --pr-action "closed=cancel" \
+            --default-action noop \
+            --github-output "$GITHUB_OUTPUT" \
+            | tee /tmp/event-plan.json
+
+      - name: Enrich with PR number, branch, and linked issue
+        id: enrich
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CR_ID=$(jq -r '.cr_id // ""' /tmp/event-plan.json)
+          PR_NUMBER=$(jq -r '.pr_number // ""' /tmp/event-plan.json)
+          [ -z "$PR_NUMBER" ] && PR_NUMBER="${{ github.event.pull_request.number }}"
+          BRANCH=$(jq -r '.branch_ref // ""' /tmp/event-plan.json)
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BRANCH="feat/$CR_ID"
+            PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" \
+              --head "$BRANCH" --json number --jq '.[0].number' 2>/dev/null || echo "")
+            if [ -z "$PR_NUMBER" ]; then
+              echo "ERROR: no open PR found for $BRANCH" >&2
+              exit 1
+            fi
+          fi
+
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+          ISSUE_NUMBER=""
+          if [ -n "$PR_NUMBER" ]; then
+            ISSUE_NUMBER=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" \
+              --json closingIssuesReferences \
+              --jq '.closingIssuesReferences[0].number // empty' 2>/dev/null || echo "")
+          fi
+          echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: CR status (observability)
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CR_ID=$(jq -r '.cr_id // ""' /tmp/event-plan.json)
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          [ -n "$CR_ID" ] && medharness --dhf DHF ci cr-status \
+            --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} \
+            --branch "${{ github.head_ref || github.ref_name }}"
+
+  # ── CANCEL ────────────────────────────────────────────────────────────────
+
+  cancel-cr:
+    needs: [detect]
+    if: needs.detect.outputs.action == 'cancel'
+    name: "Cancel CR (${{ needs.detect.outputs.cr_id }})"
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+      - uses: ./.github/actions/medharness-setup
+
+      - name: Cancel CR
+        run: |
+          CR_ID="${{ needs.detect.outputs.cr_id }}"
+          BRANCH="${{ needs.detect.outputs.branch }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin "$BRANCH" --depth 1
+          git checkout "origin/$BRANCH" -- "DHF/items/09_cr/$CR_ID.yaml"
+          dhfkit --dhf DHF item transition \
+            "$CR_ID" cancelled \
+            --by "github-actions[bot]"
+          git add DHF/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: cancel $CR_ID [skip ci]"
+            git push
+          fi
+
+  # ── DESIGN: GENERATE ──────────────────────────────────────────────────────
+
+  gen-design:
+    needs: [detect]
+    if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-design'
+    name: "Generate Design (${{ needs.detect.outputs.cr_id }})"
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.ACTIONS_PAT }}
+          ref: ${{ needs.detect.outputs.branch }}
+      - uses: ./.github/actions/cr-agent-setup
+      - name: Generate design
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          set -o pipefail
+          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/generate-dhf-out.json
+
+      - name: Upload design payload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medharness-generate-dhf-${{ needs.detect.outputs.cr_id }}
+          path: /tmp/generate-dhf-out.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Commit design
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add DHF/
+          if ! git diff --staged --quiet; then
+            COMMIT_BODY=""
+            if [ -f /tmp/generate-dhf-out.json ]; then
+              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/generate-dhf-out.json)
+              CREATED=$(jq -r '.artifacts.items_changed.created | join(", ")' /tmp/generate-dhf-out.json)
+              UPDATED=$(jq -r '.artifacts.items_changed.updated | join(", ")' /tmp/generate-dhf-out.json)
+              DELETED=$(jq -r '.artifacts.items_changed.deleted | join(", ")' /tmp/generate-dhf-out.json)
+              [ -n "$CREATED" ] && COMMIT_BODY="${COMMIT_BODY}Created: ${CREATED}"$'\n'
+              [ -n "$UPDATED" ] && COMMIT_BODY="${COMMIT_BODY}Updated: ${UPDATED}"$'\n'
+              [ -n "$DELETED" ] && COMMIT_BODY="${COMMIT_BODY}Deleted: ${DELETED}"$'\n'
+              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
+            fi
+            if [ -n "$COMMIT_BODY" ]; then
+              git commit -m "feat: design $CR_ID" -m "$COMMIT_BODY"
+            else
+              git commit -m "feat: design $CR_ID"
+            fi
+            git push
+          fi
+
+      - name: Post design summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          [ ! -f /tmp/generate-dhf-out.json ] && exit 0
+          CREATED=$(jq -r '[.artifacts.items_changed.created[]?] | join(", ")' /tmp/generate-dhf-out.json)
+          UPDATED=$(jq -r '[.artifacts.items_changed.updated[]?] | join(", ")' /tmp/generate-dhf-out.json)
+          DELETED=$(jq -r '[.artifacts.items_changed.deleted[]?] | join(", ")' /tmp/generate-dhf-out.json)
+          SUMMARY=$(jq -r '.summary // ""' /tmp/generate-dhf-out.json)
+          BODY="**Design output for $CR_ID**"$'\n'
+          [ -n "$SUMMARY" ] && BODY="${BODY}"$'\n'"$SUMMARY"$'\n'
+          [ -n "$CREATED" ] && BODY="${BODY}"$'\n'"**Created:** $CREATED"$'\n'
+          [ -n "$UPDATED" ] && BODY="${BODY}"$'\n'"**Updated:** $UPDATED"$'\n'
+          [ -n "$DELETED" ] && BODY="${BODY}"$'\n'"**Deleted:** $DELETED"$'\n'
+          BODY="${BODY}"$'\n'"The implementation plan is written to \`DHF/items/09_cr/$CR_ID.yaml\` in \`implementation_notes\`."
+          gh pr comment "$PR_NUMBER" --body "$BODY"
+
+      - name: Validate DHF traceability
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          if ! python -m medharness ci dhf-validate \
+            --dhf DHF \
+            --run-schema \
+            --run-traceability \
+            --coverage-pair UC:CRS \
+            --coverage-pair CRS:SYS \
+            --coverage-pair SYS:SRS \
+            --coverage-pair SRS:SWDD \
+            --coverage-pair SYS:SYSARCH \
+            --coverage-pair RISK:RCM; then
+            gh pr comment "$PR_NUMBER" \
+              --body "⚠️ DHF traceability check failed after design generation for $CR_ID. Correct the DHF items and re-approve to retry."
+            exit 1
+          fi
+
+      - name: Advance to next review stage
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+          ISSUE_NUMBER: ${{ needs.detect.outputs.issue_number }}
+        run: |
+          medharness ci advance-stage \
+            --pr "$PR_NUMBER" \
+            --from-stage cr \
+            --to-stage design \
+            ${ISSUE_NUMBER:+--issue "$ISSUE_NUMBER"}
+
+  # ── DESIGN: REVISE ────────────────────────────────────────────────────────
+
+  revise-design:
+    needs: [detect]
+    if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-design'
+    name: "Revise Design (${{ needs.detect.outputs.cr_id }})"
+    # Long-running AI generation should stay off the normal CI runner pool so
+    # standard PR validation does not queue behind a design revision.
+    runs-on: ${{ fromJSON(vars.CONTOURLAB_CODEGEN_RUNS_ON_JSON || '["ubuntu-latest"]') }}
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.ACTIONS_PAT }}
+          ref: ${{ needs.detect.outputs.branch }}
+      - uses: ./.github/actions/cr-agent-setup
+      - name: Revise design
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_DESIGN_MODEL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          set -o pipefail
+          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-generate-dhf-out.json
+
+      - name: Upload revise-design payload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medharness-generate-dhf-revise-${{ needs.detect.outputs.cr_id }}-${{ github.run_id }}
+          path: /tmp/revise-generate-dhf-out.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Commit revision
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add DHF/
+          if ! git diff --staged --quiet; then
+            COMMIT_BODY=""
+            if [ -f /tmp/revise-generate-dhf-out.json ]; then
+              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-generate-dhf-out.json)
+              CREATED=$(jq -r '.artifacts.items_changed.created | join(", ")' /tmp/revise-generate-dhf-out.json)
+              UPDATED=$(jq -r '.artifacts.items_changed.updated | join(", ")' /tmp/revise-generate-dhf-out.json)
+              DELETED=$(jq -r '.artifacts.items_changed.deleted | join(", ")' /tmp/revise-generate-dhf-out.json)
+              [ -n "$CREATED" ] && COMMIT_BODY="${COMMIT_BODY}Created: ${CREATED}"$'\n'
+              [ -n "$UPDATED" ] && COMMIT_BODY="${COMMIT_BODY}Updated: ${UPDATED}"$'\n'
+              [ -n "$DELETED" ] && COMMIT_BODY="${COMMIT_BODY}Deleted: ${DELETED}"$'\n'
+              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
+            fi
+            if [ -n "$COMMIT_BODY" ]; then
+              git commit -m "feat: revise design $CR_ID" -m "$COMMIT_BODY"
+            else
+              git commit -m "feat: revise design $CR_ID"
+            fi
+            git push
+          fi
+
+  # ── CODE: GENERATE ────────────────────────────────────────────────────────
+
+  gen-code:
+    needs: [detect]
+    if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-code'
+    name: "Generate Code (${{ needs.detect.outputs.cr_id }})"
+    # Codegen and the PR CI it waits on cannot share a single-runner pool.
+    # Keep the normal CI pool on contourlab-local and route codegen to the
+    # separate contourlab-local-codegen pool to avoid deadlock.
+    runs-on: ${{ fromJSON(vars.CONTOURLAB_CODEGEN_RUNS_ON_JSON || '["ubuntu-latest"]') }}
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.ACTIONS_PAT }}
+          ref: ${{ needs.detect.outputs.branch }}
+      - name: Fetch base ref for diff
+        run: git fetch origin main --depth 1
+      - uses: ./.github/actions/cr-agent-setup
+      - name: Verify design approval
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          medharness ci approve-gate --cr "$CR_ID" --stage design --pr "$PR_NUMBER"
+      - name: Generate implementation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          set -o pipefail
+          python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/develop-out.json
+
+      - name: Upload develop payload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medharness-develop-${{ needs.detect.outputs.cr_id }}
+          path: /tmp/develop-out.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Commit implementation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          COMMITTED=false
+          if ! git diff --staged --quiet; then
+            COMMIT_BODY=""
+            if [ -f /tmp/develop-out.json ]; then
+              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/develop-out.json)
+              CREATED_COUNT=$(jq -r '.artifacts.files_changed.created | length' /tmp/develop-out.json)
+              UPDATED_COUNT=$(jq -r '.artifacts.files_changed.updated | length' /tmp/develop-out.json)
+              DELETED_COUNT=$(jq -r '.artifacts.files_changed.deleted | length' /tmp/develop-out.json)
+              COMMIT_BODY="Files: +${CREATED_COUNT} ~${UPDATED_COUNT} -${DELETED_COUNT}"$'\n'
+              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
+            fi
+            if [ -n "$COMMIT_BODY" ]; then
+              git commit -m "feat: implement $CR_ID" -m "$COMMIT_BODY"
+            else
+              git commit -m "feat: implement $CR_ID"
+            fi
+            COMMITTED=true
+          fi
+          git fetch origin main --depth 1
+          CODE_EXISTS=$(git diff origin/main -- . \
+            ':(exclude)DHF/' \
+            | grep -c "^+" || echo "0")
+          if [ "$COMMITTED" != "true" ] && [ "$CODE_EXISTS" = "0" ]; then
+            gh pr comment "$PR_NUMBER" \
+              --body "⚠️ Implementation produced no code changes for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: design) and check Claude logs."
+            exit 1
+          fi
+          echo "COMMITTED=$COMMITTED" >> "$GITHUB_ENV"
+
+      - name: Advance to next review stage
+        # Advance label BEFORE pushing so the PR-triggered CI run sees cr:stage/code
+        # and the stage-gate allows dev tests (lint · typecheck · build) to run.
+        if: env.COMMITTED == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+          ISSUE_NUMBER: ${{ needs.detect.outputs.issue_number }}
+        run: |
+          medharness ci advance-stage \
+            --pr "$PR_NUMBER" \
+            --from-stage design \
+            --to-stage code \
+            ${ISSUE_NUMBER:+--issue "$ISSUE_NUMBER"}
+          gh pr ready "$PR_NUMBER" 2>/dev/null || true
+
+      - name: Push and wait for CI
+        # We push manually here rather than letting the checkout push because
+        # we need to watch the resulting CI run. Squash-merging the feat/* branch
+        # later will inherit [skip ci] from intermediate commits, so cr-complete.yml
+        # fires workflow_dispatch on main to re-trigger the full suite.
+        if: env.COMMITTED == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+          BRANCH: ${{ needs.detect.outputs.branch }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+        run: |
+          LAST_RUN_ID=$(gh run list \
+            --repo "${{ github.repository }}" \
+            --workflow ci-pipeline.yml \
+            --branch "$BRANCH" \
+            --event pull_request \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId' 2>/dev/null || echo "")
+          git push
+          RUN_ID=""
+          for i in $(seq 1 18); do
+            CANDIDATE=$(gh run list \
+              --repo "${{ github.repository }}" \
+              --workflow ci-pipeline.yml \
+              --branch "$BRANCH" \
+              --event pull_request \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId' 2>/dev/null || echo "")
+            if [ -n "$CANDIDATE" ] && [ "$CANDIDATE" != "$LAST_RUN_ID" ]; then
+              RUN_ID="$CANDIDATE"
+              break
+            fi
+            echo "Waiting for CI run to appear... ($i/18)"
+            sleep 10
+          done
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::Timed out waiting for CI run on branch $BRANCH"
+            gh pr comment "$PR_NUMBER" \
+              --body "⚠️ Timed out waiting for CI pipeline to start for $CR_ID. Check Actions → ci-pipeline.yml on branch \`$BRANCH\`."
+            exit 1
+          fi
+          echo "Watching CI run $RUN_ID..."
+          if ! gh run watch "$RUN_ID" \
+            --repo "${{ github.repository }}" \
+            --exit-status; then
+            RUN_URL="https://github.com/${{ github.repository }}/actions/runs/$RUN_ID"
+            gh pr comment "$PR_NUMBER" \
+              --body "⚠️ CI pipeline failed for $CR_ID. See [CI run]($RUN_URL) for details. Fix failures and re-trigger via workflow_dispatch (stage: design)."
+            exit 1
+          fi
+
+  # ── CODE: REVISE ──────────────────────────────────────────────────────────
+
+  revise-code:
+    needs: [detect]
+    if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-code'
+    name: "Revise Code (${{ needs.detect.outputs.cr_id }})"
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.ACTIONS_PAT }}
+          ref: ${{ needs.detect.outputs.branch }}
+      - name: Fetch base ref for diff
+        run: git fetch origin main --depth 1
+      - uses: ./.github/actions/cr-agent-setup
+      - name: Revise implementation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          set -o pipefail
+          python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-code-out.json
+
+      - name: Upload revise-code payload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medharness-develop-revise-${{ needs.detect.outputs.cr_id }}-${{ github.run_id }}
+          path: /tmp/revise-code-out.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Commit revision
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --staged --quiet; then
+            COMMIT_BODY=""
+            if [ -f /tmp/revise-code-out.json ]; then
+              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-code-out.json)
+              CREATED_COUNT=$(jq -r '.artifacts.files_changed.created | length' /tmp/revise-code-out.json)
+              UPDATED_COUNT=$(jq -r '.artifacts.files_changed.updated | length' /tmp/revise-code-out.json)
+              DELETED_COUNT=$(jq -r '.artifacts.files_changed.deleted | length' /tmp/revise-code-out.json)
+              COMMIT_BODY="Files: +${CREATED_COUNT} ~${UPDATED_COUNT} -${DELETED_COUNT}"$'\n'
+              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
+            fi
+            if [ -n "$COMMIT_BODY" ]; then
+              git commit -m "fix: revise implementation $CR_ID" -m "$COMMIT_BODY"
+            else
+              git commit -m "fix: revise implementation $CR_ID"
+            fi
+            git push
+          fi
+
+  # ── CODE: APPROVED → READY TO MERGE ──────────────────────────────────────
+
+  code-approved:
+    needs: [detect]
+    if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'code-approved'
+    name: "Code Approved — Ready to Merge"
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Comment ready to merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ needs.detect.outputs.pr_number }}" \
+            --repo "${{ github.repository }}" \
+            --body "All stages complete — ready to merge."

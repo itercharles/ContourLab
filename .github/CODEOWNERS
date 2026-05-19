@@ -1,0 +1,4 @@
+# Workflow and action files require owner review before merging.
+# This prevents unauthorized modifications that could exfiltrate secrets.
+/.github/workflows/ @itercharles
+/.github/actions/   @itercharles

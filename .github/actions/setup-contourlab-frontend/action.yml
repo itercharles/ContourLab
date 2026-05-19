@@ -1,0 +1,40 @@
+name: setup-contourlab-frontend
+description: |
+  Install Node, pnpm, and the workspace dependencies for the frontend / shared
+  packages. Single source of truth for Node and pnpm versions across all jobs
+  that build or test the JS workspaces. The previous inline setup pattern was
+  copy-pasted across dev-frontend, dev-shared-types, dev-integration,
+  verify-srs, verify-sys, and validate-crs — they all looked the same but the
+  cache key drifted whenever someone touched one of them.
+
+inputs:
+  node-version:
+    description: Node.js interpreter version
+    required: false
+    default: '22'
+  pnpm-version:
+    description: pnpm version (major.minor)
+    required: false
+    default: '9'
+  install:
+    description: Whether to run `pnpm install --frozen-lockfile` after setup
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install pnpm
+      shell: bash
+      run: |
+        npm install -g "pnpm@${{ inputs.pnpm-version }}"
+        echo "$(npm prefix -g)/bin" >> "$GITHUB_PATH"
+
+    - name: Install workspace dependencies
+      if: inputs.install == 'true'
+      shell: bash
+      run: pnpm install --frozen-lockfile

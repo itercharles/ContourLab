@@ -1,0 +1,10 @@
+id: CRS-010
+title: Clinicians shall be able to reach the system and verify it is operational
+content: |-
+  As a radiation therapist or physician, I need the system to be reachable and
+  verifiably operational before starting a clinical session, so that I can rely
+  on it for patient-specific treatment planning work.
+user_group: Radiation Therapist / Physician / Dosimetrist
+derives_from:
+  - UC-005
+priority: High

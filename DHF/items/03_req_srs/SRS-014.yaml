@@ -1,0 +1,24 @@
+id: SRS-014
+title: Software shall provide contour review micro-editing and interpolation
+content: |-
+  The client software shall provide contour review correction tools for the
+  active axial image set and active unlocked structure. At minimum, the software
+  shall support freehand drawing, polygon vertex-click drawing, polygon point
+  editing for existing current-slice contours, brush-style per-slice contour
+  creation, eraser-style current-slice contour removal, visible toolbar controls
+  with shortcuts, single-slice interpolation between adjacent closed contours
+  when the current slice has no contour, and batch interpolation that fills
+  missing image slices between adjacent contour-bearing slices, and slice-level
+  boolean structure operations (union, intersection, subtract) against another
+  structure on the same image set, and slice-level margin
+  expansion/contraction on the active image grid. Corrections shall use the
+  shared contour command path so contour changes remain undoable and update
+  derived structure volume. Active contour tools
+  shall expose contextual secondary controls where relevant, including brush or
+  eraser size and shape options and freehand or polygon contour mode options.
+  Active viewport tools with contextual secondary controls shall be dismissible
+  by activating the same tool again, returning the workspace to a no-active-tool
+  state without changing the selected image, structure set, or structure.
+derives_from: [SYS-004]
+verification_method: [Test, Demonstration]
+critical_safety: true

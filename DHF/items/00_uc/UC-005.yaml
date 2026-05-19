@@ -1,0 +1,30 @@
+id: UC-005
+title: Select Patient and Study
+content: |-
+  A radiation therapist or physician opens the patient browser to select a
+  patient from the connected DICOMweb repository and activate an image series
+  for review or editing.
+
+  Actor: Radiation Therapist / Physician
+
+  Preconditions:
+  - A DICOMweb repository is connected and accessible
+
+  Primary Flow:
+  1. User opens the patient browser
+  2. System displays available patients with name, MRN, study context, last
+     activity, and active-patient indication
+  3. User searches or filters the patient list by name, MRN, treatment site,
+     study date, status, or assignee
+  4. User selects a patient
+  5. System automatically activates the newest planning CT image series for
+     the selected patient
+  6. System retrieves the most recent matching RTSTRUCT when one is available
+  7. User may switch to a different image series within the active patient
+     context using the patient-context selector
+  8. User may manually select a different RTSTRUCT from non-default workflows
+
+  Postconditions:
+  - Active patient, image series, and initial structure set are loaded
+  - Workspace context reflects the selected patient, image set, and structure
+    source
