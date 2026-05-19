@@ -1,4 +1,4 @@
-import type { ContourSlice, Structure, StructureSet, StructureType } from '@webtps/shared-types';
+import type { ContourSlice, Structure, StructureSet, StructureType } from '@contourlab/shared-types';
 import { computeVolume } from './VolumeCalculator';
 
 interface RtstructDataset {

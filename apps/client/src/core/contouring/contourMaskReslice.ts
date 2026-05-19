@@ -1,4 +1,4 @@
-import type { ContourSlice, Volume } from '@webtps/shared-types';
+import type { ContourSlice, Volume } from '@contourlab/shared-types';
 import { voxelToWorld, worldToContinuousVoxel } from '../rendering/threeDGeometry';
 import type { WorldPoint } from './contourOverlayUtils';
 

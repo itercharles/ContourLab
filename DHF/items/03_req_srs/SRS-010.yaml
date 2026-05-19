@@ -30,7 +30,7 @@ content: |-
   structure information panel, display persistent workspace context in the top
   operation bar for the active patient, active image series, active RT
   Structure Set or structure set, and repository synchronization state, convert
-  the selected object into editable WebTPS structures, and preserve referenced
+  the selected object into editable ContourLab structures, and preserve referenced
   SOP instance and contour point metadata for slice matching. The repository
   navigation panel shall visually separate repository actions, patient context,
   image sets, and RT Structure Sets so the patient/image/structure selection

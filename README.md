@@ -1,11 +1,11 @@
-# WebTPS
+# ContourLab
 
-Web-based Treatment Planning System for radiation therapy.
+Browser-based contouring workspace for radiation oncology.
 
 ## Repository Layout
 
 ```
-WebTPS/
+ContourLab/
 ├── apps/
 │   ├── client/              — React 18 + TypeScript frontend (Vite, port 3000)
 │   └── api/                 — ASP.NET Core API gateway (port 4000)
@@ -117,7 +117,7 @@ The Orthanc repository ships with **no authentication** (open for local
 development). Its web UI at `http://127.0.0.1:8042` requires no login.
 
 DICOM file import is delegated to **Orthanc Explorer 2** — clicking **Import
-DICOM** in WebTPS opens the Orthanc UI in a new tab. To load test data:
+DICOM** in ContourLab opens the Orthanc UI in a new tab. To load test data:
 
 1. Open `http://127.0.0.1:3000/workspace`.
 2. Click the **patient folder icon** in the left toolbar to open the Repository
@@ -129,12 +129,12 @@ DICOM** in WebTPS opens the Orthanc UI in a new tab. To load test data:
    any code.
 4. In the Orthanc tab, drag a folder of `.dcm` files onto the upload area
    (Orthanc handles RTSTRUCT, RTPLAN, and RTDOSE alongside CT/MR slices).
-5. Return to the WebTPS tab — the worklist auto-refreshes when the tab regains
+5. Return to the ContourLab tab — the worklist auto-refreshes when the tab regains
    focus, and the new studies appear in the patient list.
 
 The same redirect button is also available from **Settings → Import DICOM
 Data**. DICOM data persists in a named Docker volume across restarts; run
-`pnpm repo:down && docker volume rm webtps_orthanc-db` to wipe it.
+`pnpm repo:down && docker volume rm contourlab_orthanc-db` to wipe it.
 
 Sample DICOM datasets for testing are available from:
 - [TCIA (The Cancer Imaging Archive)](https://www.cancerimagingarchive.net/) —
@@ -165,12 +165,12 @@ and operational commands.
 The deploy workflow updates only the API and frontend containers. The Orthanc
 DICOM repository is a persistent service and is not recreated for each app
 release. Its database is bind-mounted from the host at
-`${WEBTPS_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}`.
+`${CONTOURLAB_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}`.
 
 ## Testing
 
 ```bash
-pnpm --filter @webtps/client lint
+pnpm --filter @contourlab/client lint
 pnpm -r test          # all workspaces
 pnpm -r typecheck     # TypeScript check all workspaces
 dotnet build apps/api/api.csproj --configuration Release
@@ -189,12 +189,12 @@ GitHub Actions validates:
 
 ## Change Process
 
-WebTPS uses a CR-driven workflow. Every non-trivial change — new feature, architecture
+ContourLab uses a CR-driven workflow. Every non-trivial change — new feature, architecture
 decision, external dependency — starts with a Change Request (CR) in this repository.
 
 ### How it works
 
-1. **Open an issue in WebTPS** — describe the requested change. Maintainers review
+1. **Open an issue in ContourLab** — describe the requested change. Maintainers review
    the issue and assign it to the current ISO-week milestone, e.g. `2026-W18`, when
    it is accepted. The `issue-to-cr` workflow automatically opens a CR PR.
 2. **Approve the CR PR** — triggers automated analysis. The agent reads product strategy,
@@ -250,7 +250,7 @@ pnpm -r build
 
 ## Architecture
 
-See [`WebTPS_Plan_Spec.md`](WebTPS_Plan_Spec.md) for the full architecture
+See [`ContourLab_Plan_Spec.md`](ContourLab_Plan_Spec.md) for the full architecture
 specification, technology stack decisions, and phased feature roadmap.
 
 ### Phased Development

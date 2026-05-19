@@ -13,4 +13,4 @@ WORKDIR /app
 ENV ASPNETCORE_URLS=http://+:4000
 EXPOSE 4000
 COPY --from=build /app/publish .
-ENTRYPOINT ["dotnet", "WebTPS.Api.dll"]
+ENTRYPOINT ["dotnet", "ContourLab.Api.dll"]

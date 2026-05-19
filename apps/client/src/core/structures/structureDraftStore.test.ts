@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadStructureDraftForSeries, saveStructureDraftForSeries } from './structureDraftStore';
-import type { StructureSet } from '@webtps/shared-types';
+import type { StructureSet } from '@contourlab/shared-types';
 
 const records = new Map<string, unknown>();
 

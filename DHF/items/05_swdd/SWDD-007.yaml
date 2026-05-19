@@ -4,9 +4,9 @@ content: |-
   The repository CI workflow is defined in `.github/workflows/ci-pipeline.yml`
   and is partitioned into four phases. Phase 1 installs JavaScript
   dependencies and runs frontend lint, typecheck, test, and build against
-  `@webtps/client`. Phase 2 uses `actions/setup-dotnet` to restore and build
+  `@contourlab/client`. Phase 2 uses `actions/setup-dotnet` to restore and build
   `apps/api/api.csproj`, matching the actual ASP.NET API project layout.
-  Phase 3 typechecks and builds `@webtps/shared-types`.
+  Phase 3 typechecks and builds `@contourlab/shared-types`.
 
   Phase 4 is an integration smoke job gated on the successful completion of
   the first three phases. It installs Node.js, pnpm, and .NET, restores the

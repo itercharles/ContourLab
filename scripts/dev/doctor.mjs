@@ -45,12 +45,12 @@ async function main() {
 
   printSection('Summary');
   if (ok) {
-    console.log('Local WebTPS environment is healthy.');
+    console.log('Local ContourLab environment is healthy.');
     console.log('Workspace: http://127.0.0.1:3000/workspace');
     return;
   }
 
-  console.log('Local WebTPS environment has issues.');
+  console.log('Local ContourLab environment has issues.');
   console.log('Try `pnpm local:setup`, then `pnpm local:up`.');
   process.exit(1);
 }

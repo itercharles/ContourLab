@@ -56,9 +56,9 @@ Follow the spec's implementation steps in order. Rules:
 Run **all** of the following that are relevant to the change:
 
 ```bash
-pnpm --filter @webtps/client typecheck
-pnpm --filter @webtps/client lint
-pnpm --filter @webtps/client test
+pnpm --filter @contourlab/client typecheck
+pnpm --filter @contourlab/client lint
+pnpm --filter @contourlab/client test
 pnpm -r typecheck                          # if shared-types changed
 dotnet build apps/api/api.csproj --configuration Release  # if API changed
 ```
@@ -96,9 +96,9 @@ gh pr create \
 <list exact DHF/items/ file paths, or "No DHF update required — <reason>">
 
 ## Validation run
-- [ ] `pnpm --filter @webtps/client typecheck` — ✓
-- [ ] `pnpm --filter @webtps/client lint` — ✓
-- [ ] `pnpm --filter @webtps/client test` — ✓ (N tests)
+- [ ] `pnpm --filter @contourlab/client typecheck` — ✓
+- [ ] `pnpm --filter @contourlab/client lint` — ✓
+- [ ] `pnpm --filter @contourlab/client test` — ✓ (N tests)
 - [ ] <other commands run>
 
 ## Manual testing still required

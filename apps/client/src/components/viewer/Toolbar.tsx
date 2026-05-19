@@ -16,7 +16,7 @@ const ACTIVITY_TONE_CLASS: Record<ActivityItem['tone'], string> = {
   error: 'bg-red-500',
 };
 
-const WEBTPS_REPO_URL = 'https://github.com/itercharles/WebTPS';
+const CONTOURLAB_REPO_URL = 'https://github.com/itercharles/ContourLab';
 const DHF_ARTIFACTS_URL = '/api/dhf-artifacts/latest';
 
 function formatActivityTime(value: string): string {
@@ -130,9 +130,9 @@ export default function Toolbar() {
       <div className="relative flex h-9 items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-2">
         <div className="flex items-center gap-1.5 pr-1">
           <div className="grid h-5 w-5 place-items-center rounded bg-blue-600 font-mono text-[11px] font-bold text-white">
-            W
+            C
           </div>
-          <span className="text-[13px] font-semibold tracking-tight text-[var(--color-text-bright)]">WebTPS</span>
+          <span className="text-[13px] font-semibold tracking-tight text-[var(--color-text-bright)]">ContourLab</span>
         </div>
         <button
           type="button"
@@ -155,19 +155,6 @@ export default function Toolbar() {
             <span className="mr-1 font-mono text-[10px] text-[var(--color-text-muted)]">01</span>
             Contour
           </button>
-          {(['Review', 'Plan'] as const).map((label, index) => (
-            <button
-              key={label}
-              type="button"
-              disabled
-              className="cursor-not-allowed rounded px-2.5 py-1 text-[12px] font-medium text-[var(--color-text-muted)]"
-              title="Not implemented"
-            >
-              <span className="mr-1 font-mono text-[10px]">{String(index + 2).padStart(2, '0')}</span>
-              {label}
-              <span className="ml-1 text-[10px]">soon</span>
-            </button>
-          ))}
         </div>
         <button
           type="button"
@@ -399,9 +386,9 @@ export default function Toolbar() {
                 </p>
                 <p className="mt-2">
                   Repository:{' '}
-                  <a href={WEBTPS_REPO_URL} target="_blank" rel="noreferrer"
+                  <a href={CONTOURLAB_REPO_URL} target="_blank" rel="noreferrer"
                     className="font-semibold text-blue-300 hover:text-blue-200">
-                    github.com/itercharles/WebTPS
+                    github.com/itercharles/ContourLab
                   </a>
                 </p>
 

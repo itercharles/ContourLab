@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { exportRtstructBlob, exportRtstructObject } from '../rtstructExport';
 import type { LoadedSeries } from '../../store/volumeStore';
-import type { StructureSet } from '@webtps/shared-types';
+import type { StructureSet } from '@contourlab/shared-types';
 
 const dicomMock = vi.hoisted(() => ({
   writtenDatasets: [] as object[],

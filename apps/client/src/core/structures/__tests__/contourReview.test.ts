@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ContourSlice } from '@webtps/shared-types';
+import type { ContourSlice } from '@contourlab/shared-types';
 import {
   findAdjacentReviewSlice,
   getReviewSlices,

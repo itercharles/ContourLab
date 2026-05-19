@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { computeVolume } from '../VolumeCalculator';
-import type { Structure } from '@webtps/shared-types';
+import type { Structure } from '@contourlab/shared-types';
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -5,7 +5,7 @@
 
 ## 1. Purpose
 
-This document describes the software maintenance process for WebTPS after initial release,
+This document describes the software maintenance process for ContourLab after initial release,
 in accordance with IEC 62304 §6. Maintenance covers all activities required to keep the
 software functioning correctly and safely across its operational lifecycle.
 
@@ -21,7 +21,7 @@ Post-production feedback is monitored through:
 
 ## 3. Problem Reporting
 
-Each problem detected in released software is documented as a CR item in WebTPS-DHF,
+Each problem detected in released software is documented as a CR item in ContourLab-DHF,
 including:
 
 - Description of the problem and steps to reproduce
@@ -43,7 +43,7 @@ Each CR is evaluated to determine:
 
 Changes to released software follow the full CR-driven development process:
 
-1. CR item created in WebTPS-DHF
+1. CR item created in ContourLab-DHF
 2. Plan Spec PR reviewed and approved
 3. Implementation PR reviewed and merged
 4. Affected verification/validation tests re-executed
@@ -68,11 +68,11 @@ Third-party components (SOUP) are reviewed at each release:
 - Check for security vulnerabilities in `pnpm-lock.yaml` dependencies (`pnpm audit`)
 - Check for security vulnerabilities in .NET dependencies (`dotnet list package --vulnerable`)
 - Update pinned versions when vulnerabilities are identified, following the CR process
-- Verify that SOUP item records in WebTPS-DHF reflect current versions in use
+- Verify that SOUP item records in ContourLab-DHF reflect current versions in use
 
 ## 8. End of Life
 
-When WebTPS is retired:
+When ContourLab is retired:
 
 - A final release note documents the retirement decision and date
 - All DHF items are transitioned to `retired` status

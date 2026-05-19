@@ -52,8 +52,8 @@ Remove the "How to get access" section from the prototype info modal in `Toolbar
 ## Verification
 
 ### Automated Tests
-- Run `pnpm --filter @webtps/client test` — verify Toolbar.test.tsx passes with the updated assertions
-- Run `pnpm --filter @webtps/client typecheck` — no type errors after removal
+- Run `pnpm --filter @contourlab/client test` — verify Toolbar.test.tsx passes with the updated assertions
+- Run `pnpm --filter @contourlab/client typecheck` — no type errors after removal
 
 ### Manual Testing
 - Open the prototype info modal (click the "Click Me" button in the toolbar)

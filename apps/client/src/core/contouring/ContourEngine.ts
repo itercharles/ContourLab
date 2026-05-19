@@ -1,4 +1,4 @@
-import type { ContourSlice } from '@webtps/shared-types';
+import type { ContourSlice } from '@contourlab/shared-types';
 import { UndoRedoManager } from './UndoRedoManager';
 import { useStructureStore } from '../store/structureStore';
 

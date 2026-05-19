@@ -48,8 +48,8 @@ The architecture must optimize for:
 
 ```mermaid
 flowchart LR
-  User["Clinical User"] --> Client["WebTPS Client (React / Browser)"]
-  Client --> Api["WebTPS API (ASP.NET Core)"]
+  User["Clinical User"] --> Client["ContourLab Client (React / Browser)"]
+  Client --> Api["ContourLab API (ASP.NET Core)"]
   Client --> Repo["DICOM Repository (Orthanc / DICOMweb-compatible)"]
   Api --> Repo
   Client --> Shared["Shared Domain Types"]

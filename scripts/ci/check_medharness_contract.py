@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke-check the pinned MedHarness contract used by WebTPS workflows."""
+"""Smoke-check the pinned MedHarness contract used by ContourLab workflows."""
 
 from __future__ import annotations
 

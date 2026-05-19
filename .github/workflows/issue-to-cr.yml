@@ -1,4 +1,4 @@
-name: WebTPS CR Issue Intake
+name: ContourLab CR Issue Intake
 
 run-name: "CR Issue Intake | #${{ github.event.issue.number }} | ${{ github.event.issue.title }}"
 
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   create-cr:
-    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -41,7 +41,7 @@ jobs:
             --event "$GITHUB_EVENT_PATH" \
             --dhf-repo . \
             --source-repo "${{ github.repository }}" \
-            --marker-name webtps-cr \
+            --marker-name contourlab-cr \
             --write \
             --output /tmp/issue-to-cr.json \
             --github-output "$GITHUB_OUTPUT"
@@ -102,8 +102,8 @@ jobs:
           {
             echo "CR intake complete: **$CR_ID** — design generating, review PR: $PR_URL"
             echo ""
-            echo "<!-- webtps-cr: $CR_ID -->"
-            echo "<!-- webtps-cr-pr: $PR_URL -->"
+            echo "<!-- contourlab-cr: $CR_ID -->"
+            echo "<!-- contourlab-cr-pr: $PR_URL -->"
           } | gh issue comment "${{ github.event.issue.number }}" --body-file -
 
       - name: Generate design

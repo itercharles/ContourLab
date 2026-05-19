@@ -19,7 +19,7 @@ test.describe('Patient and study selection @links:CRS-008', () => {
     await page.goto('/');
     await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+      window.dispatchEvent(new CustomEvent('contourlab:open-patient-selector'));
     });
     await expect(page.getByText('Patient browser')).toBeVisible();
     await expect(page.getByPlaceholder('Search patient, MRN, study, series…')).toBeVisible();
@@ -30,7 +30,7 @@ test.describe('Patient and study selection @links:CRS-008', () => {
     await page.goto('/');
     await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+      window.dispatchEvent(new CustomEvent('contourlab:open-patient-selector'));
     });
     const search = page.getByPlaceholder('Search patient, MRN, study, series…');
     await search.waitFor();
@@ -42,7 +42,7 @@ test.describe('Patient and study selection @links:CRS-008', () => {
     await page.goto('/');
     await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+      window.dispatchEvent(new CustomEvent('contourlab:open-patient-selector'));
     });
     await expect(page.getByText('Patient browser')).toBeVisible();
     await page.getByRole('button', { name: 'Close patient browser' }).click();

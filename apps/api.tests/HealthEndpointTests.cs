@@ -2,7 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 
-namespace WebTPS.Api.Tests;
+namespace ContourLab.Api.Tests;
 
 /// <summary>
 /// @links:SRS-017

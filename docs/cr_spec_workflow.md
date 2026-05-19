@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the CR-driven workflow for WebTPS. All DHF content —
+This document defines the CR-driven workflow for ContourLab. All DHF content —
 CR items, requirements, risks, specs — lives in this repository under `DHF/`
 and `docs/cr-specs/`.
 

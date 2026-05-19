@@ -1,4 +1,4 @@
-import type { ContourSlice, Structure } from '@webtps/shared-types';
+import type { ContourSlice, Structure } from '@contourlab/shared-types';
 
 export type ContourQualityIssueType =
   | 'empty'

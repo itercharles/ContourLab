@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { ContourSlice, Structure, StructureSet } from '@webtps/shared-types';
+import type { ContourSlice, Structure, StructureSet } from '@contourlab/shared-types';
 import type { ContourCommand } from '../UndoRedoManager';
 
 // ---------------------------------------------------------------------------

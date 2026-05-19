@@ -120,7 +120,7 @@ Manual confirmation: **Required** — Tester must manually verify in the deploye
 - [ ] Verify Zustand store updates propagate to UI in production
 - [ ] Test all contour tools activate correctly: freehand, polygon, brush, eraser
 - [ ] Verify cursor state reflects active tool
-- [ ] Run `pnpm --filter @webtps/client test` — all existing tests pass
+- [ ] Run `pnpm --filter @contourlab/client test` — all existing tests pass
 - [ ] Manual test in deployed environment: click buttons, verify activation, draw contours
 - [ ] Merge implementation PR after code review
 - [ ] Transition CR-007 to completed

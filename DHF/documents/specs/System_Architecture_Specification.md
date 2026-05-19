@@ -48,8 +48,8 @@ DHF Project sits between clinical users and a DICOMweb-capable repository.
 
 ```mermaid
 flowchart LR
-  User["Clinical User"] --> Client["WebTPS Client (React / Browser)"]
-  Client --> Api["WebTPS API (ASP.NET Core)"]
+  User["Clinical User"] --> Client["ContourLab Client (React / Browser)"]
+  Client --> Api["ContourLab API (ASP.NET Core)"]
   Client --> Repo["DICOM Repository (Orthanc / DICOMweb-compatible)"]
   Api --> Repo
   Client --> Shared["Shared Domain Types"]
@@ -139,7 +139,7 @@ Configuration:
 - Prod: reverse proxy to hospital PACS/VNA (auth configured per deployment)
 
 The repository is the system of record for all patient imaging data and
-finalized structure sets. It is not owned or operated by WebTPS.
+finalized structure sets. It is not owned or operated by ContourLab.
 
 **Allocated System Requirements**
 
@@ -157,7 +157,7 @@ finalized structure sets. It is not owned or operated by WebTPS.
 
 **Status**: <span class="status-approved">APPROVED</span>
 
-Thin HTTP gateway providing the server-side boundary of the WebTPS system.
+Thin HTTP gateway providing the server-side boundary of the ContourLab system.
 Built with ASP.NET Core 10 (C#), running on port 4000.
 
 Current responsibilities:

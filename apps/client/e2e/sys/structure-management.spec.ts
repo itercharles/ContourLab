@@ -2,7 +2,7 @@
  * SYS-003: System shall support creating, editing, and deleting structures.
  * SYS-005: System shall preserve editable structure drafts in browser-local storage.
  *
- * Uses window.__webtps_stores (exposed in DEV mode in main.tsx) to inject
+ * Uses window.__contourlab_stores (exposed in DEV mode in main.tsx) to inject
  * a fake active series and structure set, then exercises the StructurePanel UI.
  */
 
@@ -43,11 +43,11 @@ async function injectStructureState(page: Page) {
   await page.getByText('Load Patient').waitFor();
 
   // Wait for stores to be exposed
-  await page.waitForFunction(() => !!(window as Record<string, unknown>)['__webtps_stores']);
+  await page.waitForFunction(() => !!(window as Record<string, unknown>)['__contourlab_stores']);
 
   await page.evaluate(
     ({ seriesUID, structureSet }) => {
-      const stores = (window as Record<string, unknown>)['__webtps_stores'] as {
+      const stores = (window as Record<string, unknown>)['__contourlab_stores'] as {
         structureStore: { setState: (s: unknown) => void };
         volumeStore: { setState: (s: unknown) => void };
       };
@@ -129,9 +129,9 @@ test.describe('Structure draft persistence @links:SYS-005', () => {
   test('structure panel shows save state indicator @links:SYS-005', async ({ page }) => {
     await injectStructureState(page);
     // Mark the series as dirty to simulate an unsaved edit
-    await page.waitForFunction(() => !!(window as Record<string, unknown>)['__webtps_stores']);
+    await page.waitForFunction(() => !!(window as Record<string, unknown>)['__contourlab_stores']);
     await page.evaluate(seriesUID => {
-      const stores = (window as Record<string, unknown>)['__webtps_stores'] as {
+      const stores = (window as Record<string, unknown>)['__contourlab_stores'] as {
         structureStore: { setState: (s: unknown) => void; getState: () => { markSeriesDirty: (uid: string) => void } };
       };
       stores.structureStore.getState().markSeriesDirty(seriesUID);

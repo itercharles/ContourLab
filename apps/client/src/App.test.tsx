@@ -35,7 +35,7 @@ describe('App routing', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('WebTPS')).toBeTruthy();
+    expect(screen.getByText('ContourLab')).toBeTruthy();
     expect(screen.getByLabelText('Image viewer')).toBeTruthy();
   });
 

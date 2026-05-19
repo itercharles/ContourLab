@@ -2,7 +2,7 @@ id: SYSARCH-003
 title: ASP.NET Core API
 status: approved
 content: |-
-  Thin HTTP gateway providing the server-side boundary of the WebTPS system.
+  Thin HTTP gateway providing the server-side boundary of the ContourLab system.
   Built with ASP.NET Core 10 (C#), running on port 4000.
 
   Current responsibilities:

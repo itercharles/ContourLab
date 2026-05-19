@@ -2,7 +2,7 @@
 
 ## 1. Summary
 
-**Product behavior change:** The WebTPS dark mode theme shall render text and
+**Product behavior change:** The ContourLab dark mode theme shall render text and
 interactive elements at a contrast ratio sufficient for clinical readability,
 comparable to GitHub's dark mode palette.
 
@@ -18,7 +18,7 @@ the browser client — no API, DICOM, or data flow changes are involved.
 
 ### Scope
 
-- **Repository:** `itercharles/WebTPS` (browser client only)
+- **Repository:** `itercharles/ContourLab` (browser client only)
 - **Layer:** Tailwind CSS theme configuration and component color classes
 - **No changes** to: API, DICOM handling, SRS/SYS clinical data paths, or
   repository integration
@@ -41,7 +41,7 @@ the browser client — no API, DICOM, or data flow changes are involved.
 5. **Validate** — run automated contrast check and manual visual review in dark
    mode before opening the implementation PR.
 
-### Expected touchpoints in `itercharles/WebTPS`
+### Expected touchpoints in `itercharles/ContourLab`
 
 - `tailwind.config.ts` (or `tailwind.config.js`) — dark mode color tokens
 - Global CSS file (e.g. `globals.css` or `index.css`) — CSS custom properties
@@ -164,7 +164,7 @@ Manual confirmation: Required — visually inspect the dark mode UI on the patie
    be created? If product team confirms UC-001 ("View DICOM Images") is broad
    enough to parent a contrast CRS, no new UC is needed; otherwise create UC-006.
 2. **Contrast tool** — Confirm which contrast-ratio library is already present in
-   the WebTPS dev dependencies before adding one; prefer reuse over a new SOUP
+   the ContourLab dev dependencies before adding one; prefer reuse over a new SOUP
    entry.
 3. **Scope of component sweep** — Implementation should verify whether any
    components hardcode color classes outside the Tailwind theme. If more than

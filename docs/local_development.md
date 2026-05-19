@@ -1,6 +1,6 @@
 # Local Development
 
-WebTPS provides a small set of local environment commands for a complete
+ContourLab provides a small set of local environment commands for a complete
 frontend, API, and DICOM repository setup.
 
 ## Prerequisites
@@ -63,7 +63,7 @@ pnpm local:setup
 Checks required tooling, installs JavaScript dependencies, restores the ASP.NET
 API project, and starts the local Orthanc DICOM repository.
 
-## Start WebTPS
+## Start ContourLab
 
 ```bash
 pnpm local:up
@@ -103,13 +103,13 @@ pnpm local:down
 ```
 
 Stops the Docker Compose services. Orthanc data remains in the Docker volume
-(`webtps_orthanc-db`) unless explicitly deleted.
+(`contourlab_orthanc-db`) unless explicitly deleted.
 
 To wipe all stored DICOM data and start fresh:
 
 ```bash
 pnpm local:down
-docker volume rm webtps_orthanc-db
+docker volume rm contourlab_orthanc-db
 ```
 
 ## Importing DICOM Data
@@ -118,11 +118,11 @@ The local Orthanc repository has **no authentication** — its web UI at
 `http://127.0.0.1:8042` requires no login and is open by design for local
 development.
 
-### Import through the WebTPS UI
+### Import through the ContourLab UI
 
-WebTPS does not handle DICOM file upload itself. Both **Patient browser →
+ContourLab does not handle DICOM file upload itself. Both **Patient browser →
 Import DICOM** and **Settings → Import DICOM Files** open the Orthanc Explorer
-upload UI in a new tab. After uploading there, return to WebTPS — the worklist
+upload UI in a new tab. After uploading there, return to ContourLab — the worklist
 auto-refreshes when the tab regains focus.
 
 1. Open `http://127.0.0.1:3000/workspace`.
@@ -136,7 +136,7 @@ auto-refreshes when the tab regains focus.
    changes.
 5. In the Orthanc tab, drag the study folder onto the upload area. Orthanc
    handles RTSTRUCT, RTPLAN, and RTDOSE alongside CT/MR slices.
-6. Return to the WebTPS tab. The patient list auto-refreshes — click a patient
+6. Return to the ContourLab tab. The patient list auto-refreshes — click a patient
    row to open their workspace and load the image set.
 
 The redirect button is also available from **Settings → Import DICOM Data**.
@@ -144,7 +144,7 @@ The redirect button is also available from **Settings → Import DICOM Data**.
 ### Import via Orthanc web UI directly
 
 You can also navigate to Orthanc Explorer directly without going through
-WebTPS:
+ContourLab:
 
 1. Open `http://127.0.0.1:8042/ui/app/index.html` (or the same URL on your
    LAN IP from another device).
@@ -179,16 +179,16 @@ Both can run at the same time with no conflicts. The deployed build binds on
 
 The deployed stack is defined in [`../docker-compose.deploy.yml`](../docker-compose.deploy.yml):
 
-- `webtps-client` serves the Vite production build through nginx on host port `3001`.
-- `webtps-api` serves ASP.NET Core on host port `4001`.
-- `webtps-orthanc` serves Orthanc on host ports `8042` and `4242`.
+- `contourlab-client` serves the Vite production build through nginx on host port `3001`.
+- `contourlab-api` serves ASP.NET Core on host port `4001`.
+- `contourlab-orthanc` serves Orthanc on host ports `8042` and `4242`.
 - DICOM data is bind-mounted from the host. By default it lives under
-  `./deploy-data/orthanc-db`; set `WEBTPS_ORTHANC_DATA_DIR` on the runner to use
-  a fixed data disk path such as `/srv/webtps/orthanc-db`.
+  `./deploy-data/orthanc-db`; set `CONTOURLAB_ORTHANC_DATA_DIR` on the runner to use
+  a fixed data disk path such as `/srv/contourlab/orthanc-db`.
 
 ### First-time runner setup
 
-WebTPS now expects multiple Linux self-hosted runner VMs under
+ContourLab now expects multiple Linux self-hosted runner VMs under
 [Lima](https://lima-vm.io/) so workflow behavior stays close to
 `ubuntu-latest`, but runner selection remains switchable from GitHub repo
 variables.
@@ -203,7 +203,7 @@ codegen VM, use Ubuntu 24.04 with this minimum footprint:
 Create that second VM once with:
 
 ```bash
-limactl create --name=webtps-ci-codegen --vm-type=vz --cpus=4 --memory=8 --disk=60 template://ubuntu-24.04
+limactl create --name=contourlab-ci-codegen --vm-type=vz --cpus=4 --memory=8 --disk=60 template://ubuntu-24.04
 ```
 
 Install these packages in each CI/codegen VM:
@@ -219,11 +219,11 @@ Install these packages in each CI/codegen VM:
 
 Run three isolated pools backed by separate runner registrations:
 
-- `webtps-ci`: one runner with labels `self-hosted`, `linux`, `webtps-local`
-- `webtps-ci-codegen`: one runner with labels `self-hosted`, `linux`,
-  `webtps-local-codegen`
+- `contourlab-ci`: one runner with labels `self-hosted`, `linux`, `contourlab-local`
+- `contourlab-ci-codegen`: one runner with labels `self-hosted`, `linux`,
+  `contourlab-local-codegen`
 - deploy runner: one runner with labels `self-hosted`, `linux`,
-  `webtps-deploy`
+  `contourlab-deploy`
 
 Every VM runs exactly one runner process. Do not add a second runner to an
 existing VM. If more capacity is needed later, add another VM and another label
@@ -231,22 +231,22 @@ pool instead of multi-registering on the same host.
 
 The workflows consume three repository variables as the runner control plane:
 
-- `WEBTPS_DEFAULT_RUNS_ON_JSON=["self-hosted","linux","webtps-local"]`
-- `WEBTPS_CODEGEN_RUNS_ON_JSON=["self-hosted","linux","webtps-local-codegen"]`
-- `WEBTPS_DEPLOY_RUNS_ON_JSON=["self-hosted","linux","webtps-deploy"]`
+- `CONTOURLAB_DEFAULT_RUNS_ON_JSON=["self-hosted","linux","contourlab-local"]`
+- `CONTOURLAB_CODEGEN_RUNS_ON_JSON=["self-hosted","linux","contourlab-local-codegen"]`
+- `CONTOURLAB_DEPLOY_RUNS_ON_JSON=["self-hosted","linux","contourlab-deploy"]`
 
 The workflow files also carry in-repo fallbacks so scheduling still works
 before those variables are created:
 
 - non-deploy jobs fall back to `["ubuntu-latest"]`
 - codegen jobs fall back to `["ubuntu-latest"]`
-- deploy falls back to `["self-hosted","linux","webtps-deploy"]`
+- deploy falls back to `["self-hosted","linux","contourlab-deploy"]`
 
 The CR lifecycle code generation jobs now use the dedicated codegen pool.
 `gen-code` and `revise-design` both push PR updates and then wait on follow-up
 CI. If codegen and the resulting PR CI shared a single-runner pool, the waiting
 job would occupy the only runner and the watched CI run would never start. That
-is why `webtps-local` and `webtps-local-codegen` must remain separate pools.
+is why `contourlab-local` and `contourlab-local-codegen` must remain separate pools.
 
 The normal CI pool still executes sequentially in practice because several jobs
 bind fixed ports such as `3000`, `4000`, and `8042`. Keep that isolation model
@@ -255,7 +255,7 @@ intact when expanding capacity.
 Normal CI can still be rolled back to GitHub-hosted by changing only the repo
 variable:
 
-- `WEBTPS_DEFAULT_RUNS_ON_JSON=["ubuntu-latest"]`
+- `CONTOURLAB_DEFAULT_RUNS_ON_JSON=["ubuntu-latest"]`
 
 Print the current expected labels and variable values with:
 
@@ -270,29 +270,29 @@ should start automatically, but the Lima VMs themselves may still need to be
 started manually:
 
 ```bash
-limactl start webtps-ci
-limactl start webtps-ci-codegen
+limactl start contourlab-ci
+limactl start contourlab-ci-codegen
 ```
 
 Confirm the VMs, runner services, and GitHub-side runner state:
 
 ```bash
 limactl list
-limactl shell webtps-ci -- sudo ./actions-runner/svc.sh status
-limactl shell webtps-ci-codegen -- sudo ./actions-runner/svc.sh status
-gh api repos/itercharles/WebTPS/actions/runners \
-  --jq '.runners[] | select(.name=="webtps-ci" or .name=="webtps-ci-codegen") | {name: .name, status: .status, busy: .busy, labels: [.labels[].name]}'
+limactl shell contourlab-ci -- sudo ./actions-runner/svc.sh status
+limactl shell contourlab-ci-codegen -- sudo ./actions-runner/svc.sh status
+gh api repos/itercharles/ContourLab/actions/runners \
+  --jq '.runners[] | select(.name=="contourlab-ci" or .name=="contourlab-ci-codegen") | {name: .name, status: .status, busy: .busy, labels: [.labels[].name]}'
 ```
 
 Build the dedicated codegen VM from the same Ubuntu 24.04 base as the existing
 CI runner, but keep it isolated:
 
 ```bash
-limactl start webtps-ci-codegen
-limactl shell webtps-ci-codegen
+limactl start contourlab-ci-codegen
+limactl shell contourlab-ci-codegen
 ```
 
-Inside `webtps-ci-codegen`, install the same minimum runner dependencies as the
+Inside `contourlab-ci-codegen`, install the same minimum runner dependencies as the
 main CI VM:
 
 - Docker Engine
@@ -308,19 +308,19 @@ Register exactly one runner in that VM with labels:
 
 - `self-hosted`
 - `linux`
-- `webtps-local-codegen`
+- `contourlab-local-codegen`
 
-Do not attach `webtps-local` or `webtps-deploy` to that runner.
+Do not attach `contourlab-local` or `contourlab-deploy` to that runner.
 
 To stop the local CI runners cleanly:
 
 ```bash
-limactl stop webtps-ci
-limactl stop webtps-ci-codegen
+limactl stop contourlab-ci
+limactl stop contourlab-ci-codegen
 ```
 
 That stops each VM and therefore its runner. GitHub should then show
-`webtps-ci` and `webtps-ci-codegen` as offline.
+`contourlab-ci` and `contourlab-ci-codegen` as offline.
 The deploy workflow still relies on Docker access from the runner user. Before
 the automated workflow runs, confirm that inside the VM:
 
@@ -330,13 +330,13 @@ docker compose version
 ```
 
 The CD workflow creates the data directory automatically. It only starts or
-updates the persistent DICOM repository when the `webtps-orthanc` container is
+updates the persistent DICOM repository when the `contourlab-orthanc` container is
 missing, stopped, or running a different image ID; if the container is already
 running with the expected image, CD leaves it unchanged. To do the same check
 manually:
 
 ```bash
-mkdir -p "${WEBTPS_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}"
+mkdir -p "${CONTOURLAB_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}"
 docker compose -f docker-compose.deploy.yml up -d --no-recreate dicom-repo
 docker compose -f docker-compose.deploy.yml ps
 curl -sf http://127.0.0.1:8042/system
@@ -362,4 +362,4 @@ docker compose -f docker-compose.deploy.yml stop api client
 
 Avoid `docker compose down` for routine app releases because it stops the DICOM
 repository as well. To wipe deployed DICOM data intentionally, stop Orthanc and
-delete the host directory configured by `WEBTPS_ORTHANC_DATA_DIR`.
+delete the host directory configured by `CONTOURLAB_ORTHANC_DATA_DIR`.

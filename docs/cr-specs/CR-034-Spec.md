@@ -2,9 +2,9 @@
 
 ## Problem Summary
 
-The WebTPS UI currently displays a "threshold" button that is not implemented. This non-functional UI element creates confusion for users as it suggests functionality that does not exist. The button should be removed to present only supported features in the interface.
+The ContourLab UI currently displays a "threshold" button that is not implemented. This non-functional UI element creates confusion for users as it suggests functionality that does not exist. The button should be removed to present only supported features in the interface.
 
-**Source issue:** https://github.com/itercharles/WebTPS/issues/7
+**Source issue:** https://github.com/itercharles/ContourLab/issues/7
 
 ## Intended Outcome
 
@@ -14,7 +14,7 @@ Upon completion of CR-034:
 - ✅ User interface displays only implemented, functional controls
 - ✅ No layout breakage or styling issues after button removal
 - ✅ All existing tests pass with no regression
-- ✅ Change merged to main in WebTPS repository
+- ✅ Change merged to main in ContourLab repository
 - ✅ CR-034 state transitioned to `completed` upon implementation merge
 
 ---
@@ -37,7 +37,7 @@ CR-034 is intentionally simple and isolated:
 
 ### Implementation Steps
 
-1. **Locate the threshold button in WebTPS**
+1. **Locate the threshold button in ContourLab**
    - Search the codebase for UI elements or buttons containing "threshold" in the text or ID
    - Identify the component file(s) where the button is rendered
    - Note the button's context (what page/section it appears in)
@@ -58,7 +58,7 @@ CR-034 is intentionally simple and isolated:
 
 ### Expected Product Code Changes
 
-**Repository:** `itercharles/WebTPS`
+**Repository:** `itercharles/ContourLab`
 
 **Files affected:** Component file(s) containing the threshold button (e.g., `src/components/SomeComponent.tsx`, `src/pages/SomePage.tsx`, or similar)
 
@@ -118,7 +118,7 @@ const [thresholdEnabled, setThresholdEnabled] = useState(false);
 
 ### Task: Remove Non-Functional Threshold Button
 
-**Repository:** `itercharles/WebTPS`
+**Repository:** `itercharles/ContourLab`
 
 **Search for threshold button:**
 
@@ -165,7 +165,7 @@ grep -ri "threshold" src/ --include="*.css" --include="*.scss"
 
 **Verification Method:**
 ```bash
-# In WebTPS repository
+# In ContourLab repository
 npm start  # or appropriate command to run dev server
 # Navigate to the page/section containing the former threshold button
 # Visually inspect that the button is gone
@@ -263,7 +263,7 @@ python -m compliantflow --dhf DHF dhf validate schema
 
 Evidence that CR-034 succeeded is recorded in:
 
-1. **Git history:** Commit message and diff in WebTPS repository showing threshold button removal
+1. **Git history:** Commit message and diff in ContourLab repository showing threshold button removal
 2. **CR-034.yaml:** State progression from `in_review` → `implementing` → `completed`
 3. **Visual verification:** Browser screenshot or manual confirmation of the page showing button is gone and layout is intact
 4. **GitHub Actions logs:** Workflow execution details (available via `gh run list`)
@@ -272,7 +272,7 @@ Evidence that CR-034 succeeded is recorded in:
 
 ## Implementation Notes for Downstream Agents
 
-### For Implementation in WebTPS Repository
+### For Implementation in ContourLab Repository
 
 1. **Search for the threshold button:**
    ```bash
@@ -333,7 +333,7 @@ Evidence that CR-034 succeeded is recorded in:
    ```
 
 9. **Create and open PR:**
-   - Push the branch and create a PR in WebTPS repository
+   - Push the branch and create a PR in ContourLab repository
    - Title the PR: `fix(CR-034): remove non-functional threshold button`
    - Reference GitHub issue #7 in the PR description
    - Link to CR-034 if issue tracking is used
@@ -341,9 +341,9 @@ Evidence that CR-034 succeeded is recorded in:
 
 ### Post-Merge Steps
 
-After the implementation PR is merged to main in WebTPS:
+After the implementation PR is merged to main in ContourLab:
 
-1. Return to WebTPS-DHF repository
+1. Return to ContourLab-DHF repository
 2. Transition CR-034 to `completed`:
    ```bash
    
@@ -375,7 +375,7 @@ CR-034 is successful when:
 | All existing tests pass | ✓ Run test suite |
 | No console errors or warnings | ✓ Check browser console |
 | Build completes successfully | ✓ Run `npm run build` |
-| Implementation PR merged to main | ✓ Verify in WebTPS main branch |
+| Implementation PR merged to main | ✓ Verify in ContourLab main branch |
 | CR-034 state is `completed` | ✓ Verify with `python -m compliantflow --dhf DHF dhf item get CR-034` |
 | Issue #7 is resolved | ✓ Confirm via GitHub issue closure |
 
@@ -395,9 +395,9 @@ CR-034 is successful when:
 - **Acceptance criteria:** The threshold button is not displayed on the UI.
 
 **Related Repositories:**
-- **DHF repo:** itercharles/WebTPS-DHF
-- **Product repo:** itercharles/WebTPS
-- **Issue tracker:** GitHub issue #7 in WebTPS repository
+- **DHF repo:** itercharles/ContourLab-DHF
+- **Product repo:** itercharles/ContourLab
+- **Issue tracker:** GitHub issue #7 in ContourLab repository
 
 **Timeline:**
 - Target merge: week of April 21-27, 2026 (2026-W17)

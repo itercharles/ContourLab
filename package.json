@@ -1,8 +1,8 @@
 {
-  "name": "webtps",
+  "name": "contourlab",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @webtps/client dev",
+    "dev": "pnpm --filter @contourlab/client dev",
     "api": "cd apps/api && dotnet run --launch-profile http",
     "repo:up": "docker compose up -d dicom-repo",
     "repo:down": "docker compose down",

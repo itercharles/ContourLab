@@ -15,7 +15,7 @@ description: '**Priority:** critical
   This happens on the auto deployed environment, the local environment looks OK.
 
 
-  Source issue: https://github.com/itercharles/WebTPS/issues/55'
+  Source issue: https://github.com/itercharles/ContourLab/issues/55'
 justification: Maintainer assigned this issue to the active release milestone, indicating
   it is accepted for CR intake.
 priority: Medium

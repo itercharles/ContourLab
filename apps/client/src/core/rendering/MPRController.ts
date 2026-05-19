@@ -25,7 +25,7 @@ export const MPRController = {
     addTool(CrosshairsTool);
 
     const allViewportIds = Object.values(VIEWPORT_IDS);
-    toolGroupId = 'webtps-tool-group';
+    toolGroupId = 'contourlab-tool-group';
 
     // Destroy existing tool group if reinitializing
     const existing = ToolGroupManager.getToolGroup(toolGroupId);
@@ -36,7 +36,7 @@ export const MPRController = {
 
     // Add all viewports to the tool group
     for (const vpId of allViewportIds) {
-      toolGroup.addViewport(vpId, 'webtps-rendering-engine');
+      toolGroup.addViewport(vpId, 'contourlab-rendering-engine');
     }
 
     // Add tools

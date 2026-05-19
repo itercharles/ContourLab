@@ -2,7 +2,7 @@
 
 ## Project
 
-WebTPS is a web-based radiation therapy Treatment Planning System — React frontend,
+ContourLab is a web-based radiation therapy Treatment Planning System — React frontend,
 ASP.NET Core 10 API, shared TypeScript domain types, and local DICOM tooling (Orthanc via Docker).
 
 Compliance and traceability (requirements, change requests, risks) live in the **`DHF/`** directory
@@ -35,8 +35,8 @@ pnpm api                                  # API dev server (port 4000)
 pnpm repo:up                              # start local Orthanc (port 8042)
 pnpm repo:down                            # stop local Orthanc
 pnpm local:doctor                         # health check all local services
-pnpm --filter @webtps/client test         # frontend tests
-pnpm --filter @webtps/client typecheck    # typecheck frontend
+pnpm --filter @contourlab/client test         # frontend tests
+pnpm --filter @contourlab/client typecheck    # typecheck frontend
 pnpm -r typecheck                         # typecheck all workspaces
 pnpm -r build                             # build all workspaces
 
@@ -52,7 +52,7 @@ medharness --dhf DHF dhf doc generate ALL             # regenerate spec document
 ## Key Conventions
 
 - **Data model**: All shared types in `packages/shared-types/src/index.ts`, imported as
-  `@webtps/shared-types`. Define model before feature.
+  `@contourlab/shared-types`. Define model before feature.
 - **Proxy**: Vite proxies `/api` and `/ws` → `localhost:4000`; `/dicom-web` → Orthanc `localhost:8042`
 - **TypeScript**: strict mode throughout, no `any`
 - **Styling**: Tailwind only, no inline styles, dark clinical theme (see `/ux-design`)
@@ -146,8 +146,8 @@ Design and implementation live on the same branch, each committed separately.
 5. **Modify** — keep changes in the workspace that owns the behavior; shared types first.
 6. **Validate locally**:
    ```bash
-   pnpm --filter @webtps/client test
-   pnpm --filter @webtps/client lint && pnpm --filter @webtps/client typecheck
+   pnpm --filter @contourlab/client test
+   pnpm --filter @contourlab/client lint && pnpm --filter @contourlab/client typecheck
    dotnet build apps/api/api.csproj --configuration Release   # API changes
    pnpm -r typecheck                                           # data model changes
    medharness --dhf DHF dhf validate schema                   # DHF item changes

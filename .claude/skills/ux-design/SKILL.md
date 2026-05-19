@@ -1,9 +1,9 @@
 ---
 name: ux-design
-description: UX design guidance for WebTPS clinical imaging components — invoke before designing or polishing any UI
+description: UX design guidance for ContourLab clinical imaging components — invoke before designing or polishing any UI
 ---
 
-# WebTPS UX Design Skill
+# ContourLab UX Design Skill
 
 You are designing a clinical radiation therapy treatment planning system (TPS). Reference systems include OHIF Viewer, Eclipse (Varian), RayStation, and Pinnacle. Users are radiation oncologists, medical physicists, and dosimetrists — expert users who value precision, density of information, and keyboard efficiency over aesthetic minimalism.
 

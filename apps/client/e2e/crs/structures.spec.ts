@@ -3,12 +3,12 @@
  * CRS-003: Clinicians shall navigate contour-bearing slices by structure.
  * CRS-004: Clinicians shall view automated contour quality warnings.
  *
- * Uses window.__webtps_stores (exposed in DEV mode) to inject a structure set,
+ * Uses window.__contourlab_stores (exposed in DEV mode) to inject a structure set,
  * then verifies the clinical structure management UI is accessible and correct.
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import type { ContourSlice } from '@webtps/shared-types';
+import type { ContourSlice } from '@contourlab/shared-types';
 
 const SERIES_UID = 'crs-test-series-001';
 
@@ -64,11 +64,11 @@ const FAKE_STRUCTURE_SET = {
 async function injectClinicalState(page: Page) {
   await page.goto('/');
   await page.getByText('Load Patient').waitFor();
-  await page.waitForFunction(() => !!(window as Record<string, unknown>)['__webtps_stores']);
+  await page.waitForFunction(() => !!(window as Record<string, unknown>)['__contourlab_stores']);
 
   await page.evaluate(
     ({ seriesUID, structureSet }) => {
-      const stores = (window as Record<string, unknown>)['__webtps_stores'] as {
+      const stores = (window as Record<string, unknown>)['__contourlab_stores'] as {
         structureStore: { setState: (s: unknown) => void };
         volumeStore: { setState: (s: unknown) => void };
       };

@@ -1,4 +1,4 @@
-import type { Volume } from '@webtps/shared-types';
+import type { Volume } from '@contourlab/shared-types';
 import type { ParsedSeries } from './DicomLoader';
 import type { LoadedSeries } from '../store/volumeStore';
 import { cornerstoneInit } from '../rendering/cornerstoneInit';

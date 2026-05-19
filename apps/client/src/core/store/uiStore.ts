@@ -62,7 +62,7 @@ function getBrowserStorage(): Storage | null {
 }
 
 function initTheme(): Theme {
-  const saved = getBrowserStorage()?.getItem('webtps-theme') ?? null;
+  const saved = getBrowserStorage()?.getItem('contourlab-theme') ?? null;
   const t: Theme = saved === 'light' ? 'light' : 'dark';
   if (typeof document !== 'undefined') {
     document.documentElement.dataset.theme = t;
@@ -129,7 +129,7 @@ export const useUIStore = create<UIState>()(
         if (typeof document !== 'undefined') {
           document.documentElement.dataset.theme = t;
         }
-        getBrowserStorage()?.setItem('webtps-theme', t);
+        getBrowserStorage()?.setItem('contourlab-theme', t);
       }),
     toggleMaximizeViewport: (viewport) =>
       set((state) => {

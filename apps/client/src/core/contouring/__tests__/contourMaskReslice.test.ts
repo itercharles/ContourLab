@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ContourSlice, Volume } from '@webtps/shared-types';
+import type { ContourSlice, Volume } from '@contourlab/shared-types';
 import { buildMprMaskBoundaryPath } from '../contourMaskReslice';
 
 const volume: Volume = {

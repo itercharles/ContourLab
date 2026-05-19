@@ -1,8 +1,8 @@
-# WebTPS And MedHarness Integration
+# ContourLab And MedHarness Integration
 
 ## Purpose
 
-This document defines the operational contract between WebTPS workflows and the
+This document defines the operational contract between ContourLab workflows and the
 pinned `medharness` CLI. Keep it in sync with `requirements.txt` and
 `scripts/ci/check_medharness_contract.py` whenever the pin is bumped.
 

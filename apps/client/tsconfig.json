@@ -5,7 +5,7 @@
     "outDir": "dist",
     "noEmit": true,
     "paths": {
-      "@webtps/shared-types": ["../../packages/shared-types/src"]
+      "@contourlab/shared-types": ["../../packages/shared-types/src"]
     }
   },
   "include": ["src"]

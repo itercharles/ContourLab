@@ -200,7 +200,7 @@ content: |-
   RTSTRUCT source provenance on the active
   StructureSet, retrieves the selected DICOM object through WADO-RS, and uses
   rtstructImport.importRtstructArrayBuffer() to convert ROI, ROIContour, and
-  RTROIObservation sequences into editable WebTPS structures for the active
+  RTROIObservation sequences into editable ContourLab structures for the active
   SeriesInstanceUID. Imported repository RTSTRUCT data is marked draft-dirty so
   the browser draft can persist the loaded workspace, but it is not marked
   repository-dirty because loading repository content does not create a change

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Structure } from '@webtps/shared-types';
+import type { Structure } from '@contourlab/shared-types';
 import { analyzeContourQuality } from '../contourQuality';
 
 function makeStructure(contours: Structure['contours']): Structure {

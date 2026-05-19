@@ -12,9 +12,9 @@ Use when development work on a branch is done. Works through validation, DHF rev
 Run all commands relevant to the change. Do not skip any that apply.
 
 ```bash
-pnpm --filter @webtps/client typecheck
-pnpm --filter @webtps/client lint
-pnpm --filter @webtps/client test
+pnpm --filter @contourlab/client typecheck
+pnpm --filter @contourlab/client lint
+pnpm --filter @contourlab/client test
 pnpm -r typecheck                          # if shared-types changed
 dotnet build apps/api/api.csproj --configuration Release  # if API changed
 ```

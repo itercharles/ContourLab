@@ -3,8 +3,8 @@ services:
     build:
       context: .
       dockerfile: apps/client/Dockerfile
-    image: webtps-client:latest
-    container_name: webtps-client
+    image: contourlab-client:latest
+    container_name: contourlab-client
     ports:
       - "3001:3001"
     restart: unless-stopped
@@ -13,8 +13,8 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    image: webtps-api:latest
-    container_name: webtps-api
+    image: contourlab-api:latest
+    container_name: contourlab-api
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:4000
@@ -25,11 +25,11 @@ services:
 
   dicom-repo:
     image: orthancteam/orthanc:latest
-    container_name: webtps-orthanc
+    container_name: contourlab-orthanc
     ports:
       - "8042:8042"
       - "4242:4242"
     volumes:
       - ./docker/orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
-      - ${WEBTPS_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}:/var/lib/orthanc/db
+      - ${CONTOURLAB_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}:/var/lib/orthanc/db
     restart: unless-stopped

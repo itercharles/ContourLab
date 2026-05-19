@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Structure, Volume } from '@webtps/shared-types';
+import type { Structure, Volume } from '@contourlab/shared-types';
 
 const mocks = vi.hoisted(() => {
   const camera = {

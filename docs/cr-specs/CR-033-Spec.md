@@ -2,9 +2,9 @@
 
 ## Problem Summary
 
-The CR-driven automation workflow in WebTPS-DHF (CR analysis → spec generation → implementation automation → CR completion sync) was recently enhanced but requires an end-to-end validation. This CR serves as a workflow smoke test: a deliberately minimal, low-risk product change that exercises the entire CR automation pipeline from PR through spec review, implementation, and CR state synchronization.
+The CR-driven automation workflow in ContourLab-DHF (CR analysis → spec generation → implementation automation → CR completion sync) was recently enhanced but requires an end-to-end validation. This CR serves as a workflow smoke test: a deliberately minimal, low-risk product change that exercises the entire CR automation pipeline from PR through spec review, implementation, and CR state synchronization.
 
-To validate the workflow, we need a simple, observable change: adding a user-visible workflow test marker to the WebTPS About page. This marker will be a single short line displayed near the existing version information, making it easy to verify that the full CR automation cycle succeeded.
+To validate the workflow, we need a simple, observable change: adding a user-visible workflow test marker to the ContourLab About page. This marker will be a single short line displayed near the existing version information, making it easy to verify that the full CR automation cycle succeeded.
 
 ## Intended Outcome
 
@@ -13,7 +13,7 @@ Upon completion of CR-033:
 - ✅ Marker is visible in the browser (proves implementation completed)
 - ✅ Marker does not change application behavior or functionality
 - ✅ No layout breakage or styling issues on the About page
-- ✅ Change merged to main in WebTPS repository
+- ✅ Change merged to main in ContourLab repository
 - ✅ CR-033 state transitioned to `completed` upon implementation merge
 - ✅ Entire CR automation workflow validated (analyze → design → implement → complete)
 
@@ -37,7 +37,7 @@ CR-033 is intentionally small and isolated:
 
 ### Implementation Steps
 
-1. **Locate the About page component in WebTPS**
+1. **Locate the About page component in ContourLab**
    - Find the About page component (typically `src/pages/About.tsx` or similar)
    - Identify where version information and other metadata are displayed
    - Note the styling/formatting approach used for existing elements
@@ -56,7 +56,7 @@ CR-033 is intentionally small and isolated:
 
 ### Expected Product Code Changes
 
-**Repository:** `itercharles/WebTPS`
+**Repository:** `itercharles/ContourLab`
 
 **File affected:** `src/pages/About.tsx` (or equivalent component location)
 
@@ -117,7 +117,7 @@ const workflowMarker = process.env.REACT_APP_WORKFLOW_TEST_MARKER || null;
 
 ### Feature: Display Workflow Test Marker on About Page
 
-**Repository:** `itercharles/WebTPS`
+**Repository:** `itercharles/ContourLab`
 
 **Task:** Add a single-line workflow test marker to the About page component.
 
@@ -154,7 +154,7 @@ const workflowMarker = process.env.REACT_APP_WORKFLOW_TEST_MARKER || null;
 
 **Verification Method:**
 ```bash
-# In WebTPS repository
+# In ContourLab repository
 npm start  # or appropriate command to run dev server
 # Navigate to About page in browser
 # Visually inspect workflow test marker
@@ -240,7 +240,7 @@ python -m compliantflow --dhf DHF dhf validate schema
 ### Evidence Artifacts
 
 Evidence that CR-033 succeeded is recorded in:
-1. **Git history:** Commit message and diff in WebTPS repository showing About page change
+1. **Git history:** Commit message and diff in ContourLab repository showing About page change
 2. **CR-033.yaml:** State progression from `in_review` → `implementing` → `completed`
 3. **Visual verification:** Browser screenshot or manual confirmation of About page showing workflow test marker
 4. **GitHub Actions logs:** Workflow execution details (available via `gh run list`)
@@ -249,7 +249,7 @@ Evidence that CR-033 succeeded is recorded in:
 
 ## Implementation Notes for Downstream Agents
 
-### For Implementation in WebTPS Repository
+### For Implementation in ContourLab Repository
 
 1. **Locate the About page:**
    ```bash
@@ -312,16 +312,16 @@ Evidence that CR-033 succeeded is recorded in:
    ```
 
 9. **Create and open PR:**
-   - Push the branch and create a PR in WebTPS repository
+   - Push the branch and create a PR in ContourLab repository
    - Title the PR: `feat(CR-033): add workflow test marker to About page`
    - Link PR to CR-033 if issue tracking is used
    - Request review
 
 ### Post-Merge Steps
 
-After the implementation PR is merged to main in WebTPS:
+After the implementation PR is merged to main in ContourLab:
 
-1. Return to WebTPS-DHF repository
+1. Return to ContourLab-DHF repository
 2. Transition CR-033 to `completed`:
    ```bash
    
@@ -329,7 +329,7 @@ After the implementation PR is merged to main in WebTPS:
    git add DHF/items/09_cr/CR-033.yaml
    git commit -m "chore: mark CR-033 completed
 
-   Workflow test marker merged to main in WebTPS. 
+   Workflow test marker merged to main in ContourLab. 
    CR-driven automation workflow validated end-to-end.
    Related to CR-033."
    git push
@@ -354,7 +354,7 @@ CR-033 is successful when:
 | All existing tests pass | ✓ Run test suite |
 | No console errors or warnings | ✓ Check browser console |
 | Build completes successfully | ✓ Run `npm run build` |
-| Implementation PR merged to main | ✓ Verify in WebTPS main branch |
+| Implementation PR merged to main | ✓ Verify in ContourLab main branch |
 | CR-033 state is `completed` | ✓ Verify with `python -m compliantflow --dhf DHF dhf item get CR-033` |
 | Entire CR workflow validated | ✓ Confirm analyze → design → implement → complete transitions |
 
@@ -369,12 +369,12 @@ CR-033 is successful when:
 - **Priority:** Low
 - **Requested by:** Charles
 - **Target version:** 0.1.0
-- **Description:** Add a small, user-visible workflow smoke test marker to the WebTPS About page. The marker should be a single short line near the existing version information and should not change application behavior.
+- **Description:** Add a small, user-visible workflow smoke test marker to the ContourLab About page. The marker should be a single short line near the existing version information and should not change application behavior.
 - **Justification:** This intentionally small product change provides a low-risk end-to-end test case for the CR-driven automation workflow from CR PR through spec, design, implementation PR, and CR completion sync.
 
 **Related Repositories:**
-- **DHF repo:** itercharles/WebTPS-DHF
-- **Product repo:** itercharles/WebTPS
+- **DHF repo:** itercharles/ContourLab-DHF
+- **Product repo:** itercharles/ContourLab
 
 **Version requirement:**
 - Feature targets version 0.1.0 as specified in CR target_version
@@ -383,5 +383,5 @@ CR-033 is successful when:
 The CR automation pipeline exercises all four stages:
 1. **Stage 1 (Analyze):** CR PR merged → spec generated
 2. **Stage 2 (Design):** Spec PR merged → CR transitions to designing
-3. **Stage 3 (Implement):** Implementation PR created and merged in WebTPS
+3. **Stage 3 (Implement):** Implementation PR created and merged in ContourLab
 4. **Stage 4 (Complete):** CR transitions to completed upon implementation merge

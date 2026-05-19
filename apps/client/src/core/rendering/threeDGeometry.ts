@@ -1,4 +1,4 @@
-import type { Structure, Volume } from '@webtps/shared-types';
+import type { Structure, Volume } from '@contourlab/shared-types';
 import { logClientDebug } from '../debug/clientDebugLog';
 
 export interface MaskVolume {

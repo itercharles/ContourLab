@@ -2,13 +2,13 @@
 
 ## Problem Summary
 
-The About page in WebTPS incorrectly describes the backend technology as "Node.js API gateway". The actual backend is ASP.NET Core 10 Web API. This factual error is visible to users and should be corrected to accurately reflect the system architecture.
+The About page in ContourLab incorrectly describes the backend technology as "Node.js API gateway". The actual backend is ASP.NET Core 10 Web API. This factual error is visible to users and should be corrected to accurately reflect the system architecture.
 
 ## Intended Outcome
 
 Upon completion of CR-030:
 - ✅ About page backend description updated from "Node.js API gateway" to "ASP.NET Core 10 Web API"
-- ✅ Change merged to main in WebTPS repository
+- ✅ Change merged to main in ContourLab repository
 - ✅ No breaking changes to functionality or UI layout
 - ✅ Text correction verified in browser
 
@@ -21,7 +21,7 @@ This is a localized text correction. No architectural changes, no new features, 
 
 ### Implementation Steps
 
-1. **Locate the About page source code** in the WebTPS repository
+1. **Locate the About page source code** in the ContourLab repository
    - Find the component/page that renders the About page
    - Identify the text string containing "Node.js API gateway"
 
@@ -37,7 +37,7 @@ This is a localized text correction. No architectural changes, no new features, 
 
 ### Expected Product Code Changes
 
-**File:** `WebTPS/src/pages/About.tsx` (or equivalent location in product repo)
+**File:** `ContourLab/src/pages/About.tsx` (or equivalent location in product repo)
 
 **Change Type:** Text replacement
 
@@ -51,7 +51,7 @@ backend: "Node.js API gateway"
 backend: "ASP.NET Core 10 Web API"
 ```
 
-**Note:** The exact file path and structure depend on the actual WebTPS codebase organization. The implementation agent should search for the text string and update it in context.
+**Note:** The exact file path and structure depend on the actual ContourLab codebase organization. The implementation agent should search for the text string and update it in context.
 
 ---
 
@@ -70,7 +70,7 @@ backend: "ASP.NET Core 10 Web API"
 
 ### Bugfix: About Page Backend Description
 
-**Repository:** `itercharles/WebTPS`
+**Repository:** `itercharles/ContourLab`
 
 **Task:** Find and update the About page component to replace the incorrect backend description.
 
@@ -100,7 +100,7 @@ backend: "ASP.NET Core 10 Web API"
 
 **Verification Method:**
 ```bash
-# In WebTPS repository
+# In ContourLab repository
 npm start  # or appropriate command to run dev server
 # Navigate to About page in browser
 # Inspect text content visually or via browser dev tools
@@ -164,7 +164,7 @@ python -m compliantflow --dhf DHF dhf validate schema
 ### Evidence Artifacts
 
 Evidence that CR-030 succeeded is recorded in:
-1. **Git history:** Commit message and diff in WebTPS repository
+1. **Git history:** Commit message and diff in ContourLab repository
 2. **CR-030.yaml:** State progression from `in_review` → `completed`
 3. **Visual verification:** Screenshot or manual confirmation of About page
 
@@ -172,7 +172,7 @@ Evidence that CR-030 succeeded is recorded in:
 
 ## Implementation Notes for Downstream Agents
 
-### For Implementation in WebTPS Repository
+### For Implementation in ContourLab Repository
 
 1. **Search for the incorrect text:**
    ```bash
@@ -204,9 +204,9 @@ Evidence that CR-030 succeeded is recorded in:
 
 ### Post-Merge Steps
 
-After the implementation PR is merged to main in WebTPS:
+After the implementation PR is merged to main in ContourLab:
 
-1. Return to WebTPS-DHF repository
+1. Return to ContourLab-DHF repository
 2. Transition CR-030 to `completed`:
    ```bash
    
@@ -228,7 +228,7 @@ CR-030 is successful when:
 | Text updated to correct description | ✓ Verify in code |
 | About page renders without errors | ✓ Test locally |
 | All existing tests still pass | ✓ Run test suite |
-| Implementation PR merged to main | ✓ Verify in WebTPS |
+| Implementation PR merged to main | ✓ Verify in ContourLab |
 | CR-030 state is `completed` | ✓ Verify with `python -m compliantflow --dhf DHF dhf item get CR-030` |
 
 ---
@@ -245,5 +245,5 @@ CR-030 is successful when:
 - **Description:** Simple one-line text fix to correct factual error visible to users
 
 **Related Repositories:**
-- **DHF repo:** itercharles/WebTPS-DHF
-- **Product repo:** itercharles/WebTPS
+- **DHF repo:** itercharles/ContourLab-DHF
+- **Product repo:** itercharles/ContourLab

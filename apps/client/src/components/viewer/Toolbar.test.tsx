@@ -8,7 +8,7 @@ import { addUserActivity, useActivityStore } from '../../core/store/activityStor
 import { useStructureStore } from '../../core/store/structureStore';
 import { useUIStore } from '../../core/store/uiStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
-import type { StructureSet } from '@webtps/shared-types';
+import type { StructureSet } from '@contourlab/shared-types';
 
 const mocks = vi.hoisted(() => ({
   scroll: vi.fn(),
@@ -193,10 +193,8 @@ describe('Toolbar contour operations', () => {
   it('keeps image and edit tools out of the top bar', () => {
     renderToolbar();
 
-    expect(screen.getByText('WebTPS')).toBeTruthy();
+    expect(screen.getByText('ContourLab')).toBeTruthy();
     expect(screen.getByRole('button', { name: '01 Contour' })).toBeTruthy();
-    expect((screen.getByRole('button', { name: /02 Review soon/ }) as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole('button', { name: /03 Plan soon/ }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByTitle('Window/Level Preset')).toBeNull();
     expect(screen.queryByRole('button', { name: /Window \/ Level/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /Crosshair/ })).toBeNull();
@@ -311,8 +309,8 @@ describe('Toolbar contour operations', () => {
     expect(screen.getByRole('dialog', { name: 'Issue-driven AI coding prototype' })).toBeTruthy();
     expect(screen.getByText(/does not contain any Elekta product code/i)).toBeTruthy();
     expect(screen.getByText(/CI\/CD workflows, and compliance documentation were written by AI/i)).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'github.com/itercharles/WebTPS' }).getAttribute('href')).toBe(
-      'https://github.com/itercharles/WebTPS'
+    expect(screen.getByRole('link', { name: 'github.com/itercharles/ContourLab' }).getAttribute('href')).toBe(
+      'https://github.com/itercharles/ContourLab'
     );
     expect(screen.queryByText('analyze')).toBeNull();
     expect(screen.getByText(/CI auto test/i)).toBeTruthy();

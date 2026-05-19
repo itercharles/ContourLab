@@ -19,7 +19,7 @@ content: |-
   - Prod: reverse proxy to hospital PACS/VNA (auth configured per deployment)
 
   The repository is the system of record for all patient imaging data and
-  finalized structure sets. It is not owned or operated by WebTPS.
+  finalized structure sets. It is not owned or operated by ContourLab.
 design:
 - SYS-001
 - SYS-006

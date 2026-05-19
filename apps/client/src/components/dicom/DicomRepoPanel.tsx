@@ -595,8 +595,8 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
 
   useEffect(() => {
     const openPatientSelector = () => setIsPatientSelectorOpen(true);
-    window.addEventListener('webtps:open-patient-selector', openPatientSelector);
-    return () => window.removeEventListener('webtps:open-patient-selector', openPatientSelector);
+    window.addEventListener('contourlab:open-patient-selector', openPatientSelector);
+    return () => window.removeEventListener('contourlab:open-patient-selector', openPatientSelector);
   }, []);
 
   useEffect(() => {

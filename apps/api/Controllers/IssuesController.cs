@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using WebTPS.Api.Services;
+using ContourLab.Api.Services;
 
-namespace WebTPS.Api.Controllers;
+namespace ContourLab.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

@@ -10,7 +10,7 @@ RUN pnpm install --frozen-lockfile
 COPY tsconfig.base.json ./
 COPY apps/client/ apps/client/
 COPY packages/shared-types/ packages/shared-types/
-RUN pnpm --filter @webtps/client build
+RUN pnpm --filter @contourlab/client build
 
 FROM nginx:1.27-alpine AS runtime
 COPY apps/client/nginx.conf /etc/nginx/conf.d/default.conf

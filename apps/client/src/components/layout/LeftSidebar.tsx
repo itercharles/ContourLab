@@ -60,7 +60,7 @@ export default function LeftSidebar() {
             <button
               type="button"
               onClick={() => {
-                const event = new CustomEvent('webtps:open-patient-selector');
+                const event = new CustomEvent('contourlab:open-patient-selector');
                 window.dispatchEvent(event);
               }}
               className="flex h-6 w-6 items-center justify-center rounded bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"

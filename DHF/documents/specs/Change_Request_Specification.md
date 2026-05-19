@@ -51,7 +51,7 @@ This document provides a comprehensive specification of all Change Requests (CRs
 
 The contrast between the text an background in the dark mode should be increased.
 
-Source issue: https://github.com/itercharles/WebTPS/issues/10
+Source issue: https://github.com/itercharles/ContourLab/issues/10
 
 #### Justification
 
@@ -83,7 +83,7 @@ Impact assessment pending.
 
 The contrast between the text an background in the dark mode should be increased.
 
-Source issue: https://github.com/itercharles/WebTPS/issues/24
+Source issue: https://github.com/itercharles/ContourLab/issues/24
 
 #### Justification
 
@@ -115,7 +115,7 @@ Impact assessment pending.
 
 The contrast between the text an background in the dark mode should be increased.
 
-Source issue: https://github.com/itercharles/WebTPS/issues/42
+Source issue: https://github.com/itercharles/ContourLab/issues/42
 
 #### Justification
 
@@ -145,7 +145,7 @@ Impact assessment pending.
 
 #### Description
 
-Add a dedicated /issues page to WebTPS that allows clinical users to submit
+Add a dedicated /issues page to ContourLab that allows clinical users to submit
 bug reports and feature requests directly from the application, and view the
 current pipeline stage of all open change requests.
 
@@ -198,7 +198,7 @@ GitHub issue creation requires repository write access. If you do not have acces
 
 as the system has already provide a different approach to create it.
 
-Source issue: https://github.com/itercharles/WebTPS/issues/46
+Source issue: https://github.com/itercharles/ContourLab/issues/46
 
 #### Justification
 
@@ -233,7 +233,7 @@ Impact assessment pending.
 
 User shall be to maximize a view when he right click and select the "full screen" in the right menu. User can maximize the transverse or any other views.  Maximize means this view occupies all the view display area, but all the other panel still there.
 
-Source issue: https://github.com/itercharles/WebTPS/issues/51
+Source issue: https://github.com/itercharles/ContourLab/issues/51
 
 #### Justification
 
@@ -271,7 +271,7 @@ Click the button is not functioning.
 The mouse icon keeps the previous functions.
 This happens on the auto deployed environment, the local environment looks OK.
 
-Source issue: https://github.com/itercharles/WebTPS/issues/55
+Source issue: https://github.com/itercharles/ContourLab/issues/55
 
 #### Justification
 
@@ -317,7 +317,7 @@ Replace both the **Patient browser → Import DICOM** and **Settings → Import
 DICOM Files** controls with a button that opens the configured Orthanc
 Explorer UI in a new tab. Orthanc's native upload flow handles RTSTRUCT,
 RTPLAN, RTDOSE, drag-drop, batch progress, and per-file failure surfacing.
-After upload, the user returns to WebTPS and the worklist auto-refreshes.
+After upload, the user returns to ContourLab and the worklist auto-refreshes.
 
 
 Affects:
@@ -415,7 +415,7 @@ Many users interpret "Issues" as a bug tracker only. The page accepts bugs, feat
 
 **Expected outcome:** The nav label and page heading read "Change Requests" so users understand all types of requests are welcome.
 
-Source issue: https://github.com/itercharles/WebTPS/issues/63
+Source issue: https://github.com/itercharles/ContourLab/issues/63
 
 #### Justification
 
@@ -447,7 +447,7 @@ Impact assessment pending.
 
 remove the "submit or create an issue" in the about page as there is already an entrance in the main page.
 
-Source issue: https://github.com/itercharles/WebTPS/issues/68
+Source issue: https://github.com/itercharles/ContourLab/issues/68
 
 #### Justification
 
@@ -479,7 +479,7 @@ Impact assessment pending.
 
 the workflow in the about box should be updated, the analyze phase has been removed.
 
-Source issue: https://github.com/itercharles/WebTPS/issues/91
+Source issue: https://github.com/itercharles/ContourLab/issues/91
 
 #### Justification
 

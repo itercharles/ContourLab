@@ -18,7 +18,7 @@ test.describe('Workspace context and patient selection @links:SYS-012,SYS-011', 
     // Wait for the app to be interactive before dispatching the event
     await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+      window.dispatchEvent(new CustomEvent('contourlab:open-patient-selector'));
     });
     await expect(page.getByText('Patient browser')).toBeVisible();
     await expect(page.getByPlaceholder('Search patient, MRN, study, series…')).toBeVisible();
@@ -28,7 +28,7 @@ test.describe('Workspace context and patient selection @links:SYS-012,SYS-011', 
     await page.goto('/');
     await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+      window.dispatchEvent(new CustomEvent('contourlab:open-patient-selector'));
     });
     await expect(page.getByText('Patient browser')).toBeVisible();
 
@@ -40,7 +40,7 @@ test.describe('Workspace context and patient selection @links:SYS-012,SYS-011', 
     await page.goto('/');
     await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+      window.dispatchEvent(new CustomEvent('contourlab:open-patient-selector'));
     });
     const search = page.getByPlaceholder('Search patient, MRN, study, series…');
     await search.waitFor();

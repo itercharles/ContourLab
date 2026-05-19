@@ -1,4 +1,4 @@
-import type { ContourSlice, Volume } from '@webtps/shared-types';
+import type { ContourSlice, Volume } from '@contourlab/shared-types';
 import type { InterpolationFrame } from './InterpolationEngine';
 
 function isInsidePolygonXY(points: Float32Array, x: number, y: number): boolean {

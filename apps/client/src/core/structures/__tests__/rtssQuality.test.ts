@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Structure, StructureSet } from '@webtps/shared-types';
+import type { Structure, StructureSet } from '@contourlab/shared-types';
 import { analyzeRtssQuality } from '../rtssQuality';
 
 function makeStructure(overrides: Partial<Structure> = {}): Structure {

@@ -11,7 +11,7 @@ import {
   projectContourToCanvasPath,
   projectPolylineToCanvasPath,
 } from '../contourOverlayUtils';
-import type { ContourSlice } from '@webtps/shared-types';
+import type { ContourSlice } from '@contourlab/shared-types';
 
 describe('flattenWorldPoints', () => {
   it('converts tuple points into a flat Float32Array', () => {

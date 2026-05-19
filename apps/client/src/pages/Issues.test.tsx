@@ -84,7 +84,7 @@ describe('Issues page — submit form', () => {
   it('shows success banner with GitHub link after successful submission', async () => {
     vi.stubGlobal('fetch', mockFetch(
       emptyList,                                                                             // initial GET
-      { ok: true, status: 201, data: { number: 42, htmlUrl: 'https://github.com/itercharles/WebTPS/issues/42' } },  // POST
+      { ok: true, status: 201, data: { number: 42, htmlUrl: 'https://github.com/itercharles/ContourLab/issues/42' } },  // POST
       emptyList,                                                                             // GET after success
     ));
 
@@ -101,7 +101,7 @@ describe('Issues page — submit form', () => {
   it('clears the form after successful submission', async () => {
     vi.stubGlobal('fetch', mockFetch(
       emptyList,
-      { ok: true, status: 201, data: { number: 1, htmlUrl: 'https://github.com/itercharles/WebTPS/issues/1' } },
+      { ok: true, status: 201, data: { number: 1, htmlUrl: 'https://github.com/itercharles/ContourLab/issues/1' } },
       emptyList,
     ));
 
@@ -164,8 +164,8 @@ describe('Issues page — status board', () => {
       ok: true,
       data: {
         items: [
-          { number: 10, title: 'Low contrast in dark mode', stage: 'analyze', priority: 'high', createdAt: '2026-01-01T00:00:00Z', htmlUrl: 'https://github.com/itercharles/WebTPS/issues/10' },
-          { number: 24, title: 'Add dose volume histogram', stage: 'implement', priority: 'medium', createdAt: '2026-02-01T00:00:00Z', htmlUrl: 'https://github.com/itercharles/WebTPS/issues/24' },
+          { number: 10, title: 'Low contrast in dark mode', stage: 'analyze', priority: 'high', createdAt: '2026-01-01T00:00:00Z', htmlUrl: 'https://github.com/itercharles/ContourLab/issues/10' },
+          { number: 24, title: 'Add dose volume histogram', stage: 'implement', priority: 'medium', createdAt: '2026-02-01T00:00:00Z', htmlUrl: 'https://github.com/itercharles/ContourLab/issues/24' },
         ],
       },
     }));

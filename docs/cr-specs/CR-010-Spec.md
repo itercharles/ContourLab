@@ -70,9 +70,9 @@ IEC 62304 verification evidence.
 ## Verification
 
 ```bash
-pnpm --filter @webtps/client test        # new tests must pass
-pnpm --filter @webtps/client typecheck   # no type regressions
-pnpm --filter @webtps/client lint        # lint clean
+pnpm --filter @contourlab/client test        # new tests must pass
+pnpm --filter @contourlab/client typecheck   # no type regressions
+pnpm --filter @contourlab/client lint        # lint clean
 ```
 
 Manual spot-check: open `/issues` and verify the page heading reads
