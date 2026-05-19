@@ -1,4 +1,4 @@
-import type { ContourSlice, Volume } from '@webtps/shared-types';
+import type { ContourSlice, Volume } from '@contourlab/shared-types';
 import type { InterpolationFrame } from './InterpolationEngine';
 
 export type BooleanOperation = 'union' | 'intersect' | 'subtract';

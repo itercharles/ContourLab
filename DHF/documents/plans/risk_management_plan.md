@@ -5,7 +5,7 @@
 
 ## 1. Scope
 
-This risk management plan covers WebTPS across its full lifecycle: development, release,
+This risk management plan covers ContourLab across its full lifecycle: development, release,
 post-market maintenance, and retirement.
 
 Lifecycle phases in scope: design, implementation, verification, validation, release,
@@ -13,7 +13,7 @@ and post-production surveillance.
 
 ## 2. Intended Use and Reasonably Foreseeable Misuse
 
-**Intended use:** WebTPS is used by qualified radiation therapy treatment planners to
+**Intended use:** ContourLab is used by qualified radiation therapy treatment planners to
 create, review, and export radiation treatment plans for cancer patients. The software
 assists in contouring anatomical structures, defining beam geometry, calculating dose
 distributions, and generating DICOM-RT objects for delivery.
@@ -59,7 +59,7 @@ justified by clinical benefit.
 
 ## 5. Risk Management Activities
 
-Risk management activities are tracked in WebTPS-DHF as:
+Risk management activities are tracked in ContourLab-DHF as:
 - **RISK items**: hazard identification, hazard situation, foreseeable sequence of events,
   severity, probability, risk score before control
 - **RCM items**: risk control measure, implementation evidence, residual risk after control
@@ -102,8 +102,8 @@ After all controls are applied:
 
 The risk management file comprises:
 - This plan
-- All RISK items in WebTPS-DHF
-- All RCM items in WebTPS-DHF
+- All RISK items in ContourLab-DHF
+- All RCM items in ContourLab-DHF
 - DHF traceability report (generated at each main-branch build)
 - Risk management report (generated at each release review)
 

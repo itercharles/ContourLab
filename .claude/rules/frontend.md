@@ -23,9 +23,9 @@ paths:
 
 ## Testing
 - Unit tests must be colocated with their component (`Component.test.tsx` next to `Component.tsx`)
-- Run: `pnpm --filter @webtps/client test`
-- Typecheck: `pnpm --filter @webtps/client typecheck`
-- Lint: `pnpm --filter @webtps/client lint`
+- Run: `pnpm --filter @contourlab/client test`
+- Typecheck: `pnpm --filter @contourlab/client typecheck`
+- Lint: `pnpm --filter @contourlab/client lint`
 
 ## DICOMweb
 - Vite proxy at `/dicom-web` → Orthanc at `http://127.0.0.1:8042`

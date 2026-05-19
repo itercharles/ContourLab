@@ -1,7 +1,7 @@
 import type { ContourQualityIssueType } from '../structures/contourQuality';
 import type { RtssQualityIssueType } from '../structures/rtssQuality';
 
-const QA_RULE_CONFIG_STORAGE_KEY = 'webtps.qa.ruleConfig';
+const QA_RULE_CONFIG_STORAGE_KEY = 'contourlab.qa.ruleConfig';
 
 export type QaRuleId = ContourQualityIssueType | RtssQualityIssueType;
 

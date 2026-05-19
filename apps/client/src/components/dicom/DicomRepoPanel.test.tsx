@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import DicomRepoPanel from './DicomRepoPanel';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
 import { useStructureStore } from '../../core/store/structureStore';
-import type { StructureSet } from '@webtps/shared-types';
+import type { StructureSet } from '@contourlab/shared-types';
 
 const mocks = vi.hoisted(() => ({
   queryDicomWebSeries: vi.fn(),
@@ -312,7 +312,7 @@ describe('DicomRepoPanel', () => {
 
     await screen.findByText('Image Sets');
     act(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+      window.dispatchEvent(new CustomEvent('contourlab:open-patient-selector'));
     });
 
     fireEvent.click(await screen.findByText('JANE DOE'));
@@ -330,7 +330,7 @@ describe('DicomRepoPanel', () => {
 
     await screen.findByText('Image Sets');
     act(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+      window.dispatchEvent(new CustomEvent('contourlab:open-patient-selector'));
     });
 
     expect(await screen.findByText('Patient browser')).toBeTruthy();
@@ -352,7 +352,7 @@ describe('DicomRepoPanel', () => {
     render(<DicomRepoPanel />);
     await screen.findByText('Image Sets');
     act(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+      window.dispatchEvent(new CustomEvent('contourlab:open-patient-selector'));
     });
     await screen.findByText('Patient browser');
 
@@ -387,7 +387,7 @@ describe('DicomRepoPanel', () => {
 
     await screen.findByText('Image Sets');
     act(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+      window.dispatchEvent(new CustomEvent('contourlab:open-patient-selector'));
     });
 
     expect(await screen.findByText('Patient browser')).toBeTruthy();
@@ -395,7 +395,7 @@ describe('DicomRepoPanel', () => {
     expect(screen.queryByText('Patient browser')).toBeNull();
 
     act(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+      window.dispatchEvent(new CustomEvent('contourlab:open-patient-selector'));
     });
     expect(await screen.findByText('Patient browser')).toBeTruthy();
     fireEvent.keyDown(window, { key: 'Escape' });

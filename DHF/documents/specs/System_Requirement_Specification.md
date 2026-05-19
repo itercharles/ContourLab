@@ -111,7 +111,7 @@ The system shall automatically serialize and store editable structure draft
 data in browser-local storage keyed by SeriesInstanceUID after each edit that
 marks the series dirty. When the same series is loaded and no in-memory
 structure data exists, the system shall attempt to restore the local draft.
-Routine draft saving shall not require WebTPS backend persistence.
+Routine draft saving shall not require ContourLab backend persistence.
 
 **Satisfies:** CRS-002
 
@@ -346,7 +346,7 @@ Configuration:
 - Prod: reverse proxy to hospital PACS/VNA (auth configured per deployment)
 
 The repository is the system of record for all patient imaging data and
-finalized structure sets. It is not owned or operated by WebTPS.
+finalized structure sets. It is not owned or operated by ContourLab.
 
 
 </div>
@@ -357,7 +357,7 @@ finalized structure sets. It is not owned or operated by WebTPS.
 <div class="requirement-section" markdown="1">
 
 **Status**: <span class="status-approved">APPROVED</span>  
-Thin HTTP gateway providing the server-side boundary of the WebTPS system.
+Thin HTTP gateway providing the server-side boundary of the ContourLab system.
 Built with ASP.NET Core 10 (C#), running on port 4000.
 
 Current responsibilities:

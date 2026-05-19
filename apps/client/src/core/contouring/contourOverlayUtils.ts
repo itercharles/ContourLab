@@ -1,4 +1,4 @@
-import type { ContourSlice } from '@webtps/shared-types';
+import type { ContourSlice } from '@contourlab/shared-types';
 
 export type WorldPoint = [number, number, number];
 

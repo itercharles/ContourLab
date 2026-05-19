@@ -49,7 +49,7 @@ export interface DicomWebRtstructInstance {
   referencedSeriesInstanceUIDs: string[];
 }
 
-const DICOMWEB_BASE_URL_STORAGE_KEY = 'webtps.dicomweb.baseUrl';
+const DICOMWEB_BASE_URL_STORAGE_KEY = 'contourlab.dicomweb.baseUrl';
 
 const DEFAULT_DICOMWEB_BASE_URL =
   (import.meta.env.VITE_DICOMWEB_BASE_URL as string | undefined) ?? '/dicom-web';
@@ -117,7 +117,7 @@ export function resetDicomWebBaseUrl(): void {
 const ORTHANC_UI_PATH = '/ui/app/index.html';
 
 // Set VITE_ORTHANC_UI_URL when Orthanc is not reachable at port 8042 on the
-// same host as WebTPS — e.g. reverse-proxy deployments serving it under a
+// same host as ContourLab — e.g. reverse-proxy deployments serving it under a
 // path prefix on port 80/443.
 export function getOrthancUiUrl(): string {
   const explicit = (import.meta.env?.VITE_ORTHANC_UI_URL as string | undefined)?.trim();
@@ -208,7 +208,7 @@ export async function queryDicomWebSeries(): Promise<DicomWebSeriesSummary[]> {
 }
 
 function multipartBoundary(): string {
-  return `webtps-${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
+  return `contourlab-${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
 }
 
 export async function uploadDicomBlobToRepository(blob: Blob): Promise<void> {

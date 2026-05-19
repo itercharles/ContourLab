@@ -12,7 +12,7 @@ test_plan:
 
 ## 1. Summary
 
-**Product behavior change:** The WebTPS dark mode theme shall render text and interactive elements at a contrast ratio sufficient for clinical readability, comparable to GitHub's dark mode palette.
+**Product behavior change:** The ContourLab dark mode theme shall render text and interactive elements at a contrast ratio sufficient for clinical readability, comparable to GitHub's dark mode palette.
 
 The current dark mode UI uses CSS custom properties based on GitHub's `dark` palette, but the resulting contrast ratios between foreground text and background surfaces fall below the WCAG AA threshold (4.5:1 for normal text, 3:1 for large text/UI elements), making sustained reading difficult in low-light clinical environments. The fix is confined to CSS custom property values in the browser client's theme layer — no API, DICOM data flow, or application logic changes are required.
 
@@ -22,7 +22,7 @@ The current dark mode UI uses CSS custom properties based on GitHub's `dark` pal
 
 ### Scope
 
-- **Repository:** `itercharles/WebTPS` (browser client only)
+- **Repository:** `itercharles/ContourLab` (browser client only)
 - **Layer:** CSS custom properties in `apps/client/src/index.css` (dark theme palette)
 - **No changes** to: Tailwind configuration, component structure, API contracts, DICOM handling, SRS/SYS clinical data paths
 
@@ -53,7 +53,7 @@ The current dark mode UI uses CSS custom properties based on GitHub's `dark` pal
 
 5. **Validate locally** — run automated TypeScript/build checks and manual visual inspection in a real browser at dark mode before opening the implementation PR.
 
-### Expected touchpoints in `itercharles/WebTPS`
+### Expected touchpoints in `itercharles/ContourLab`
 
 - `apps/client/src/index.css` — dark theme CSS custom properties (lines 5–21)
 - `apps/client/tailwind.config.ts` — verify no hardcoded Tailwind color overrides conflict with CSS custom properties

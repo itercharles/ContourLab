@@ -3,7 +3,7 @@ import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
-import type { Structure, StructureSet, StructureType } from '@webtps/shared-types';
+import type { Structure, StructureSet, StructureType } from '@contourlab/shared-types';
 import {
   loadStructureDraftForSeries,
   saveStructureDraftForSeries,

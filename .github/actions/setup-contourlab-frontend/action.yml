@@ -1,4 +1,4 @@
-name: setup-webtps-frontend
+name: setup-contourlab-frontend
 description: |
   Install Node, pnpm, and the workspace dependencies for the frontend / shared
   packages. Single source of truth for Node and pnpm versions across all jobs

@@ -1,5 +1,5 @@
 name: Change Request Intake
-description: Request a product, workflow, or technical change for WebTPS.
+description: Request a product, workflow, or technical change for ContourLab.
 body:
   - type: markdown
     attributes:

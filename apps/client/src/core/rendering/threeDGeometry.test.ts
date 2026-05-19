@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Structure, Volume } from '@webtps/shared-types';
+import type { Structure, Volume } from '@contourlab/shared-types';
 import {
   buildStructureMaskVolume,
   chooseStructureMaskStride,

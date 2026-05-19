@@ -1,4 +1,4 @@
-import type { Structure } from '@webtps/shared-types';
+import type { Structure } from '@contourlab/shared-types';
 
 /**
  * Compute the volume of a structure in cm³ from its contour slices.

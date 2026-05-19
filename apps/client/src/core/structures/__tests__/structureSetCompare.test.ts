@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { StructureSet } from '@webtps/shared-types';
+import type { StructureSet } from '@contourlab/shared-types';
 import { compareStructureSets } from '../structureSetCompare';
 
 function structureSet(label: string, structures: StructureSet['structures']): StructureSet {

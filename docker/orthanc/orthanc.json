@@ -1,10 +1,10 @@
 {
-  "Name": "WebTPS Local DICOM Repository",
+  "Name": "ContourLab Local DICOM Repository",
   "StorageDirectory": "/var/lib/orthanc/db",
   "IndexDirectory": "/var/lib/orthanc/db",
   "AuthenticationEnabled": false,
   "RemoteAccessAllowed": true,
-  "DicomAet": "WEBTPS_DEV",
+  "DicomAet": "CONTOURLAB_DEV",
   "DicomPort": 4242,
   "HttpPort": 8042,
   "DicomWeb": {

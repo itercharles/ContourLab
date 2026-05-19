@@ -30,7 +30,7 @@ async function main() {
   await run('pnpm', ['repo:up']);
 
   printSection('Done');
-  console.log('Run `pnpm local:up` to start WebTPS.');
+  console.log('Run `pnpm local:up` to start ContourLab.');
   console.log('Run `pnpm local:doctor` to verify the local environment.');
 }
 

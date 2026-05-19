@@ -11,12 +11,12 @@ Describe the change concisely.
 
 List the commands actually run, for example:
 
-- `pnpm --filter @webtps/client lint`
-- `pnpm --filter @webtps/client test`
-- `pnpm --filter @webtps/client typecheck`
-- `pnpm --filter @webtps/client build`
-- `pnpm --filter @webtps/shared-types typecheck`
-- `pnpm --filter @webtps/shared-types build`
+- `pnpm --filter @contourlab/client lint`
+- `pnpm --filter @contourlab/client test`
+- `pnpm --filter @contourlab/client typecheck`
+- `pnpm --filter @contourlab/client build`
+- `pnpm --filter @contourlab/shared-types typecheck`
+- `pnpm --filter @contourlab/shared-types build`
 - `dotnet build apps/api/api.csproj --configuration Release`
 - `pnpm local:doctor`
 

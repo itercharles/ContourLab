@@ -1,4 +1,4 @@
-import type { ContourSlice, Structure, StructureSet } from '@webtps/shared-types';
+import type { ContourSlice, Structure, StructureSet } from '@contourlab/shared-types';
 
 const STRUCTURE_EXPORT_VERSION = 1;
 

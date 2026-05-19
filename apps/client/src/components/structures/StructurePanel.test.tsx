@@ -7,7 +7,7 @@ import { useUIStore } from '../../core/store/uiStore';
 import { useRtstructHistoryStore } from '../../core/store/rtstructHistoryStore';
 import { resetQaRuleConfig } from '../../core/qa/qaRuleConfig';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
-import type { StructureSet } from '@webtps/shared-types';
+import type { StructureSet } from '@contourlab/shared-types';
 
 const mocks = vi.hoisted(() => ({
   loadStructureDraftForSeries: vi.fn(),

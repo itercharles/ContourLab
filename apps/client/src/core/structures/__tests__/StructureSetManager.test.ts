@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Structure, StructureSet } from '@webtps/shared-types';
+import type { Structure, StructureSet } from '@contourlab/shared-types';
 
 const mockStore = {
   structureSets: [] as StructureSet[],

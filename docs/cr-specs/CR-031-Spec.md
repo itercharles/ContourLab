@@ -2,14 +2,14 @@
 
 ## Problem Summary
 
-The About page in WebTPS does not display the current application version number. Users and support staff cannot easily identify which version of the application is running, making it difficult to reproduce issues, verify fixes, and manage support tickets. The version information exists in `package.json` but is not exposed in the UI.
+The About page in ContourLab does not display the current application version number. Users and support staff cannot easily identify which version of the application is running, making it difficult to reproduce issues, verify fixes, and manage support tickets. The version information exists in `package.json` but is not exposed in the UI.
 
 ## Intended Outcome
 
 Upon completion of CR-031:
 - ✅ About page displays the application version number from `package.json`
 - ✅ Version is prominently displayed and easy to identify
-- ✅ Change merged to main in WebTPS repository
+- ✅ Change merged to main in ContourLab repository
 - ✅ No breaking changes to functionality or existing UI elements
 - ✅ Version updates automatically when `package.json` version is updated
 - ✅ Verification in browser confirms version is displayed correctly
@@ -42,7 +42,7 @@ This is a localized feature addition to display the application version on the A
 
 ### Expected Product Code Changes
 
-**Files affected:** `WebTPS/src/pages/About.tsx` (or equivalent component location)
+**Files affected:** `ContourLab/src/pages/About.tsx` (or equivalent component location)
 
 **Change Type:** Feature addition — read version from package.json and display on About page
 
@@ -72,7 +72,7 @@ const appVersion = process.env.REACT_APP_VERSION || 'unknown';
 </div>
 ```
 
-**Note:** The exact file path and import mechanism depend on the actual WebTPS codebase organization. The implementation agent should verify the project structure and choose the appropriate method.
+**Note:** The exact file path and import mechanism depend on the actual ContourLab codebase organization. The implementation agent should verify the project structure and choose the appropriate method.
 
 ### Build and bundling considerations
 
@@ -97,7 +97,7 @@ const appVersion = process.env.REACT_APP_VERSION || 'unknown';
 
 ### Feature: Display Application Version on About Page
 
-**Repository:** `itercharles/WebTPS`
+**Repository:** `itercharles/ContourLab`
 
 **Task:** Add version number display to the About page component.
 
@@ -132,7 +132,7 @@ const appVersion = process.env.REACT_APP_VERSION || 'unknown';
 
 **Verification Method:**
 ```bash
-# In WebTPS repository
+# In ContourLab repository
 npm start  # or appropriate command to run dev server
 # Navigate to About page in browser
 # Visually inspect version display
@@ -214,7 +214,7 @@ python -m compliantflow --dhf DHF dhf validate schema
 ### Evidence Artifacts
 
 Evidence that CR-031 succeeded is recorded in:
-1. **Git history:** Commit message and diff in WebTPS repository
+1. **Git history:** Commit message and diff in ContourLab repository
 2. **CR-031.yaml:** State progression from `in_review` → `completed`
 3. **Visual verification:** Screenshot or manual confirmation of About page showing version
 
@@ -222,7 +222,7 @@ Evidence that CR-031 succeeded is recorded in:
 
 ## Implementation Notes for Downstream Agents
 
-### For Implementation in WebTPS Repository
+### For Implementation in ContourLab Repository
 
 1. **Locate the About page:**
    ```bash
@@ -282,22 +282,22 @@ Evidence that CR-031 succeeded is recorded in:
    git commit -m "feat(about): display application version from package.json
 
    Adds version number display to the About page so users can identify
-   which version of WebTPS they are running. Version is read from
+   which version of ContourLab they are running. Version is read from
    package.json and displayed prominently.
    
    Related to CR-031."
    ```
 
 9. **Create and open PR:**
-   - Push the branch and create a PR in WebTPS repository
+   - Push the branch and create a PR in ContourLab repository
    - Link PR to CR-031 if issue tracking is used
    - Request review
 
 ### Post-Merge Steps
 
-After the implementation PR is merged to main in WebTPS:
+After the implementation PR is merged to main in ContourLab:
 
-1. Return to WebTPS-DHF repository
+1. Return to ContourLab-DHF repository
 2. Transition CR-031 to `completed`:
    ```bash
    
@@ -305,7 +305,7 @@ After the implementation PR is merged to main in WebTPS:
    git add DHF/items/09_cr/CR-031.yaml
    git commit -m "chore: mark CR-031 completed
 
-   Version display feature merged to main in WebTPS.
+   Version display feature merged to main in ContourLab.
    Related to CR-031."
    git push
    ```
@@ -324,7 +324,7 @@ CR-031 is successful when:
 | All existing tests pass | ✓ Run test suite |
 | No console errors or warnings | ✓ Check browser dev tools |
 | Build completes successfully | ✓ Run `npm run build` |
-| Implementation PR merged to main | ✓ Verify in WebTPS |
+| Implementation PR merged to main | ✓ Verify in ContourLab |
 | CR-031 state is `completed` | ✓ Verify with `python -m compliantflow --dhf DHF dhf item get CR-031` |
 
 ---
@@ -342,8 +342,8 @@ CR-031 is successful when:
 - **Justification:** Version visibility helps users report issues and support staff diagnose problems.
 
 **Related Repositories:**
-- **DHF repo:** itercharics/WebTPS-DHF
-- **Product repo:** itercharles/WebTPS
+- **DHF repo:** itercharics/ContourLab-DHF
+- **Product repo:** itercharles/ContourLab
 
 **Version requirement:**
 - Feature targets version 0.1.0 as specified in CR target_version

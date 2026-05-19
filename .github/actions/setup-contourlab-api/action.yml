@@ -1,4 +1,4 @@
-name: setup-webtps-api
+name: setup-contourlab-api
 description: |
   Install the .NET SDK and restore the API project's NuGet packages. Single
   source of truth for the .NET version across dev-api, dev-integration, and

@@ -10,7 +10,7 @@ on:
 jobs:
   complete-cr:
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'feat/CR-')
-    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: write
     outputs:
@@ -39,7 +39,7 @@ jobs:
   closure-gate:
     needs: complete-cr
     if: needs.complete-cr.outputs.cr_id != ''
-    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: read
     steps:
@@ -89,7 +89,7 @@ jobs:
   # [skip ci].
   trigger-ci-on-main:
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'feat/CR-')
-    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       actions: write
     steps:

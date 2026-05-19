@@ -158,7 +158,7 @@ export default function Issues() {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
-              WebTPS
+              ContourLab
             </p>
             <h1 className="mt-1 text-sm font-semibold text-[var(--color-text)]">Change Requests</h1>
           </div>

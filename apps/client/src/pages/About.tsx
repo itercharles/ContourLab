@@ -18,27 +18,6 @@ const techStack = [
   },
 ];
 
-const roadmap = [
-  {
-    phase: 'Phase 1',
-    title: 'Contouring Application',
-    description: 'DICOM image viewer, manual contouring tools, AI auto-segmentation, structure management, and collaborative editing.',
-    status: 'current' as const,
-  },
-  {
-    phase: 'Phase 2',
-    title: 'Review Application',
-    description: 'Dose visualization, DVH analysis, plan comparison, protocol compliance checking, and report generation.',
-    status: 'upcoming' as const,
-  },
-  {
-    phase: 'Phase 3',
-    title: 'Planning Application',
-    description: 'Beam geometry editor, inverse optimization engine, dose calculation algorithms, MLC modeling, and DICOM-RT export.',
-    status: 'upcoming' as const,
-  },
-];
-
 const standards = [
   { id: 'IEC 62304', name: 'Medical Device Software Lifecycle' },
   { id: 'IEC 82304-1', name: 'Health Software Product Safety' },
@@ -51,9 +30,9 @@ function About() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-6 py-8">
-          <h1 className="text-3xl font-bold text-gray-900">WebTPS</h1>
+          <h1 className="text-3xl font-bold text-gray-900">ContourLab</h1>
           <p className="mt-2 text-lg text-gray-600">
-            Web-based Treatment Planning System
+            Browser-based contouring workspace for radiation oncology
           </p>
         </div>
       </header>
@@ -62,11 +41,10 @@ function About() {
         {/* Description */}
         <section>
           <p className="text-gray-700 leading-relaxed max-w-3xl">
-            WebTPS is a browser-based radiation therapy treatment planning system
-            designed for clinical use in radiation oncology. It provides tools for
-            medical image viewing, structure contouring, dose calculation, plan
-            optimization, and clinical review — all accessible through a modern
-            web interface without requiring local software installation.
+            ContourLab is a browser-based contouring environment for radiation
+            oncology teams. It focuses on image review, structure authoring,
+            RTSTRUCT import and export, and collaborative contour editing
+            without requiring workstation installs.
           </p>
         </section>
 
@@ -100,51 +78,13 @@ function About() {
           </div>
         </section>
 
-        {/* Roadmap */}
-        <section>
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">
-            Development Roadmap
-          </h2>
-          <div className="space-y-4">
-            {roadmap.map((phase) => (
-              <div
-                key={phase.phase}
-                className={`bg-white rounded-lg border p-6 ${
-                  phase.status === 'current'
-                    ? 'border-primary-300 ring-1 ring-primary-100'
-                    : 'border-gray-200'
-                }`}
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <span
-                    className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full ${
-                      phase.status === 'current'
-                        ? 'bg-primary-100 text-primary-800'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {phase.phase}
-                  </span>
-                  <h3 className="font-semibold text-gray-900">{phase.title}</h3>
-                  {phase.status === 'current' && (
-                    <span className="text-xs text-primary-600 font-medium">
-                      In Progress
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-600">{phase.description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* Compliance Standards */}
         <section>
           <h2 className="text-xl font-semibold text-gray-900 mb-6">
             Compliance Standards
           </h2>
           <p className="text-sm text-gray-600 mb-4">
-            WebTPS is developed under a Design History File (DHF) with full
+            ContourLab is developed under a Design History File (DHF) with full
             requirements traceability and compliance with medical device software
             standards. Compliance infrastructure is powered by{' '}
             <a
@@ -175,7 +115,7 @@ function About() {
         {/* Version */}
         <section className="border-t border-gray-200 pt-8">
           <p className="text-sm text-gray-400">
-            WebTPS v{version}
+            ContourLab v{version}
           </p>
         </section>
       </main>

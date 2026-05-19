@@ -19,8 +19,8 @@ Canonical TypeScript domain model. This package is the single source of truth fo
 
 ## Validate After Edit
 ```
-pnpm --filter @webtps/shared-types typecheck
-pnpm --filter @webtps/client typecheck
+pnpm --filter @contourlab/shared-types typecheck
+pnpm --filter @contourlab/client typecheck
 ```
 
 ## Adding New Types

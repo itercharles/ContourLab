@@ -5,7 +5,7 @@ description: 'the workflow in the about box should be updated, the analyze phase
   been removed.
 
 
-  Source issue: https://github.com/itercharles/WebTPS/issues/91'
+  Source issue: https://github.com/itercharles/ContourLab/issues/91'
 justification: the actual workflow has been changed.
 priority: Medium
 requested_by: itercharles
@@ -39,8 +39,8 @@ implementation_notes: "## Overview\nCR-012 updates the about box workflow diagra
   \ 'analyze', desc: 'AI to analyze request and generate plan', trigger: 'approve'\
   \ },`\n4. Leave all other entries and trigger values unchanged. The `open` step's\
   \ `trigger: 'triage'` remains correct — human triage still initiates design.\n5.\
-  \ Run `pnpm --filter @webtps/client typecheck` — expect zero errors.\n6. Run `pnpm\
-  \ --filter @webtps/client test` — existing Toolbar tests must pass.\n7. Open the\
+  \ Run `pnpm --filter @contourlab/client typecheck` — expect zero errors.\n6. Run `pnpm\
+  \ --filter @contourlab/client test` — existing Toolbar tests must pass.\n7. Open the\
   \ app, click About in the toolbar, verify four stages shown: open → design → implement\
   \ → deployed.\n\n## Edge Cases & Constraints\n- The render loop derives step numbers\
   \ from array index (`i + 1`), so the diagram automatically re-numbers 1–4 after\
@@ -52,7 +52,7 @@ implementation_notes: "## Overview\nCR-012 updates the about box workflow diagra
   \ tests other toolbar behavior and should be unaffected.\n\n## Tests\n- **Manual\
   \ confirmation**: Click About in toolbar, verify workflow shows exactly four stages\
   \ (open, design, implement, deployed) with no `analyze` stage present.\n- **Regression**:\
-  \ `pnpm --filter @webtps/client test` — all existing Toolbar tests must continue\
+  \ `pnpm --filter @contourlab/client test` — all existing Toolbar tests must continue\
   \ to pass.\n- No new automated test is warranted: the workflow diagram is purely\
   \ informational UI with no linked SRS requirement."
 affected_items:

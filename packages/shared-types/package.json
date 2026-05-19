@@ -1,5 +1,5 @@
 {
-  "name": "@webtps/shared-types",
+  "name": "@contourlab/shared-types",
   "private": true,
   "version": "0.1.1",
   "type": "module",

@@ -1,4 +1,4 @@
-import type { Patient, Study, Series, Instance } from '@webtps/shared-types';
+import type { Patient, Study, Series, Instance } from '@contourlab/shared-types';
 
 export interface SeriesMetadata {
   patient: Patient;

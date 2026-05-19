@@ -9,10 +9,10 @@ const SERIES_UID = 'crs-3d-series-001';
 async function injectThreeDState(page: Page) {
   await page.goto('/');
   await page.getByText('Load Patient').waitFor();
-  await page.waitForFunction(() => !!(window as Record<string, unknown>)['__webtps_stores']);
+  await page.waitForFunction(() => !!(window as Record<string, unknown>)['__contourlab_stores']);
 
   await page.evaluate(({ seriesUID }) => {
-    const stores = (window as Record<string, unknown>)['__webtps_stores'] as {
+    const stores = (window as Record<string, unknown>)['__contourlab_stores'] as {
       volumeStore: { setState: (state: unknown) => void };
       structureStore: { setState: (state: unknown) => void };
     };

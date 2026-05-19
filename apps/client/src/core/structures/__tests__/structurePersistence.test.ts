@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { StructureSet } from '@webtps/shared-types';
+import type { StructureSet } from '@contourlab/shared-types';
 import {
   exportStructureSets,
   exportStructureSetsForSeries,

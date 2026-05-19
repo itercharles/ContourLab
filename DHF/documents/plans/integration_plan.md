@@ -5,12 +5,12 @@
 
 ## 1. Purpose
 
-This document describes the plan for integrating WebTPS software items and performing
+This document describes the plan for integrating ContourLab software items and performing
 integration testing in accordance with IEC 62304 §5.6.
 
 ## 2. Software Item Decomposition
 
-WebTPS is composed of the following software items:
+ContourLab is composed of the following software items:
 
 | Software Item | Technology | Role |
 |---|---|---|
@@ -23,7 +23,7 @@ WebTPS is composed of the following software items:
 
 Software items are integrated incrementally, bottom-up:
 
-1. **Shared types baseline** — `@webtps/shared-types` is built and typechecked first.
+1. **Shared types baseline** — `@contourlab/shared-types` is built and typechecked first.
    All domain model changes originate here.
 
 2. **API unit integration** — `apps/api` imports shared types and is built and tested
@@ -55,7 +55,7 @@ Integration tests are defined as `SWTEST` items with `linked_requirements` point
 
 ## 5. Interface Definitions
 
-Software item interfaces are defined and enforced by `@webtps/shared-types`:
+Software item interfaces are defined and enforced by `@contourlab/shared-types`:
 
 - **Client ↔ API**: REST over `/api/*` (proxied by Vite in dev, served directly in prod).
   Request/response types defined in `packages/shared-types/src/index.ts`.

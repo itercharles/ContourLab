@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace WebTPS.Api.Services;
+namespace ContourLab.Api.Services;
 
 public sealed class GitHubService
 {
@@ -19,7 +19,7 @@ public sealed class GitHubService
     {
         _httpClientFactory = httpClientFactory;
         _token = configuration["GITHUB_TOKEN"];
-        _repo = configuration["GITHUB_REPO"] ?? "itercharles/WebTPS";
+        _repo = configuration["GITHUB_REPO"] ?? "itercharles/ContourLab";
         var parts = _repo.Split('/', 2, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length != 2)
             throw new InvalidOperationException($"GITHUB_REPO must be in owner/repo format. Received '{_repo}'.");

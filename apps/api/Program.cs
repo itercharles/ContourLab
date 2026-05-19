@@ -9,9 +9,9 @@ builder.Services.AddSingleton<ClientDebugLogBuffer>();
 builder.Services.AddHttpClient("github", c =>
 {
     c.BaseAddress = new Uri("https://api.github.com");
-    c.DefaultRequestHeaders.UserAgent.ParseAdd("webtps-api/1.0");
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("contourlab-api/1.0");
 });
-builder.Services.AddScoped<WebTPS.Api.Services.GitHubService>();
+builder.Services.AddScoped<ContourLab.Api.Services.GitHubService>();
 
 builder.Services.AddCors(options =>
 {

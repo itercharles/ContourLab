@@ -5,7 +5,7 @@ description: 'The contrast between the text an background in the dark mode shoul
   be increased.
 
 
-  Source issue: https://github.com/itercharles/WebTPS/issues/42'
+  Source issue: https://github.com/itercharles/ContourLab/issues/42'
 justification: Low contrast causes difficulties reading text in dark mode.
 priority: Medium
 requested_by: itercharles

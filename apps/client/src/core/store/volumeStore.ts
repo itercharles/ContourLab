@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { Volume, Patient, Study, Series } from '@webtps/shared-types';
+import type { Volume, Patient, Study, Series } from '@contourlab/shared-types';
 
 export interface LoadedSeries {
   seriesUID: string;

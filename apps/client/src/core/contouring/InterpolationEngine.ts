@@ -1,4 +1,4 @@
-import type { ContourSlice } from '@webtps/shared-types';
+import type { ContourSlice } from '@contourlab/shared-types';
 
 const DEFAULT_SAMPLE_COUNT = 64;
 

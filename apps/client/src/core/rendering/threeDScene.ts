@@ -19,7 +19,7 @@ import { logClientDebug } from '../debug/clientDebugLog';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error
 import vtkImageMarchingCubes from '@kitware/vtk.js/Filters/General/ImageMarchingCubes';
-import type { Structure, Volume } from '@webtps/shared-types';
+import type { Structure, Volume } from '@contourlab/shared-types';
 import {
   buildStructureMaskVolume,
   chooseStructureMaskStride,

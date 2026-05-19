@@ -80,7 +80,7 @@ export default function Settings() {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
-              WebTPS
+              ContourLab
             </p>
             <h1 className="mt-1 text-sm font-semibold text-[var(--color-text)]">Settings</h1>
           </div>
@@ -138,7 +138,7 @@ export default function Settings() {
               DICOM Repository
             </h2>
             <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">
-              Configure which DICOMweb repository WebTPS queries, loads from, imports into, and pushes RTSTRUCT objects to.
+              Configure which DICOMweb repository ContourLab queries, loads from, imports into, and pushes RTSTRUCT objects to.
             </p>
           </div>
 
@@ -181,7 +181,7 @@ export default function Settings() {
               Import DICOM Data
             </h2>
             <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">
-              Imports happen in the configured DICOM repository's upload UI. Once you've uploaded files there, return to WebTPS and your worklist refreshes automatically.
+              Imports happen in the configured DICOM repository's upload UI. Once you've uploaded files there, return to ContourLab and your worklist refreshes automatically.
             </p>
           </div>
           <div className="space-y-2 px-3 py-3">
@@ -275,7 +275,7 @@ export default function Settings() {
               About
             </h2>
             <p className="mt-1 text-[12px] text-[var(--color-text-muted)]">
-              WebTPS is a browser-based radiation therapy contour review workspace for repository-backed DICOM workflows.
+              ContourLab is a browser-based radiation therapy contour review workspace for repository-backed DICOM workflows.
             </p>
           </div>
           <div className="grid gap-2 px-3 py-3 md:grid-cols-3">

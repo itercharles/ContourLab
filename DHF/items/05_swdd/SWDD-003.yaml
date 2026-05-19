@@ -5,11 +5,11 @@ content: |-
   Initializes @cornerstonejs/core and @cornerstonejs/dicom-image-loader once.
 
   ViewportManager: Wraps the Cornerstone3D RenderingEngine singleton
-  (ENGINE_ID = "webtps-rendering-engine"). Manages three viewport elements
+  (ENGINE_ID = "contourlab-rendering-engine"). Manages three viewport elements
   (AXIAL, SAGITTAL, CORONAL). Provides enableElement(), setVolume(),
   setWindowLevel(), resize(), and destroy().
 
-  MPRController: Creates tool group "webtps-tool-group" with all three
+  MPRController: Creates tool group "contourlab-tool-group" with all three
   viewport IDs. Registers WindowLevel (left mouse), Zoom (right), Pan (middle),
   StackScroll, and CrosshairsTool.
 

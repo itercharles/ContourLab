@@ -1,4 +1,4 @@
-name: WebTPS CR Lifecycle
+name: ContourLab CR Lifecycle
 
 run-name: >-
   ${{ github.event_name == 'workflow_dispatch'
@@ -39,7 +39,7 @@ jobs:
     if: |
       startsWith(github.event.pull_request.head.ref, 'feat/CR-') ||
       github.event_name == 'workflow_dispatch'
-    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: read
       pull-requests: read
@@ -121,7 +121,7 @@ jobs:
     needs: [detect]
     if: needs.detect.outputs.action == 'cancel'
     name: "Cancel CR (${{ needs.detect.outputs.cr_id }})"
-    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: write
     steps:
@@ -155,7 +155,7 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-design'
     name: "Generate Design (${{ needs.detect.outputs.cr_id }})"
-    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: write
       pull-requests: write
@@ -275,7 +275,7 @@ jobs:
     name: "Revise Design (${{ needs.detect.outputs.cr_id }})"
     # Long-running AI generation should stay off the normal CI runner pool so
     # standard PR validation does not queue behind a design revision.
-    runs-on: ${{ fromJSON(vars.WEBTPS_CODEGEN_RUNS_ON_JSON || '["ubuntu-latest"]') }}
+    runs-on: ${{ fromJSON(vars.CONTOURLAB_CODEGEN_RUNS_ON_JSON || '["ubuntu-latest"]') }}
     permissions:
       contents: write
       pull-requests: write
@@ -342,9 +342,9 @@ jobs:
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'gen-code'
     name: "Generate Code (${{ needs.detect.outputs.cr_id }})"
     # Codegen and the PR CI it waits on cannot share a single-runner pool.
-    # Keep the normal CI pool on webtps-local and route codegen to the
-    # separate webtps-local-codegen pool to avoid deadlock.
-    runs-on: ${{ fromJSON(vars.WEBTPS_CODEGEN_RUNS_ON_JSON || '["ubuntu-latest"]') }}
+    # Keep the normal CI pool on contourlab-local and route codegen to the
+    # separate contourlab-local-codegen pool to avoid deadlock.
+    runs-on: ${{ fromJSON(vars.CONTOURLAB_CODEGEN_RUNS_ON_JSON || '["ubuntu-latest"]') }}
     permissions:
       contents: write
       pull-requests: write
@@ -499,7 +499,7 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'revise-code'
     name: "Revise Code (${{ needs.detect.outputs.cr_id }})"
-    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: write
       pull-requests: write
@@ -565,7 +565,7 @@ jobs:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'code-approved'
     name: "Code Approved — Ready to Merge"
-    runs-on: ${{ vars.WEBTPS_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       pull-requests: write
     steps:

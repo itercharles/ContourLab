@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { Structure, StructureSet, ContourSlice } from '@webtps/shared-types';
+import type { Structure, StructureSet, ContourSlice } from '@contourlab/shared-types';
 
 interface StructureState {
   structureSets: StructureSet[];

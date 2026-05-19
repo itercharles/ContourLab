@@ -143,8 +143,8 @@ User presses Escape
 
 ### Development Tests (CI: `dev-frontend` phase)
 ```bash
-pnpm --filter @webtps/client test      # Unit & component tests
-pnpm --filter @webtps/client typecheck # TypeScript strictness
+pnpm --filter @contourlab/client test      # Unit & component tests
+pnpm --filter @contourlab/client typecheck # TypeScript strictness
 pnpm -r typecheck                      # Workspace-wide typecheck
 ```
 

@@ -5,8 +5,8 @@
 
 ## 1. Introduction
 
-This document defines the development approach for WebTPS — a web-based radiation therapy
-Treatment Planning System. WebTPS is classified as **IEC 62304 Safety Class C** software
+This document defines the development approach for ContourLab — a web-based radiation therapy
+Treatment Planning System. ContourLab is classified as **IEC 62304 Safety Class C** software
 due to its direct role in radiation dose calculation and treatment plan delivery, where a
 software failure could cause serious injury or death.
 
@@ -43,10 +43,10 @@ software failure could cause serious injury or death.
 
 ## 3. Coordination with System Development
 
-WebTPS is a software-only medical device; there is no separate hardware system development
+ContourLab is a software-only medical device; there is no separate hardware system development
 activity. Coordination between software and system-level activities is achieved as follows:
 
-- **System requirements (SYS items)** are defined and baselined in WebTPS-DHF before
+- **System requirements (SYS items)** are defined and baselined in ContourLab-DHF before
   software design begins. Software architecture and detailed design derive from system
   requirements via traceable links.
 - **System integration** is performed by integrating frontend, API, and DICOM repository
@@ -68,14 +68,14 @@ activity. Coordination between software and system-level activities is achieved 
 | Frontend | React 18, TypeScript (strict), Vite, Tailwind CSS, Cornerstone3D |
 | Backend | ASP.NET Core 10 (C#) |
 | DICOM | Orthanc (DICOMweb-compatible repository, Docker) |
-| Shared types | `@webtps/shared-types` TypeScript package |
+| Shared types | `@contourlab/shared-types` TypeScript package |
 | Verification | Vitest (Test-SRS), Playwright (Test-SYS, Test-CRS) |
 | CI/CD | GitHub Actions |
-| DHF tooling | Python CLI (`python -m compliantflow dhf`) in WebTPS-DHF |
+| DHF tooling | Python CLI (`python -m compliantflow dhf`) in ContourLab-DHF |
 
 ## 5. Document Lifecycle
 
-All documents are version-controlled in WebTPS-DHF. Each follows the GitOps document
+All documents are version-controlled in ContourLab-DHF. Each follows the GitOps document
 control procedure: draft on a feature branch → review via GitHub pull request → approval
 by merge to `main` → modification via a new pull request referencing the applicable CR item.
 
@@ -125,7 +125,7 @@ Evidence of defect control: CI pipeline test results stored as GitHub Actions ar
 3. DHF traceability report shows 0 orphans and full coverage for release scope
 4. A Git tag (`vX.Y.Z`) is created on the passing `main` commit
 5. Spec PDFs, test reports, and traceability report are archived as CI artifacts
-6. Release notes are updated in WebTPS-DHF with version, build environment, and known anomalies
+6. Release notes are updated in ContourLab-DHF with version, build environment, and known anomalies
 
 ---
 
@@ -133,7 +133,7 @@ Evidence of defect control: CI pipeline test results stored as GitHub Actions ar
 
 ### 8.1 Architectural Principles
 
-WebTPS should remain a small number of explicit layers:
+ContourLab should remain a small number of explicit layers:
 
 - `apps/client`: clinical web UI and browser-side workflow state
 - `apps/api`: thin HTTP gateway and service integration boundary
@@ -203,9 +203,9 @@ against regression. They are **not** part of the audit record.
 
 | Layer | Scope | Command |
 |---|---|---|
-| Unit / component | Pure logic, isolated UI behavior | `pnpm --filter @webtps/client test` |
+| Unit / component | Pure logic, isolated UI behavior | `pnpm --filter @contourlab/client test` |
 | Workspace typecheck | Type correctness across workspaces | `pnpm -r typecheck` |
-| Lint | Code style and static checks | `pnpm --filter @webtps/client lint` |
+| Lint | Code style and static checks | `pnpm --filter @contourlab/client lint` |
 | Build | Compilation succeeds | `pnpm -r build` |
 | Integration smoke | Full stack health check | `pnpm local:doctor` |
 
@@ -281,7 +281,7 @@ Each verification/validation test execution record must include:
 
 ### 10.6 Adding a New Verification Test
 
-1. Create a `SWTEST-xxx` item in WebTPS-DHF with `linked_requirements`, `test_name`,
+1. Create a `SWTEST-xxx` item in ContourLab-DHF with `linked_requirements`, `test_name`,
    `test_environment`, and `status: draft`
 2. Implement the test with the appropriate `@links:XXX-nnn` annotation
 3. On CI pass, transition `SWTEST-xxx` to `verified`

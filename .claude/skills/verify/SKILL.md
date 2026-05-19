@@ -19,15 +19,15 @@ Before stating any task is done, complete all five steps:
 4. **Confirm** the results actually match your claim
 5. **Only then** state your conclusion, citing the command and its output
 
-## Standard Verification Commands for WebTPS
+## Standard Verification Commands for ContourLab
 
 | Claim | Command |
 |-------|---------|
-| Frontend compiles | `pnpm --filter @webtps/client typecheck` |
-| Frontend tests pass | `pnpm --filter @webtps/client test` |
-| Frontend lint clean | `pnpm --filter @webtps/client lint` |
+| Frontend compiles | `pnpm --filter @contourlab/client typecheck` |
+| Frontend tests pass | `pnpm --filter @contourlab/client test` |
+| Frontend lint clean | `pnpm --filter @contourlab/client lint` |
 | API builds | `dotnet build apps/api/api.csproj --no-restore -v q` |
-| Shared types compile | `pnpm --filter @webtps/shared-types typecheck` |
+| Shared types compile | `pnpm --filter @contourlab/shared-types typecheck` |
 | Full stack healthy | `pnpm local:doctor` |
 | DHF schema valid | `medharness --dhf DHF dhf validate schema` |
 

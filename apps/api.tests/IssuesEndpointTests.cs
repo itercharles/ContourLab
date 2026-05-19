@@ -2,7 +2,7 @@ using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Mvc.Testing;
 
-namespace WebTPS.Api.Tests;
+namespace ContourLab.Api.Tests;
 
 public class IssuesEndpointTests(WebApplicationFactory<Program> factory)
     : IClassFixture<WebApplicationFactory<Program>>

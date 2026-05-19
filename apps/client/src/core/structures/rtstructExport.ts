@@ -1,4 +1,4 @@
-import type { StructureSet } from '@webtps/shared-types';
+import type { StructureSet } from '@contourlab/shared-types';
 import type { LoadedSeries } from '../store/volumeStore';
 import { DicomMetadataStore } from '../dicom/DicomMetadataStore';
 
@@ -143,7 +143,7 @@ export async function exportRtstructObject(
     StudyDescription: loadedSeries.study.studyDescription ?? '',
     SeriesNumber: 500,
     InstanceNumber: 1,
-    Manufacturer: 'WebTPS',
+    Manufacturer: 'ContourLab',
     ReferencedFrameOfReferenceSequence: [
       {
         FrameOfReferenceUID: referencedFrameOfReferenceUID,
@@ -175,7 +175,7 @@ export async function exportRtstructObject(
     MediaStorageSOPInstanceUID: sopInstanceUID,
     TransferSyntaxUID: EXPLICIT_VR_LITTLE_ENDIAN_UID,
     ImplementationClassUID: IMPLEMENTATION_CLASS_UID,
-    ImplementationVersionName: 'WEBTPS_1',
+    ImplementationVersionName: 'CONTOURLAB_1',
   };
 
   const dicomDict = new DicomDict(DicomMetaDictionary.denaturalizeDataset(meta));

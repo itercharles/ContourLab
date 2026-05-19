@@ -1,4 +1,4 @@
-import type { StructureSet } from '@webtps/shared-types';
+import type { StructureSet } from '@contourlab/shared-types';
 
 export type RtssQualityIssueType =
   | 'empty-structure-set'

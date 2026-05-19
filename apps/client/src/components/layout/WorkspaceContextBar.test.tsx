@@ -4,7 +4,7 @@ import WorkspaceContextBar from './WorkspaceContextBar';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useUIStore } from '../../core/store/uiStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
-import type { StructureSet } from '@webtps/shared-types';
+import type { StructureSet } from '@contourlab/shared-types';
 
 function makeLoadedSeries(): LoadedSeries {
   return {

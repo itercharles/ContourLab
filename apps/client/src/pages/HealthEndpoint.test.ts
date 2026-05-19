@@ -12,7 +12,7 @@ describe('system health endpoint', () => {
 
   it('should return JSON with at minimum service name and status indicator @links:SRS-017,SYS-013', () => {
     const minimalHealthResponse = {
-      service: 'webtps-api',
+      service: 'contourlab-api',
       status: 'healthy',
     };
 
@@ -27,7 +27,7 @@ describe('system health endpoint', () => {
         const response = await fetch(`${baseUrl}/api/health`);
         if (!response.ok) return false;
         const body = await response.json();
-        return body.service === 'webtps-api' && body.status === 'healthy';
+        return body.service === 'contourlab-api' && body.status === 'healthy';
       } catch {
         return false;
       }

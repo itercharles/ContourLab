@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { StructureSet } from '@webtps/shared-types';
+import type { StructureSet } from '@contourlab/shared-types';
 import ThreeDViewport from './ThreeDViewport';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';

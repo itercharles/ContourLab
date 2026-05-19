@@ -3,9 +3,9 @@ import {
   importStructureSets,
   type ImportedStructurePayload,
 } from './structurePersistence';
-import type { StructureSet } from '@webtps/shared-types';
+import type { StructureSet } from '@contourlab/shared-types';
 
-const DB_NAME = 'webtps-structure-drafts';
+const DB_NAME = 'contourlab-structure-drafts';
 const DB_VERSION = 1;
 const STORE_NAME = 'drafts';
 

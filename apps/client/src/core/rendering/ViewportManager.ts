@@ -4,7 +4,7 @@ import { WINDOW_LEVEL_PRESETS } from './WindowLevelPresets';
 
 export type OrthographicOrientation = 'AXIAL' | 'SAGITTAL' | 'CORONAL';
 
-const ENGINE_ID = 'webtps-rendering-engine';
+const ENGINE_ID = 'contourlab-rendering-engine';
 
 let renderingEngine: {
   enableElement: (cfg: object) => void;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Volume } from '@webtps/shared-types';
+import type { Volume } from '@contourlab/shared-types';
 import {
   calculateAngleDeg,
   calculateDistanceMm,

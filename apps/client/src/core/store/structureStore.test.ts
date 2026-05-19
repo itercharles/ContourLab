@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useStructureStore } from './structureStore';
-import type { StructureSet } from '@webtps/shared-types';
+import type { StructureSet } from '@contourlab/shared-types';
 
 function makeStructureSet(seriesUID = 'series-1'): StructureSet {
   return {

@@ -12,4 +12,4 @@ runs:
 
     - name: Install Playwright browsers
       shell: bash
-      run: pnpm --filter @webtps/client exec playwright install chromium --with-deps
+      run: pnpm --filter @contourlab/client exec playwright install chromium --with-deps

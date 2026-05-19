@@ -74,9 +74,9 @@ expect(screen.queryByRole('link', { name: /Submit or track an issue/i })).toBeNu
 ### 3. Validate
 
 ```bash
-pnpm --filter @webtps/client test
-pnpm --filter @webtps/client typecheck
-pnpm --filter @webtps/client lint
+pnpm --filter @contourlab/client test
+pnpm --filter @contourlab/client typecheck
+pnpm --filter @contourlab/client lint
 ```
 
 ---
@@ -127,8 +127,8 @@ Recommended action: None
 - [ ] Delete the `{/* CTA */}` block from `Toolbar.tsx` (lines ~464–474)
 - [ ] Remove the stale `getByRole('link', { name: /Submit or track an issue/i })` assertion from `Toolbar.test.tsx`
 - [ ] Optionally add a negative assertion (`queryByRole(...).toBeNull()`) for regression coverage
-- [ ] Run `pnpm --filter @webtps/client test` — all tests pass
-- [ ] Run `pnpm --filter @webtps/client typecheck` and `lint` — clean
+- [ ] Run `pnpm --filter @contourlab/client test` — all tests pass
+- [ ] Run `pnpm --filter @contourlab/client typecheck` and `lint` — clean
 - [ ] Manual: open the About popup and confirm no issue-submission CTA is visible
 
 ---

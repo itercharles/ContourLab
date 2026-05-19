@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# wsl-deploy.sh — deploy the WebTPS stack to the local workstation.
+# wsl-deploy.sh — deploy the ContourLab stack to the local workstation.
 #
 # Owns the steps that the `deploy` job in .github/workflows/ci-pipeline.yml
 # used to inline. Extracted so the same script can be run manually for
 # ad-hoc redeploys without copy-pasting from the workflow.
 #
 # Inputs (env vars):
-#   WEBTPS_ORTHANC_DATA_DIR  Persistent directory for Orthanc's database.
-#                            Default: $HOME/webtps-orthanc-db.
+#   CONTOURLAB_ORTHANC_DATA_DIR  Persistent directory for Orthanc's database.
+#                            Default: $HOME/contourlab-orthanc-db.
 #   SECRETS_FILE             Path to env file persisted between deploys
 #                            (typically holds ISSUES_TOKEN). Default:
-#                            $HOME/.webtps-secrets.env.
+#                            $HOME/.contourlab-secrets.env.
 #   ISSUES_TOKEN             When set, written into SECRETS_FILE so that
 #                            ad-hoc `docker compose` runs pick it up. Not
 #                            required if SECRETS_FILE already exists.
@@ -32,8 +32,8 @@
 
 set -euo pipefail
 
-WEBTPS_ORTHANC_DATA_DIR="${WEBTPS_ORTHANC_DATA_DIR:-$HOME/webtps-orthanc-db}"
-SECRETS_FILE="${SECRETS_FILE:-$HOME/.webtps-secrets.env}"
+CONTOURLAB_ORTHANC_DATA_DIR="${CONTOURLAB_ORTHANC_DATA_DIR:-$HOME/contourlab-orthanc-db}"
+SECRETS_FILE="${SECRETS_FILE:-$HOME/.contourlab-secrets.env}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.deploy.yml}"
 
 if [ ! -f "$COMPOSE_FILE" ]; then
@@ -42,15 +42,15 @@ if [ ! -f "$COMPOSE_FILE" ]; then
 fi
 
 # 1. Persistent DICOM data dir
-mkdir -p "$WEBTPS_ORTHANC_DATA_DIR"
-chmod 777 "$WEBTPS_ORTHANC_DATA_DIR"
-echo "Using WEBTPS_ORTHANC_DATA_DIR=$WEBTPS_ORTHANC_DATA_DIR"
-export WEBTPS_ORTHANC_DATA_DIR
+mkdir -p "$CONTOURLAB_ORTHANC_DATA_DIR"
+chmod 777 "$CONTOURLAB_ORTHANC_DATA_DIR"
+echo "Using CONTOURLAB_ORTHANC_DATA_DIR=$CONTOURLAB_ORTHANC_DATA_DIR"
+export CONTOURLAB_ORTHANC_DATA_DIR
 
 # 2. Ensure persistent DICOM repository
 desired_image="$(docker compose -f "$COMPOSE_FILE" config --images \
   | grep '^orthancteam/orthanc:' | head -n 1 || true)"
-container_name="webtps-orthanc"
+container_name="contourlab-orthanc"
 
 if [ -z "$desired_image" ]; then
   echo "::error::wsl-deploy: could not resolve desired DICOM repository image from $COMPOSE_FILE"

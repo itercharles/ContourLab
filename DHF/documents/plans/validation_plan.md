@@ -5,7 +5,7 @@
 
 ## 1. Objective
 
-Confirm that WebTPS satisfies its defined Customer Requirements (CRS) and Use Cases (UC)
+Confirm that ContourLab satisfies its defined Customer Requirements (CRS) and Use Cases (UC)
 as experienced by clinical users operating the system in its intended environment.
 
 Validation is distinct from verification: verification asks "did we build the software
@@ -13,10 +13,10 @@ correctly?"; validation asks "did we build the correct software for clinical use
 
 ## 2. Scope
 
-All CRS and UC items in WebTPS-DHF are in scope for validation. Validation is performed
+All CRS and UC items in ContourLab-DHF are in scope for validation. Validation is performed
 by driving the browser through complete clinical workflows using Playwright (Test-CRS).
 
-**Intended use:** WebTPS is intended for use by qualified radiation therapy treatment
+**Intended use:** ContourLab is intended for use by qualified radiation therapy treatment
 planners to create, review, and export radiation treatment plans. It is not intended for
 direct patient-facing use.
 
@@ -47,11 +47,11 @@ test('load patient and view CT @links:CRS-003,UC-007', async ({ page }) => {
 
 ## 4. Validation Scenarios
 
-Validation scenarios map to the clinical workflow phases of WebTPS:
+Validation scenarios map to the clinical workflow phases of ContourLab:
 
 | Scenario | CRS/UC items | Workflow |
 |---|---|---|
-| Patient selection and DICOM import | UC-001, CRS-001 | Open patient browser → click Import DICOM (opens Orthanc Explorer in a new tab) → upload files in Orthanc → return to WebTPS → confirm new study appears in the worklist after auto-refresh |
+| Patient selection and DICOM import | UC-001, CRS-001 | Open patient browser → click Import DICOM (opens Orthanc Explorer in a new tab) → upload files in Orthanc → return to ContourLab → confirm new study appears in the worklist after auto-refresh |
 | CT series loading and viewport display | UC-002, CRS-002, CRS-003 | Select study → load CT → confirm all slices render |
 | Structure set creation and editing | UC-003, CRS-005 | Create RTSTRUCT → draw contour → edit contour → confirm persistence |
 | Structure export | UC-004, CRS-006 | Edit structure → export RTSTRUCT → confirm DICOMweb push |
@@ -88,7 +88,7 @@ Validation anomalies are documented as CR items. Each anomaly is assessed for:
 
 ## 8. Adding a New Validation Test
 
-1. Create a `SWTEST-xxx` item in WebTPS-DHF (`status: draft`, `linked_requirements: [CRS-xxx]`)
+1. Create a `SWTEST-xxx` item in ContourLab-DHF (`status: draft`, `linked_requirements: [CRS-xxx]`)
 2. Implement the Playwright test in `apps/client/e2e/crs/` with `@links:CRS-xxx` annotation
 3. On CI pass, transition `SWTEST-xxx` to `verified`
 4. Traceability check will show the CRS/UC requirement as covered

@@ -41,7 +41,7 @@ export default function WorkspaceContextBar() {
   const openPatientSelector = () => {
     setLeftSidebarOpen(true);
     window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('webtps:open-patient-selector'));
+      window.dispatchEvent(new CustomEvent('contourlab:open-patient-selector'));
     }, 0);
   };
   const openWorkspaceSelector = () => {

@@ -1,4 +1,4 @@
-import type { StructureType } from '@webtps/shared-types';
+import type { StructureType } from '@contourlab/shared-types';
 
 /** TG-263 standard structure names (partial list of common structures) */
 export const TG263_NAMES = [

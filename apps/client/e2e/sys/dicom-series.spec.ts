@@ -47,7 +47,7 @@ async function setupDicomMockAndLoad(page: Page) {
   await page.goto('/');
   await page.getByText('Load Patient').waitFor();
   await page.evaluate(() =>
-    window.dispatchEvent(new CustomEvent('webtps:open-patient-selector')),
+    window.dispatchEvent(new CustomEvent('contourlab:open-patient-selector')),
   );
   await page.getByText('Patient browser').waitFor();
 }

@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Structure, StructureSet, StructureType } from '@webtps/shared-types';
+import type { Structure, StructureSet, StructureType } from '@contourlab/shared-types';
 import {
   DEFAULT_COLORS_BY_TYPE,
   getSequentialColor,

@@ -1,4 +1,4 @@
-"""WebTPS-facing adapter boundary for DHF operations.
+"""ContourLab-facing adapter boundary for DHF operations.
 
 Callers in this repository should depend on this module instead of DHF file
 paths or a specific DHF backend implementation.

@@ -75,12 +75,12 @@ export default defineConfig({
       'Cross-Origin-Opener-Policy': 'same-origin',
     },
     proxy: {
-      '/api': `http://localhost:${process.env.WEBTPS_API_PORT ?? 4000}`,
-      '/debug/client-log': `http://localhost:${process.env.WEBTPS_API_PORT ?? 4000}`,
+      '/api': `http://localhost:${process.env.CONTOURLAB_API_PORT ?? 4000}`,
+      '/debug/client-log': `http://localhost:${process.env.CONTOURLAB_API_PORT ?? 4000}`,
       '/dicom-web': 'http://localhost:8042',
       '/orthanc': 'http://localhost:8042',
       '/ws': {
-        target: `ws://localhost:${process.env.WEBTPS_API_PORT ?? 4000}`,
+        target: `ws://localhost:${process.env.CONTOURLAB_API_PORT ?? 4000}`,
         ws: true,
       },
     },

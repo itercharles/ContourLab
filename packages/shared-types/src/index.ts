@@ -1,5 +1,5 @@
-// Core data model types for WebTPS
-// Based on the WebTPS Plan Specification §3.3
+// Core data model types for ContourLab
+// Based on the ContourLab Plan Specification §3.3
 
 // ---------------------------------------------------------------------------
 // Patient and Study

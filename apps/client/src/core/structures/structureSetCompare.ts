@@ -1,4 +1,4 @@
-import type { ContourSlice, StructureSet } from '@webtps/shared-types';
+import type { ContourSlice, StructureSet } from '@contourlab/shared-types';
 import { getReviewSlices } from './contourReview';
 
 export interface StructureComparisonRow {

@@ -18,7 +18,7 @@ description: |-
   DICOM Files** controls with a button that opens the configured Orthanc
   Explorer UI in a new tab. Orthanc's native upload flow handles RTSTRUCT,
   RTPLAN, RTDOSE, drag-drop, batch progress, and per-file failure surfacing.
-  After upload, the user returns to WebTPS and the worklist auto-refreshes.
+  After upload, the user returns to ContourLab and the worklist auto-refreshes.
 
 
   Affects:
