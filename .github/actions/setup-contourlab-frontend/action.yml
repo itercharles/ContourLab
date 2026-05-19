@@ -24,14 +24,16 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: pnpm/action-setup@v6
-      with:
-        version: ${{ inputs.pnpm-version }}
-
     - uses: actions/setup-node@v6
       with:
         node-version: ${{ inputs.node-version }}
         cache: 'pnpm'
+
+    - name: Enable pnpm via Corepack
+      shell: bash
+      run: |
+        corepack enable
+        corepack prepare "pnpm@${{ inputs.pnpm-version }}" --activate
 
     - name: Install workspace dependencies
       if: inputs.install == 'true'
