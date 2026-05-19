@@ -29,11 +29,9 @@ runs:
         node-version: ${{ inputs.node-version }}
         cache: 'pnpm'
 
-    - name: Enable pnpm via Corepack
+    - name: Install pnpm
       shell: bash
-      run: |
-        corepack enable
-        corepack prepare "pnpm@${{ inputs.pnpm-version }}" --activate
+      run: npm install -g "pnpm@${{ inputs.pnpm-version }}"
 
     - name: Install workspace dependencies
       if: inputs.install == 'true'
