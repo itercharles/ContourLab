@@ -31,7 +31,9 @@ runs:
 
     - name: Install pnpm
       shell: bash
-      run: npm install -g "pnpm@${{ inputs.pnpm-version }}"
+      run: |
+        npm install -g "pnpm@${{ inputs.pnpm-version }}"
+        echo "$(npm prefix -g)/bin" >> "$GITHUB_PATH"
 
     - name: Install workspace dependencies
       if: inputs.install == 'true'
