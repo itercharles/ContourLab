@@ -9,7 +9,7 @@ description: 'remove the "submit or create an issue" in the about page as there 
 justification: remove the "submit or create an issue" in the about page as there is
   already an entrance in the main page.
 priority: Medium
-requested_by: CharlesChenElekta
+requested_by: ProjectMaintainer
 target_version: 2026-W20
 category: Bug
 content: _No response_

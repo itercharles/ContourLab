@@ -10,6 +10,9 @@ concurrency:
   group: issue-to-cr-${{ github.event.issue.number }}
   cancel-in-progress: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 permissions:
   contents: write
   issues: write

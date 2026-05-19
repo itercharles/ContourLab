@@ -250,7 +250,7 @@ No new DHF items are created by this CR, so no schema validation beyond the CR-0
 **Pre-merge check:**
 ```bash
 
-python -m compliantflow --dhf DHF dhf validate schema
+medharness --dhf DHF dhf validate schema
 ```
 
 ### Compliance Notes
@@ -343,11 +343,11 @@ Evidence that CR-034 succeeded is recorded in:
 
 After the implementation PR is merged to main in ContourLab:
 
-1. Return to ContourLab-DHF repository
+1. Return to the ContourLab repository
 2. Transition CR-034 to `completed`:
    ```bash
    
-   python -m compliantflow --dhf DHF dhf item transition CR-034 completed --by "ImplementationAgent"
+   medharness --dhf DHF dhf item transition CR-034 completed --by "ImplementationAgent"
    git add DHF/items/09_cr/CR-034.yaml
    git commit -m "chore: mark CR-034 completed
 
@@ -358,7 +358,7 @@ After the implementation PR is merged to main in ContourLab:
 
 3. Verify CR-034 is in `completed` state:
    ```bash
-   python -m compliantflow --dhf DHF dhf item get CR-034 | grep status
+   medharness --dhf DHF dhf item get CR-034 | grep status
    ```
 
 ---
@@ -376,7 +376,7 @@ CR-034 is successful when:
 | No console errors or warnings | ✓ Check browser console |
 | Build completes successfully | ✓ Run `npm run build` |
 | Implementation PR merged to main | ✓ Verify in ContourLab main branch |
-| CR-034 state is `completed` | ✓ Verify with `python -m compliantflow --dhf DHF dhf item get CR-034` |
+| CR-034 state is `completed` | ✓ Verify with `medharness --dhf DHF dhf item get CR-034` |
 | Issue #7 is resolved | ✓ Confirm via GitHub issue closure |
 
 ---
@@ -395,7 +395,7 @@ CR-034 is successful when:
 - **Acceptance criteria:** The threshold button is not displayed on the UI.
 
 **Related Repositories:**
-- **DHF repo:** itercharles/ContourLab-DHF
+- **Repository:** itercharles/ContourLab
 - **Product repo:** itercharles/ContourLab
 - **Issue tracker:** GitHub issue #7 in ContourLab repository
 

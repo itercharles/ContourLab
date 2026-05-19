@@ -202,7 +202,7 @@ No DHF items are created by this CR, so no schema validation is required beyond 
 **Pre-merge check:**
 ```bash
 
-python -m compliantflow --dhf DHF dhf validate schema
+medharness --dhf DHF dhf validate schema
 ```
 
 ### Compliance Notes
@@ -297,11 +297,11 @@ Evidence that CR-031 succeeded is recorded in:
 
 After the implementation PR is merged to main in ContourLab:
 
-1. Return to ContourLab-DHF repository
+1. Return to the ContourLab repository
 2. Transition CR-031 to `completed`:
    ```bash
    
-   python -m compliantflow --dhf DHF dhf item transition CR-031 completed --by "ImplementationAgent"
+   medharness --dhf DHF dhf item transition CR-031 completed --by "ImplementationAgent"
    git add DHF/items/09_cr/CR-031.yaml
    git commit -m "chore: mark CR-031 completed
 
@@ -325,7 +325,7 @@ CR-031 is successful when:
 | No console errors or warnings | ✓ Check browser dev tools |
 | Build completes successfully | ✓ Run `npm run build` |
 | Implementation PR merged to main | ✓ Verify in ContourLab |
-| CR-031 state is `completed` | ✓ Verify with `python -m compliantflow --dhf DHF dhf item get CR-031` |
+| CR-031 state is `completed` | ✓ Verify with `medharness --dhf DHF dhf item get CR-031` |
 
 ---
 
@@ -342,7 +342,7 @@ CR-031 is successful when:
 - **Justification:** Version visibility helps users report issues and support staff diagnose problems.
 
 **Related Repositories:**
-- **DHF repo:** itercharics/ContourLab-DHF
+- **Repository:** itercharles/ContourLab
 - **Product repo:** itercharles/ContourLab
 
 **Version requirement:**

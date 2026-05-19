@@ -19,7 +19,7 @@ Verification is performed at three levels corresponding to the DHF item hierarch
 
 ## 2. Scope
 
-All SRS and SYS items in ContourLab-DHF are in scope for verification. Items with
+All SRS and SYS items in ContourLab DHF are in scope for verification. Items with
 `category: Maintainability` or `category: Change Control` are exempt from the
 functional traceability requirement but must still be reviewed.
 
@@ -47,7 +47,7 @@ describe('dose normalization @links:SRS-012', () => {
 
 **Artifact:** `verify-srs-junit` (JUnit XML, uploaded on every CI run)
 
-**DHF item:** Each test suite maps to one or more `SWTEST` items in ContourLab-DHF with
+**DHF item:** Each test suite maps to one or more `SWTEST` items in ContourLab DHF with
 `linked_requirements` pointing to `SRS-xxx` items.
 
 **Acceptance:** All annotated tests PASS; no SRS functional item is uncovered in the
@@ -75,14 +75,14 @@ test('DICOM series loads within 5 seconds @links:SYS-004', async ({ page }) => {
 SYSARCH items are verified by:
 
 1. Traceability check: every SYS item must be linked to at least one SYSARCH item
-   (`python -m compliantflow --dhf DHF dhf validate traceability` in CI Phase 2)
+   (`medharness --dhf DHF dhf validate traceability` in CI Phase 2)
 2. Architecture review: SYSARCH items reviewed at each significant architecture change
-   via PR review in ContourLab-DHF
+   via PR review in ContourLab DHF
 
 ## 7. Anomaly Management
 
 Verification anomalies (test failures, traceability gaps) are documented as CR items
-in ContourLab-DHF and resolved before release. The traceability report (`dhf-traceability-report`
+in ContourLab DHF and resolved before release. The traceability report (`dhf-traceability-report`
 artifact) records the state of all coverage at each main-branch build.
 
 ## 8. Verification Environment
@@ -98,7 +98,7 @@ artifact) records the state of all coverage at each main-branch build.
 
 ## 9. Adding a New Verification Test
 
-1. Create a `SWTEST-xxx` item in ContourLab-DHF (`status: draft`, `linked_requirements: [SRS-xxx]`)
+1. Create a `SWTEST-xxx` item in ContourLab DHF (`status: draft`, `linked_requirements: [SRS-xxx]`)
 2. Implement the test with `@links:SRS-xxx` annotation
 3. On CI pass, transition `SWTEST-xxx` to `verified`
 4. Traceability check will show the requirement as covered

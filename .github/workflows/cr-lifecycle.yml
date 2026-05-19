@@ -34,6 +34,9 @@ concurrency:
 #                revise-design | revise-code |
 #                cancel | noop
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   detect:
     if: |

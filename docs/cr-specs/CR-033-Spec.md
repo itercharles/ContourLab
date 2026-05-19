@@ -2,7 +2,7 @@
 
 ## Problem Summary
 
-The CR-driven automation workflow in ContourLab-DHF (CR analysis → spec generation → implementation automation → CR completion sync) was recently enhanced but requires an end-to-end validation. This CR serves as a workflow smoke test: a deliberately minimal, low-risk product change that exercises the entire CR automation pipeline from PR through spec review, implementation, and CR state synchronization.
+The CR-driven automation workflow in ContourLab DHF (CR analysis → spec generation → implementation automation → CR completion sync) was recently enhanced but requires an end-to-end validation. This CR serves as a workflow smoke test: a deliberately minimal, low-risk product change that exercises the entire CR automation pipeline from PR through spec review, implementation, and CR state synchronization.
 
 To validate the workflow, we need a simple, observable change: adding a user-visible workflow test marker to the ContourLab About page. This marker will be a single short line displayed near the existing version information, making it easy to verify that the full CR automation cycle succeeded.
 
@@ -228,7 +228,7 @@ No new DHF items are created by this CR, so no schema validation beyond the CR-0
 **Pre-merge check:**
 ```bash
 
-python -m compliantflow --dhf DHF dhf validate schema
+medharness --dhf DHF dhf validate schema
 ```
 
 ### Compliance Notes
@@ -321,11 +321,11 @@ Evidence that CR-033 succeeded is recorded in:
 
 After the implementation PR is merged to main in ContourLab:
 
-1. Return to ContourLab-DHF repository
+1. Return to the ContourLab repository
 2. Transition CR-033 to `completed`:
    ```bash
    
-   python -m compliantflow --dhf DHF dhf item transition CR-033 completed --by "ImplementationAgent"
+   medharness --dhf DHF dhf item transition CR-033 completed --by "ImplementationAgent"
    git add DHF/items/09_cr/CR-033.yaml
    git commit -m "chore: mark CR-033 completed
 
@@ -337,7 +337,7 @@ After the implementation PR is merged to main in ContourLab:
 
 3. Verify CR-033 is in `completed` state:
    ```bash
-   python -m compliantflow --dhf DHF dhf item get CR-033 | grep status
+   medharness --dhf DHF dhf item get CR-033 | grep status
    ```
 
 ---
@@ -355,7 +355,7 @@ CR-033 is successful when:
 | No console errors or warnings | ✓ Check browser console |
 | Build completes successfully | ✓ Run `npm run build` |
 | Implementation PR merged to main | ✓ Verify in ContourLab main branch |
-| CR-033 state is `completed` | ✓ Verify with `python -m compliantflow --dhf DHF dhf item get CR-033` |
+| CR-033 state is `completed` | ✓ Verify with `medharness --dhf DHF dhf item get CR-033` |
 | Entire CR workflow validated | ✓ Confirm analyze → design → implement → complete transitions |
 
 ---
@@ -373,7 +373,7 @@ CR-033 is successful when:
 - **Justification:** This intentionally small product change provides a low-risk end-to-end test case for the CR-driven automation workflow from CR PR through spec, design, implementation PR, and CR completion sync.
 
 **Related Repositories:**
-- **DHF repo:** itercharles/ContourLab-DHF
+- **Repository:** itercharles/ContourLab
 - **Product repo:** itercharles/ContourLab
 
 **Version requirement:**

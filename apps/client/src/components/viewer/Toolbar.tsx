@@ -378,7 +378,7 @@ export default function Toolbar() {
               <div className="overflow-y-auto px-4 py-4 text-[13px] leading-relaxed text-[var(--color-text-sec)]">
                 <p className="font-semibold text-[var(--color-text)]">
                   This prototype demonstrates issue-driven AI software development.
-                  It does not contain any Elekta product code.
+                  It is an independent prototype and is not a treatment planning system.
                 </p>
                 <p className="mt-2">
                   All application code, CI/CD workflows, and compliance documentation were written by AI (Claude + Codex).

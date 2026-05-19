@@ -307,7 +307,7 @@ describe('Toolbar contour operations', () => {
     fireEvent.click(screen.getByRole('button', { name: /about/i }));
 
     expect(screen.getByRole('dialog', { name: 'Issue-driven AI coding prototype' })).toBeTruthy();
-    expect(screen.getByText(/does not contain any Elekta product code/i)).toBeTruthy();
+    expect(screen.getByText(/independent prototype and is not a treatment planning system/i)).toBeTruthy();
     expect(screen.getByText(/CI\/CD workflows, and compliance documentation were written by AI/i)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'github.com/itercharles/ContourLab' }).getAttribute('href')).toBe(
       'https://github.com/itercharles/ContourLab'

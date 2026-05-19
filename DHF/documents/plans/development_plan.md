@@ -46,7 +46,7 @@ software failure could cause serious injury or death.
 ContourLab is a software-only medical device; there is no separate hardware system development
 activity. Coordination between software and system-level activities is achieved as follows:
 
-- **System requirements (SYS items)** are defined and baselined in ContourLab-DHF before
+- **System requirements (SYS items)** are defined and baselined in ContourLab DHF before
   software design begins. Software architecture and detailed design derive from system
   requirements via traceable links.
 - **System integration** is performed by integrating frontend, API, and DICOM repository
@@ -71,11 +71,11 @@ activity. Coordination between software and system-level activities is achieved 
 | Shared types | `@contourlab/shared-types` TypeScript package |
 | Verification | Vitest (Test-SRS), Playwright (Test-SYS, Test-CRS) |
 | CI/CD | GitHub Actions |
-| DHF tooling | Python CLI (`python -m compliantflow dhf`) in ContourLab-DHF |
+| DHF tooling | Python CLI (`medharness --dhf DHF dhf`) in ContourLab DHF |
 
 ## 5. Document Lifecycle
 
-All documents are version-controlled in ContourLab-DHF. Each follows the GitOps document
+All documents are version-controlled in ContourLab DHF. Each follows the GitOps document
 control procedure: draft on a feature branch → review via GitHub pull request → approval
 by merge to `main` → modification via a new pull request referencing the applicable CR item.
 
@@ -100,7 +100,7 @@ by merge to `main` → modification via a new pull request referencing the appli
 | DICOM handling defects | DICOMweb protocol edge cases | Integration smoke tests; Playwright SYS tests |
 | Dose computation defects | Numerical precision, algorithm errors | Dedicated SRS items; Test-SRS verification tests |
 | Regression defects | Unintended side-effects of changes | Full CI pipeline on every PR |
-| Traceability defects | Missing DHF links | `python -m compliantflow --dhf DHF dhf validate traceability` in CI Phase 2 |
+| Traceability defects | Missing DHF links | `medharness --dhf DHF dhf validate traceability` in CI Phase 2 |
 
 Evidence of defect control: CI pipeline test results stored as GitHub Actions artifacts
 (`verify-srs-junit`, `verify-sys-junit`, `validate-crs-junit`) on every build.
@@ -125,7 +125,7 @@ Evidence of defect control: CI pipeline test results stored as GitHub Actions ar
 3. DHF traceability report shows 0 orphans and full coverage for release scope
 4. A Git tag (`vX.Y.Z`) is created on the passing `main` commit
 5. Spec PDFs, test reports, and traceability report are archived as CI artifacts
-6. Release notes are updated in ContourLab-DHF with version, build environment, and known anomalies
+6. Release notes are updated in ContourLab DHF with version, build environment, and known anomalies
 
 ---
 
@@ -281,7 +281,7 @@ Each verification/validation test execution record must include:
 
 ### 10.6 Adding a New Verification Test
 
-1. Create a `SWTEST-xxx` item in ContourLab-DHF with `linked_requirements`, `test_name`,
+1. Create a `SWTEST-xxx` item in ContourLab DHF with `linked_requirements`, `test_name`,
    `test_environment`, and `status: draft`
 2. Implement the test with the appropriate `@links:XXX-nnn` annotation
 3. On CI pass, transition `SWTEST-xxx` to `verified`

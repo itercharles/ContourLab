@@ -1,111 +1,71 @@
 # Local Development
 
-ContourLab provides a small set of local environment commands for a complete
-frontend, API, and DICOM repository setup.
+ContourLab ships with a small set of local commands for frontend, API, and
+Orthanc-backed DICOM repository development.
 
 ## Prerequisites
 
 | Tool | Minimum version | Check |
-|------|----------------|-------|
+| --- | --- | --- |
 | Node.js | 20 | `node --version` |
 | pnpm | 9 | `pnpm --version` |
 | .NET SDK | 10 | `dotnet --version` |
-| Docker + Compose | any current | `docker compose version` |
+| Docker + Compose | current | `docker compose version` |
 
-**Node version managers:** If you use `nvm`, `fnm`, or `volta`, switch to Node
-20 before running any commands:
+Required local ports: `3000` (frontend), `4000` (API), `8042` (Orthanc).
 
-```bash
-nvm install 20 && nvm use 20   # nvm
-fnm use 20                     # fnm
-```
-
-**pnpm missing:** Enable via Corepack (bundled with Node.js 16.9+):
-
-```bash
-corepack enable
-corepack prepare pnpm@latest --activate
-```
-
-**Platform notes:**
-- macOS and Linux work as-is.
-- Windows 10/11: install Docker Desktop with the **WSL2 backend** enabled.
-  Ensure Docker Desktop is running before executing setup or start commands.
-  Run commands from PowerShell, Windows Terminal, or a WSL shell — all three
-  work.
-
-**Required local ports:** `3000` (frontend), `4000` (API), `8042` (Orthanc).
-
-**No `.env` file needed.** The Vite dev server proxies `/dicom-web` to
-`http://localhost:8042` and `/api` to `http://localhost:4000` automatically.
-All defaults work out of the box.
+No `.env` file is required for the default developer setup.
 
 ## Frontend-Only Mode
 
-If you only need the React client and do not have Docker or the .NET SDK
-installed, you can run the frontend standalone:
+If you only need the React client:
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Open `http://localhost:3000/workspace`. In this mode the Repository panel shows
-an empty worklist (no Orthanc backend), but you can still load DICOM files
-directly by dragging a folder onto the file drop zone in the Navigator panel.
+Open `http://localhost:3000/workspace`. In this mode the Repository panel is
+empty because no backend is running, but you can still drag local DICOM studies
+onto the Navigator drop zone.
 
-## One-Time Setup
+## Full Stack Setup
+
+One-time bootstrap:
 
 ```bash
 pnpm local:setup
 ```
 
-Checks required tooling, installs JavaScript dependencies, restores the ASP.NET
-API project, and starts the local Orthanc DICOM repository.
-
-## Start ContourLab
+Start the full stack:
 
 ```bash
 pnpm local:up
 ```
 
-Starts the complete development stack:
+Default local endpoints:
 
 | Service | URL |
-|---------|-----|
+| --- | --- |
 | Frontend | `http://127.0.0.1:3000/workspace` |
 | API | `http://127.0.0.1:4000/api/health` |
 | Orthanc DICOM repo | `http://127.0.0.1:8042` |
-| DICOMweb (via proxy) | `http://127.0.0.1:3000/dicom-web` |
+| DICOMweb proxy | `http://127.0.0.1:3000/dicom-web` |
 
-Press `Ctrl+C` to stop API/frontend processes. Orthanc continues running so
-DICOM data remains available across restarts.
+If the frontend or API is already running, `pnpm local:up` reuses the active
+process instead of starting a duplicate.
 
-If the API or frontend are already running, `local:up` detects the occupied
-ports and prints the active URLs instead of starting duplicate processes.
-
-## Check The Environment
+## Common Commands
 
 ```bash
-pnpm local:doctor
+pnpm local:doctor   # verify tools, ports, and health endpoints
+pnpm local:down     # stop Docker-backed services
+pnpm api            # API only
+pnpm repo:up        # Orthanc only
+pnpm repo:logs      # Orthanc logs
 ```
 
-Checks required tooling, ports, and local HTTP health endpoints.
-
-On Windows, run from the same shell family you use for development. If Docker
-checks fail, verify that Docker Desktop is running and that your user account has
-access to the Docker socket.
-
-## Stop The Local Repository
-
-```bash
-pnpm local:down
-```
-
-Stops the Docker Compose services. Orthanc data remains in the Docker volume
-(`contourlab_orthanc-db`) unless explicitly deleted.
-
-To wipe all stored DICOM data and start fresh:
+To wipe the local Orthanc data volume:
 
 ```bash
 pnpm local:down
@@ -114,252 +74,56 @@ docker volume rm contourlab_orthanc-db
 
 ## Importing DICOM Data
 
-The local Orthanc repository has **no authentication** — its web UI at
-`http://127.0.0.1:8042` requires no login and is open by design for local
-development.
-
-### Import through the ContourLab UI
-
-ContourLab does not handle DICOM file upload itself. Both **Patient browser →
-Import DICOM** and **Settings → Import DICOM Files** open the Orthanc Explorer
-upload UI in a new tab. After uploading there, return to ContourLab — the worklist
-auto-refreshes when the tab regains focus.
+ContourLab opens Orthanc Explorer 2 for repository uploads.
 
 1. Open `http://127.0.0.1:3000/workspace`.
-2. Click the **Navigator** button in the left toolbar (folder icon) to open the
-   left sidebar.
-3. In the Repository panel, click **"Open patient browser"**.
-4. In the patient browser modal, click **"+ Import DICOM"** in the top-right of
-   the header bar. A new tab opens at Orthanc Explorer 2
-   (`http://<host>:8042/ui/app/index.html`). The host comes from the configured
-   DICOMweb endpoint, so it works the same in local and LAN setups without code
-   changes.
-5. In the Orthanc tab, drag the study folder onto the upload area. Orthanc
-   handles RTSTRUCT, RTPLAN, and RTDOSE alongside CT/MR slices.
-6. Return to the ContourLab tab. The patient list auto-refreshes — click a patient
-   row to open their workspace and load the image set.
+2. Open the Repository panel from the left toolbar.
+3. Click **Open patient browser**.
+4. Click **+ Import DICOM** to open Orthanc Explorer in a new tab.
+5. Drag a study folder or ZIP archive onto the upload area.
+6. Return to ContourLab. The worklist refreshes when the tab regains focus.
 
-The redirect button is also available from **Settings → Import DICOM Data**.
+You can also open Orthanc directly at
+`http://127.0.0.1:8042/ui/app/index.html`.
 
-### Import via Orthanc web UI directly
+Public sample datasets suitable for development testing:
 
-You can also navigate to Orthanc Explorer directly without going through
-ContourLab:
+- [TCIA](https://www.cancerimagingarchive.net/)
+- [OsiriX DICOM sample library](https://www.osirix-viewer.com/resources/dicom-image-library/)
 
-1. Open `http://127.0.0.1:8042/ui/app/index.html` (or the same URL on your
-   LAN IP from another device).
-2. Click **Upload** and drag DICOM files or a ZIP archive onto the upload area.
+## Maintainer Deployment Notes
 
-### Sample DICOM datasets
+The repository includes a self-hosted deployment path for teams that want a
+shared demo or review environment. The default deploy stack publishes the app on
+ports `3001` (frontend), `4001` (API), and `8042` (Orthanc) on the target host.
 
-Public CT datasets suitable for development testing:
+Example external endpoints:
 
-- [TCIA (The Cancer Imaging Archive)](https://www.cancerimagingarchive.net/) —
-  free public datasets including head/neck, thorax, and pelvis CT series.
-- [OsiriX DICOM sample library](https://www.osirix-viewer.com/resources/dicom-image-library/) —
-  small pre-packaged studies in ZIP format, quick to download.
+| Service | Example URL |
+| --- | --- |
+| Frontend | `http://<host>:3001` |
+| API | `http://<host>:4001` |
+| Orthanc | `http://<host>:8042` |
 
-Download and extract a study, then import the folder through the UI steps above.
+The deploy stack is defined in
+[`../docker-compose.deploy.yml`](../docker-compose.deploy.yml). DICOM data is
+persisted under `${CONTOURLAB_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}`.
 
-## Deployed Build (self-hosted CI/CD)
+### Runner Routing
 
-The `CI Pipeline` deploy job runs on a Linux self-hosted runner and deploys the
-app as a Docker Compose stack. The deployed build uses **different host ports**
-to avoid conflicting with the local dev server:
+Workflow runner selection is controlled through repository variables so the repo
+can move between hosted and self-hosted capacity without code changes:
 
-| | Dev server | Deployed build |
-|--|------------|----------------|
-| Frontend | `http://127.0.0.1:3000` | `http://AP-vS9RB5xoet8i.int.elekta.com:3001` |
-| API | `http://127.0.0.1:4000` | `http://AP-vS9RB5xoet8i.int.elekta.com:4001` |
-| Orthanc | `http://127.0.0.1:8042` | `http://AP-vS9RB5xoet8i.int.elekta.com:8042` |
+- `CONTOURLAB_DEFAULT_RUNS_ON_JSON`
+- `CONTOURLAB_CODEGEN_RUNS_ON_JSON`
+- `CONTOURLAB_DEPLOY_RUNS_ON_JSON`
 
-Both can run at the same time with no conflicts. The deployed build binds on
-`0.0.0.0` — anyone on the Elekta network can reach it at
-`AP-vS9RB5xoet8i.int.elekta.com`.
+Populate each variable with a JSON array of runner labels that exist in your own
+runner fleet, for example:
 
-The deployed stack is defined in [`../docker-compose.deploy.yml`](../docker-compose.deploy.yml):
-
-- `contourlab-client` serves the Vite production build through nginx on host port `3001`.
-- `contourlab-api` serves ASP.NET Core on host port `4001`.
-- `contourlab-orthanc` serves Orthanc on host ports `8042` and `4242`.
-- DICOM data is bind-mounted from the host. By default it lives under
-  `./deploy-data/orthanc-db`; set `CONTOURLAB_ORTHANC_DATA_DIR` on the runner to use
-  a fixed data disk path such as `/srv/contourlab/orthanc-db`.
-
-### First-time runner setup
-
-ContourLab now expects multiple Linux self-hosted runner VMs under
-[Lima](https://lima-vm.io/) so workflow behavior stays close to
-`ubuntu-latest`, but runner selection remains switchable from GitHub repo
-variables.
-
-The main CI VM and deploy runner can keep their existing shape. For the second
-codegen VM, use Ubuntu 24.04 with this minimum footprint:
-
-- 4 vCPU
-- 8 GiB RAM
-- 50-60 GiB disk
-
-Create that second VM once with:
-
-```bash
-limactl create --name=contourlab-ci-codegen --vm-type=vz --cpus=4 --memory=8 --disk=60 template://ubuntu-24.04
+```text
+["self-hosted","linux","contourlab-ci"]
 ```
 
-Install these packages in each CI/codegen VM:
-
-- Git
-- Docker Engine
-- Docker Compose plugin
-- curl
-- jq
-- gh (GitHub CLI)
-- Python 3
-- GitHub Actions runner service
-
-Run three isolated pools backed by separate runner registrations:
-
-- `contourlab-ci`: one runner with labels `self-hosted`, `linux`, `contourlab-local`
-- `contourlab-ci-codegen`: one runner with labels `self-hosted`, `linux`,
-  `contourlab-local-codegen`
-- deploy runner: one runner with labels `self-hosted`, `linux`,
-  `contourlab-deploy`
-
-Every VM runs exactly one runner process. Do not add a second runner to an
-existing VM. If more capacity is needed later, add another VM and another label
-pool instead of multi-registering on the same host.
-
-The workflows consume three repository variables as the runner control plane:
-
-- `CONTOURLAB_DEFAULT_RUNS_ON_JSON=["self-hosted","linux","contourlab-local"]`
-- `CONTOURLAB_CODEGEN_RUNS_ON_JSON=["self-hosted","linux","contourlab-local-codegen"]`
-- `CONTOURLAB_DEPLOY_RUNS_ON_JSON=["self-hosted","linux","contourlab-deploy"]`
-
-The workflow files also carry in-repo fallbacks so scheduling still works
-before those variables are created:
-
-- non-deploy jobs fall back to `["ubuntu-latest"]`
-- codegen jobs fall back to `["ubuntu-latest"]`
-- deploy falls back to `["self-hosted","linux","contourlab-deploy"]`
-
-The CR lifecycle code generation jobs now use the dedicated codegen pool.
-`gen-code` and `revise-design` both push PR updates and then wait on follow-up
-CI. If codegen and the resulting PR CI shared a single-runner pool, the waiting
-job would occupy the only runner and the watched CI run would never start. That
-is why `contourlab-local` and `contourlab-local-codegen` must remain separate pools.
-
-The normal CI pool still executes sequentially in practice because several jobs
-bind fixed ports such as `3000`, `4000`, and `8042`. Keep that isolation model
-intact when expanding capacity.
-
-Normal CI can still be rolled back to GitHub-hosted by changing only the repo
-variable:
-
-- `CONTOURLAB_DEFAULT_RUNS_ON_JSON=["ubuntu-latest"]`
-
-Print the current expected labels and variable values with:
-
-```bash
-bash scripts/ci/print_runner_contract.sh
-```
-
-### Start and stop the runner VMs
-
-After a full Mac restart, the GitHub Actions runner service inside the VM
-should start automatically, but the Lima VMs themselves may still need to be
-started manually:
-
-```bash
-limactl start contourlab-ci
-limactl start contourlab-ci-codegen
-```
-
-Confirm the VMs, runner services, and GitHub-side runner state:
-
-```bash
-limactl list
-limactl shell contourlab-ci -- sudo ./actions-runner/svc.sh status
-limactl shell contourlab-ci-codegen -- sudo ./actions-runner/svc.sh status
-gh api repos/itercharles/ContourLab/actions/runners \
-  --jq '.runners[] | select(.name=="contourlab-ci" or .name=="contourlab-ci-codegen") | {name: .name, status: .status, busy: .busy, labels: [.labels[].name]}'
-```
-
-Build the dedicated codegen VM from the same Ubuntu 24.04 base as the existing
-CI runner, but keep it isolated:
-
-```bash
-limactl start contourlab-ci-codegen
-limactl shell contourlab-ci-codegen
-```
-
-Inside `contourlab-ci-codegen`, install the same minimum runner dependencies as the
-main CI VM:
-
-- Docker Engine
-- Docker Compose plugin
-- Git
-- curl
-- jq
-- gh (GitHub CLI)
-- Python 3
-- GitHub Actions runner service
-
-Register exactly one runner in that VM with labels:
-
-- `self-hosted`
-- `linux`
-- `contourlab-local-codegen`
-
-Do not attach `contourlab-local` or `contourlab-deploy` to that runner.
-
-To stop the local CI runners cleanly:
-
-```bash
-limactl stop contourlab-ci
-limactl stop contourlab-ci-codegen
-```
-
-That stops each VM and therefore its runner. GitHub should then show
-`contourlab-ci` and `contourlab-ci-codegen` as offline.
-The deploy workflow still relies on Docker access from the runner user. Before
-the automated workflow runs, confirm that inside the VM:
-
-```bash
-docker version
-docker compose version
-```
-
-The CD workflow creates the data directory automatically. It only starts or
-updates the persistent DICOM repository when the `contourlab-orthanc` container is
-missing, stopped, or running a different image ID; if the container is already
-running with the expected image, CD leaves it unchanged. To do the same check
-manually:
-
-```bash
-mkdir -p "${CONTOURLAB_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}"
-docker compose -f docker-compose.deploy.yml up -d --no-recreate dicom-repo
-docker compose -f docker-compose.deploy.yml ps
-curl -sf http://127.0.0.1:8042/system
-```
-
-### Manual deploy and management
-
-Deploying the application updates only the API and frontend containers. It does
-not recreate Orthanc or remount DICOM data:
-
-```bash
-docker compose -f docker-compose.deploy.yml up -d --build --no-deps api client
-docker compose -f docker-compose.deploy.yml ps
-docker compose -f docker-compose.deploy.yml logs -f
-docker compose -f docker-compose.deploy.yml restart api client
-```
-
-To stop the app without touching the repository:
-
-```bash
-docker compose -f docker-compose.deploy.yml stop api client
-```
-
-Avoid `docker compose down` for routine app releases because it stops the DICOM
-repository as well. To wipe deployed DICOM data intentionally, stop Orthanc and
-delete the host directory configured by `CONTOURLAB_ORTHANC_DATA_DIR`.
+The CR lifecycle code-generation jobs should stay on a separate runner pool from
+normal CI if they both push commits and then wait on follow-up CI runs.

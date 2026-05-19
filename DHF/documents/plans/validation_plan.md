@@ -13,7 +13,7 @@ correctly?"; validation asks "did we build the correct software for clinical use
 
 ## 2. Scope
 
-All CRS and UC items in ContourLab-DHF are in scope for validation. Validation is performed
+All CRS and UC items in ContourLab DHF are in scope for validation. Validation is performed
 by driving the browser through complete clinical workflows using Playwright (Test-CRS).
 
 **Intended use:** ContourLab is intended for use by qualified radiation therapy treatment
@@ -88,7 +88,7 @@ Validation anomalies are documented as CR items. Each anomaly is assessed for:
 
 ## 8. Adding a New Validation Test
 
-1. Create a `SWTEST-xxx` item in ContourLab-DHF (`status: draft`, `linked_requirements: [CRS-xxx]`)
+1. Create a `SWTEST-xxx` item in ContourLab DHF (`status: draft`, `linked_requirements: [CRS-xxx]`)
 2. Implement the Playwright test in `apps/client/e2e/crs/` with `@links:CRS-xxx` annotation
 3. On CI pass, transition `SWTEST-xxx` to `verified`
 4. Traceability check will show the CRS/UC requirement as covered

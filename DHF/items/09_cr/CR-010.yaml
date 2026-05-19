@@ -11,7 +11,7 @@ description: "Many users interpret \"Issues\" as a bug tracker only. The page ac
 justification: Maintainer assigned this issue to the active release milestone, indicating
   it is accepted for CR intake.
 priority: Medium
-requested_by: CharlesChenElekta
+requested_by: ProjectMaintainer
 target_version: 2026-W19
 category: Feature
 content: ''

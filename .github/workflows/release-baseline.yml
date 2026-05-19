@@ -13,6 +13,9 @@ on:
         type: boolean
         default: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   release-baseline:
     name: Build IEC 62304 §9 release baseline

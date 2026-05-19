@@ -402,7 +402,8 @@ Impact assessment pending.
 
 **Status:** COMPLETED  
 **Priority:** Medium  
-**Requested By:** CharlesChenElekta  
+**Requested By:** ProjectMaintainer
+
 **Assigned To:** Unassigned
 
 #### Description
@@ -440,7 +441,8 @@ Impact assessment pending.
 
 **Status:** COMPLETED  
 **Priority:** Medium  
-**Requested By:** CharlesChenElekta  
+**Requested By:** ProjectMaintainer
+
 **Assigned To:** Unassigned
 
 #### Description

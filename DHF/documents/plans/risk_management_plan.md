@@ -59,13 +59,13 @@ justified by clinical benefit.
 
 ## 5. Risk Management Activities
 
-Risk management activities are tracked in ContourLab-DHF as:
+Risk management activities are tracked in ContourLab DHF as:
 - **RISK items**: hazard identification, hazard situation, foreseeable sequence of events,
   severity, probability, risk score before control
 - **RCM items**: risk control measure, implementation evidence, residual risk after control
 
 All RISK and RCM items are linked to relevant SYS/SRS requirements where applicable.
-The traceability chain `RISK → RCM` is checked by `python -m compliantflow --dhf DHF dhf validate traceability`.
+The traceability chain `RISK → RCM` is checked by `medharness --dhf DHF dhf validate traceability`.
 
 ### 5.1 Hazard Identification
 
@@ -102,8 +102,8 @@ After all controls are applied:
 
 The risk management file comprises:
 - This plan
-- All RISK items in ContourLab-DHF
-- All RCM items in ContourLab-DHF
+- All RISK items in ContourLab DHF
+- All RCM items in ContourLab DHF
 - DHF traceability report (generated at each main-branch build)
 - Risk management report (generated at each release review)
 
