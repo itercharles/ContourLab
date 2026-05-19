@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useUIStore } from './uiStore';
+import type { WorkflowStage } from './uiStore';
 
 describe('uiStore - maximize viewport', () => {
   beforeEach(() => {
@@ -48,5 +49,43 @@ describe('uiStore - maximize viewport', () => {
 
     resetMaximizeViewport();
     expect(useUIStore.getState().maximizedViewport).toBeNull();
+  });
+});
+
+describe('uiStore - workflow stage and side panel tab', () => {
+  beforeEach(() => {
+    useUIStore.setState({
+      workflowStage: 'edit',
+      sidePanelTab: 'structures',
+    });
+  });
+
+  it('setWorkflowStage updates workflowStage', () => {
+    useUIStore.getState().setWorkflowStage('qa');
+    expect(useUIStore.getState().workflowStage).toBe('qa');
+  });
+
+  it.each<[WorkflowStage, string]>([
+    ['auto',    'ai'],
+    ['edit',    'structures'],
+    ['qa',      'qa'],
+    ['review',  'review'],
+    ['approve', 'review'],
+  ])('setWorkflowStage(%s) co-updates sidePanelTab to %s', (stage, expectedTab) => {
+    useUIStore.getState().setWorkflowStage(stage);
+    expect(useUIStore.getState().sidePanelTab).toBe(expectedTab);
+  });
+
+  it('setSidePanelTab updates sidePanelTab without touching workflowStage', () => {
+    useUIStore.getState().setSidePanelTab('audit');
+    expect(useUIStore.getState().sidePanelTab).toBe('audit');
+    expect(useUIStore.getState().workflowStage).toBe('edit');
+  });
+
+  it('setSidePanelTab can be set to each valid tab', () => {
+    for (const tab of ['structures', 'ai', 'qa', 'review', 'audit'] as const) {
+      useUIStore.getState().setSidePanelTab(tab);
+      expect(useUIStore.getState().sidePanelTab).toBe(tab);
+    }
   });
 });

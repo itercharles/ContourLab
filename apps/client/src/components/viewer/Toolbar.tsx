@@ -4,6 +4,7 @@ import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import { useActivityStore, type ActivityItem } from '../../core/store/activityStore';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
+import { useUIStore, type WorkflowStage } from '../../core/store/uiStore';
 import { exportRtstructObject } from '../../core/structures/rtstructExport';
 import { uploadDicomBlobToRepository } from '../../core/dicom/dicomWebClient';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
@@ -19,6 +20,14 @@ const ACTIVITY_TONE_CLASS: Record<ActivityItem['tone'], string> = {
 const CONTOURLAB_REPO_URL = 'https://github.com/itercharles/ContourLab';
 const DHF_ARTIFACTS_URL = '/api/dhf-artifacts/latest';
 
+const WORKFLOW_STAGES: { id: WorkflowStage; num: string; label: string }[] = [
+  { id: 'auto',    num: '01', label: 'Auto-segment' },
+  { id: 'edit',    num: '02', label: 'Edit' },
+  { id: 'qa',      num: '03', label: 'QA' },
+  { id: 'review',  num: '04', label: 'Review' },
+  { id: 'approve', num: '05', label: 'Approve' },
+];
+
 function formatActivityTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
@@ -30,6 +39,10 @@ export default function Toolbar() {
   const [isPushingChanges, setIsPushingChanges] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
   const [prototypeInfoOpen, setPrototypeInfoOpen] = useState(false);
+  const workflowStage = useUIStore((s) => s.workflowStage);
+  const setWorkflowStage = useUIStore((s) => s.setWorkflowStage);
+  const theme = useUIStore((s) => s.theme);
+  const setTheme = useUIStore((s) => s.setTheme);
   const activities = useActivityStore((s) => s.activities);
   const markAllRead = useActivityStore((s) => s.markAllRead);
   const clearActivities = useActivityStore((s) => s.clearActivities);
@@ -128,11 +141,15 @@ export default function Toolbar() {
   return (
     <div className="flex flex-none flex-col border-b border-[var(--color-border)] bg-[var(--color-header)]">
       <div className="relative flex h-9 items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-2">
-        <div className="flex items-center gap-1.5 pr-1">
-          <div className="grid h-5 w-5 place-items-center rounded bg-blue-600 font-mono text-[11px] font-bold text-white">
-            C
+        {/* Brand */}
+        <div className="flex items-center gap-1.5 pr-2">
+          <div className="flex h-5 w-5 items-center justify-center text-blue-400">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.6" />
+              <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.6" strokeDasharray="1.5 1" />
+            </svg>
           </div>
-          <span className="text-[13px] font-semibold tracking-tight text-[var(--color-text-bright)]">ContourLab</span>
+          <span className="text-[13px] font-semibold tracking-tight text-[var(--color-text-bright)]">Contour Studio</span>
         </div>
         <button
           type="button"
@@ -146,16 +163,56 @@ export default function Toolbar() {
           </svg>
           About
         </button>
-        <div className="flex items-center rounded border border-[var(--color-border)] bg-[var(--color-surface-alt)] p-0.5">
-          <button
-            type="button"
-            className="rounded bg-[var(--color-surface-alt)] px-2.5 py-1 text-[12px] font-medium text-[var(--color-text-bright)]"
-            title="Contour workspace"
-          >
-            <span className="mr-1 font-mono text-[10px] text-[var(--color-text-muted)]">01</span>
-            Contour
-          </button>
-        </div>
+
+        {/* Workflow stepper */}
+        <nav className="flex items-center gap-0" role="tablist" aria-label="Case workflow">
+          {WORKFLOW_STAGES.map((s, i) => {
+            const isActive = workflowStage === s.id;
+            const stageIdx = WORKFLOW_STAGES.findIndex((x) => x.id === workflowStage);
+            const isDone = i < stageIdx;
+            return (
+              <Fragment key={s.id}>
+                {i > 0 && (
+                  <div
+                    className={`h-px w-4 flex-none transition-colors ${isDone ? 'bg-blue-500/60' : 'bg-[var(--color-border)]'}`}
+                    aria-hidden="true"
+                  />
+                )}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-label={`${s.num} ${s.label}`}
+                  onClick={() => setWorkflowStage(s.id)}
+                  className={`flex h-7 items-center gap-1.5 rounded px-2 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                    isActive
+                      ? 'bg-[var(--color-elevated)] font-semibold text-[var(--color-text-bright)] ring-1 ring-[var(--color-border)]'
+                      : isDone
+                        ? 'text-blue-400 hover:bg-[var(--color-hover)]'
+                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text-sec)]'
+                  }`}
+                >
+                  <span className={`grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold ${
+                    isActive ? 'bg-blue-600 text-white' :
+                    isDone   ? 'bg-blue-500/30 text-blue-300' :
+                               'bg-[var(--color-elevated)] text-[var(--color-text-muted)]'
+                  }`}>
+                    {isDone ? (
+                      <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="2,5 4,7 8,3" />
+                      </svg>
+                    ) : s.num}
+                  </span>
+                  <span>{s.label}</span>
+                </button>
+              </Fragment>
+            );
+          })}
+        </nav>
+
+        <div className="ml-auto" />
+
+        {/* Save */}
         <button
           type="button"
           onClick={() => void handlePushChanges()}
@@ -191,7 +248,6 @@ export default function Toolbar() {
             <path d="M7 3v5h8" />
           </svg>
         </button>
-        <div className="ml-auto" />
 
         {/* Collaborator presence */}
         <div className="flex items-center" aria-label="2 active collaborators">
@@ -305,6 +361,25 @@ export default function Toolbar() {
             </div>
           </div>
         )}
+        {/* Theme toggle */}
+        <button
+          type="button"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          aria-label="Toggle theme"
+          className="flex h-7 w-7 items-center justify-center rounded text-[var(--color-text-sec)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text-bright)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          {theme === 'dark' ? (
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+            </svg>
+          ) : (
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          )}
+        </button>
         <div className="h-4 w-px bg-[var(--color-border)]" />
         {/* Change Requests — prototype highlight */}
         <Link

@@ -173,6 +173,9 @@ beforeEach(() => {
     leftSidebarOpen: false,
     crosshairsEnabled: true,
     activeViewport: null,
+    workflowStage: 'edit',
+    sidePanelTab: 'structures',
+    theme: 'dark',
   });
   useVolumeStore.setState({
     loadedSeries: [makeLoadedSeries()],
@@ -190,11 +193,15 @@ beforeEach(() => {
 });
 
 describe('Toolbar contour operations', () => {
-  it('keeps image and edit tools out of the top bar', () => {
+  it('renders the Contour Studio brand and workflow stepper in the title bar', () => {
     renderToolbar();
 
-    expect(screen.getByText('ContourLab')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '01 Contour' })).toBeTruthy();
+    expect(screen.getByText('Contour Studio')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: '01 Auto-segment' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: '02 Edit' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: '03 QA' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: '04 Review' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: '05 Approve' })).toBeTruthy();
     expect(screen.queryByTitle('Window/Level Preset')).toBeNull();
     expect(screen.queryByRole('button', { name: /Window \/ Level/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /Crosshair/ })).toBeNull();
@@ -348,4 +355,64 @@ describe('Toolbar contour operations', () => {
     expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
   });
 
+});
+
+describe('Toolbar workflow stepper', () => {
+  it('clicking a stage step updates workflowStage in the store', () => {
+    renderToolbar();
+
+    fireEvent.click(screen.getByRole('tab', { name: '03 QA' }));
+    expect(useUIStore.getState().workflowStage).toBe('qa');
+
+    fireEvent.click(screen.getByRole('tab', { name: '04 Review' }));
+    expect(useUIStore.getState().workflowStage).toBe('review');
+
+    fireEvent.click(screen.getByRole('tab', { name: '01 Auto-segment' }));
+    expect(useUIStore.getState().workflowStage).toBe('auto');
+  });
+
+  it('clicking a stage step also updates sidePanelTab in the store', () => {
+    renderToolbar();
+
+    fireEvent.click(screen.getByRole('tab', { name: '03 QA' }));
+    expect(useUIStore.getState().sidePanelTab).toBe('qa');
+
+    fireEvent.click(screen.getByRole('tab', { name: '02 Edit' }));
+    expect(useUIStore.getState().sidePanelTab).toBe('structures');
+
+    fireEvent.click(screen.getByRole('tab', { name: '04 Review' }));
+    expect(useUIStore.getState().sidePanelTab).toBe('review');
+
+    fireEvent.click(screen.getByRole('tab', { name: '05 Approve' }));
+    expect(useUIStore.getState().sidePanelTab).toBe('review');
+  });
+
+  it('marks the current stage as selected', () => {
+    useUIStore.setState({ workflowStage: 'qa' });
+    renderToolbar();
+
+    const qaTab = screen.getByRole('tab', { name: '03 QA' });
+    expect(qaTab.getAttribute('aria-selected')).toBe('true');
+
+    const editTab = screen.getByRole('tab', { name: '02 Edit' });
+    expect(editTab.getAttribute('aria-selected')).toBe('false');
+  });
+
+  it('toggles from dark to light theme', () => {
+    useUIStore.setState({ theme: 'dark' });
+    renderToolbar();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle theme' }));
+
+    expect(useUIStore.getState().theme).toBe('light');
+  });
+
+  it('toggles from light to dark theme', () => {
+    useUIStore.setState({ theme: 'light' });
+    renderToolbar();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle theme' }));
+
+    expect(useUIStore.getState().theme).toBe('dark');
+  });
 });

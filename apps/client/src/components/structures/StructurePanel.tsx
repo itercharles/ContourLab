@@ -179,7 +179,7 @@ interface StructureSetQualityIssue {
   issue: RtssQualityIssue;
 }
 
-type PanelTab = 'structures' | 'qa' | 'history' | 'dicom';
+type PanelTab = 'structures' | 'ai' | 'qa' | 'review' | 'audit';
 type QaChecklistEntry = {
   id: string;
   label: string;
@@ -410,7 +410,8 @@ export default function StructurePanel() {
   const [newName, setNewName] = useState('');
   const [newStructureType, setNewStructureType] = useState<StructureType>('PTV');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [panelTab, setPanelTab] = useState<PanelTab>('structures');
+  const panelTab = useUIStore((s) => s.sidePanelTab) as PanelTab;
+  const setPanelTab = useUIStore((s) => s.setSidePanelTab);
   const [axialRevision, setAxialRevision] = useState(0);
   const [isEditingActiveType, setIsEditingActiveType] = useState(false);
   const [marginValue, setMarginValue] = useState(5);
@@ -1176,6 +1177,13 @@ export default function StructurePanel() {
         </button>
         <button
           type="button"
+          className={tabButtonClass(panelTab === 'ai')}
+          onClick={() => setPanelTab('ai')}
+        >
+          AI
+        </button>
+        <button
+          type="button"
           className={tabButtonClass(panelTab === 'qa')}
           onClick={() => setPanelTab('qa')}
         >
@@ -1183,17 +1191,17 @@ export default function StructurePanel() {
         </button>
         <button
           type="button"
-          className={tabButtonClass(panelTab === 'history')}
-          onClick={() => setPanelTab('history')}
+          className={tabButtonClass(panelTab === 'review')}
+          onClick={() => setPanelTab('review')}
         >
-          History
+          Review
         </button>
         <button
           type="button"
-          className={tabButtonClass(panelTab === 'dicom')}
-          onClick={() => setPanelTab('dicom')}
+          className={tabButtonClass(panelTab === 'audit')}
+          onClick={() => setPanelTab('audit')}
         >
-          DICOM
+          Audit
         </button>
       </div>
 
@@ -1543,6 +1551,43 @@ export default function StructurePanel() {
         </>
       )}
 
+      {panelTab === 'ai' && (
+        <div className="flex-1 overflow-y-auto px-3 py-2 text-[11px]">
+          <section className="mb-3 border border-[var(--color-border)] bg-[var(--color-surface)]">
+            <div className="border-b border-[var(--color-border)] bg-[var(--color-elevated)] px-2 py-1.5">
+              <p className="font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Auto-contouring</p>
+            </div>
+            <div className="px-3 py-3">
+              <p className="mb-3 leading-relaxed text-[var(--color-text-sec)]">
+                Select a pre-trained model to auto-segment structures for this study.
+              </p>
+              {[
+                { name: 'Thorax OARs · nnU-Net v3.2',         count: '14 structures' },
+                { name: 'Head & Neck · TotalSegmentator',      count: '43 structures' },
+                { name: 'Abdomen · AutoContour',               count: '18 structures' },
+                { name: 'Pelvis · Limbus-like',                count: '11 structures' },
+              ].map((model) => (
+                <div
+                  key={model.name}
+                  className="mb-1.5 flex items-center justify-between rounded border border-[var(--color-border)] bg-[var(--color-elevated)] px-2.5 py-1.5"
+                >
+                  <span className="font-medium text-[var(--color-text)]">{model.name}</span>
+                  <span className="ml-2 shrink-0 text-[var(--color-text-muted)]">{model.count}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+          <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
+            <div className="border-b border-[var(--color-border)] bg-[var(--color-elevated)] px-2 py-1.5">
+              <p className="font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Suggested Refinements</p>
+            </div>
+            <div className="px-3 py-2 leading-relaxed text-[var(--color-text-sec)]">
+              Run auto-contouring to generate suggestions.
+            </div>
+          </section>
+        </div>
+      )}
+
       {panelTab === 'qa' && (
         <div className="flex-1 overflow-y-auto">
           <section className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
@@ -1773,7 +1818,32 @@ export default function StructurePanel() {
         </div>
       )}
 
-      {panelTab === 'history' && (
+      {panelTab === 'review' && (
+        <div className="flex-1 overflow-y-auto px-3 py-2 text-[11px]">
+          <section className="mb-3 border border-[var(--color-border)] bg-[var(--color-surface)]">
+            <div className="border-b border-[var(--color-border)] bg-[var(--color-elevated)] px-2 py-1.5">
+              <p className="font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Contour Review</p>
+            </div>
+            <div className="px-3 py-3 leading-relaxed text-[var(--color-text-sec)]">
+              Complete QA before signing off on this structure set.
+            </div>
+            <div className="border-t border-[var(--color-border)] px-3 py-2">
+              <button
+                type="button"
+                disabled
+                className="flex h-7 w-full items-center justify-center gap-1.5 rounded bg-[var(--color-elevated)] text-[11px] font-semibold text-[var(--color-text-muted)] opacity-60"
+              >
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+                Approve &amp; Sign
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {panelTab === 'audit' && (
         <div className="flex-1 overflow-y-auto px-3 py-2 text-[11px]">
           <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
             <div className="border-b border-[var(--color-border)] bg-[var(--color-elevated)] px-2 py-1">
@@ -1842,12 +1912,12 @@ export default function StructurePanel() {
               </div>
             )}
           </section>
-        </div>
-      )}
-
-      {panelTab === 'dicom' && (
-        <div className="flex-1 overflow-y-auto px-3 py-2 text-[11px]">
-          <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
+          <section className="mt-3 border border-[var(--color-border)] bg-[var(--color-surface)]">
+            <div className="border-b border-[var(--color-border)] bg-[var(--color-elevated)] px-2 py-1">
+              <p className="font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">
+                DICOM Metadata
+              </p>
+            </div>
             {[
               ['Structure Set', activeSeriesStructureSet?.label ?? 'n/a'],
               ['Source', activeSeriesStructureSet ? formatSourceLabel(activeSeriesStructureSet) : 'n/a'],

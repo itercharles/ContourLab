@@ -20,6 +20,8 @@ export type ViewerTool =
 
 export type StructureOperationPanel = 'margin' | 'interpolate' | 'boolean' | null;
 export type Theme = 'dark' | 'light';
+export type WorkflowStage = 'auto' | 'edit' | 'qa' | 'review' | 'approve';
+export type SidePanelTab = 'structures' | 'ai' | 'qa' | 'review' | 'audit';
 
 export type WLPreset = 'lung' | 'bone' | 'softTissue' | 'brain' | 'mediastinum' | 'abdomen' | 'custom';
 export type ViewportOrientation = 'AXIAL' | 'SAGITTAL' | 'CORONAL';
@@ -35,6 +37,8 @@ interface UIState {
   activeStructureOperationPanel: StructureOperationPanel;
   theme: Theme;
   maximizedViewport: ViewportOrientation | null;
+  workflowStage: WorkflowStage;
+  sidePanelTab: SidePanelTab;
   setActiveTool: (tool: ViewerTool) => void;
   setActiveStructureOperationPanel: (panel: StructureOperationPanel) => void;
   setWindowLevelPreset: (preset: WLPreset) => void;
@@ -48,6 +52,8 @@ interface UIState {
   setTheme: (t: Theme) => void;
   toggleMaximizeViewport: (viewport: ViewportOrientation | null) => void;
   resetMaximizeViewport: () => void;
+  setWorkflowStage: (stage: WorkflowStage) => void;
+  setSidePanelTab: (tab: SidePanelTab) => void;
 }
 
 function getBrowserStorage(): Storage | null {
@@ -82,6 +88,8 @@ export const useUIStore = create<UIState>()(
     activeStructureOperationPanel: null,
     theme: initTheme(),
     maximizedViewport: null,
+    workflowStage: 'edit',
+    sidePanelTab: 'structures',
 
     setActiveTool: (tool) =>
       set((state) => {
@@ -142,6 +150,19 @@ export const useUIStore = create<UIState>()(
     resetMaximizeViewport: () =>
       set((state) => {
         state.maximizedViewport = null;
+      }),
+    setWorkflowStage: (stage) =>
+      set((state) => {
+        state.workflowStage = stage;
+        state.sidePanelTab =
+          stage === 'auto' ? 'ai' :
+          stage === 'edit' ? 'structures' :
+          stage === 'qa'   ? 'qa' :
+          'review';
+      }),
+    setSidePanelTab: (tab) =>
+      set((state) => {
+        state.sidePanelTab = tab;
       }),
   }))
 );

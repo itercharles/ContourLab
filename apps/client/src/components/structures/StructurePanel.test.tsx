@@ -161,6 +161,8 @@ beforeEach(() => {
     leftSidebarOpen: false,
     crosshairsEnabled: true,
     activeViewport: null,
+    workflowStage: 'edit',
+    sidePanelTab: 'structures',
   });
   useStructureStore.setState({
     structureSets: [makeStructureSet()],
@@ -924,7 +926,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     render(<StructurePanel />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'DICOM' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Audit' }));
 
     expect(screen.getByText('RTSS')).toBeTruthy();
     expect(screen.getByText('RTSTRUCT Thorax CT')).toBeTruthy();
@@ -968,7 +970,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     render(<StructurePanel />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'History' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Audit' }));
 
     expect(screen.getByText('No recorded predecessor history for this structure set.')).toBeTruthy();
   });
@@ -1032,7 +1034,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
     render(<StructurePanel />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'History' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Audit' }));
     expect(screen.getByText('APPROVED · Reviewer^One')).toBeTruthy();
     fireEvent.click(screen.getByTitle('Load RTSTRUCT Thorax CT'));
 
@@ -1062,5 +1064,96 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     fireEvent.click(screen.getByText('Add'));
 
     expect(await screen.findByText('Structure "ptv" already exists in this structure set.')).toBeTruthy();
+  });
+});
+
+describe('StructurePanel tab navigation driven by uiStore', () => {
+  it('renders all five tab buttons', () => {
+    render(<StructurePanel />);
+
+    expect(screen.getByRole('button', { name: 'Structures' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'AI' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'QA' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Review' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Audit' })).toBeTruthy();
+  });
+
+  it('clicking a tab button updates sidePanelTab in the store', () => {
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
+    expect(useUIStore.getState().sidePanelTab).toBe('ai');
+
+    fireEvent.click(screen.getByRole('button', { name: 'QA' }));
+    expect(useUIStore.getState().sidePanelTab).toBe('qa');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Structures' }));
+    expect(useUIStore.getState().sidePanelTab).toBe('structures');
+  });
+
+  it('AI tab shows the auto-contouring model list', () => {
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
+
+    expect(screen.getByText('Auto-contouring')).toBeTruthy();
+    expect(screen.getByText(/Thorax OARs · nnU-Net/i)).toBeTruthy();
+    expect(screen.getByText(/Head & Neck/i)).toBeTruthy();
+  });
+
+  it('Review tab shows the Approve & Sign button', () => {
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Review' }));
+
+    expect(screen.getByText('Contour Review')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Approve & Sign' })).toBeTruthy();
+  });
+
+  it('Audit tab shows both the RTSTRUCT history section and DICOM metadata section', () => {
+    const structureSet = makeStructureSet();
+    structureSet.source = {
+      type: 'rtstruct',
+      label: 'RTSTRUCT Thorax CT',
+      sopClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
+      sopInstanceUID: 'rtss-sop-1',
+      studyInstanceUID: 'study-1',
+      seriesInstanceUID: 'rtss-series-1',
+      importedAt: '2026-04-11T10:00:00Z',
+    };
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Audit' }));
+
+    expect(screen.getByText('RTSTRUCT History')).toBeTruthy();
+    expect(screen.getByText('DICOM Metadata')).toBeTruthy();
+    expect(screen.getByText('Structure Set')).toBeTruthy();
+  });
+
+  it('the panel tab shown corresponds to sidePanelTab in the store', () => {
+    useUIStore.setState({ sidePanelTab: 'ai' });
+
+    render(<StructurePanel />);
+
+    expect(screen.getByText('Auto-contouring')).toBeTruthy();
+    expect(screen.queryByText('Targets')).toBeNull();
+  });
+
+  it('external store update (e.g. stepper click) switches the visible tab', () => {
+    render(<StructurePanel />);
+
+    expect(screen.getByText('Targets')).toBeTruthy();
+
+    act(() => {
+      useUIStore.getState().setWorkflowStage('qa');
+    });
+
+    expect(screen.queryByText('Targets')).toBeNull();
   });
 });
