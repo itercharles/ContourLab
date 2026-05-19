@@ -44,7 +44,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 ### DHF Helpers
 
 - `medharness --dhf DHF dhf context implementation ...`
-- `dhfkit --dhf DHF dhf report`
+- `dhfkit --dhf DHF report`
 
 `dhf report` moved out of `medharness` and now comes from `dhfkit`. The CI
 contract checker already enforces that split.
