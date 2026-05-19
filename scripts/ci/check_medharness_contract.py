@@ -101,8 +101,12 @@ def main() -> int:
         # by generate-dhf and develop-cr when --pr is supplied.
         "claude-session-get": ("python", "-m", "medharness", "ci", "claude-session", "get", "--help"),
         "claude-session-put": ("python", "-m", "medharness", "ci", "claude-session", "put", "--help"),
-        "dhf-report": ("python", "-m", "medharness", "dhf", "report", "--help"),
+        # 0.8.0: dhf report moved from medharness to dhfkit
+        "dhf-report": ("dhfkit", "--dhf", ".", "report", "--help"),
         "dhf-context-implementation": ("python", "-m", "medharness", "dhf", "context", "implementation", "--help"),
+        # 0.8.0: dhfkit data-layer commands
+        "dhfkit-soup-sync": ("dhfkit", "--dhf", ".", "soup-sync", "--help"),
+        "dhfkit-release-baseline": ("dhfkit", "--dhf", ".", "release-baseline", "--help"),
         # 0.6.2 commands
         "ci-approve-gate": ("python", "-m", "medharness", "ci", "approve-gate", "--help"),
         "ci-cr-status": ("python", "-m", "medharness", "ci", "cr-status", "--help"),
@@ -218,9 +222,10 @@ def main() -> int:
     # not by parsing JSON and checking the outcome field.
 
     # MedHarness 0.6.1: dhf report + dhf context implementation adopted.
+    # 0.8.0: dhf report moved to dhfkit — check for dhfkit --dhf DHF report form.
     require(
-        "medharness --dhf DHF dhf report" in ci_text,
-        "ci-pipeline.yml must emit a dhf report step (0.6.1) for human-readable traceability output",
+        "dhfkit --dhf DHF report" in ci_text,
+        "ci-pipeline.yml must emit a dhf report step via dhfkit (0.8.0) for human-readable traceability output",
         errors,
     )
     require(
