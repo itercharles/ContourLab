@@ -544,7 +544,8 @@ jobs:
 
       - name: Run verification completeness gate
         run: |
-          medharness --dhf DHF ci validate-verification \
+          medharness ci validate-verification \
+            --dhf DHF \
             --junit-dir test-results/srs \
             --junit-dir test-results/srs-api \
             --junit-dir test-results/sys \
