@@ -1,0 +1,62 @@
+name: Release Baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.0.0)'
+        required: true
+        type: string
+      write:
+        description: 'Create REL item in DHF'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  release-baseline:
+    name: Build IEC 62304 §9 release baseline
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.ACTIONS_PAT }}
+
+      - uses: ./.github/actions/medharness-setup
+
+      - name: Build release baseline
+        run: |
+          mkdir -p artifacts
+          WRITE_FLAG=${{ inputs.write == true && '--write' || '' }}
+          dhfkit --dhf DHF release-baseline \
+            --version "${{ inputs.version }}" \
+            --manifest requirements.txt \
+            --manifest package.json \
+            --manifest apps/client/package.json \
+            --manifest packages/shared-types/package.json \
+            --out-dir artifacts \
+            $WRITE_FLAG \
+            | tee /tmp/release-baseline-out.json
+
+      - name: Upload baseline artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-baseline-${{ inputs.version }}
+          path: artifacts/
+          retention-days: 90
+
+      - name: Commit REL item
+        if: ${{ inputs.write == true }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add DHF/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: release baseline ${{ inputs.version }} [skip ci]"
+            git push
+          else
+            echo "No DHF changes to commit."
+          fi

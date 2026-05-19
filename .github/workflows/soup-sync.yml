@@ -1,0 +1,52 @@
+name: SOUP Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      write:
+        description: 'Apply creates/updates to DHF (dry-run if unchecked)'
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 9 * * 1'  # Weekly Monday 09:00 UTC
+
+jobs:
+  soup-sync:
+    name: Sync SOUP items with package manifests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.ACTIONS_PAT }}
+
+      - uses: ./.github/actions/medharness-setup
+
+      - name: Sync SOUP items
+        id: sync
+        run: |
+          WRITE_FLAG=${{ inputs.write == true && '--write' || '' }}
+          dhfkit --dhf DHF soup-sync \
+            --manifest requirements.txt \
+            --manifest package.json \
+            --manifest apps/client/package.json \
+            --manifest packages/shared-types/package.json \
+            $WRITE_FLAG \
+            | tee /tmp/soup-sync-out.json
+
+      - name: Commit DHF changes
+        if: ${{ inputs.write == true }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add DHF/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: soup-sync — update SOUP items from manifests [skip ci]"
+            git push
+          else
+            echo "No DHF changes to commit."
+          fi

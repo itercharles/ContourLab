@@ -140,9 +140,14 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin "$BRANCH" --depth 1
           git checkout "origin/$BRANCH" -- "DHF/items/09_cr/$CR_ID.yaml"
-          python -m medharness --dhf DHF dhf item transition \
+          dhfkit --dhf DHF item transition \
             "$CR_ID" cancelled \
-            --by "github-actions[bot]" --commit --push
+            --by "github-actions[bot]"
+          git add DHF/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: cancel $CR_ID [skip ci]"
+            git push
+          fi
 
   # ── DESIGN: GENERATE ──────────────────────────────────────────────────────
 
