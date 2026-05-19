@@ -78,6 +78,12 @@ if [ "$orthanc_ok" = "true" ]; then
   echo "DICOM repository already running with $desired_image; leaving it unchanged."
 else
   echo "Starting or updating persistent DICOM repository with $desired_image."
+  # Remove the existing container before compose recreates it so the port
+  # binding is released first. This handles containers left by a previous
+  # compose project (e.g. after a repo rename changes the project prefix).
+  if docker ps -aq --filter "name=^${container_name}$" | grep -q .; then
+    docker rm -f "$container_name" 2>/dev/null || true
+  fi
   docker compose -f "$COMPOSE_FILE" up -d dicom-repo
 fi
 
