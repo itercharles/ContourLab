@@ -95,22 +95,16 @@ def main() -> int:
         "develop-cr": ("python", "-m", "medharness", "ci", "develop-cr", "--help"),
         "validate-code": ("python", "-m", "medharness", "ci", "validate-code", "--help"),
         "validate-branch": ("python", "-m", "medharness", "ci", "validate-branch", "--help"),
-        # 0.6.1 commands
-        # claude-session get/put are smoke-checked for install completeness but are
-        # NOT called explicitly in workflows — session threading is handled internally
-        # by generate-dhf and develop-cr when --pr is supplied.
+        # Smoke-check session helpers even though workflows rely on the built-in
+        # threading that generate-dhf and develop-cr perform when --pr is supplied.
         "claude-session-get": ("python", "-m", "medharness", "ci", "claude-session", "get", "--help"),
         "claude-session-put": ("python", "-m", "medharness", "ci", "claude-session", "put", "--help"),
-        # 0.8.0: dhf report moved from medharness to dhfkit
         "dhf-report": ("dhfkit", "--dhf", ".", "report", "--help"),
         "dhf-context-implementation": ("python", "-m", "medharness", "dhf", "context", "implementation", "--help"),
-        # 0.8.0: dhfkit data-layer commands
         "dhfkit-soup-sync": ("dhfkit", "--dhf", ".", "soup-sync", "--help"),
         "dhfkit-release-baseline": ("dhfkit", "--dhf", ".", "release-baseline", "--help"),
-        # 0.6.2 commands
         "ci-approve-gate": ("python", "-m", "medharness", "ci", "approve-gate", "--help"),
         "ci-cr-status": ("python", "-m", "medharness", "ci", "cr-status", "--help"),
-        # 0.6.3 commands
         "ci-advance-stage": ("python", "-m", "medharness", "ci", "advance-stage", "--help"),
     }
 
@@ -197,64 +191,57 @@ def main() -> int:
         errors,
     )
 
-    # MedHarness 0.5: CR review stage eliminated — intake goes straight to design.
     require(
         "cr=gen-design" not in cr_text,
-        "cr-lifecycle.yml must not have cr=gen-design dispatch action — CR review stage removed in 0.5",
+        "cr-lifecycle.yml must not have cr=gen-design dispatch action",
         errors,
     )
     require(
         "cr-no-revise" not in cr_text,
-        "cr-lifecycle.yml must not reference cr-no-revise — CR review stage removed in 0.5",
+        "cr-lifecycle.yml must not reference cr-no-revise",
         errors,
     )
     require(
         '--label "cr:stage/cr"' not in issue_to_cr_text,
-        "issue-to-cr.yml must not open PRs with cr:stage/cr label — CR review stage removed in 0.5",
+        "issue-to-cr.yml must not open PRs with cr:stage/cr label",
         errors,
     )
     require(
         "python -m medharness --dhf DHF ci generate-dhf" in issue_to_cr_text,
-        "issue-to-cr.yml must call generate-dhf inline — design is generated at intake in 0.5",
+        "issue-to-cr.yml must call generate-dhf inline at intake",
         errors,
     )
-    # 0.6.3: generate-dhf exits 1 on completed_with_errors — workflow gates on exit code,
-    # not by parsing JSON and checking the outcome field.
 
-    # MedHarness 0.6.1: dhf report + dhf context implementation adopted.
-    # 0.8.0: dhf report moved to dhfkit — check for dhfkit --dhf DHF report form.
     require(
         "dhfkit --dhf DHF report" in ci_text,
-        "ci-pipeline.yml must emit a dhf report step via dhfkit (0.8.0) for human-readable traceability output",
+        "ci-pipeline.yml must emit a dhf report step via dhfkit for human-readable traceability output",
         errors,
     )
     require(
         "medharness --dhf DHF dhf context implementation" in issue_to_cr_text,
-        "issue-to-cr.yml must use dhf context implementation (0.6.1) to post the plan comment — no inline YAML parsing",
+        "issue-to-cr.yml must use dhf context implementation to post the plan comment — no inline YAML parsing",
         errors,
     )
     require(
         "yaml.safe_load" not in issue_to_cr_text,
-        "issue-to-cr.yml must not parse CR YAML inline — use dhf context implementation (0.6.1)",
+        "issue-to-cr.yml must not parse CR YAML inline — use dhf context implementation",
         errors,
     )
 
-    # MedHarness 0.6.2: approve-gate + cr-status adopted.
     require(
         "medharness ci approve-gate" in cr_text,
-        "cr-lifecycle.yml must call approve-gate before develop-cr to guard against event misclassification (0.6.2)",
+        "cr-lifecycle.yml must call approve-gate before develop-cr to guard against event misclassification",
         errors,
     )
     require(
         "medharness --dhf DHF ci cr-status" in cr_text,
-        "cr-lifecycle.yml must emit a cr-status step (0.6.2) for observability in the detect job",
+        "cr-lifecycle.yml must emit a cr-status step for observability in the detect job",
         errors,
     )
 
-    # MedHarness 0.6.3: advance-stage replaces manual gh api label management.
     require(
         "medharness ci advance-stage" in cr_text,
-        "cr-lifecycle.yml must use ci advance-stage for label management — no raw gh api label calls (0.6.3)",
+        "cr-lifecycle.yml must use ci advance-stage for label management — no raw gh api label calls",
         errors,
     )
 
