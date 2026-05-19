@@ -109,4 +109,14 @@ docker rm -f contourlab-client contourlab-api 2>/dev/null || true
 
 docker compose -f "$COMPOSE_FILE" up -d --build --no-deps api client
 
+# If Orthanc was left unchanged it may be on a different Docker network than
+# the one compose just created for the webtps project. Connect it (with the
+# 'dicom-repo' alias nginx uses) so the client can resolve the hostname.
+if [ "$orthanc_ok" = "true" ]; then
+  docker network connect \
+    --alias dicom-repo \
+    "${COMPOSE_PROJECT_NAME}_default" \
+    "$container_name" 2>/dev/null || true
+fi
+
 docker compose -f "$COMPOSE_FILE" ps
