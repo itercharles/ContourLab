@@ -17,6 +17,7 @@ jobs:
     name: Deploy | Linux VM (Docker)
     runs-on: ${{ vars.WEBTPS_DEPLOY_RUNS_ON_JSON != '' && fromJSON(vars.WEBTPS_DEPLOY_RUNS_ON_JSON) || fromJSON('["self-hosted","linux","webtps-deploy"]') }}
     environment: production
+    if: github.actor == 'itercharles'
     steps:
       - name: Fix workspace permissions
         # Orthanc runs as root inside the container; chown its data dir back to
