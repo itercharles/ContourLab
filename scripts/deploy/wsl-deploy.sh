@@ -102,6 +102,13 @@ set -a
 [ -f "$SECRETS_FILE" ] && . "$SECRETS_FILE"
 set +a
 
+# Evict any orphaned containers (e.g. from a previous compose project after a
+# repo rename) that are still holding the ports the app services need.
+for _port in 3001 4001; do
+  _conflict=$(docker ps -q --filter "publish=$_port" 2>/dev/null || true)
+  [ -n "$_conflict" ] && docker rm -f $_conflict 2>/dev/null || true
+done
+
 docker compose -f "$COMPOSE_FILE" up -d --build --no-deps api client
 
 docker compose -f "$COMPOSE_FILE" ps
