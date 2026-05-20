@@ -344,6 +344,8 @@ static class AutoContourGenerator
 
 sealed class AutoContourJobStore
 {
+    // Demo service: jobs live for the process lifetime and are discarded on restart.
+    // There is intentionally no eviction policy yet.
     private readonly ConcurrentDictionary<string, AutoContourJobRecord> _jobs = new();
 
     public AutoContourJobRecord Create(AutoContourJobCreateRequest request)

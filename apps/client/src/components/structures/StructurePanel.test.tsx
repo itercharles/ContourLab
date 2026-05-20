@@ -475,6 +475,8 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     );
     expect(useStructureStore.getState().structureSets).toHaveLength(1);
     expect(useStructureStore.getState().structureSets[0].source?.type).toBe('ai-draft');
+    expect(useStructureStore.getState().dirtySeriesUIDs).not.toContain('series-1');
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
     expect(screen.getByText(/Imported AI draft with 1 structure/i)).toBeTruthy();
     expect(screen.getByText(/Thorax CT · TotalSeg-style demo imported/i)).toBeTruthy();
   });

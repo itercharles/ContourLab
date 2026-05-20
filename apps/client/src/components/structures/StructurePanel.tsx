@@ -58,6 +58,9 @@ const STRUCTURE_TYPES: StructureType[] = [
   'SUPPORT',
 ];
 
+const AUTOCONTOUR_POLL_INTERVAL_MS = 750;
+const AUTOCONTOUR_MAX_POLLS = 400;
+
 function rgbToHex([r, g, b]: [number, number, number]): string {
   return `#${[r, g, b]
     .map((value) => Math.max(0, Math.min(255, value)).toString(16).padStart(2, '0'))
@@ -466,6 +469,8 @@ export default function StructurePanel() {
   const inputRef = useRef<HTMLInputElement>(null);
   const attemptedAutoLoadSeriesRef = useRef(new Set<string>());
   const draftSaveTimerRef = useRef<number | null>(null);
+  const autoContourAbortControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
   const isActiveSeriesDirty = !!activeSeriesUID && dirtySeriesUIDs.includes(activeSeriesUID);
   const activeStructureSetById = structureSets.find(
     (structureSet) => structureSet.id === activeStructureSetId
@@ -485,6 +490,9 @@ export default function StructurePanel() {
   const activeLoadedSeries = activeSeriesUID
     ? loadedSeries.find((series) => series.seriesUID === activeSeriesUID)
     : undefined;
+  const selectedAutoContourModel = autoContourModels.find(
+    (model) => model.id === selectedAutoContourModelId
+  );
   const activeRtstructHistoryGroup = activeSeriesStructureSet?.source?.type === 'rtstruct'
     ? findRtstructHistoryGroup(
         rtstructHistoryInstances.filter((instance) => (
@@ -593,6 +601,13 @@ export default function StructurePanel() {
     });
   void axialRevision;
   useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      autoContourAbortControllerRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
     if (isAdding && inputRef.current) {
       inputRef.current.focus();
     }
@@ -601,16 +616,18 @@ export default function StructurePanel() {
   useEffect(() => {
     if (panelTab !== 'ai' || autoContourModelsLoaded) return;
     let cancelled = false;
+    const abortController = new AbortController();
 
     const loadModels = async () => {
       try {
-        const models = await listAutoContourModels();
+        const models = await listAutoContourModels(abortController.signal);
         if (cancelled) return;
         setAutoContourModels(models);
         setAutoContourModelsLoaded(true);
         setSelectedAutoContourModelId((current) => current || models[0]?.id || '');
         setAutoContourModelsError(null);
       } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
         if (cancelled) return;
         setAutoContourModelsError(
           error instanceof Error ? error.message : 'Failed to load auto-contour models.'
@@ -622,6 +639,7 @@ export default function StructurePanel() {
     void loadModels();
     return () => {
       cancelled = true;
+      abortController.abort();
     };
   }, [autoContourModelsLoaded, panelTab]);
 
@@ -797,8 +815,10 @@ export default function StructurePanel() {
       return;
     }
 
-    if (activeLoadedSeries.series.modality !== 'CT') {
-      setStatusMessage('Auto-contouring currently supports CT series only.');
+    if (selectedAutoContourModel && selectedAutoContourModel.modality !== activeLoadedSeries.series.modality) {
+      setStatusMessage(
+        `${selectedAutoContourModel.displayName} supports ${selectedAutoContourModel.modality} only.`
+      );
       return;
     }
 
@@ -811,25 +831,52 @@ export default function StructurePanel() {
     setLastAutoContourSummary(null);
     setAutoContourJobStatus(null);
     setAutoContourModelsError(null);
+    autoContourAbortControllerRef.current?.abort();
+    const abortController = new AbortController();
+    autoContourAbortControllerRef.current = abortController;
 
     try {
       const request = buildAutoContourRequest(activeLoadedSeries, selectedAutoContourModelId);
-      const createResponse = await submitAutoContourJob(request);
+      const createResponse = await submitAutoContourJob(request, abortController.signal);
 
-      let status = await getAutoContourJobStatus(createResponse.jobId);
+      let status = await getAutoContourJobStatus(createResponse.jobId, abortController.signal);
       setAutoContourJobStatus(status);
 
-      while (status.state === 'queued' || status.state === 'running') {
-        await new Promise((resolve) => window.setTimeout(resolve, 750));
-        status = await getAutoContourJobStatus(createResponse.jobId);
+      let polls = 0;
+      while (
+        !abortController.signal.aborted &&
+        (status.state === 'queued' || status.state === 'running') &&
+        polls < AUTOCONTOUR_MAX_POLLS
+      ) {
+        polls += 1;
+        await new Promise<void>((resolve, reject) => {
+          const timerId = window.setTimeout(resolve, AUTOCONTOUR_POLL_INTERVAL_MS);
+          abortController.signal.addEventListener(
+            'abort',
+            () => {
+              window.clearTimeout(timerId);
+              reject(new DOMException('Auto-contouring request was cancelled.', 'AbortError'));
+            },
+            { once: true }
+          );
+        });
+        status = await getAutoContourJobStatus(createResponse.jobId, abortController.signal);
         setAutoContourJobStatus(status);
+      }
+
+      if (abortController.signal.aborted || !isMountedRef.current) {
+        return;
+      }
+
+      if (polls >= AUTOCONTOUR_MAX_POLLS && (status.state === 'queued' || status.state === 'running')) {
+        throw new Error('Auto-contouring timed out.');
       }
 
       if (status.state !== 'succeeded') {
         throw new Error(status.error || 'Auto-contouring failed.');
       }
 
-      const result = await getAutoContourJobResult(createResponse.jobId);
+      const result = await getAutoContourJobResult(createResponse.jobId, abortController.signal);
       replaceStructureSetForSeries(result.structureSet);
       StructureSetManager.syncSelectionToSeries(activeLoadedSeries.seriesUID);
       setStatusMessage(
@@ -841,11 +888,19 @@ export default function StructurePanel() {
         )}.`
       );
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+      }
       const message = error instanceof Error ? error.message : 'Failed to run auto-contouring.';
       setAutoContourModelsError(message);
       setStatusMessage(message);
     } finally {
-      setIsAutoContourRunning(false);
+      if (autoContourAbortControllerRef.current === abortController) {
+        autoContourAbortControllerRef.current = null;
+      }
+      if (isMountedRef.current) {
+        setIsAutoContourRunning(false);
+      }
     }
   };
 
@@ -1732,7 +1787,9 @@ export default function StructurePanel() {
                 disabled={
                   isAutoContourRunning ||
                   !activeLoadedSeries ||
-                  activeLoadedSeries.series.modality !== 'CT' ||
+                  (selectedAutoContourModel
+                    ? selectedAutoContourModel.modality !== activeLoadedSeries.series.modality
+                    : false) ||
                   !selectedAutoContourModelId
                 }
                 className="h-8 rounded bg-blue-600 px-3 text-[11px] font-semibold uppercase tracking-widest text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-600"
@@ -1761,8 +1818,10 @@ export default function StructurePanel() {
               {!activeLoadedSeries ? (
                 <p className="mt-3 text-[var(--color-text-muted)]">Load a CT series to enable auto-contouring.</p>
               ) : null}
-              {activeLoadedSeries && activeLoadedSeries.series.modality !== 'CT' ? (
-                <p className="mt-3 text-[var(--color-text-muted)]">The active series is {activeLoadedSeries.series.modality}. v1 auto-contouring is CT-only.</p>
+              {activeLoadedSeries && selectedAutoContourModel && selectedAutoContourModel.modality !== activeLoadedSeries.series.modality ? (
+                <p className="mt-3 text-[var(--color-text-muted)]">
+                  The active series is {activeLoadedSeries.series.modality}. {selectedAutoContourModel.displayName} currently supports {selectedAutoContourModel.modality} only.
+                </p>
               ) : null}
             </div>
           </section>
