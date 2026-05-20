@@ -1,7 +1,7 @@
 # Local Development
 
-ContourLab ships with a small set of local commands for frontend, API, and
-Orthanc-backed DICOM repository development.
+ContourLab ships with a small set of local commands for frontend, API,
+auto-contouring, and Orthanc-backed DICOM repository development.
 
 ## Prerequisites
 
@@ -12,7 +12,8 @@ Orthanc-backed DICOM repository development.
 | .NET SDK | 10 | `dotnet --version` |
 | Docker + Compose | current | `docker compose version` |
 
-Required local ports: `3000` (frontend), `4000` (API), `8042` (Orthanc).
+Required local ports: `3000` (frontend), `4000` (API), `4010`
+(auto-contour service), `8042` (Orthanc).
 
 No `.env` file is required for the default developer setup.
 
@@ -37,6 +38,9 @@ One-time bootstrap:
 pnpm local:setup
 ```
 
+This installs Node dependencies and restores both the main API project and the
+auto-contour service project.
+
 Start the full stack:
 
 ```bash
@@ -49,11 +53,12 @@ Default local endpoints:
 | --- | --- |
 | Frontend | `http://127.0.0.1:3000/workspace` |
 | API | `http://127.0.0.1:4000/api/health` |
+| Auto-contour service | `http://127.0.0.1:4010/health` |
 | Orthanc DICOM repo | `http://127.0.0.1:8042` |
 | DICOMweb proxy | `http://127.0.0.1:3000/dicom-web` |
 
-If the frontend or API is already running, `pnpm local:up` reuses the active
-process instead of starting a duplicate.
+If the frontend, API, or auto-contour service is already running,
+`pnpm local:up` reuses the active process instead of starting a duplicate.
 
 ## Common Commands
 
@@ -61,6 +66,7 @@ process instead of starting a duplicate.
 pnpm local:doctor   # verify tools, ports, and health endpoints
 pnpm local:down     # stop Docker-backed services
 pnpm api            # API only
+pnpm autocontour:service  # auto-contour service only
 pnpm repo:up        # Orthanc only
 pnpm repo:logs      # Orthanc logs
 ```
@@ -91,11 +97,30 @@ Public sample datasets suitable for development testing:
 - [TCIA](https://www.cancerimagingarchive.net/)
 - [OsiriX DICOM sample library](https://www.osirix-viewer.com/resources/dicom-image-library/)
 
+## Auto-Contouring Workflow
+
+The full-stack local environment includes the separate auto-contour service.
+
+1. Start the full stack with `pnpm local:up`.
+2. Load a CT study into the workspace.
+3. Open the `AI` tab in the Structure panel.
+4. Run the available model profile.
+5. Review the imported AI draft structure set and edit it as needed.
+6. Save or export explicitly when you are ready.
+
+Current v1 constraints:
+
+- CT-only model support
+- demo-scale browser-to-service voxel transport
+- very large series are rejected before upload
+- generated contours are draft suggestions, not final approved structures
+
 ## Maintainer Deployment Notes
 
 The repository includes a self-hosted deployment path for teams that want a
-shared demo or review environment. The default deploy stack publishes the app on
-ports `3001` (frontend), `4001` (API), and `8042` (Orthanc) on the target host.
+shared demo or review environment. The default deploy stack publishes the app
+on ports `3001` (frontend), `4001` (API), `4010` (auto-contour service), and
+`8042` (Orthanc) on the target host.
 
 Example external endpoints:
 
@@ -103,6 +128,7 @@ Example external endpoints:
 | --- | --- |
 | Frontend | `http://<host>:3001` |
 | API | `http://<host>:4001` |
+| Auto-contour service | `http://<host>:4010/health` |
 | Orthanc | `http://<host>:8042` |
 
 The deploy stack is defined in

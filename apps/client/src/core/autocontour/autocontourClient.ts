@@ -10,6 +10,8 @@ import type {
 } from '@contourlab/shared-types';
 import type { LoadedSeries } from '../store/volumeStore';
 
+const MAX_AUTOCONTOUR_VOXELS = 512 * 512 * 300;
+
 interface SerializableContourSlice extends Omit<ContourSlice, 'points'> {
   points: number[];
 }
@@ -52,8 +54,10 @@ export function buildAutoContourRequest(
   loadedSeries: LoadedSeries,
   modelProfileId: string
 ): AutoContourJobCreateRequest {
-  if (loadedSeries.series.modality !== 'CT') {
-    throw new Error(`Auto-contouring currently supports CT series only, not ${loadedSeries.series.modality}.`);
+  if (loadedSeries.volume.pixelData.length > MAX_AUTOCONTOUR_VOXELS) {
+    throw new Error(
+      `Series too large for auto-contouring (${loadedSeries.volume.pixelData.length} voxels).`
+    );
   }
 
   return {
@@ -63,7 +67,7 @@ export function buildAutoContourRequest(
       studyInstanceUID: loadedSeries.study.studyInstanceUID,
       studyDate: loadedSeries.study.studyDate,
       seriesDescription: loadedSeries.series.seriesDescription,
-      modality: 'CT',
+      modality: loadedSeries.series.modality,
       dimensions: loadedSeries.volume.dimensions,
       spacing: loadedSeries.volume.spacing,
       origin: loadedSeries.volume.origin,
@@ -80,13 +84,14 @@ export function buildAutoContourRequest(
   };
 }
 
-export async function listAutoContourModels(): Promise<AutoContourModelProfile[]> {
-  const response = await fetch('/api/autocontour/models');
+export async function listAutoContourModels(signal?: AbortSignal): Promise<AutoContourModelProfile[]> {
+  const response = await fetch('/api/autocontour/models', { signal });
   return readJson<AutoContourModelProfile[]>(response);
 }
 
 export async function submitAutoContourJob(
-  request: AutoContourJobCreateRequest
+  request: AutoContourJobCreateRequest,
+  signal?: AbortSignal
 ): Promise<AutoContourJobCreateResponse> {
   const response = await fetch('/api/autocontour/jobs', {
     method: 'POST',
@@ -94,18 +99,19 @@ export async function submitAutoContourJob(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(request),
+    signal,
   });
 
   return readJson<AutoContourJobCreateResponse>(response);
 }
 
-export async function getAutoContourJobStatus(jobId: string): Promise<AutoContourJobStatus> {
-  const response = await fetch(`/api/autocontour/jobs/${jobId}`);
+export async function getAutoContourJobStatus(jobId: string, signal?: AbortSignal): Promise<AutoContourJobStatus> {
+  const response = await fetch(`/api/autocontour/jobs/${jobId}`, { signal });
   return readJson<AutoContourJobStatus>(response);
 }
 
-export async function getAutoContourJobResult(jobId: string): Promise<AutoContourResultPayload> {
-  const response = await fetch(`/api/autocontour/jobs/${jobId}/result`);
+export async function getAutoContourJobResult(jobId: string, signal?: AbortSignal): Promise<AutoContourResultPayload> {
+  const response = await fetch(`/api/autocontour/jobs/${jobId}/result`, { signal });
   const payload = await readJson<SerializableAutoContourResultPayload>(response);
   return {
     structureSet: normalizeStructureSet(payload.structureSet),

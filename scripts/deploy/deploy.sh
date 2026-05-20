@@ -107,7 +107,7 @@ set +a
 # their port bindings are free when compose recreates webtps-client/api.
 docker rm -f contourlab-client contourlab-api 2>/dev/null || true
 
-docker compose -f "$COMPOSE_FILE" up -d --build --no-deps api client
+docker compose -f "$COMPOSE_FILE" up -d --build --no-deps api client autocontour-service
 
 # If Orthanc was left unchanged it may be on a different Docker network than
 # the one compose just created for the webtps project. Connect it (with the

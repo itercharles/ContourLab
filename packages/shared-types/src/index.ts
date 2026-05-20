@@ -106,7 +106,7 @@ export interface AutoContourModelProfile {
   id: string;
   displayName: string;
   summary: string;
-  modality: 'CT';
+  modality: Series['modality'];
   anatomyScope: string;
   expectedStructureLabels: string[];
 }
@@ -122,7 +122,7 @@ export interface AutoContourSeriesPayload {
   studyInstanceUID: string;
   studyDate?: string;
   seriesDescription?: string;
-  modality: 'CT';
+  modality: Series['modality'];
   dimensions: [number, number, number];
   spacing: [number, number, number];
   origin: [number, number, number];
