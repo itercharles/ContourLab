@@ -39,6 +39,10 @@ properties:
   - Analysis
   - Demonstration
   help: Select applicable verification methods per IEC 62304 5.7
+- name: verification_criteria
+  format: long_text
+  label: Verification Criteria
+  help: Measurable pass/fail criterion used to verify this system requirement
 - name: critical_safety
   format: checkbox
   label: Critical Safety

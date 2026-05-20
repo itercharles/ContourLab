@@ -357,6 +357,29 @@ describe('Toolbar contour operations', () => {
 
 });
 
+describe('Toolbar patient name display @links:SRS-030', () => {
+  it('shows formatted patient name in the toolbar brand section when a series is active', () => {
+    renderToolbar();
+
+    const matches = screen.getAllByText('Ada Lovelace');
+    const brandSpan = matches.find(
+      (el) => el.classList.contains('max-w-[160px]')
+    );
+    expect(brandSpan).toBeTruthy();
+  });
+
+  it('shows placeholder in the toolbar brand section when no series is loaded', () => {
+    useVolumeStore.setState({ loadedSeries: [], activeSeriesUID: null });
+    renderToolbar();
+
+    const matches = screen.getAllByText('No active patient');
+    const brandSpan = matches.find(
+      (el) => el.classList.contains('max-w-[160px]')
+    );
+    expect(brandSpan).toBeTruthy();
+  });
+});
+
 describe('Toolbar workflow stepper', () => {
   it('clicking a stage step updates workflowStage in the store', () => {
     renderToolbar();

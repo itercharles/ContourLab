@@ -1,0 +1,122 @@
+id: CR-013
+affected_risk_items: []
+title: Show active patient name in the toolbar
+type: CR
+description: 'When a DICOM series is loaded, the toolbar should display the patient
+  name (from the DICOM metadata) next to the brand mark so the clinician always knows
+  which patient they are working on.
+
+
+  Acceptance criteria:
+
+  - Patient name appears in the toolbar when a series is loaded
+
+  - Clears / shows a placeholder when no series is loaded
+
+  - Does not affect existing toolbar layout or stepper behaviour
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/111'
+justification: Maintainer assigned this issue to the active release milestone, indicating
+  it is accepted for CR intake.
+priority: Medium
+requested_by: itercharles
+target_version: 2026-W21
+category: Feature
+content: ''
+status: new
+implementation_notes: '## Overview
+
+  This CR adds the active patient name to the primary toolbar header row, immediately
+  after the ContourLab brand mark. The patient name is already stored in `volumeStore.loadedSeries[].patient`
+  and is already displayed in the `WorkspaceContextBar` (the second toolbar row).
+  The change is a read-only display addition to `Toolbar.tsx` that shares a formatting
+  helper with `WorkspaceContextBar.tsx`.
+
+
+  ## Current State
+
+  - `apps/client/src/components/viewer/Toolbar.tsx`: The primary header row renders
+  the brand mark (SVG + "Contour Studio" text) then immediately the workflow stepper.
+  Patient name is NOT shown here.
+
+  - `apps/client/src/components/layout/WorkspaceContextBar.tsx`: The second toolbar
+  row already shows patient name via `formatPatientName()` defined locally at lines
+  4-9. The function formats `patient.name.given + patient.name.family`, falling back
+  to `patient.mrn`, `patient.id`, then `"Unknown patient"`.
+
+  - `apps/client/src/core/store/volumeStore.ts`: Holds `loadedSeries` (array) and
+  `activeSeriesUID`. `loadedSeries[i].patient` has `name: {given, family}`, `mrn`,
+  and `id`.
+
+
+  ## Changes Required
+
+  - **New file — `apps/client/src/core/dicom/patientUtils.ts`**: Extract `formatPatientName`
+  from `WorkspaceContextBar.tsx` into this shared utility. Import and use it in both
+  `Toolbar.tsx` and `WorkspaceContextBar.tsx`.
+
+  - **Modify `apps/client/src/components/viewer/Toolbar.tsx`**: After the brand mark
+  element (after the closing `</div>` of the brand section, around line 153), add
+  a `<span>` displaying the formatted patient name. Read `activeSeriesUID` and `loadedSeries`
+  from `volumeStore` selectors (both already imported via `useVolumeStore`).
+
+  - **Modify `apps/client/src/components/layout/WorkspaceContextBar.tsx`**: Replace
+  the inline `formatPatientName` definition with an import from `patientUtils.ts`.
+
+
+  ## Implementation Steps
+
+  1. Create `apps/client/src/core/dicom/patientUtils.ts` — export `formatPatientName(patient?)`
+  with the existing logic from WorkspaceContextBar lines 4-9.
+
+  2. Update `WorkspaceContextBar.tsx` — remove inline `formatPatientName`, import
+  from `patientUtils.ts`.
+
+  3. In `Toolbar.tsx`, `loadedSeries` is already subscribed (line 51) and `activeSeriesUID`
+  is already subscribed (line 50); `activeLoadedSeries` is already derived at line
+  74.
+
+  4. In `Toolbar.tsx`, add a patient name `<span>` inside the brand section `<div>`
+  (after the brand text span at line 152, before the closing `</div>`). Styling: `text-[12px]
+  text-[var(--color-text-sec)] truncate max-w-[160px]`; render `formatPatientName(activeLoadedSeries?.patient)`
+  — when `activeLoadedSeries` is undefined, this returns `"No active patient"`.
+
+  5. Write Vitest component test additions to `Toolbar.test.tsx` — assert patient
+  name renders when store has an active series, and placeholder renders when no series
+  is active. Annotate with `@links:SRS-030`.
+
+
+  ## Edge Cases & Constraints
+
+  - `loadedSeries` is already subscribed in `Toolbar` (line 51) — no new store subscriptions
+  needed.
+
+  - The brand section is a flex container with `gap-1.5 pr-2`; the new span fits naturally.
+  Add `truncate max-w-[160px]` to prevent very long patient names from pushing the
+  workflow stepper.
+
+  - `formatPatientName(undefined)` must return `"No active patient"` (handled by the
+  existing `if (!patient) return ''No active patient''` branch in WorkspaceContextBar
+  that will move to patientUtils).
+
+  - The WorkspaceContextBar continues to show its own patient name button in the second
+  row — no change to that behaviour.
+
+  - The change is purely presentational; no persistence, no API calls, no state mutation.
+
+
+  ## Tests
+
+  - **Unit/component test** (`Toolbar.test.tsx`): mock `volumeStore` with an active
+  series with a known patient name — assert the formatted name appears in the rendered
+  output. Mock with no active series — assert `"No active patient"` appears. Annotate
+  with `@links:SRS-030`.
+
+  - **Manual check**: Load a patient in the running app and verify the formatted name
+  appears next to the brand mark; switch patients and verify it updates; clear patient
+  and verify the placeholder appears.'
+affected_items:
+- CR-013
+- MODULE-008
+- SYS-012

@@ -1,0 +1,20 @@
+id: SRS-030
+derives_from:
+- SYS-012
+title: Software shall display the active patient name in the primary toolbar header
+  row adjacent to the brand mark
+content: 'The primary toolbar header row (the row containing the ContourLab brand
+  mark and workflow stepper) shall include a patient name display element positioned
+  immediately after the brand mark. When a DICOM series is active, the element shall
+  render the formatted patient name derived from the loaded series patient metadata:
+  given-name followed by family-name (space-separated), falling back to MRN, then
+  patient ID, then the literal string "Unknown patient" if all fields are absent.
+  When no series is active the element shall display a neutral placeholder (e.g.,
+  "No active patient"). The display shall update within one render cycle when the
+  active series changes or is cleared. The element shall not alter the position, layout,
+  or interaction behaviour of the brand mark, workflow stepper, undo/redo controls,
+  or any other existing toolbar controls.'
+verification_method:
+- Test
+critical_safety: false
+type: SRS
