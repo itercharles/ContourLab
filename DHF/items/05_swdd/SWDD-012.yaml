@@ -1,0 +1,50 @@
+id: SWDD-012
+implements:
+- SRS-030
+module:
+- MODULE-008
+title: Patient name display in the primary toolbar header row
+content: 'The Toolbar component (apps/client/src/components/viewer/Toolbar.tsx) adds
+  a patient name display element inside the brand section of the primary header row.
+
+
+  Data flow:
+
+  - Reads volumeStore.activeSeriesUID and volumeStore.loadedSeries via Zustand selectors
+  (same pattern as WorkspaceContextBar)
+
+  - Derives activeLoadedSeries = loadedSeries.find(s => s.seriesUID === activeSeriesUID)
+
+  - Formats the name using a shared formatPatientName helper extracted from WorkspaceContextBar.tsx:
+  concatenates patient.name.given and patient.name.family, falls back to patient.mrn,
+  then patient.id, then the literal "Unknown patient"
+
+  - When activeLoadedSeries is undefined, renders the placeholder string "No active
+  patient"
+
+
+  Component structure:
+
+  - A single read-only span element placed after the brand mark SVG and brand text,
+  before the workflow stepper
+
+  - Styled with text-[12px] text-[var(--color-text-sec)] for the clinical dark theme;
+  visually unobtrusive
+
+  - No interactive behaviour
+
+
+  Shared helper:
+
+  - formatPatientName is extracted from WorkspaceContextBar.tsx into a shared utility
+  (apps/client/src/core/dicom/patientUtils.ts) so both Toolbar and WorkspaceContextBar
+  import from the same source, eliminating duplication
+
+
+  Constraints:
+
+  - The brand section flex container already uses flex items-center gap-1.5 pr-2;
+  the new element appends without layout changes
+
+  - Purely presentational, no side effects'
+type: SWDD

@@ -1,11 +1,23 @@
 id: MODULE-008
 title: ViewportUI
-content: |-
-  Manages viewport layout state and UI controls overlaid on the rendering canvas.
-  Responsible for the maximize/restore viewport feature (toggling between
-  three-pane grid and single-viewport fullscreen), context menu rendering on
-  right-click, and keyboard shortcuts (Escape to restore layout).
+content: 'Manages viewport layout state, UI controls overlaid on the rendering canvas,
+  and persistent patient context display in the primary toolbar.
 
-  Interfaces: reads and writes uiStore.maximizedViewport; listens to
-  RenderingEngine canvas events (onContextMenu); resets layout on patient change.
+
+  Responsibilities:
+
+  - Maximize/restore viewport feature (toggling between three-pane grid and single-viewport
+  fullscreen)
+
+  - Context menu rendering on viewport right-click
+
+  - Keyboard shortcuts (Escape to restore layout)
+
+  - Patient name display in the primary toolbar header row, adjacent to the brand
+  mark
+
+
+  Interfaces: reads uiStore.maximizedViewport (writes); reads volumeStore.loadedSeries
+  and volumeStore.activeSeriesUID (read-only); listens to RenderingEngine canvas events
+  (onContextMenu); resets layout on patient change.'
 type: MODULE
