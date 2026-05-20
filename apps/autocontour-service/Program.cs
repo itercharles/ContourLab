@@ -75,6 +75,13 @@ app.MapGet("/jobs/{jobId}/result", (string jobId, AutoContourJobStore store) =>
 
 app.Run();
 
+// (id, name, type, color, startFraction, endFraction, centerX, centerY, radiusX, radiusY)
+sealed record StructureTemplate(
+    string Id, string Name, string Type, int[] Color,
+    double Start, double End,
+    double Cx, double Cy, double Rx, double Ry
+);
+
 static class AutoContourProfiles
 {
     public static readonly AutoContourModelProfile[] All =
@@ -82,12 +89,81 @@ static class AutoContourProfiles
         new(
             "thorax-ct-demo",
             "Thorax CT · TotalSeg-style demo",
-            "Deterministic server-side contour draft generator for CT studies. Produces editable EXTERNAL, Lung_L, Lung_R, and Heart candidates.",
-            "CT",
-            "Thorax",
+            "Produces EXTERNAL, bilateral lungs, and heart draft candidates.",
+            "CT", "Thorax",
             ["EXTERNAL", "Lung_L", "Lung_R", "Heart"]
-        )
+        ),
+        new(
+            "headneck-ct-demo",
+            "Head & Neck CT · TotalSeg-style demo",
+            "Produces brain, brainstem, bilateral parotids, mandible, and spinal cord draft candidates.",
+            "CT", "Head & Neck",
+            ["Brain", "BrainStem", "SpinalCord", "Parotid_L", "Parotid_R", "Mandible"]
+        ),
+        new(
+            "abdomen-ct-demo",
+            "Upper Abdomen CT · TotalSeg-style demo",
+            "Produces liver, spleen, bilateral kidneys, stomach, and spinal cord draft candidates.",
+            "CT", "Upper Abdomen",
+            ["Liver", "Spleen", "Kidney_L", "Kidney_R", "Stomach", "SpinalCord"]
+        ),
+        new(
+            "pelvis-ct-demo",
+            "Pelvis CT · TotalSeg-style demo",
+            "Produces bladder, rectum, bilateral femoral heads, CTV prostate, and spinal cord draft candidates.",
+            "CT", "Pelvis",
+            ["Bladder", "Rectum", "FemoralHead_L", "FemoralHead_R", "CTV_Prostate", "SpinalCord"]
+        ),
     ];
+}
+
+static class ProfileTemplates
+{
+    private static readonly StructureTemplate[] Thorax =
+    [
+        new("external",  "EXTERNAL", "EXTERNAL", [255, 215,   0], 0.05, 0.95, 0.50, 0.52, 0.45, 0.46),
+        new("lung-l",    "Lung_L",   "OAR",      [110, 196, 255], 0.18, 0.68, 0.34, 0.44, 0.16, 0.22),
+        new("lung-r",    "Lung_R",   "OAR",      [ 90, 156, 255], 0.18, 0.68, 0.66, 0.44, 0.16, 0.22),
+        new("heart",     "Heart",    "OAR",      [255,  85,  85], 0.34, 0.62, 0.54, 0.60, 0.14, 0.16),
+    ];
+
+    private static readonly StructureTemplate[] HeadNeck =
+    [
+        new("brain",       "Brain",      "OAR",      [210, 180, 140], 0.03, 0.52, 0.50, 0.50, 0.42, 0.42),
+        new("brainstem",   "BrainStem",  "OAR",      [205, 133,  63], 0.45, 0.65, 0.52, 0.64, 0.08, 0.10),
+        new("spinalcord",  "SpinalCord", "OAR",      [255, 255,   0], 0.55, 0.97, 0.50, 0.78, 0.03, 0.03),
+        new("parotid-l",   "Parotid_L",  "OAR",      [255, 160,  80], 0.58, 0.82, 0.27, 0.52, 0.08, 0.09),
+        new("parotid-r",   "Parotid_R",  "OAR",      [255, 200, 100], 0.58, 0.82, 0.73, 0.52, 0.08, 0.09),
+        new("mandible",    "Mandible",   "OAR",      [200, 200, 200], 0.70, 0.88, 0.50, 0.34, 0.22, 0.08),
+    ];
+
+    private static readonly StructureTemplate[] Abdomen =
+    [
+        new("liver",      "Liver",      "OAR",      [210, 105,  30], 0.08, 0.62, 0.65, 0.52, 0.22, 0.28),
+        new("spleen",     "Spleen",     "OAR",      [148,   0, 211], 0.08, 0.48, 0.30, 0.65, 0.10, 0.12),
+        new("kidney-l",   "Kidney_L",   "OAR",      [255, 140,   0], 0.30, 0.70, 0.30, 0.70, 0.08, 0.12),
+        new("kidney-r",   "Kidney_R",   "OAR",      [255, 165,  60], 0.25, 0.65, 0.70, 0.70, 0.08, 0.12),
+        new("stomach",    "Stomach",    "OAR",      [144, 238, 144], 0.15, 0.55, 0.42, 0.46, 0.12, 0.10),
+        new("spinalcord", "SpinalCord", "OAR",      [255, 255,   0], 0.05, 0.92, 0.50, 0.80, 0.03, 0.03),
+    ];
+
+    private static readonly StructureTemplate[] Pelvis =
+    [
+        new("bladder",      "Bladder",      "OAR",      [ 50, 150, 255], 0.18, 0.55, 0.50, 0.35, 0.14, 0.12),
+        new("rectum",       "Rectum",       "OAR",      [139,  69,  19], 0.30, 0.82, 0.50, 0.74, 0.06, 0.10),
+        new("fh-l",         "FemoralHead_L","OAR",      [192, 192, 192], 0.55, 0.90, 0.20, 0.52, 0.07, 0.07),
+        new("fh-r",         "FemoralHead_R","OAR",      [169, 169, 169], 0.55, 0.90, 0.80, 0.52, 0.07, 0.07),
+        new("ctv-prostate", "CTV_Prostate", "CTV",      [255,  50,  50], 0.38, 0.62, 0.50, 0.60, 0.07, 0.06),
+        new("spinalcord",   "SpinalCord",   "OAR",      [255, 255,   0], 0.02, 0.35, 0.50, 0.78, 0.03, 0.03),
+    ];
+
+    public static StructureTemplate[] GetFor(string profileId) => profileId switch
+    {
+        "headneck-ct-demo" => HeadNeck,
+        "abdomen-ct-demo"  => Abdomen,
+        "pelvis-ct-demo"   => Pelvis,
+        _                  => Thorax,
+    };
 }
 
 static class AutoContourGenerator
@@ -104,73 +180,19 @@ static class AutoContourGenerator
             throw new InvalidOperationException("CT series does not contain any slice metadata.");
         }
 
-        var structures = new List<AutoContourStructure>
-        {
-            BuildStructure(
-                id: "external",
-                name: "EXTERNAL",
-                type: "EXTERNAL",
-                color: [255, 215, 0],
-                contours: CreateEllipticalContours(
-                    slices,
-                    request.Series,
-                    startFraction: 0.05,
-                    endFraction: 0.95,
-                    centerXFraction: 0.5,
-                    centerYFraction: 0.52,
-                    radiusXFraction: 0.45,
-                    radiusYFraction: 0.46
-                )
-            ),
-            BuildStructure(
-                id: "lung-l",
-                name: "Lung_L",
-                type: "OAR",
-                color: [110, 196, 255],
-                contours: CreateEllipticalContours(
-                    slices,
-                    request.Series,
-                    startFraction: 0.18,
-                    endFraction: 0.68,
-                    centerXFraction: 0.34,
-                    centerYFraction: 0.44,
-                    radiusXFraction: 0.16,
-                    radiusYFraction: 0.22
-                )
-            ),
-            BuildStructure(
-                id: "lung-r",
-                name: "Lung_R",
-                type: "OAR",
-                color: [90, 156, 255],
-                contours: CreateEllipticalContours(
-                    slices,
-                    request.Series,
-                    startFraction: 0.18,
-                    endFraction: 0.68,
-                    centerXFraction: 0.66,
-                    centerYFraction: 0.44,
-                    radiusXFraction: 0.16,
-                    radiusYFraction: 0.22
-                )
-            ),
-            BuildStructure(
-                id: "heart",
-                name: "Heart",
-                type: "OAR",
-                color: [255, 85, 85],
-                contours: CreateEllipticalContours(
-                    slices,
-                    request.Series,
-                    startFraction: 0.34,
-                    endFraction: 0.62,
-                    centerXFraction: 0.54,
-                    centerYFraction: 0.60,
-                    radiusXFraction: 0.14,
-                    radiusYFraction: 0.16
-                )
-            ),
-        };
+        var templates = ProfileTemplates.GetFor(profile.Id);
+        var structures = templates.Select(t => BuildStructure(
+            id: t.Id,
+            name: t.Name,
+            type: t.Type,
+            color: t.Color,
+            contours: CreateEllipticalContours(
+                slices, request.Series,
+                startFraction: t.Start, endFraction: t.End,
+                centerXFraction: t.Cx, centerYFraction: t.Cy,
+                radiusXFraction: t.Rx, radiusYFraction: t.Ry
+            )
+        )).ToList();
 
         var structureSet = new AutoContourStructureSet(
             Id: $"ai-{request.Series.SeriesUID}-{now.ToUnixTimeSeconds()}",
