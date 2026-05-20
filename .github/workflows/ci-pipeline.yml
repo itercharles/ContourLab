@@ -303,7 +303,7 @@ jobs:
         run: dotnet test apps/api.tests/ContourLab.Api.Tests.csproj --logger "junit;LogFilePath=../../test-results/api-junit.xml"
       - name: Upload API test evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: verify-srs-api-junit
           path: test-results/api-junit.xml
@@ -349,7 +349,7 @@ jobs:
         run: pnpm local:down
       - name: Upload logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dev-integration-logs
           path: |
@@ -373,7 +373,7 @@ jobs:
         run: pnpm --filter @contourlab/client test
       - name: Upload SRS test evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: verify-srs-junit
           path: apps/client/test-results/verification-junit.xml
@@ -415,7 +415,7 @@ jobs:
 
       - name: Upload SYS test evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: verify-sys-junit
           path: apps/client/test-results/e2e-sys-junit.xml
@@ -423,7 +423,7 @@ jobs:
 
       - name: Upload logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: verify-sys-logs
           path: /tmp/contourlab-client.log
@@ -475,14 +475,14 @@ jobs:
         run: pnpm local:down
       - name: Upload CRS test evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: validate-crs-junit
           path: apps/client/test-results/e2e-crs-junit.xml
           if-no-files-found: error
       - name: Upload logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: validate-crs-logs
           path: |
@@ -507,27 +507,27 @@ jobs:
       - uses: ./.github/actions/medharness-setup
 
       - name: Download SRS test evidence (Vitest)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: verify-srs-junit
           path: test-results/srs/
 
       - name: Download SRS test evidence (API .NET)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: verify-srs-api-junit
           path: test-results/srs-api/
 
       - name: Download SYS test evidence (Playwright)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: verify-sys-junit
           path: test-results/sys/
 
       - name: Download CRS test evidence (Playwright)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: validate-crs-junit
@@ -585,27 +585,27 @@ jobs:
           extras: '[docs]'
 
       - name: Download SRS test evidence (Vitest)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: verify-srs-junit
           path: test-results/srs/
 
       - name: Download SRS test evidence (API .NET)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: verify-srs-api-junit
           path: test-results/srs-api/
 
       - name: Download SYS test evidence (Playwright)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: verify-sys-junit
           path: test-results/sys/
 
       - name: Download CRS test evidence (Playwright)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: validate-crs-junit
@@ -631,14 +631,14 @@ jobs:
 
       - name: Upload DHF artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dhf-artifacts
           path: dhf-artifacts/
 
       - name: Upload combined test evidence for CR analysis
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: product-test-results
           path: |
