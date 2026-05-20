@@ -1,13 +1,7 @@
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
-
-function formatPatientName(patient?: { name?: { given?: string; family?: string }; mrn?: string; id?: string }): string {
-  if (!patient) return 'No active patient';
-
-  const displayName = [patient.name?.given, patient.name?.family].filter(Boolean).join(' ').trim();
-  return displayName || patient.mrn || patient.id || 'Unknown patient';
-}
+import { formatPatientName } from '../../core/dicom/patientUtils';
 
 function formatRtstructLabel(source: { label?: string; sopInstanceUID?: string } | undefined): string {
   if (!source) return 'No active RTSS';

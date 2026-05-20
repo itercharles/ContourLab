@@ -8,6 +8,7 @@ import { useUIStore, type WorkflowStage } from '../../core/store/uiStore';
 import { exportRtstructObject } from '../../core/structures/rtstructExport';
 import { uploadDicomBlobToRepository } from '../../core/dicom/dicomWebClient';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
+import { formatPatientName } from '../../core/dicom/patientUtils';
 import WorkspaceContextBar from '../layout/WorkspaceContextBar';
 
 const ACTIVITY_TONE_CLASS: Record<ActivityItem['tone'], string> = {
@@ -150,6 +151,9 @@ export default function Toolbar() {
             </svg>
           </div>
           <span className="text-[13px] font-semibold tracking-tight text-[var(--color-text-bright)]">Contour Studio</span>
+          <span className="max-w-[160px] truncate text-[12px] text-[var(--color-text-sec)]">
+            {formatPatientName(activeLoadedSeries?.patient)}
+          </span>
         </div>
         <button
           type="button"
