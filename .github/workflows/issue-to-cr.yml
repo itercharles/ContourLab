@@ -60,8 +60,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh label create "cr:stage/design" --color "d93f0b" --description "CR stage: awaiting design review" 2>/dev/null || true
-          gh label create "cr:stage/code"   --color "0e8a16" --description "CR stage: awaiting code review"   2>/dev/null || true
+          gh label create "cr:stage/design"    --color "d93f0b" --description "CR stage: awaiting design review" 2>/dev/null || true
+          gh label create "cr:stage/code"      --color "0e8a16" --description "CR stage: awaiting code review"   2>/dev/null || true
+          gh label create "cr-design-approved" --color "0075ca" --description "CR design generation complete"    2>/dev/null || true
 
       # Push the CR commit before design generation so a branch + PR always
       # exists even if generate-dhf later fails — enabling manual rerun.
@@ -172,6 +173,14 @@ jobs:
             fi
             git push
           fi
+
+      - name: Mark design generated
+        if: always() && steps.generate_design.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.open_pr.outputs.pr_number }}"
+          gh pr edit "$PR_NUMBER" --add-label "cr-design-approved"
 
       - name: Post design summary
         if: always() && steps.generate_design.outcome == 'success'
