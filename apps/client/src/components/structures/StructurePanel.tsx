@@ -601,6 +601,7 @@ export default function StructurePanel() {
     });
   void axialRevision;
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       autoContourAbortControllerRef.current?.abort();

@@ -80,12 +80,7 @@ export const useStructureStore = create<StructureState>()(
         ];
         state.activeStructureSetId = structureSet.id;
         state.activeStructureId = structureSet.structures[0]?.id ?? null;
-        state.dirtySeriesUIDs = state.dirtySeriesUIDs.filter(
-          (uid) => uid !== structureSet.referencedSeriesUID
-        );
-        state.repositoryDirtySeriesUIDs = state.repositoryDirtySeriesUIDs.filter(
-          (uid) => uid !== structureSet.referencedSeriesUID
-        );
+        markSeriesDirty(state, structureSet.referencedSeriesUID);
       }),
 
     setActiveStructureSet: (id) =>
