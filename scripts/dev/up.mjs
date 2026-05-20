@@ -16,6 +16,14 @@ async function main() {
   printSection('DICOM Repository');
   await run('pnpm', ['repo:up']);
 
+  printSection('Auto-Contour Service');
+  if (await isPortOpen(4010)) {
+    console.log('Auto-contour service already listening on http://127.0.0.1:4010');
+  } else {
+    children.push(spawnService('autocontour-service', 'pnpm', ['autocontour:service']));
+    await waitForPort(4010, 'Auto-contour service');
+  }
+
   printSection('API');
   if (await isPortOpen(4000)) {
     console.log('API already listening on http://127.0.0.1:4000');
@@ -43,6 +51,7 @@ async function main() {
 
   printSection('Ready');
   console.log('Frontend: http://127.0.0.1:3000/workspace');
+  console.log('Auto AI:  http://127.0.0.1:4010/health');
   console.log('API:      http://127.0.0.1:4000/api/health');
   console.log('Orthanc:  http://127.0.0.1:8042');
   console.log('DICOMweb: http://127.0.0.1:3000/dicom-web');

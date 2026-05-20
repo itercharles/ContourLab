@@ -22,7 +22,7 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.ACTIONS_PAT }}
           fetch-depth: 0
 
       - uses: ./.github/actions/medharness-setup
@@ -99,4 +99,4 @@ jobs:
       - name: Trigger Product CI/CD on main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run ci-pipeline.yml --ref main
+        run: gh workflow run ci-pipeline.yml --repo "${{ github.repository }}" --ref main

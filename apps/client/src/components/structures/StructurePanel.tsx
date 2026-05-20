@@ -3,11 +3,24 @@ import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
-import type { Structure, StructureSet, StructureType } from '@contourlab/shared-types';
+import type {
+  AutoContourJobStatus,
+  AutoContourModelProfile,
+  Structure,
+  StructureSet,
+  StructureType,
+} from '@contourlab/shared-types';
 import {
   loadStructureDraftForSeries,
   saveStructureDraftForSeries,
 } from '../../core/structures/structureDraftStore';
+import {
+  buildAutoContourRequest,
+  getAutoContourJobResult,
+  getAutoContourJobStatus,
+  listAutoContourModels,
+  submitAutoContourJob,
+} from '../../core/autocontour/autocontourClient';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import { replaceStructureSetsForSeries } from '../../core/structures/structurePersistence';
 import {
@@ -129,6 +142,10 @@ function formatSourceLabel(structureSet: StructureSet): string {
     return structureSet.source.label || structureSet.label || 'RTSTRUCT';
   }
 
+  if (structureSet.source?.type === 'ai-draft') {
+    return structureSet.source.modelDisplayName || structureSet.source.label || 'AI draft';
+  }
+
   if (structureSet.source?.type === 'local-draft') {
     return 'Local draft';
   }
@@ -165,6 +182,21 @@ function formatSopTail(sopInstanceUID: string): string {
 function formatVolumeCc(volumeCc: number | undefined): string {
   if (!Number.isFinite(volumeCc) || (volumeCc ?? 0) <= 0) return '0.0 cc';
   return `${volumeCc!.toFixed(1)} cc`;
+}
+
+function formatAutoContourState(state: AutoContourJobStatus['state']): string {
+  switch (state) {
+    case 'queued':
+      return 'Queued';
+    case 'running':
+      return 'Running';
+    case 'succeeded':
+      return 'Ready';
+    case 'failed':
+      return 'Failed';
+    default:
+      return state;
+  }
 }
 
 interface AxialViewportLike {
@@ -395,6 +427,7 @@ export default function StructurePanel() {
   const setActiveStructure = useStructureStore((s) => s.setActiveStructure);
   const setActiveStructureSet = useStructureStore((s) => s.setActiveStructureSet);
   const replaceStructureSets = useStructureStore((s) => s.replaceStructureSets);
+  const replaceStructureSetForSeries = useStructureStore((s) => s.replaceStructureSetForSeries);
   const dirtySeriesUIDs = useStructureStore((s) => s.dirtySeriesUIDs);
   const repositoryDirtySeriesUIDs = useStructureStore((s) => s.repositoryDirtySeriesUIDs);
   const markSeriesClean = useStructureStore((s) => s.markSeriesClean);
@@ -423,6 +456,13 @@ export default function StructurePanel() {
   const [expandedContourQaRules, setExpandedContourQaRules] = useState<string[]>([]);
   const [expandedRtssQaRules, setExpandedRtssQaRules] = useState<string[]>([]);
   const [qaVisibleCountByRule, setQaVisibleCountByRule] = useState<Record<string, number>>({});
+  const [autoContourModels, setAutoContourModels] = useState<AutoContourModelProfile[]>([]);
+  const [autoContourModelsLoaded, setAutoContourModelsLoaded] = useState(false);
+  const [autoContourModelsError, setAutoContourModelsError] = useState<string | null>(null);
+  const [selectedAutoContourModelId, setSelectedAutoContourModelId] = useState<string>('');
+  const [autoContourJobStatus, setAutoContourJobStatus] = useState<AutoContourJobStatus | null>(null);
+  const [isAutoContourRunning, setIsAutoContourRunning] = useState(false);
+  const [lastAutoContourSummary, setLastAutoContourSummary] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const attemptedAutoLoadSeriesRef = useRef(new Set<string>());
   const draftSaveTimerRef = useRef<number | null>(null);
@@ -557,6 +597,33 @@ export default function StructurePanel() {
       inputRef.current.focus();
     }
   }, [isAdding]);
+
+  useEffect(() => {
+    if (panelTab !== 'ai' || autoContourModelsLoaded) return;
+    let cancelled = false;
+
+    const loadModels = async () => {
+      try {
+        const models = await listAutoContourModels();
+        if (cancelled) return;
+        setAutoContourModels(models);
+        setAutoContourModelsLoaded(true);
+        setSelectedAutoContourModelId((current) => current || models[0]?.id || '');
+        setAutoContourModelsError(null);
+      } catch (error) {
+        if (cancelled) return;
+        setAutoContourModelsError(
+          error instanceof Error ? error.message : 'Failed to load auto-contour models.'
+        );
+        setAutoContourModelsLoaded(true);
+      }
+    };
+
+    void loadModels();
+    return () => {
+      cancelled = true;
+    };
+  }, [autoContourModelsLoaded, panelTab]);
 
   useEffect(() => {
     let animationFrame: number | null = null;
@@ -723,6 +790,64 @@ export default function StructurePanel() {
     markSeriesClean,
     structureSets,
   ]);
+
+  const handleRunAutoContour = async () => {
+    if (!activeLoadedSeries) {
+      setStatusMessage('Load a CT series before running auto-contouring.');
+      return;
+    }
+
+    if (activeLoadedSeries.series.modality !== 'CT') {
+      setStatusMessage('Auto-contouring currently supports CT series only.');
+      return;
+    }
+
+    if (!selectedAutoContourModelId) {
+      setStatusMessage('Select an auto-contour model first.');
+      return;
+    }
+
+    setIsAutoContourRunning(true);
+    setLastAutoContourSummary(null);
+    setAutoContourJobStatus(null);
+    setAutoContourModelsError(null);
+
+    try {
+      const request = buildAutoContourRequest(activeLoadedSeries, selectedAutoContourModelId);
+      const createResponse = await submitAutoContourJob(request);
+
+      let status = await getAutoContourJobStatus(createResponse.jobId);
+      setAutoContourJobStatus(status);
+
+      while (status.state === 'queued' || status.state === 'running') {
+        await new Promise((resolve) => window.setTimeout(resolve, 750));
+        status = await getAutoContourJobStatus(createResponse.jobId);
+        setAutoContourJobStatus(status);
+      }
+
+      if (status.state !== 'succeeded') {
+        throw new Error(status.error || 'Auto-contouring failed.');
+      }
+
+      const result = await getAutoContourJobResult(createResponse.jobId);
+      replaceStructureSetForSeries(result.structureSet);
+      StructureSetManager.syncSelectionToSeries(activeLoadedSeries.seriesUID);
+      setStatusMessage(
+        `Imported AI draft with ${result.structureSet.structures.length} structure(s).`
+      );
+      setLastAutoContourSummary(
+        `${result.structureSet.source?.modelDisplayName ?? 'AI draft'} imported at ${formatSourceTimestamp(
+          result.structureSet.source?.generatedAt ?? result.structureSet.source?.importedAt ?? new Date().toISOString()
+        )}.`
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to run auto-contouring.';
+      setAutoContourModelsError(message);
+      setStatusMessage(message);
+    } finally {
+      setIsAutoContourRunning(false);
+    }
+  };
 
   const handleAddClick = (type: StructureType) => {
     if (!activeSeriesUID) return;
@@ -1559,30 +1684,94 @@ export default function StructurePanel() {
             </div>
             <div className="px-3 py-3">
               <p className="mb-3 leading-relaxed text-[var(--color-text-sec)]">
-                Select a pre-trained model to auto-segment structures for this study.
+                Generate an editable AI draft for the active CT series. The result stays local until you explicitly save or export it.
               </p>
-              {[
-                { name: 'Thorax OARs · nnU-Net v3.2',         count: '14 structures' },
-                { name: 'Head & Neck · TotalSegmentator',      count: '43 structures' },
-                { name: 'Abdomen · AutoContour',               count: '18 structures' },
-                { name: 'Pelvis · Limbus-like',                count: '11 structures' },
-              ].map((model) => (
-                <div
-                  key={model.name}
-                  className="mb-1.5 flex items-center justify-between rounded border border-[var(--color-border)] bg-[var(--color-elevated)] px-2.5 py-1.5"
+              <div className="mb-3 grid gap-1.5">
+                <label className="font-semibold uppercase tracking-widest text-[10px] text-[var(--color-text-muted)]">
+                  Model Profile
+                </label>
+                <select
+                  aria-label="Auto-contour model profile"
+                  value={selectedAutoContourModelId}
+                  onChange={(event) => setSelectedAutoContourModelId(event.target.value)}
+                  disabled={isAutoContourRunning || autoContourModels.length === 0}
+                  className="h-8 w-full border border-[var(--color-border-input)] bg-[var(--color-elevated)] px-2 text-[11px] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
                 >
-                  <span className="font-medium text-[var(--color-text)]">{model.name}</span>
-                  <span className="ml-2 shrink-0 text-[var(--color-text-muted)]">{model.count}</span>
+                  {autoContourModels.length === 0 ? (
+                    <option value="">
+                      {autoContourModelsLoaded ? 'No auto-contour models available' : 'Loading models…'}
+                    </option>
+                  ) : null}
+                  {autoContourModels.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedAutoContourModelId ? (
+                <div className="mb-3 rounded border border-[var(--color-border)] bg-[var(--color-elevated)] px-2.5 py-2">
+                  {autoContourModels
+                    .filter((model) => model.id === selectedAutoContourModelId)
+                    .map((model) => (
+                      <div key={model.id}>
+                        <p className="font-medium text-[var(--color-text)]">{model.displayName}</p>
+                        <p className="mt-1 leading-relaxed text-[var(--color-text-sec)]">{model.summary}</p>
+                        <p className="mt-1 text-[var(--color-text-muted)]">
+                          {model.anatomyScope} · {model.expectedStructureLabels.join(', ')}
+                        </p>
+                      </div>
+                    ))}
                 </div>
-              ))}
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => void handleRunAutoContour()}
+                disabled={
+                  isAutoContourRunning ||
+                  !activeLoadedSeries ||
+                  activeLoadedSeries.series.modality !== 'CT' ||
+                  !selectedAutoContourModelId
+                }
+                className="h-8 rounded bg-blue-600 px-3 text-[11px] font-semibold uppercase tracking-widest text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-600"
+              >
+                {isAutoContourRunning ? 'Running…' : 'Run Auto-Contouring'}
+              </button>
+
+              {autoContourJobStatus ? (
+                <div className="mt-3 rounded border border-[var(--color-border)] bg-[var(--color-elevated)] px-2.5 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-[var(--color-text)]">Job Status</span>
+                    <span className="text-[var(--color-text-muted)]">
+                      {formatAutoContourState(autoContourJobStatus.state)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[var(--color-text-sec)]">{autoContourJobStatus.progressStage}</p>
+                  {autoContourJobStatus.error ? (
+                    <p className="mt-1 text-[#f59e0b]">{autoContourJobStatus.error}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {autoContourModelsError ? (
+                <p className="mt-3 text-[#f59e0b]">{autoContourModelsError}</p>
+              ) : null}
+              {!activeLoadedSeries ? (
+                <p className="mt-3 text-[var(--color-text-muted)]">Load a CT series to enable auto-contouring.</p>
+              ) : null}
+              {activeLoadedSeries && activeLoadedSeries.series.modality !== 'CT' ? (
+                <p className="mt-3 text-[var(--color-text-muted)]">The active series is {activeLoadedSeries.series.modality}. v1 auto-contouring is CT-only.</p>
+              ) : null}
             </div>
           </section>
           <section className="border border-[var(--color-border)] bg-[var(--color-surface)]">
             <div className="border-b border-[var(--color-border)] bg-[var(--color-elevated)] px-2 py-1.5">
-              <p className="font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Suggested Refinements</p>
+              <p className="font-semibold uppercase tracking-widest text-[var(--color-text-muted)]">Imported Draft</p>
             </div>
             <div className="px-3 py-2 leading-relaxed text-[var(--color-text-sec)]">
-              Run auto-contouring to generate suggestions.
+              {lastAutoContourSummary ?? 'Run auto-contouring to generate an editable draft structure set.'}
             </div>
           </section>
         </div>
@@ -1921,8 +2110,10 @@ export default function StructurePanel() {
             {[
               ['Structure Set', activeSeriesStructureSet?.label ?? 'n/a'],
               ['Source', activeSeriesStructureSet ? formatSourceLabel(activeSeriesStructureSet) : 'n/a'],
-              ['Kind', activeSeriesStructureSet?.source?.type === 'rtstruct' ? 'RTSS' : 'SET'],
+              ['Kind', activeSeriesStructureSet?.source?.type === 'rtstruct' ? 'RTSS' : activeSeriesStructureSet?.source?.type === 'ai-draft' ? 'AI-DRAFT' : 'SET'],
+              ['Model', activeSeriesStructureSet?.source?.modelDisplayName ?? 'n/a'],
               ['SOP', activeSeriesStructureSet?.source?.sopInstanceUID ? `…${formatSopTail(activeSeriesStructureSet.source.sopInstanceUID)}` : 'n/a'],
+              ['Generated', activeSeriesStructureSet?.source?.generatedAt ? formatSourceTimestamp(activeSeriesStructureSet.source.generatedAt) : 'n/a'],
               ['Imported', activeSeriesStructureSet?.source?.importedAt ? formatSourceTimestamp(activeSeriesStructureSet.source.importedAt) : 'n/a'],
               ['Series UID', activeSeriesUID ?? 'n/a'],
             ].map(([label, value]) => (

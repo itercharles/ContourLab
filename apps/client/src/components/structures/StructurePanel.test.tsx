@@ -12,6 +12,10 @@ import type { StructureSet } from '@contourlab/shared-types';
 const mocks = vi.hoisted(() => ({
   loadStructureDraftForSeries: vi.fn(),
   saveStructureDraftForSeries: vi.fn(),
+  listAutoContourModels: vi.fn(),
+  submitAutoContourJob: vi.fn(),
+  getAutoContourJobStatus: vi.fn(),
+  getAutoContourJobResult: vi.fn(),
   scroll: vi.fn(),
   renderViewport: vi.fn(),
   getViewport: vi.fn(() => ({
@@ -28,6 +32,19 @@ vi.mock('../../core/structures/structureDraftStore', () => ({
 
 vi.mock('../../core/debug/clientDebugLog', () => ({
   logClientDebug: vi.fn(),
+}));
+
+vi.mock('../../core/autocontour/autocontourClient', () => ({
+  buildAutoContourRequest: vi.fn((loadedSeries, modelProfileId) => ({
+    modelProfileId,
+    series: {
+      seriesUID: loadedSeries.seriesUID,
+    },
+  })),
+  listAutoContourModels: mocks.listAutoContourModels,
+  submitAutoContourJob: mocks.submitAutoContourJob,
+  getAutoContourJobStatus: mocks.getAutoContourJobStatus,
+  getAutoContourJobResult: mocks.getAutoContourJobResult,
 }));
 
 vi.mock('../../core/rendering/ViewportManager', () => ({
@@ -146,6 +163,52 @@ beforeEach(() => {
   });
   mocks.loadStructureDraftForSeries.mockResolvedValue(null);
   mocks.saveStructureDraftForSeries.mockResolvedValue(undefined);
+  mocks.listAutoContourModels.mockResolvedValue([
+    {
+      id: 'thorax-ct-demo',
+      displayName: 'Thorax CT · TotalSeg-style demo',
+      summary: 'Deterministic contour draft generator.',
+      modality: 'CT',
+      anatomyScope: 'Thorax',
+      expectedStructureLabels: ['EXTERNAL', 'Lung_L', 'Lung_R', 'Heart'],
+    },
+  ]);
+  mocks.submitAutoContourJob.mockResolvedValue({ jobId: 'job-1' });
+  mocks.getAutoContourJobStatus.mockResolvedValue({
+    jobId: 'job-1',
+    state: 'succeeded',
+    progressStage: 'Contour draft ready',
+    submittedAt: '2026-05-20T10:00:00.000Z',
+    updatedAt: '2026-05-20T10:00:01.000Z',
+    resultAvailable: true,
+  });
+  mocks.getAutoContourJobResult.mockResolvedValue({
+    structureSet: {
+      id: 'ai-ss-1',
+      label: 'Thorax CT · TotalSeg-style demo draft',
+      referencedSeriesUID: 'series-1',
+      version: 1,
+      source: {
+        type: 'ai-draft',
+        label: 'AI draft',
+        modelDisplayName: 'Thorax CT · TotalSeg-style demo',
+        generatedAt: '2026-05-20T10:00:01.000Z',
+        importedAt: '2026-05-20T10:00:01.000Z',
+      },
+      structures: [
+        {
+          id: 'lung-l',
+          name: 'Lung_L',
+          type: 'OAR',
+          color: [0, 180, 255],
+          contours: [],
+          isVisible: true,
+          isLocked: false,
+          volume_cc: 1250,
+        },
+      ],
+    },
+  });
   useVolumeStore.setState({
     loadedSeries: [makeLoadedSeries()],
     activeSeriesUID: 'series-1',
@@ -395,6 +458,25 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     await waitFor(() =>
       expect(useStructureStore.getState().structureSets[0].structures[0].isLocked).toBe(true)
     );
+  });
+
+  it('runs auto-contouring and imports an AI draft structure set for the active CT series', async () => {
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
+    await waitFor(() =>
+      expect(mocks.listAutoContourModels).toHaveBeenCalledTimes(1)
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Auto-Contouring' }));
+
+    await waitFor(() =>
+      expect(useStructureStore.getState().activeStructureSetId).toBe('ai-ss-1')
+    );
+    expect(useStructureStore.getState().structureSets).toHaveLength(1);
+    expect(useStructureStore.getState().structureSets[0].source?.type).toBe('ai-draft');
+    expect(screen.getByText(/Imported AI draft with 1 structure/i)).toBeTruthy();
+    expect(screen.getByText(/Thorax CT · TotalSeg-style demo imported/i)).toBeTruthy();
   });
 
   it('shows contour review count in the compact active-structure summary @links:SRS-011', () => {
@@ -1091,14 +1173,16 @@ describe('StructurePanel tab navigation driven by uiStore', () => {
     expect(useUIStore.getState().sidePanelTab).toBe('structures');
   });
 
-  it('AI tab shows the auto-contouring model list', () => {
+  it('AI tab loads the available auto-contouring model profiles', async () => {
     render(<StructurePanel />);
 
     fireEvent.click(screen.getByRole('button', { name: 'AI' }));
 
     expect(screen.getByText('Auto-contouring')).toBeTruthy();
-    expect(screen.getByText(/Thorax OARs · nnU-Net/i)).toBeTruthy();
-    expect(screen.getByText(/Head & Neck/i)).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getAllByText(/Thorax CT · TotalSeg-style demo/i).length).toBeGreaterThan(0)
+    );
+    expect(screen.getByText(/Deterministic contour draft generator/i)).toBeTruthy();
   });
 
   it('Review tab shows the Approve & Sign button', () => {

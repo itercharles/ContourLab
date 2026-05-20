@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# wsl-deploy.sh — deploy the ContourLab stack to the local workstation.
+# deploy.sh — deploy the ContourLab stack to the Linux workstation.
 #
 # Owns the steps that the `deploy` job in .github/workflows/ci-pipeline.yml
 # used to inline. Extracted so the same script can be run manually for
