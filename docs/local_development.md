@@ -9,7 +9,7 @@ auto-contouring, and Orthanc-backed DICOM repository development.
 | --- | --- | --- |
 | Node.js | 20 | `node --version` |
 | pnpm | 9 | `pnpm --version` |
-| .NET SDK | 10 | `dotnet --version` |
+| .NET SDK | 9 | `dotnet --version` |
 | Docker + Compose | current | `docker compose version` |
 
 Required local ports: `3000` (frontend), `4000` (API), `4010`
