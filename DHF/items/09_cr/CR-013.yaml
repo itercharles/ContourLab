@@ -1,0 +1,26 @@
+id: CR-013
+title: Show active patient name in the toolbar
+type: CR
+description: 'When a DICOM series is loaded, the toolbar should display the patient
+  name (from the DICOM metadata) next to the brand mark so the clinician always knows
+  which patient they are working on.
+
+
+  Acceptance criteria:
+
+  - Patient name appears in the toolbar when a series is loaded
+
+  - Clears / shows a placeholder when no series is loaded
+
+  - Does not affect existing toolbar layout or stepper behaviour
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/111'
+justification: Maintainer assigned this issue to the active release milestone, indicating
+  it is accepted for CR intake.
+priority: Medium
+requested_by: itercharles
+target_version: 2026-W21
+category: Feature
+content: ''
+status: new
