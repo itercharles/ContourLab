@@ -74,7 +74,7 @@ export interface Structure {
 }
 
 export interface StructureSetSource {
-  type: 'manual' | 'rtstruct' | 'local-draft';
+  type: 'manual' | 'rtstruct' | 'local-draft' | 'ai-draft';
   label?: string;
   sopClassUID?: string;
   sopInstanceUID?: string;
@@ -87,6 +87,10 @@ export interface StructureSetSource {
   reviewDate?: string;
   reviewTime?: string;
   importedAt?: string;
+  generatorService?: string;
+  modelProfileId?: string;
+  modelDisplayName?: string;
+  generatedAt?: string;
 }
 
 export interface StructureSet {
@@ -96,6 +100,62 @@ export interface StructureSet {
   structures: Structure[];
   version: number;                            // for collaborative editing
   source?: StructureSetSource;
+}
+
+export interface AutoContourModelProfile {
+  id: string;
+  displayName: string;
+  summary: string;
+  modality: 'CT';
+  anatomyScope: string;
+  expectedStructureLabels: string[];
+}
+
+export interface AutoContourSeriesSlice {
+  sopInstanceUID: string;
+  sliceLocation?: number;
+  instanceNumber: number;
+}
+
+export interface AutoContourSeriesPayload {
+  seriesUID: string;
+  studyInstanceUID: string;
+  studyDate?: string;
+  seriesDescription?: string;
+  modality: 'CT';
+  dimensions: [number, number, number];
+  spacing: [number, number, number];
+  origin: [number, number, number];
+  directionCosines: number[];
+  windowCenter: number;
+  windowWidth: number;
+  pixelData: number[];
+  slices: AutoContourSeriesSlice[];
+}
+
+export interface AutoContourJobCreateRequest {
+  modelProfileId: string;
+  series: AutoContourSeriesPayload;
+}
+
+export interface AutoContourJobCreateResponse {
+  jobId: string;
+}
+
+export type AutoContourJobState = 'queued' | 'running' | 'succeeded' | 'failed';
+
+export interface AutoContourJobStatus {
+  jobId: string;
+  state: AutoContourJobState;
+  progressStage: string;
+  submittedAt: string;
+  updatedAt: string;
+  error?: string;
+  resultAvailable: boolean;
+}
+
+export interface AutoContourResultPayload {
+  structureSet: StructureSet;
 }
 
 // ---------------------------------------------------------------------------

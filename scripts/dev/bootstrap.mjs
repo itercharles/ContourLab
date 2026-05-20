@@ -25,6 +25,7 @@ async function main() {
   printSection('Dependencies');
   await run('pnpm', ['install']);
   await run('dotnet', ['restore', 'apps/api/api.csproj']);
+  await run('dotnet', ['restore', 'apps/autocontour-service/ContourLab.AutoContourService.csproj']);
 
   printSection('DICOM Repository');
   await run('pnpm', ['repo:up']);

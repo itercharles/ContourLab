@@ -10,6 +10,7 @@ interface StructureState {
   repositoryDirtySeriesUIDs: string[];
   addStructureSet: (ss: StructureSet) => void;
   replaceStructureSets: (structureSets: StructureSet[]) => void;
+  replaceStructureSetForSeries: (structureSet: StructureSet) => void;
   setActiveStructureSet: (id: string | null) => void;
   setActiveStructure: (id: string | null) => void;
   markSeriesDirty: (seriesUID: string) => void;
@@ -67,6 +68,19 @@ export const useStructureStore = create<StructureState>()(
     replaceStructureSets: (structureSets) =>
       set((state) => {
         state.structureSets = structureSets;
+      }),
+
+    replaceStructureSetForSeries: (structureSet) =>
+      set((state) => {
+        state.structureSets = [
+          ...state.structureSets.filter(
+            (existing) => existing.referencedSeriesUID !== structureSet.referencedSeriesUID
+          ),
+          structureSet,
+        ];
+        state.activeStructureSetId = structureSet.id;
+        state.activeStructureId = structureSet.structures[0]?.id ?? null;
+        markSeriesDirty(state, structureSet.referencedSeriesUID);
       }),
 
     setActiveStructureSet: (id) =>

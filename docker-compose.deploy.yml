@@ -19,8 +19,23 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:4000
       GITHUB_TOKEN: ${ISSUES_TOKEN}
+      CONTOURLAB_AUTOCONTOUR_SERVICE_BASE_URL: http://autocontour-service:4010
     ports:
       - "4001:4000"
+    restart: unless-stopped
+    depends_on:
+      - autocontour-service
+
+  autocontour-service:
+    build:
+      context: .
+      dockerfile: apps/autocontour-service/Dockerfile
+    image: contourlab-autocontour-service:latest
+    container_name: contourlab-autocontour-service
+    environment:
+      ASPNETCORE_URLS: http://+:4010
+    ports:
+      - "4010:4010"
     restart: unless-stopped
 
   dicom-repo:
