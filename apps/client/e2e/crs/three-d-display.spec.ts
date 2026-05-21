@@ -101,7 +101,7 @@ async function injectThreeDState(page: Page) {
 }
 
 test.describe('3D clinical review @links:CRS-012', () => {
-  test('workspace exposes CT and visible structures in the fourth 3D quadrant @links:CRS-012', async ({ page }) => {
+  test('workspace exposes CT and visible structures in the fourth 3D quadrant @links:CRS-012 @testing:T1', async ({ page }) => {
     await injectThreeDState(page);
 
     await expect(page.getByLabel('3D viewport')).toBeVisible();

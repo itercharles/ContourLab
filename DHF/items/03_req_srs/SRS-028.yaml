@@ -9,4 +9,9 @@ content: |-
   while preserving the existing 2x2 viewer layout.
 derives_from: [SYS-014]
 verification_method: [Test, Demonstration]
+testing: |
+  T1: Given world and voxel coordinates, round-trip conversion between worldToContinuousVoxel and voxelToWorld preserves the original values.
+  T2: Given a structure with stacked contours, buildStructureMaskVolume produces a non-null mask with correct dimensions and filled voxels.
+  T3: Given nested contours on the same slice, buildStructureMaskVolume preserves interior holes (inner contour is unfilled).
+  T4: Given a 3D viewport component with loaded series and structures, the viewport label and visible-structure count are rendered.
 critical_safety: true

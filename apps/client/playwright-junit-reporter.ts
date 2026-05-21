@@ -22,6 +22,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const LINKS_RE = /@links:([\w-]+(?:,[\w-]+)*)/g;
+const TESTING_RE = /@testing:(T\d+)/g;
 
 function parseLinks(name: string): string[] {
   const found: string[] = [];
@@ -29,6 +30,16 @@ function parseLinks(name: string): string[] {
   LINKS_RE.lastIndex = 0;
   while ((m = LINKS_RE.exec(name)) !== null) {
     found.push(...m[1].split(',').map((s) => s.trim()).filter(Boolean));
+  }
+  return found;
+}
+
+function parseTestingPoints(name: string): string[] {
+  const found: string[] = [];
+  let m: RegExpExecArray | null;
+  TESTING_RE.lastIndex = 0;
+  while ((m = TESTING_RE.exec(name)) !== null) {
+    found.push(m[1]);
   }
   return found;
 }
@@ -61,6 +72,7 @@ interface Entry {
   suiteName: string;
   testName: string;
   links: string[];
+  testingPoints: string[];
   passed: boolean;
   durationMs: number;
   errorMsg?: string;
@@ -91,12 +103,21 @@ class PlaywrightJunitReporter implements Reporter {
 
     if (links.length === 0) return;
 
+    const testPoints = parseTestingPoints(test.title);
+    let suite: Suite | undefined = test.parent;
+    while (suite) {
+      testPoints.push(...parseTestingPoints(suite.title));
+      suite = suite.parent;
+    }
+    const testingPoints = [...new Set(testPoints)];
+
     const suiteName = test.parent?.title ?? '';
 
     this.entries.push({
       suiteName,
       testName: test.title,
       links,
+      testingPoints,
       passed: result.status === 'passed',
       durationMs: result.duration,
       errorMsg: result.errors[0]?.message,
@@ -123,8 +144,11 @@ class PlaywrightJunitReporter implements Reporter {
         `    <testcase name="${escapeXml(e.testName)}" classname="${escapeXml(e.suiteName)}" time="${dur}">`,
         `      <properties>`,
         `        <property name="medharness.links" value="${e.links.join(',')}"/>`,
-        `      </properties>`,
       );
+      if (e.testingPoints.length > 0) {
+        lines.push(`        <property name="medharness.testing" value="${e.testingPoints.join(',')}"/>`);
+      }
+      lines.push(`      </properties>`);
       if (!e.passed) {
         lines.push(`      <failure message="${escapeXml(e.errorMsg ?? 'Test failed')}"/>`);
       }

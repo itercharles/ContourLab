@@ -10,6 +10,8 @@ category: Functional
 verification_method:
   - Test
   - Demonstration
+testing: |
+  T1: Given a manual Refresh 3D click, the 3D scene rerenders and displays updated structure count and CT status.
 critical_safety: false
 satisfies:
   - CRS-012

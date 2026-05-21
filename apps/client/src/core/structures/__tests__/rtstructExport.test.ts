@@ -99,11 +99,11 @@ describe('exportRtstructBlob @links:SRS-018,SYS-006,CRS-005', () => {
     });
   });
 
-  it('creates a DICOM blob for a structure set', async () => {
+  it('creates a DICOM blob for a structure set @testing:T3', async () => {
     await expect(exportRtstructBlob(loadedSeries, structureSet)).resolves.toBeInstanceOf(Blob);
   });
 
-  it('returns identifiers for the newly generated RTSTRUCT object', async () => {
+  it('returns identifiers for the newly generated RTSTRUCT object @testing:T3', async () => {
     const exported = await exportRtstructObject(loadedSeries, structureSet);
 
     expect(exported.blob).toBeInstanceOf(Blob);

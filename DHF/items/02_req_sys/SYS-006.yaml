@@ -13,6 +13,9 @@ category: Functional
 verification_method:
   - Test
   - Demonstration
+testing: |
+  T1: Given unsynchronized local changes, the Save Changes button is enabled and triggers RTSTRUCT export and upload.
+  T2: Given a successful upload, the structure set source is updated with the new SOP instance UID and the repository dirty state is cleared.
 critical_safety: true
 satisfies:
   - CRS-005

@@ -36,6 +36,7 @@ test-results/
 *.nii
 *.nii.gz
 deploy-data/
+import-data/
 
 # IDE
 .vscode/

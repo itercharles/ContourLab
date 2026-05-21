@@ -38,32 +38,32 @@ function makeStructure(contourPoints: Float32Array[]): Structure {
 // ---------------------------------------------------------------------------
 
 describe('computeVolume @links:SRS-006', () => {
-  it('returns 0 for an empty structure (no contours)', () => {
+  it('returns 0 for an empty structure (no contours) @testing:T1', () => {
     const structure = makeStructure([]);
     expect(computeVolume(structure, 1)).toBe(0);
   });
 
-  it('returns 0 for a single polygon with fewer than 3 points', () => {
+  it('returns 0 for a single polygon with fewer than 3 points @testing:T1', () => {
     const twoPoints = new Float32Array([0, 0, 0, 1, 0, 0]); // 2 points
     const structure = makeStructure([twoPoints]);
     expect(computeVolume(structure, 1)).toBe(0);
   });
 
-  it('computes 0.001 cm³ for a 1×1 mm square at sliceThickness=1mm', () => {
+  it('computes 0.001 cm³ for a 1×1 mm square at sliceThickness=1mm @testing:T2', () => {
     // Area = 1 mm², volume = 1 mm³ = 0.001 cm³
     const points = makeSquare(0, 0, 1, 0);
     const structure = makeStructure([points]);
     expect(computeVolume(structure, 1)).toBeCloseTo(0.001, 10);
   });
 
-  it('computes 0.3 cm³ for a 10×10 mm square at sliceThickness=3mm', () => {
+  it('computes 0.3 cm³ for a 10×10 mm square at sliceThickness=3mm @testing:T2', () => {
     // Area = 100 mm², volume = 300 mm³ = 0.3 cm³
     const points = makeSquare(0, 0, 10, 0);
     const structure = makeStructure([points]);
     expect(computeVolume(structure, 3)).toBeCloseTo(0.3, 10);
   });
 
-  it('produces the same area for clockwise and counter-clockwise polygons (Math.abs)', () => {
+  it('produces the same area for clockwise and counter-clockwise polygons (Math.abs) @testing:T3', () => {
     // CCW: (0,0) → (1,0) → (1,1) → (0,1)
     const ccw = new Float32Array([0,0,0, 1,0,0, 1,1,0, 0,1,0]);
     // CW:  (0,0) → (0,1) → (1,1) → (1,0)
@@ -75,7 +75,7 @@ describe('computeVolume @links:SRS-006', () => {
     expect(computeVolume(structCCW, 1)).toBeCloseTo(computeVolume(structCW, 1), 10);
   });
 
-  it('sums volumes correctly for two slices', () => {
+  it('sums volumes correctly for two slices @testing:T4', () => {
     // Two 10×10 squares, each at different z, sliceThickness=5mm
     // Each area = 100 mm², each volume contribution = 500 mm³ = 0.5 cm³ → total = 1.0 cm³
     const slice1 = makeSquare(0, 0, 10, 0);
@@ -98,7 +98,7 @@ describe('computeVolume @links:SRS-006', () => {
     expect(computeVolume(structure, 5)).toBeCloseTo(1.0, 10);
   });
 
-  it('approximates the volume of a cylinder using a 360-point circle (±1%)', () => {
+  it('approximates the volume of a cylinder using a 360-point circle (±1%) @testing:T5', () => {
     // Circle with r=50mm, n=360 points
     const r = 50;
     const n = 360;

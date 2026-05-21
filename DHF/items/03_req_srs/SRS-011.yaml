@@ -20,4 +20,10 @@ content: |-
   communicate the Cmd+Z shortcut through control help text.
 derives_from: [SYS-009]
 verification_method: [Test, Demonstration]
+testing: |
+  T1: Given contours at multiple slice positions including duplicates, getReviewSlices returns deduplicated slices sorted by position.
+  T2: Given a current slice position, findAdjacentReviewSlice returns the next contour-bearing slice and wraps from last to first.
+  T3: Given a current slice position, findAdjacentReviewSlice returns the previous contour-bearing slice and wraps from first to last.
+  T4: Given a next-slice navigation request, resolveContourReviewScrollDelta returns the target slice and the scroll delta to the closest image frame.
+  T5: Given a direct scroll-to-slice request, resolveScrollDeltaToSlice returns the frame delta to the closest matching image frame.
 critical_safety: true

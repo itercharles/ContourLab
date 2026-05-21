@@ -63,7 +63,7 @@ describe('threeDGeometry @links:SRS-028,SRS-029', () => {
     expect(worldToContinuousVoxel(world, volume)).toEqual(voxel);
   });
 
-  it('builds a binary structure mask for stacked contours', () => {
+  it('builds a binary structure mask for stacked contours @testing:T1 @testing:T2', () => {
     const mask = buildStructureMaskVolume(structure, volume);
 
     expect(mask).not.toBeNull();

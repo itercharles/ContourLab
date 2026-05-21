@@ -12,4 +12,9 @@ content: |-
   overlay until non-axial editing tools are explicitly implemented.
 derives_from: [SYS-002]
 verification_method: [Test, Demonstration]
+testing: |
+  T1: Given viewport camera, zoom, or canvas position changes, getViewportTransformSignature returns a different value for each distinct transform.
+  T2: Given axial contour polygons and a sagittal plane value, intersectContourWithPlane returns the correct intersection points.
+  T3: Given axial contour polygons and a coronal plane value, intersectContourWithPlane returns the correct intersection points.
+  T4: Given cross-plane contour slices, buildCrossPlaneBoundaryPath produces the correct SVG boundary path string.
 critical_safety: true

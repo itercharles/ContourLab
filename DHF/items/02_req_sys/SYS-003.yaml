@@ -7,6 +7,10 @@ content: |-
 category: Functional
 verification_method:
   - Test
+testing: |
+  T1: Given an injected structure set, the structure panel lists all structure names.
+  T2: Given an injected structure set, the structure panel displays the type for each structure.
+  T3: Given an active structure set, the active structure is highlighted in the structure panel.
 critical_safety: false
 satisfies:
   - CRS-002

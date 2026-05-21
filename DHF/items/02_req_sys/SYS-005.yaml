@@ -10,6 +10,9 @@ category: Functional
 verification_method:
   - Test
   - Demonstration
+testing: |
+  T1: Given a dirty series state, the workspace context bar shows the unsaved/dirty indicator.
+  T2: Given a clean series state, the workspace context bar shows the "Synced" indicator.
 critical_safety: true
 satisfies:
   - CRS-002

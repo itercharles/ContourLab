@@ -10,4 +10,9 @@ content: |-
   command or mutating contour data.
 derives_from: [SYS-004]
 verification_method: [Test]
+testing: |
+  T1: Given a slice with no existing contour, addContour calls addContourSlice via the undo stack.
+  T2: Given a slice with an existing contour, addContour calls updateContourSlice (replace, not append).
+  T3: Given an undo of an add-new-slice command, the added slice is removed from the structure.
+  T4: Given a locked structure, addContour returns false without mutating contour data or pushing a command.
 critical_safety: true

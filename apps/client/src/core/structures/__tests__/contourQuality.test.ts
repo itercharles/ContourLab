@@ -29,7 +29,7 @@ function squareContour(z: number, size: number, isClosed = true): Structure['con
 }
 
 describe('analyzeContourQuality @links:SRS-013,SYS-010', () => {
-  it('reports empty structures as informational QA items', () => {
+  it('reports empty structures as informational QA items @testing:T1', () => {
     const summary = analyzeContourQuality(makeStructure([]), 2.5);
 
     expect(summary.warningCount).toBe(0);
@@ -39,7 +39,7 @@ describe('analyzeContourQuality @links:SRS-013,SYS-010', () => {
     }));
   });
 
-  it('detects open contours, slice gaps, and abrupt area changes', () => {
+  it('detects open contours, slice gaps, and abrupt area changes @testing:T3 @testing:T4', () => {
     const summary = analyzeContourQuality(makeStructure([
       squareContour(0, 10),
       squareContour(5, 10, false),

@@ -18,4 +18,12 @@ content: |-
   slice for that issue.
 derives_from: [SYS-010]
 verification_method: [Test, Demonstration]
+testing: |
+  T1: Given a structure with no contours, analyzeContourQuality reports it as an informational empty item with zero warnings.
+  T2: Given contours with open polygons, slice gaps, and abrupt area changes, analyzeContourQuality detects all three issue types.
+  T3: Given contours with abrupt centroid shifts or contours outside image bounds, analyzeContourQuality detects centroid-jump and out-of-bounds issues.
+  T4: Given a disabled QA rule in the options, analyzeContourQuality omits issues of that type.
+  T5: Given a structure set with reference and naming problems, analyzeRtssQuality detects series-mismatch, missing-rtstruct-source, duplicate-roi-name, foreign-contour-reference, and empty-roi issues.
+  T6: Given a disabled RTSS QA rule, analyzeRtssQuality omits issues of that type.
+  T7: Given a structure set with only geometry issues, analyzeRtssQuality does not report them as RTSS-level issues.
 critical_safety: true

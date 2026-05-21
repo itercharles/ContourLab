@@ -147,7 +147,7 @@ beforeEach(() => {
 });
 
 describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
-  it('renders the live 3D viewport status instead of the old placeholder', async () => {
+  it('renders the live 3D viewport status instead of the old placeholder @testing:T1 @testing:T2', async () => {
     render(<ThreeDViewport />);
 
     expect(screen.getByLabelText('3D viewport')).toBeTruthy();
@@ -173,7 +173,7 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
     expect(mocks.rotateCamera).toHaveBeenNthCalledWith(2, 0, 10);
   });
 
-  it('offers a manual refresh path when the scene needs rebuilding', async () => {
+  it('offers a manual refresh path when the scene needs rebuilding @testing:T1', async () => {
     render(<ThreeDViewport />);
 
     const callsBefore = mocks.renderSnapshot.mock.calls.length;

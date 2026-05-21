@@ -11,6 +11,10 @@ category: Functional
 verification_method:
   - Test
   - Demonstration
+testing: |
+  T1: Given the workspace loads, the patient browser can be opened and displays a search input.
+  T2: Given the patient browser is open, pressing Escape closes it.
+  T3: Given a search term entered in the patient browser, the search input reflects the entered value.
 critical_safety: false
 satisfies:
   - CRS-008

@@ -23,7 +23,7 @@ describe('flattenWorldPoints', () => {
 });
 
 describe('getViewportTransformSignature @links:SRS-012', () => {
-  it('changes when pan, zoom, or canvas placement changes', () => {
+  it('changes when pan, zoom, or canvas placement changes @testing:T1 @testing:T2', () => {
     const baseViewport = {
       getCamera: () => ({
         focalPoint: [0, 0, 10] as [number, number, number],

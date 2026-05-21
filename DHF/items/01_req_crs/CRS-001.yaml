@@ -7,4 +7,8 @@ content: |-
 user_group: Radiation Therapist / Physician
 derives_from:
   - UC-001
+testing: |
+  T1: Given a mocked DICOMweb repository, the patient browser shows the patient with name, MRN, and study description.
+  T2: Given a search term matching a patient MRN, the browser filters to show only that patient.
+  T3: Given no active patient, the workspace shows the empty-state placeholders.
 priority: Critical

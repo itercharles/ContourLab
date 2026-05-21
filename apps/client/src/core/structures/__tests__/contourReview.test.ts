@@ -17,7 +17,7 @@ function makeContour(slicePosition: number, sopInstanceUID = `sop-${slicePositio
 }
 
 describe('contour review navigation @links:SRS-011,SYS-009', () => {
-  it('returns unique review slices sorted by slice position', () => {
+  it('returns unique review slices sorted by slice position @testing:T1', () => {
     expect(getReviewSlices([
       makeContour(10),
       makeContour(0),
@@ -28,14 +28,14 @@ describe('contour review navigation @links:SRS-011,SYS-009', () => {
     ]);
   });
 
-  it('finds the next contour slice and wraps around', () => {
+  it('finds the next contour slice and wraps around @testing:T2', () => {
     const contours = [makeContour(0), makeContour(10), makeContour(20)];
 
     expect(findAdjacentReviewSlice(contours, 9, 'next')?.slicePosition).toBe(10);
     expect(findAdjacentReviewSlice(contours, 20, 'next')?.slicePosition).toBe(0);
   });
 
-  it('finds the previous contour slice and wraps around', () => {
+  it('finds the previous contour slice and wraps around @testing:T2', () => {
     const contours = [makeContour(0), makeContour(10), makeContour(20)];
 
     expect(findAdjacentReviewSlice(contours, 11, 'previous')?.slicePosition).toBe(10);

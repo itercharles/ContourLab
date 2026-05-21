@@ -55,4 +55,13 @@ content: |-
   clinical workspace.
 derives_from: [SYS-006, SYS-007, SYS-011, SYS-012]
 verification_method: [Test, Demonstration]
+testing: |
+  T1: Given a manual structure set with no repository source, the exported RTSTRUCT omits a PredecessorStructureSetSequence.
+  T2: Given a structure set with a repository RTSTRUCT source, the exported RTSTRUCT includes the predecessor SOP reference.
+  T3: Given a valid structure set and loaded series, exportRtstructBlob resolves to a Blob instance.
+  T4: Given a successful export, the returned identifiers include studyInstanceUID, seriesInstanceUID, sopInstanceUID, and seriesDescription.
+  T5: Given a series dirty flag set, the structureStore marks both draft and repository dirty for that series.
+  T6: Given markSeriesClean called for a series, only the draft dirty flag is cleared; repository dirty state is preserved.
+  T7: Given markSeriesRepositoryClean called, the repository dirty state is cleared independently.
+  T8: Given a structure set added to the store, the referenced series is marked as both draft and repository dirty.
 critical_safety: true

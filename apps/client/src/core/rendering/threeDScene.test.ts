@@ -233,7 +233,7 @@ describe('threeDScene lifecycle', () => {
     expect(mocks.renderer.resetCamera).toHaveBeenCalledTimes(1);
   });
 
-  it('disposes the previous vtk pipelines before replacing scene props', async () => {
+  it('disposes the previous vtk pipelines before replacing scene props @testing:T1', async () => {
     const container = document.createElement('div');
     container.getBoundingClientRect = () =>
       ({ width: 320, height: 240 } as DOMRect);

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 /** @links:SRS-017,SYS-013,CRS-010 */
 describe('system health endpoint', () => {
-  it('should expose a GET /api/health endpoint without authentication @links:SRS-017,SYS-013,CRS-010', () => {
+  it('should expose a GET /api/health endpoint without authentication @links:SRS-017,SYS-013,CRS-010 @testing:T1', () => {
     const expectedPath = '/api/health';
     const expectedMethod = 'GET';
 
@@ -10,7 +10,7 @@ describe('system health endpoint', () => {
     expect(expectedMethod).toBe('GET');
   });
 
-  it('should return JSON with at minimum service name and status indicator @links:SRS-017,SYS-013', () => {
+  it('should return JSON with at minimum service name and status indicator @links:SRS-017,SYS-013 @testing:T1 @testing:T2', () => {
     const minimalHealthResponse = {
       service: 'contourlab-api',
       status: 'healthy',

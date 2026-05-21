@@ -15,6 +15,7 @@ import { dirname, relative } from 'node:path'
 import process from 'node:process'
 
 const LINKS_RE = /@links:([\w-]+(?:,[\w-]+)*)/g
+const TESTING_RE = /@testing:(T\d+)/g
 
 function parseLinks(name: string): string[] {
   const found: string[] = []
@@ -22,6 +23,16 @@ function parseLinks(name: string): string[] {
   LINKS_RE.lastIndex = 0
   while ((m = LINKS_RE.exec(name)) !== null) {
     found.push(...m[1].split(',').map((s) => s.trim()).filter(Boolean))
+  }
+  return found
+}
+
+function parseTestingPoints(name: string): string[] {
+  const found: string[] = []
+  let m: RegExpExecArray | null
+  TESTING_RE.lastIndex = 0
+  while ((m = TESTING_RE.exec(name)) !== null) {
+    found.push(m[1])
   }
   return found
 }
@@ -39,20 +50,23 @@ interface Entry {
   classname: string
   name: string
   links: string[]
+  testingPoints: string[]
   status: 'pass' | 'fail' | 'skip'
   durationMs: number
   errorMsg?: string
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function collectTests(tasks: any[], classname: string, parentLinks: string[], out: Entry[]) {
+function collectTests(tasks: any[], classname: string, parentLinks: string[], parentPoints: string[], out: Entry[]) {
   for (const task of tasks) {
     const myLinks = [...new Set([...parentLinks, ...parseLinks(task.name as string)])]
+    const myPoints = [...new Set([...parentPoints, ...parseTestingPoints(task.name as string)])]
     if (task.type === 'test') {
       out.push({
         classname,
         name: task.name as string,
         links: myLinks,
+        testingPoints: myPoints,
         status:
           task.result?.state === 'pass'
             ? 'pass'
@@ -63,7 +77,7 @@ function collectTests(tasks: any[], classname: string, parentLinks: string[], ou
         errorMsg: task.result?.errors?.[0]?.message as string | undefined,
       })
     } else if (task.type === 'suite' && Array.isArray(task.tasks)) {
-      collectTests(task.tasks, classname, myLinks, out)
+      collectTests(task.tasks, classname, myLinks, myPoints, out)
     }
   }
 }
@@ -80,7 +94,7 @@ export default class VerificationReporter implements Reporter {
     const entries: Entry[] = []
     for (const file of files) {
       const classname = relative(process.cwd(), file.filepath as string).replace(/\\/g, '/')
-      collectTests(file.tasks ?? [], classname, parseLinks(file.name as string), entries)
+      collectTests(file.tasks ?? [], classname, parseLinks(file.name as string), parseTestingPoints(file.name as string), entries)
     }
 
     const linked = entries.filter((e) => e.links.length > 0)
@@ -103,7 +117,11 @@ export default class VerificationReporter implements Reporter {
         `    <testcase name="${escapeXml(e.name)}" classname="${escapeXml(e.classname)}" time="${dur}">`,
         `      <properties>`,
         `        <property name="medharness.links" value="${e.links.join(',')}"/>`,
-        `      </properties>`,
+      )
+      if (e.testingPoints.length > 0) {
+        lines.push(`        <property name="medharness.testing" value="${e.testingPoints.join(',')}"/>`)
+      }
+      lines.push(`      </properties>`,
       )
       if (e.status === 'fail') {
         lines.push(`      <failure message="${escapeXml(e.errorMsg ?? 'Test failed')}"/>`)

@@ -39,13 +39,13 @@ async function openPatientBrowserWithMock(page: Page) {
 }
 
 test.describe('Clinical image access @links:CRS-001', () => {
-  test('clinician can see available patients in the browser @links:CRS-001', async ({ page }) => {
+  test('clinician can see available patients in the browser @links:CRS-001 @testing:T1', async ({ page }) => {
     await openPatientBrowserWithMock(page);
     // Patient should appear with identifiable information
     await expect(page.getByText('Mary Anderson').or(page.getByText('ANDERSON'))).toBeVisible();
   });
 
-  test('clinician can identify the study by description and date @links:CRS-001', async ({
+  test('clinician can identify the study by description and date @links:CRS-001 @testing:T2', async ({
     page,
   }) => {
     await openPatientBrowserWithMock(page);
@@ -55,13 +55,13 @@ test.describe('Clinical image access @links:CRS-001', () => {
     ).toBeVisible();
   });
 
-  test('clinician can search for a patient by MRN @links:CRS-001', async ({ page }) => {
+  test('clinician can search for a patient by MRN @links:CRS-001 @testing:T3', async ({ page }) => {
     await openPatientBrowserWithMock(page);
     await page.getByPlaceholder(/Search patient/i).fill('MRN-003');
     await expect(page.getByText('Mary Anderson').or(page.getByText('ANDERSON'))).toBeVisible();
   });
 
-  test('workspace shows no active patient before series selection @links:CRS-001', async ({
+  test('workspace shows no active patient before series selection @links:CRS-001 @testing:T4', async ({
     page,
   }) => {
     await openPatientBrowserWithMock(page);

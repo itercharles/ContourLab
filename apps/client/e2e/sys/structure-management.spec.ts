@@ -101,7 +101,7 @@ async function injectStructureState(page: Page) {
 // ---------------------------------------------------------------------------
 
 test.describe('Structure management @links:SYS-003', () => {
-  test('structure panel lists injected structures @links:SYS-003', async ({ page }) => {
+  test('structure panel lists injected structures @links:SYS-003 @testing:T1', async ({ page }) => {
     await injectStructureState(page);
     await expect(page.getByText('GTV_Primary').first()).toBeVisible();
     await expect(page.getByText('PTV_High').first()).toBeVisible();
@@ -145,7 +145,7 @@ test.describe('Structure draft persistence @links:SYS-005', () => {
     });
   });
 
-  test('workspace context bar reflects draft sync state @links:SYS-005', async ({ page }) => {
+  test('workspace context bar reflects draft sync state @links:SYS-005 @testing:T1', async ({ page }) => {
     await injectStructureState(page);
     // With clean state, context bar shows "Synced"
     await expect(page.getByText('Synced', { exact: true })).toBeVisible();

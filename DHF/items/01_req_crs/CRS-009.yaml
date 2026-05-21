@@ -8,4 +8,6 @@ user_group: Radiation Therapist / Physician / Dosimetrist
 derives_from:
   - UC-004
   - UC-005
+testing: |
+  T1: Given the workspace loads with no active patient, the context bar shows the default patient placeholder, no active image set, and the Synced indicator.
 priority: Critical

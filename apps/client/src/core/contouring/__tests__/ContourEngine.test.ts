@@ -78,7 +78,7 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('ContourEngine.addContour @links:SRS-008,SYS-004', () => {
-  it('calls addContourSlice when no existing contour at that slicePosition', () => {
+  it('calls addContourSlice when no existing contour at that slicePosition @testing:T2', () => {
     const structure = makeStructure([]); // no existing contours
     const ss = makeStructureSet([structure]);
     mockStore.structureSets = [ss];
@@ -102,7 +102,7 @@ describe('ContourEngine.addContour @links:SRS-008,SYS-004', () => {
     expect(mockStore.updateContourSlice).not.toHaveBeenCalled();
   });
 
-  it('calls updateContourSlice when a contour already exists at that slicePosition', () => {
+  it('calls updateContourSlice when a contour already exists at that slicePosition @testing:T1', () => {
     const existingSlice: ContourSlice = {
       referencedSOPInstanceUID: '9.9.9',
       slicePosition: 5,

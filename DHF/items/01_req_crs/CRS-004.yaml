@@ -7,4 +7,6 @@ content: |-
 user_group: Physician / Dosimetrist
 derives_from:
   - UC-003
+testing: |
+  T1: Given a structure with no contours, the structure panel indicates an empty-structure quality issue.
 priority: High

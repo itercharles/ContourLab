@@ -7,4 +7,8 @@ content: |-
   "EXTERNAL" or "BODY" → EXTERNAL, "AVOID" → AVOIDANCE, otherwise → OAR.
 derives_from: [SYS-003]
 verification_method: [Test]
+testing: |
+  T1: Given a name containing "GTV", "CTV", "PTV", "ITV", "EXTERNAL", "BODY", or "AVOID", the correct structure type is inferred (case-insensitive).
+  T2: Given a name not matching any TG-263 pattern, the type defaults to OAR.
+  T3: Given a TG-263-compliant name such as "Brain" or "Liver", isTG263Name returns true; for unknown names or empty strings it returns false.
 critical_safety: false

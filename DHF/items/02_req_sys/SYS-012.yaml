@@ -13,6 +13,8 @@ category: Functional
 verification_method:
 - Test
 - Demonstration
+testing: |
+  T1: Given the workspace loads with no active series, the context bar shows the "Load Patient" and "No active image set" placeholders and the "Synced" sync indicator.
 critical_safety: false
 verification_criteria: When a DICOM series is active, the top operation bar renders
   the patient name, active series description, active RTSTRUCT label, and repository

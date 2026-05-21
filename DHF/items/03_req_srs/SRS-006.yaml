@@ -8,4 +8,10 @@ content: |-
   than 3 points shall be skipped.
 derives_from: [SYS-003]
 verification_method: [Test]
+testing: |
+  T1: Given a structure with no contours or a single polygon with fewer than 3 points, computeVolume returns zero.
+  T2: Given a square polygon with known side length and slice thickness, computeVolume returns the expected cm³ value.
+  T3: Given clockwise and counter-clockwise polygons of the same shape, computeVolume produces identical results.
+  T4: Given contours on multiple slices, volumes from all slices are summed correctly.
+  T5: Given a 360-point circle polygon approximating a cylinder, computeVolume agrees with the analytic result within 1%.
 critical_safety: false

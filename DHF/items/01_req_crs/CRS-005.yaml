@@ -7,4 +7,6 @@ content: |-
 user_group: Physician / Dosimetrist
 derives_from:
   - UC-004
+testing: |
+  T1: Given unsynchronized changes, the Save Changes action triggers export and upload and clears the repository dirty state.
 priority: Critical

@@ -8,4 +8,6 @@ content: |-
 user_group: Radiation Therapist / Physician / Dosimetrist
 derives_from:
   - UC-001
+testing: |
+  T1: Given an active series with structures, the workspace shows a 3D viewport with CT context and the count of visible structures.
 priority: High
