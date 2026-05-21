@@ -129,7 +129,7 @@ describe('UndoRedoManager @links:SRS-007', () => {
     expect(UndoRedoManager.getRedoDescription()).toBe('alpha');
   });
 
-  it('notifies subscribers when stack state changes', () => {
+  it('notifies subscribers when stack state changes @testing:T7', () => {
     const listener = vi.fn();
     const unsubscribe = UndoRedoManager.subscribe(listener);
 
