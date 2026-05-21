@@ -102,7 +102,7 @@ async function injectThreeDState(page: Page) {
 }
 
 test.describe('3D viewport system requirements @links:SYS-014,SYS-015', () => {
-  test('system renders CT and visible structures in the fourth 3D viewport @links:SYS-014 @testing:T1 @testing:T2', async ({ page }) => {
+  test('system renders CT and visible structures in the fourth 3D viewport @links:SYS-014 @testing:T1', async ({ page }) => {
     await injectThreeDState(page);
 
     await expect(page.getByLabel('3D viewport')).toBeVisible();
