@@ -67,8 +67,8 @@ vi.mock('dcmjs', () => ({
   },
 }));
 
-describe('exportRtstructBlob @links:SRS-018,SYS-006,CRS-005', () => {
-  it('does not write a predecessor reference for a manual structure set @links:SRS-018', async () => {
+describe('exportRtstructBlob @links:SRS-010,SYS-006,CRS-005', () => {
+  it('does not write a predecessor reference for a manual structure set @links:SRS-010 @testing:T1', async () => {
     dicomMock.writtenDatasets = [];
 
     await exportRtstructObject(loadedSeries, structureSet);
@@ -76,7 +76,7 @@ describe('exportRtstructBlob @links:SRS-018,SYS-006,CRS-005', () => {
     expect(dicomMock.writtenDatasets[0]).not.toHaveProperty('PredecessorStructureSetSequence');
   });
 
-  it('writes a standard predecessor reference for a repository RTSTRUCT revision @links:SRS-018', async () => {
+  it('writes a standard predecessor reference for a repository RTSTRUCT revision @links:SRS-010 @testing:T2', async () => {
     dicomMock.writtenDatasets = [];
     const revisionStructureSet: StructureSet = {
       ...structureSet,
@@ -103,7 +103,7 @@ describe('exportRtstructBlob @links:SRS-018,SYS-006,CRS-005', () => {
     await expect(exportRtstructBlob(loadedSeries, structureSet)).resolves.toBeInstanceOf(Blob);
   });
 
-  it('returns identifiers for the newly generated RTSTRUCT object @testing:T3', async () => {
+  it('returns identifiers for the newly generated RTSTRUCT object @testing:T4', async () => {
     const exported = await exportRtstructObject(loadedSeries, structureSet);
 
     expect(exported.blob).toBeInstanceOf(Blob);

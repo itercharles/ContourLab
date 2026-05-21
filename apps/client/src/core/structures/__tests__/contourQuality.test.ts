@@ -39,7 +39,7 @@ describe('analyzeContourQuality @links:SRS-013,SYS-010', () => {
     }));
   });
 
-  it('detects open contours, slice gaps, and abrupt area changes @testing:T3 @testing:T4', () => {
+  it('detects open contours, slice gaps, and abrupt area changes @testing:T2', () => {
     const summary = analyzeContourQuality(makeStructure([
       squareContour(0, 10),
       squareContour(5, 10, false),
@@ -54,7 +54,7 @@ describe('analyzeContourQuality @links:SRS-013,SYS-010', () => {
     expect(summary.warningCount).toBeGreaterThanOrEqual(3);
   });
 
-  it('detects centroid jumps and contours outside image bounds', () => {
+  it('detects centroid jumps and contours outside image bounds @testing:T3', () => {
     const summary = analyzeContourQuality(
       makeStructure([
         squareContour(0, 10),
@@ -98,7 +98,7 @@ describe('analyzeContourQuality @links:SRS-013,SYS-010', () => {
     ]));
   });
 
-  it('skips disabled contour QA rules', () => {
+  it('skips disabled contour QA rules @testing:T4', () => {
     const summary = analyzeContourQuality(
       makeStructure([
         squareContour(0, 10),

@@ -60,7 +60,7 @@ describe('dicomWebClient summary parsing', () => {
     expect(getDicomWebBaseUrl()).toBe(getDefaultDicomWebBaseUrl());
   });
 
-  it('routes the local Orthanc development endpoint through the same-origin proxy @links:SRS-002 @testing:T1', () => {
+  it('routes the local Orthanc development endpoint through the same-origin proxy @links:SRS-002 @testing:T2', () => {
     setDicomWebBaseUrl('http://localhost:8042/dicom-web/');
 
     expect(getDicomWebBaseUrl()).toBe('/dicom-web');
@@ -134,7 +134,7 @@ describe('dicomWebClient summary parsing', () => {
     })).toBe(false);
   });
 
-  it('extracts a DICOM object from a multipart WADO-RS response @links:SRS-002 @testing:T1', () => {
+  it('extracts a DICOM object from a multipart WADO-RS response @links:SRS-002 @testing:T3', () => {
     const encoder = new TextEncoder();
     const payload = new Uint8Array([1, 2, 3, 4]);
     const prefix = encoder.encode(
@@ -154,7 +154,7 @@ describe('dicomWebClient summary parsing', () => {
     expect(Array.from(new Uint8Array(extracted))).toEqual([1, 2, 3, 4]);
   });
 
-  it('extracts referenced image series from RTSTRUCT metadata @links:SRS-001 @testing:T1', () => {
+  it('extracts referenced image series from RTSTRUCT metadata @links:SRS-001 @testing:T2', () => {
     const metadata = {
       '30060010': {
         Value: [
@@ -192,7 +192,7 @@ describe('dicomWebClient summary parsing', () => {
     ]);
   });
 
-  it('extracts the standard RTSTRUCT predecessor reference from metadata @links:SRS-019', () => {
+  it('extracts the standard RTSTRUCT predecessor reference from metadata @links:SRS-019 @testing:T1', () => {
     const metadata = {
       '30060018': {
         Value: [

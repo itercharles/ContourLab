@@ -6,15 +6,15 @@ describe('inferTypeFromName @links:SRS-005', () => {
     expect(inferTypeFromName('GTV')).toBe('GTV');
   });
 
-  it("'GTV_Primary' → 'GTV' @testing:T4", () => {
+  it("'GTV_Primary' → 'GTV' @testing:T1", () => {
     expect(inferTypeFromName('GTV_Primary')).toBe('GTV');
   });
 
-  it("'gtv_ln' (lowercase) → 'GTV' @testing:T2", () => {
+  it("'gtv_ln' (lowercase) → 'GTV' @testing:T1", () => {
     expect(inferTypeFromName('gtv_ln')).toBe('GTV');
   });
 
-  it("'CTV_High' → 'CTV' @testing:T1 @testing:T4", () => {
+  it("'CTV_High' → 'CTV' @testing:T1", () => {
     expect(inferTypeFromName('CTV_High')).toBe('CTV');
   });
 
@@ -22,11 +22,11 @@ describe('inferTypeFromName @links:SRS-005', () => {
     expect(inferTypeFromName('PTV')).toBe('PTV');
   });
 
-  it("'PTV_Low' → 'PTV' @testing:T4", () => {
+  it("'PTV_Low' → 'PTV' @testing:T1", () => {
     expect(inferTypeFromName('PTV_Low')).toBe('PTV');
   });
 
-  it("'ITV' → 'PTV' @testing:T4", () => {
+  it("'ITV' → 'PTV' @testing:T1", () => {
     expect(inferTypeFromName('ITV')).toBe('PTV');
   });
 
@@ -42,15 +42,15 @@ describe('inferTypeFromName @links:SRS-005', () => {
     expect(inferTypeFromName('Avoid_Brain')).toBe('AVOIDANCE');
   });
 
-  it("'Liver' → 'OAR' @testing:T1", () => {
+  it("'Liver' → 'OAR' @testing:T2", () => {
     expect(inferTypeFromName('Liver')).toBe('OAR');
   });
 
-  it("'SpinalCord' → 'OAR' @testing:T1", () => {
+  it("'SpinalCord' → 'OAR' @testing:T2", () => {
     expect(inferTypeFromName('SpinalCord')).toBe('OAR');
   });
 
-  it("'Heart' → 'OAR' @testing:T1", () => {
+  it("'Heart' → 'OAR' @testing:T2", () => {
     expect(inferTypeFromName('Heart')).toBe('OAR');
   });
 });

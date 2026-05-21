@@ -23,14 +23,14 @@ beforeEach(() => {
 });
 
 describe('structureStore dirty tracking @links:SRS-010', () => {
-  it('marks a series dirty when a structure set is added', () => {
+  it('marks a series dirty when a structure set is added @testing:T5 @testing:T8', () => {
     useStructureStore.getState().addStructureSet(makeStructureSet());
 
     expect(useStructureStore.getState().dirtySeriesUIDs).toEqual(['series-1']);
     expect(useStructureStore.getState().repositoryDirtySeriesUIDs).toEqual(['series-1']);
   });
 
-  it('clears draft dirty state for a specific series without clearing repository dirty state', () => {
+  it('clears draft dirty state for a specific series without clearing repository dirty state @testing:T6', () => {
     const store = useStructureStore.getState();
     store.addStructureSet(makeStructureSet('series-1'));
     store.addStructureSet(makeStructureSet('series-2'));
@@ -44,7 +44,7 @@ describe('structureStore dirty tracking @links:SRS-010', () => {
     ]);
   });
 
-  it('clears repository dirty state for a specific series', () => {
+  it('clears repository dirty state for a specific series @testing:T7', () => {
     const store = useStructureStore.getState();
     store.addStructureSet(makeStructureSet('series-1'));
     store.addStructureSet(makeStructureSet('series-2'));

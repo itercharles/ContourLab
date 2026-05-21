@@ -78,7 +78,7 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('ContourEngine.addContour @links:SRS-008,SYS-004', () => {
-  it('calls addContourSlice when no existing contour at that slicePosition @testing:T2', () => {
+  it('calls addContourSlice when no existing contour at that slicePosition @testing:T1', () => {
     const structure = makeStructure([]); // no existing contours
     const ss = makeStructureSet([structure]);
     mockStore.structureSets = [ss];
@@ -102,7 +102,7 @@ describe('ContourEngine.addContour @links:SRS-008,SYS-004', () => {
     expect(mockStore.updateContourSlice).not.toHaveBeenCalled();
   });
 
-  it('calls updateContourSlice when a contour already exists at that slicePosition @testing:T1', () => {
+  it('calls updateContourSlice when a contour already exists at that slicePosition @testing:T2', () => {
     const existingSlice: ContourSlice = {
       referencedSOPInstanceUID: '9.9.9',
       slicePosition: 5,
@@ -131,7 +131,7 @@ describe('ContourEngine.addContour @links:SRS-008,SYS-004', () => {
     expect(mockStore.addContourSlice).not.toHaveBeenCalled();
   });
 
-  it('undo of add-new-slice calls updateStructure to filter out the slice', () => {
+  it('undo of add-new-slice calls updateStructure to filter out the slice @testing:T3', () => {
     const structure = makeStructure([]); // no existing contours
     const ss = makeStructureSet([structure]);
     mockStore.structureSets = [ss];
@@ -160,7 +160,7 @@ describe('ContourEngine.addContour @links:SRS-008,SYS-004', () => {
     expect(patch.contours!.every((c) => c.slicePosition !== 5)).toBe(true);
   });
 
-  it('does not add or replace contours on a locked structure', () => {
+  it('does not add or replace contours on a locked structure @testing:T3 @testing:T4', () => {
     const existingSlice: ContourSlice = {
       referencedSOPInstanceUID: '9.9.9',
       slicePosition: 5,
@@ -184,8 +184,8 @@ describe('ContourEngine.addContour @links:SRS-008,SYS-004', () => {
   });
 });
 
-describe('ContourEngine.addContours @links:SRS-014', () => {
-  it('adds multiple interpolated contours as one undoable structure update', () => {
+describe('ContourEngine.addContours @links:SRS-014,SYS-004', () => {
+  it('adds multiple interpolated contours as one undoable structure update @testing:T5', () => {
     const existingSlice: ContourSlice = {
       referencedSOPInstanceUID: 'sop-0',
       slicePosition: 0,
@@ -227,7 +227,7 @@ describe('ContourEngine.addContours @links:SRS-014', () => {
     });
   });
 
-  it('does not add multiple contours on a locked structure', () => {
+  it('does not add multiple contours on a locked structure @testing:T6', () => {
     const structure = makeStructure([], { isLocked: true });
     const ss = makeStructureSet([structure]);
     mockStore.structureSets = [ss];
@@ -251,7 +251,7 @@ describe('ContourEngine.addContours @links:SRS-014', () => {
 // deleteContourOnSlice
 // ---------------------------------------------------------------------------
 
-describe('ContourEngine.deleteContourOnSlice @links:SRS-023', () => {
+describe('ContourEngine.deleteContourOnSlice @links:SRS-023,SYS-004', () => {
   it('returns early without pushing to UndoRedoManager when no contour exists', () => {
     const structure = makeStructure([]); // no contours at all
     const ss = makeStructureSet([structure]);
@@ -288,7 +288,7 @@ describe('ContourEngine.deleteContourOnSlice @links:SRS-023', () => {
     expect(patch.contours!.every((c) => c.slicePosition !== 10)).toBe(true);
   });
 
-  it("undo of deleteContourOnSlice calls addContourSlice for the removed slice", () => {
+  it("undo of deleteContourOnSlice calls addContourSlice for the removed slice @testing:T4", () => {
     const existingSlice: ContourSlice = {
       referencedSOPInstanceUID: '9.9.9',
       slicePosition: 10,

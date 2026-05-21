@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import ViewportContextMenu from './ViewportContextMenu';
 
 // @links:SRS-018
-describe('ViewportContextMenu', () => {
+describe('ViewportContextMenu @links:SRS-018', () => {
   const mockOnMaximize = vi.fn();
   const mockOnClose = vi.fn();
 
@@ -45,7 +45,7 @@ describe('ViewportContextMenu', () => {
   });
 
   // @links:SRS-018
-  it('calls onMaximize with viewport when Maximize View is clicked @testing:T1', () => {
+  it('calls onMaximize with viewport when Maximize View is clicked @testing:T3', () => {
     render(
       <ViewportContextMenu
         orientation="SAGITTAL"
@@ -64,7 +64,7 @@ describe('ViewportContextMenu', () => {
   });
 
   // @links:SRS-018
-  it('calls onMaximize with null when Restore View is clicked @testing:T2', () => {
+  it('calls onMaximize with null when Restore View is clicked @testing:T4', () => {
     render(
       <ViewportContextMenu
         orientation="CORONAL"
@@ -83,7 +83,7 @@ describe('ViewportContextMenu', () => {
   });
 
   // @links:SRS-018
-  it('closes menu when clicked outside @testing:T2', () => {
+  it('closes menu when clicked outside @testing:T5', () => {
     const { container } = render(
       <ViewportContextMenu
         orientation="AXIAL"

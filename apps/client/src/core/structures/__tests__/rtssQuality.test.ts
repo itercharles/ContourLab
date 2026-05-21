@@ -37,7 +37,7 @@ function makeStructureSet(overrides: Partial<StructureSet> = {}): StructureSet {
   };
 }
 
-describe('analyzeRtssQuality @links:SRS-024', () => {
+describe('analyzeRtssQuality @links:SRS-013', () => {
   it('does not report contour geometry issues as RTSS issues', () => {
     const summary = analyzeRtssQuality(makeStructureSet({
       structures: [
@@ -61,7 +61,7 @@ describe('analyzeRtssQuality @links:SRS-024', () => {
     expect(summary.warningCount).toBe(0);
   });
 
-  it('detects RTSS-level reference and naming issues', () => {
+  it('detects RTSS-level reference and naming issues @testing:T5', () => {
     const summary = analyzeRtssQuality(makeStructureSet({
       referencedSeriesUID: 'series-2',
       source: { type: 'rtstruct' },
