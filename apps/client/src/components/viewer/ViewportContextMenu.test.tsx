@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ViewportContextMenu from './ViewportContextMenu';
 
-// @links:SRS-018
 describe('ViewportContextMenu @links:SRS-018', () => {
   const mockOnMaximize = vi.fn();
   const mockOnClose = vi.fn();
@@ -12,7 +11,6 @@ describe('ViewportContextMenu @links:SRS-018', () => {
     mockOnClose.mockClear();
   });
 
-  // @links:SRS-018
   it('renders with Maximize View when not maximized @testing:T1', () => {
     render(
       <ViewportContextMenu
@@ -28,7 +26,6 @@ describe('ViewportContextMenu @links:SRS-018', () => {
     expect(screen.getByText('Maximize View')).toBeTruthy();
   });
 
-  // @links:SRS-018
   it('renders with Restore View when maximized @testing:T2', () => {
     render(
       <ViewportContextMenu
@@ -44,7 +41,6 @@ describe('ViewportContextMenu @links:SRS-018', () => {
     expect(screen.getByText('Restore View')).toBeTruthy();
   });
 
-  // @links:SRS-018
   it('calls onMaximize with viewport when Maximize View is clicked @testing:T3', () => {
     render(
       <ViewportContextMenu
@@ -63,7 +59,6 @@ describe('ViewportContextMenu @links:SRS-018', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  // @links:SRS-018
   it('calls onMaximize with null when Restore View is clicked @testing:T4', () => {
     render(
       <ViewportContextMenu
@@ -82,7 +77,6 @@ describe('ViewportContextMenu @links:SRS-018', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  // @links:SRS-018
   it('closes menu when clicked outside @testing:T5', () => {
     const { container } = render(
       <ViewportContextMenu
