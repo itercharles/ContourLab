@@ -64,6 +64,9 @@ properties:
   target_types:
   - CRS
   help: Alternative relationship to customer requirements
+- name: testing
+  format: long_text
+  label: Testing
 relations:
 - target: CRS
   label: satisfies
