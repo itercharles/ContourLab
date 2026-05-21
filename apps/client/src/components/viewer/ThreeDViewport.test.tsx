@@ -146,7 +146,7 @@ beforeEach(() => {
   });
 });
 
-describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
+describe('ThreeDViewport @links:SRS-028,SRS-029,SYS-014', () => {
   it('renders the live 3D viewport status instead of the old placeholder @testing:T4', async () => {
     render(<ThreeDViewport />);
 
@@ -156,14 +156,14 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
     });
   });
 
-  it('lets the user reset the 3D camera @testing:T4', async () => {
+  it('lets the user reset the 3D camera @testing:T2 @testing:T4', async () => {
     render(<ThreeDViewport />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
     expect(mocks.resetCamera).toHaveBeenCalledTimes(1);
   });
 
-  it('exposes explicit rotation controls', async () => {
+  it('exposes explicit rotation controls @testing:T3', async () => {
     render(<ThreeDViewport />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Rotate left' }));
