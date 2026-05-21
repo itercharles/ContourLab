@@ -103,7 +103,7 @@ describe('intersectContourWithPlane', () => {
     expect(intersections[1]).toEqual([5, 10, 5]);
   });
 
-  it('returns intersection points for a coronal y-plane through an axial contour', () => {
+  it('returns intersection points for a coronal y-plane through an axial contour @links:SYS-002 @testing:T2', () => {
     const points = new Float32Array([
       0, 0, 5,
       10, 0, 5,
