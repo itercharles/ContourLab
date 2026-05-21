@@ -7,4 +7,6 @@ content: |-
 user_group: Radiation Therapist / Physician / Dosimetrist
 derives_from:
   - UC-005
+testing: |
+  T1: Given the health endpoint, it is accessible at GET /api/health without authentication and returns a service name and status.
 priority: High

@@ -27,6 +27,9 @@ properties:
   - Inspection
   - Analysis
   - Demonstration
+- name: testing
+  format: long_text
+  label: Testing
 - name: critical_safety
   format: checkbox
   label: Critical Safety

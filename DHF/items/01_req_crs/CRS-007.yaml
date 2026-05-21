@@ -7,4 +7,6 @@ content: |-
 user_group: Physician / Dosimetrist
 derives_from:
   - UC-004
+testing: |
+  T1: Given two structure set versions, compareStructureSets reports added, removed, and changed structures with volume and slice-count deltas.
 priority: Medium

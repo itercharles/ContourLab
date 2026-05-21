@@ -7,4 +7,8 @@ content: |-
 user_group: Radiation Therapist / Physician
 derives_from:
   - UC-005
+testing: |
+  T1: Given the workspace, the clinician can open the patient browser and it shows a search input and filter tabs.
+  T2: Given a search query entered, the search input reflects the value.
+  T3: Given the patient browser is open, the clinician can close it with the close button.
 priority: Critical

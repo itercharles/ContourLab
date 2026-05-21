@@ -11,6 +11,8 @@ category: Functional
 verification_method:
   - Test
   - Demonstration
+testing: |
+  T1: Given two structure sets, compareStructureSets reports added ROI count, removed ROI count, changed ROI count, volume deltas, and target slice positions.
 critical_safety: false
 satisfies:
   - CRS-007

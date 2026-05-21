@@ -10,6 +10,8 @@ category: Functional
 verification_method:
   - Test
   - Demonstration
+testing: |
+  T1: Given contours on multiple slices, the structure panel shows the contour slice count for the active structure.
 critical_safety: true
 satisfies:
   - CRS-003

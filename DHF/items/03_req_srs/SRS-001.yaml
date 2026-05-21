@@ -14,4 +14,7 @@ content: |-
   shall indicate whether the item is active in the current workspace.
 derives_from: [SYS-001]
 verification_method: [Test]
+testing: |
+  T1: Given a QIDO-RS series response, patient name, patient ID, study UID, series UID, modality, and instance count are parsed into a series summary.
+  T2: Given RTSTRUCT metadata with a ReferencedFrameOfReferenceSequence, the referenced series instance UIDs are extracted correctly.
 critical_safety: false

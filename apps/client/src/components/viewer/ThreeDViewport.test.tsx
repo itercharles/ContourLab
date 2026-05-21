@@ -146,8 +146,8 @@ beforeEach(() => {
   });
 });
 
-describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
-  it('renders the live 3D viewport status instead of the old placeholder', async () => {
+describe('ThreeDViewport @links:SRS-028,SRS-029,SYS-014', () => {
+  it('renders the live 3D viewport status instead of the old placeholder @testing:T4', async () => {
     render(<ThreeDViewport />);
 
     expect(screen.getByLabelText('3D viewport')).toBeTruthy();
@@ -156,14 +156,14 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
     });
   });
 
-  it('lets the user reset the 3D camera', async () => {
+  it('lets the user reset the 3D camera @testing:T2 @testing:T4', async () => {
     render(<ThreeDViewport />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
     expect(mocks.resetCamera).toHaveBeenCalledTimes(1);
   });
 
-  it('exposes explicit rotation controls', async () => {
+  it('exposes explicit rotation controls @testing:T3', async () => {
     render(<ThreeDViewport />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Rotate left' }));
@@ -173,7 +173,7 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
     expect(mocks.rotateCamera).toHaveBeenNthCalledWith(2, 0, 10);
   });
 
-  it('offers a manual refresh path when the scene needs rebuilding', async () => {
+  it('offers a manual refresh path when the scene needs rebuilding @testing:T6', async () => {
     render(<ThreeDViewport />);
 
     const callsBefore = mocks.renderSnapshot.mock.calls.length;
@@ -196,7 +196,7 @@ describe('ThreeDViewport @links:SRS-028,SRS-029', () => {
     });
   });
 
-  it('aborts the in-flight snapshot when the viewport unmounts mid-render', async () => {
+  it('aborts the in-flight snapshot when the viewport unmounts mid-render @testing:T7', async () => {
     // The async renderSnapshot path holds onto the AbortSignal between
     // structures and before the final renderWindow.render(); the cleanup in
     // ThreeDViewport must call abort.abort() so that signal is observed when

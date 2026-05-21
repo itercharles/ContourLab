@@ -9,6 +9,9 @@ category: Functional
 verification_method:
   - Test
   - Demonstration
+testing: |
+  T1: Given a loaded series, three viewport panels labelled axial, sagittal, and coronal are visible on the workspace canvas.
+  T2: Given a structure set is active, contour overlays are visible in the correct orthogonal plane for each viewport.
 critical_safety: false
 satisfies:
   - CRS-001

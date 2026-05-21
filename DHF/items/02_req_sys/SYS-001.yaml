@@ -12,6 +12,10 @@ category: Functional
 verification_method:
   - Test
   - Demonstration
+testing: |
+  T1: Given a mocked DICOMweb repository, the patient browser lists all patients with name and MRN from the response.
+  T2: Given a patient browser, study description metadata is visible for each patient.
+  T3: Given a search term, the patient browser filters the list to show only matching patients.
 critical_safety: false
 satisfies:
   - CRS-001

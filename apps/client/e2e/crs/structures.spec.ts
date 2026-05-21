@@ -122,7 +122,7 @@ async function injectClinicalState(page: Page) {
 // ---------------------------------------------------------------------------
 
 test.describe('Contouring UI @links:CRS-002', () => {
-  test('structure panel is visible with active structure set @links:CRS-002', async ({ page }) => {
+  test('structure panel is visible with active structure set @links:CRS-002 @testing:T1', async ({ page }) => {
     await injectClinicalState(page);
     await expect(page.getByText('GTV_Primary').first()).toBeVisible();
     await expect(page.getByText('SpinalCord').first()).toBeVisible();
@@ -141,7 +141,7 @@ test.describe('Contouring UI @links:CRS-002', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Contour review navigation @links:CRS-003', () => {
-  test('structure summary shows contour slice count @links:CRS-003', async ({ page }) => {
+  test('structure summary shows contour slice count @links:CRS-003 @testing:T1', async ({ page }) => {
     await injectClinicalState(page);
     // GTV_Primary has 3 contour slices — should show a count
     await expect(page.getByText(/3\s*(slice|contour)/i).or(page.getByText('3'))).toBeVisible({
@@ -158,7 +158,7 @@ test.describe('Contour review navigation @links:CRS-003', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Contour quality warnings @links:CRS-004', () => {
-  test('structure panel indicates empty structure as a quality issue @links:CRS-004', async ({
+  test('structure panel indicates empty structure as a quality issue @links:CRS-004 @testing:T1', async ({
     page,
   }) => {
     await injectClinicalState(page);

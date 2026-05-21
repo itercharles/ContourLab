@@ -2,8 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ViewportContextMenu from './ViewportContextMenu';
 
-// @links:SRS-018
-describe('ViewportContextMenu', () => {
+describe('ViewportContextMenu @links:SRS-018', () => {
   const mockOnMaximize = vi.fn();
   const mockOnClose = vi.fn();
 
@@ -12,8 +11,7 @@ describe('ViewportContextMenu', () => {
     mockOnClose.mockClear();
   });
 
-  // @links:SRS-018
-  it('renders with Maximize View when not maximized', () => {
+  it('renders with Maximize View when not maximized @testing:T1', () => {
     render(
       <ViewportContextMenu
         orientation="AXIAL"
@@ -28,8 +26,7 @@ describe('ViewportContextMenu', () => {
     expect(screen.getByText('Maximize View')).toBeTruthy();
   });
 
-  // @links:SRS-018
-  it('renders with Restore View when maximized', () => {
+  it('renders with Restore View when maximized @testing:T2', () => {
     render(
       <ViewportContextMenu
         orientation="AXIAL"
@@ -44,8 +41,7 @@ describe('ViewportContextMenu', () => {
     expect(screen.getByText('Restore View')).toBeTruthy();
   });
 
-  // @links:SRS-018
-  it('calls onMaximize with viewport when Maximize View is clicked', () => {
+  it('calls onMaximize with viewport when Maximize View is clicked @testing:T3', () => {
     render(
       <ViewportContextMenu
         orientation="SAGITTAL"
@@ -63,8 +59,7 @@ describe('ViewportContextMenu', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  // @links:SRS-018
-  it('calls onMaximize with null when Restore View is clicked', () => {
+  it('calls onMaximize with null when Restore View is clicked @testing:T4', () => {
     render(
       <ViewportContextMenu
         orientation="CORONAL"
@@ -82,8 +77,7 @@ describe('ViewportContextMenu', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  // @links:SRS-018
-  it('closes menu when clicked outside', () => {
+  it('closes menu when clicked outside @testing:T5', () => {
     const { container } = render(
       <ViewportContextMenu
         orientation="AXIAL"

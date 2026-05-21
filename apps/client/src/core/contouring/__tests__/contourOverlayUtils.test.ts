@@ -23,7 +23,7 @@ describe('flattenWorldPoints', () => {
 });
 
 describe('getViewportTransformSignature @links:SRS-012', () => {
-  it('changes when pan, zoom, or canvas placement changes', () => {
+  it('changes when pan, zoom, or canvas placement changes @testing:T1 @testing:T2', () => {
     const baseViewport = {
       getCamera: () => ({
         focalPoint: [0, 0, 10] as [number, number, number],
@@ -103,7 +103,7 @@ describe('intersectContourWithPlane', () => {
     expect(intersections[1]).toEqual([5, 10, 5]);
   });
 
-  it('returns intersection points for a coronal y-plane through an axial contour', () => {
+  it('returns intersection points for a coronal y-plane through an axial contour @links:SYS-002 @testing:T2', () => {
     const points = new Float32Array([
       0, 0, 5,
       10, 0, 5,

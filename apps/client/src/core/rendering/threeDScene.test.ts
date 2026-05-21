@@ -233,7 +233,7 @@ describe('threeDScene lifecycle', () => {
     expect(mocks.renderer.resetCamera).toHaveBeenCalledTimes(1);
   });
 
-  it('disposes the previous vtk pipelines before replacing scene props', async () => {
+  it('disposes the previous vtk pipelines before replacing scene props @testing:T1', async () => {
     const container = document.createElement('div');
     container.getBoundingClientRect = () =>
       ({ width: 320, height: 240 } as DOMRect);
@@ -323,7 +323,7 @@ describe('threeDScene lifecycle', () => {
   // each per-structure mask flips around its own origin — producing a
   // different per-structure offset relative to the CT mesh. Lock down the
   // signed-spacing fix that compensates for this.
-  it('passes direction-signed spacing to vtk.js for HFP-style flipped volumes', async () => {
+  it('passes direction-signed spacing to vtk.js for HFP-style flipped volumes @links:SRS-029 @testing:T5', async () => {
     // HFP-style direction: K basis = -Z, J basis = -Y. With origin Z=2 and
     // spacing[2]=2 and dimZ=2, world Z range is [0, 2]. Place the contour at
     // Z=2 (top slice K=0) so worldToContinuousVoxel keeps it inside the

@@ -9,4 +9,12 @@ content: |-
   Keyboard shortcut Cmd/Ctrl+Z shall trigger undo; Cmd/Ctrl+Shift+Z shall trigger redo.
 derives_from: [SYS-004]
 verification_method: [Test]
+testing: |
+  T1: Given a pushed command, it is executed immediately and canUndo becomes true.
+  T2: Given an undo call, the last command's undo() is invoked and the command moves to the redo stack.
+  T3: Given a redo call after undo, the command is re-executed and canRedo returns false.
+  T4: Given more than 50 pushed commands, only the 50 most recent are retained on the undo stack.
+  T5: Given a new command pushed after an undo, the redo stack is cleared.
+  T6: Given undo or redo on an empty stack, no error is thrown.
+  T7: Given subscribers registered, they are notified on push, undo, and redo; and not notified after unsubscribe.
 critical_safety: true

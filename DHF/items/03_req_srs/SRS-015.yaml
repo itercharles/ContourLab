@@ -9,4 +9,6 @@ content: |-
   repository review workflow.
 derives_from: [SYS-008]
 verification_method: [Test, Demonstration]
+testing: |
+  T1: Given two structure sets, compareStructureSets reports added, removed, and changed ROI names along with volume deltas and target slice positions for each changed structure.
 critical_safety: true

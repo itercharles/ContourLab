@@ -10,5 +10,7 @@ content: Clicking "Maximize View" in the context menu shall set the maximized vi
   restore normal layout. Layout state shall not persist across workspace reloads.
 verification_method:
 - Test
+testing: |
+  T1: Given RTSTRUCT metadata with a PredecessorStructureSetSequence, the predecessor SOP class and instance UIDs are extracted correctly.
 critical_safety: false
 type: SRS

@@ -10,6 +10,12 @@ category: Functional
 verification_method:
   - Test
   - Demonstration
+testing: |
+  T1: Given a new contour on a slice, ContourEngine.addContour adds the contour via the undo stack.
+  T2: Given a contour replacement on an occupied slice, ContourEngine.addContour replaces the existing contour.
+  T3: Given a locked structure, ContourEngine.addContour rejects the operation.
+  T4: Given a delete command, ContourEngine.deleteContourOnSlice removes the contour and its undo restores it.
+  T5: Given multiple interpolated slices, ContourEngine.addContours wraps all in one undoable command.
 critical_safety: true
 satisfies:
   - CRS-002

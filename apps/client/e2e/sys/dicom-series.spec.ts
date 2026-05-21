@@ -57,7 +57,7 @@ async function setupDicomMockAndLoad(page: Page) {
 // ---------------------------------------------------------------------------
 
 test.describe('DICOMweb CT series retrieval @links:SYS-001', () => {
-  test('patient browser lists patients from DICOMweb repository @links:SYS-001', async ({
+  test('patient browser lists patients from DICOMweb repository @links:SYS-001 @testing:T1', async ({
     page,
   }) => {
     await setupDicomMockAndLoad(page);
@@ -66,13 +66,13 @@ test.describe('DICOMweb CT series retrieval @links:SYS-001', () => {
     await expect(page.getByText('Robert Jones').or(page.getByText('JONES'))).toBeVisible();
   });
 
-  test('patient browser shows MRN for each patient @links:SYS-001', async ({ page }) => {
+  test('patient browser shows MRN for each patient @links:SYS-001 @testing:T2', async ({ page }) => {
     await setupDicomMockAndLoad(page);
     await expect(page.getByText(/MRN-001/).first()).toBeVisible();
     await expect(page.getByText(/MRN-002/).first()).toBeVisible();
   });
 
-  test('patient browser displays series count from repository @links:SYS-001', async ({
+  test('patient browser displays series count from repository @links:SYS-001 @testing:T3', async ({
     page,
   }) => {
     await setupDicomMockAndLoad(page);
@@ -83,7 +83,7 @@ test.describe('DICOMweb CT series retrieval @links:SYS-001', () => {
     ).toBeVisible();
   });
 
-  test('patient browser search narrows results by patient name @links:SYS-001', async ({
+  test('patient browser search narrows results by patient name @links:SYS-001 @testing:T4', async ({
     page,
   }) => {
     await setupDicomMockAndLoad(page);

@@ -7,4 +7,6 @@ content: |-
 user_group: Physician / Dosimetrist
 derives_from:
   - UC-002
+testing: |
+  T1: Given an active structure set, the structure panel is visible and lists all structures.
 priority: Critical

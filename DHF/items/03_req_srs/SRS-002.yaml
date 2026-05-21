@@ -8,4 +8,8 @@ content: |-
   slice location where required.
 derives_from: [SYS-001]
 verification_method: [Test]
+testing: |
+  T1: Given a configured DICOMweb base URL, the effective endpoint is returned and trailing slashes are normalised.
+  T2: Given a localhost Orthanc URL, the client routes through the same-origin proxy path.
+  T3: Given a multipart WADO-RS response, the DICOM part payload bytes are extracted correctly.
 critical_safety: false

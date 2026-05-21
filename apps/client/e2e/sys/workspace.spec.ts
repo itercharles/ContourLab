@@ -6,14 +6,14 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('Workspace context and patient selection @links:SYS-012,SYS-011', () => {
-  test('workspace context bar is visible on load @links:SYS-012', async ({ page }) => {
+  test('workspace context bar is visible on load @links:SYS-012 @testing:T1', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByText('Load Patient')).toBeVisible();
     await expect(page.getByText('No active image set')).toBeVisible();
     await expect(page.getByText('Synced', { exact: true })).toBeVisible();
   });
 
-  test('patient browser opens from the workspace context command @links:SYS-011', async ({ page }) => {
+  test('patient browser opens from the workspace context command @links:SYS-011 @testing:T1', async ({ page }) => {
     await page.goto('/');
     // Wait for the app to be interactive before dispatching the event
     await page.getByText('Load Patient').waitFor();
@@ -24,7 +24,7 @@ test.describe('Workspace context and patient selection @links:SYS-012,SYS-011', 
     await expect(page.getByPlaceholder('Search patient, MRN, study, series…')).toBeVisible();
   });
 
-  test('patient browser can be closed with Escape @links:SYS-011', async ({ page }) => {
+  test('patient browser can be closed with Escape @links:SYS-011 @testing:T2', async ({ page }) => {
     await page.goto('/');
     await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
@@ -36,7 +36,7 @@ test.describe('Workspace context and patient selection @links:SYS-012,SYS-011', 
     await expect(page.getByText('Patient browser')).not.toBeVisible();
   });
 
-  test('patient browser search input is functional @links:SYS-011', async ({ page }) => {
+  test('patient browser search input is functional @links:SYS-011 @testing:T3', async ({ page }) => {
     await page.goto('/');
     await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {

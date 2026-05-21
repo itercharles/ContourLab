@@ -21,4 +21,11 @@ content: |-
   state without changing the selected image, structure set, or structure.
 derives_from: [SYS-004]
 verification_method: [Test, Demonstration]
+testing: |
+  T1: Given two bracketing contours around a target slice, findInterpolationBounds identifies the lower and upper bounding contours.
+  T2: Given two bracketing contours and a target slice position, interpolateContourForSlice produces a closed contour at the target z-coordinate.
+  T3: Given contours on two outer slices and intermediate image frames, interpolateMissingContoursForFrames produces interpolated contours for the missing frames.
+  T4: Given a contour gap exceeding the configured maximum, interpolateMissingContoursForFrames returns no interpolated contours.
+  T5: Given multiple interpolated contours, ContourEngine.addContours wraps all in a single undoable command that restores the prior contour state on undo.
+  T6: Given a locked structure, ContourEngine.addContours returns false without mutating data or pushing a command.
 critical_safety: true

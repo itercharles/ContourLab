@@ -56,14 +56,14 @@ const structure: Structure = {
 };
 
 describe('threeDGeometry @links:SRS-028,SRS-029', () => {
-  it('round-trips world and voxel coordinates for axis-aligned volumes', () => {
+  it('round-trips world and voxel coordinates for axis-aligned volumes @testing:T1', () => {
     const voxel: [number, number, number] = [2, 3, 1];
     const world = voxelToWorld(voxel, volume);
     expect(world).toEqual([12, 23, 32]);
     expect(worldToContinuousVoxel(world, volume)).toEqual(voxel);
   });
 
-  it('builds a binary structure mask for stacked contours', () => {
+  it('builds a binary structure mask for stacked contours @testing:T2', () => {
     const mask = buildStructureMaskVolume(structure, volume);
 
     expect(mask).not.toBeNull();
@@ -72,7 +72,7 @@ describe('threeDGeometry @links:SRS-028,SRS-029', () => {
     expect(mask?.scalars.some((value) => value === 1)).toBe(true);
   });
 
-  it('preserves holes for nested contours on the same slice', () => {
+  it('preserves holes for nested contours on the same slice @testing:T3', () => {
     const hollowStructure: Structure = {
       ...structure,
       contours: [

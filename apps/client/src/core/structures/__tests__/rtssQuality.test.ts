@@ -37,8 +37,8 @@ function makeStructureSet(overrides: Partial<StructureSet> = {}): StructureSet {
   };
 }
 
-describe('analyzeRtssQuality @links:SRS-024', () => {
-  it('does not report contour geometry issues as RTSS issues', () => {
+describe('analyzeRtssQuality @links:SRS-013', () => {
+  it('does not report contour geometry issues as RTSS issues @testing:T7', () => {
     const summary = analyzeRtssQuality(makeStructureSet({
       structures: [
         makeStructure({
@@ -61,7 +61,7 @@ describe('analyzeRtssQuality @links:SRS-024', () => {
     expect(summary.warningCount).toBe(0);
   });
 
-  it('detects RTSS-level reference and naming issues', () => {
+  it('detects RTSS-level reference and naming issues @testing:T5', () => {
     const summary = analyzeRtssQuality(makeStructureSet({
       referencedSeriesUID: 'series-2',
       source: { type: 'rtstruct' },
@@ -99,7 +99,7 @@ describe('analyzeRtssQuality @links:SRS-024', () => {
     expect(summary.warningCount).toBeGreaterThanOrEqual(3);
   });
 
-  it('skips disabled RTSS QA rules', () => {
+  it('skips disabled RTSS QA rules @testing:T6', () => {
     const summary = analyzeRtssQuality(makeStructureSet({
       structures: [
         makeStructure({ id: 'structure-1', name: 'PTV' }),

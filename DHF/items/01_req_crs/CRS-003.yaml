@@ -7,4 +7,6 @@ content: |-
 user_group: Physician / Dosimetrist / Radiation Therapist
 derives_from:
   - UC-003
+testing: |
+  T1: Given a structure with multiple contour slices, the structure panel displays the contour slice count.
 priority: High

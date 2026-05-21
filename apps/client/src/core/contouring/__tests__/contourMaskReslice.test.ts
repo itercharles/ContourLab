@@ -28,7 +28,7 @@ function makeSquare(z: number): ContourSlice {
 }
 
 describe('buildMprMaskBoundaryPath @links:SRS-012', () => {
-  it('extracts a sagittal boundary from rasterized contour mask data @links:SRS-012', () => {
+  it('extracts a sagittal boundary from rasterized contour mask data @links:SRS-012 @testing:T2 @testing:T4', () => {
     const path = buildMprMaskBoundaryPath(
       volume,
       [makeSquare(1), makeSquare(2)],
@@ -157,7 +157,7 @@ describe('buildMprMaskBoundaryPath @links:SRS-012', () => {
   // direct-world-axis math with negative voxel indices and dropped every slice
   // below the volume's origin. Force the same geometry here so a regression
   // would surface as an empty path.
-  it('extracts boundaries on HFP-style flipped-Y and flipped-Z volumes @links:SRS-012', () => {
+  it('extracts boundaries on HFP-style flipped-Y and flipped-Z volumes @links:SRS-012 @testing:T3', () => {
     const hfpVolume: Volume = {
       ...volume,
       origin: [0, 10, 10],

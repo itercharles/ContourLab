@@ -9,5 +9,11 @@ content: When a user right-clicks on a viewport canvas, a context menu shall app
   menu shall be positioned near the cursor location.
 verification_method:
 - Test
+testing: |
+  T1: Given isMaximized is false, the context menu renders "Maximize View".
+  T2: Given isMaximized is true, the context menu renders "Restore View".
+  T3: Given a click on "Maximize View", onMaximize is called with the viewport orientation and the menu closes.
+  T4: Given a click on "Restore View", onMaximize is called with null and the menu closes.
+  T5: Given a mousedown outside the menu, the menu closes.
 critical_safety: false
 type: SRS

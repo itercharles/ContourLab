@@ -21,7 +21,7 @@ function squareContour(z: number, size: number): ContourSlice {
 }
 
 describe('InterpolationEngine @links:SRS-014', () => {
-  it('finds bracketing contours around a target slice', () => {
+  it('finds bracketing contours around a target slice @testing:T1', () => {
     const bounds = findInterpolationBounds([
       squareContour(0, 10),
       squareContour(10, 20),
@@ -31,7 +31,7 @@ describe('InterpolationEngine @links:SRS-014', () => {
     expect(bounds?.upper.slicePosition).toBe(10);
   });
 
-  it('creates an interpolated closed contour at the target slice', () => {
+  it('creates an interpolated closed contour at the target slice @testing:T2', () => {
     const contour = interpolateContourForSlice([
       squareContour(0, 10),
       squareContour(10, 20),
@@ -44,7 +44,7 @@ describe('InterpolationEngine @links:SRS-014', () => {
     expect(Array.from(contour!.points).every((_, index) => index % 3 !== 2 || contour!.points[index] === 5)).toBe(true);
   });
 
-  it('creates contours for missing image frames between drawn slices', () => {
+  it('creates contours for missing image frames between drawn slices @testing:T3', () => {
     const contours = [
       squareContour(0, 10),
       squareContour(30, 20),
@@ -60,7 +60,7 @@ describe('InterpolationEngine @links:SRS-014', () => {
     expect(interpolated.map((contour) => contour.referencedSOPInstanceUID)).toEqual(['sop-10', 'sop-20']);
   });
 
-  it('skips interpolation when the contour gap exceeds the configured maximum', () => {
+  it('skips interpolation when the contour gap exceeds the configured maximum @testing:T4', () => {
     const contours = [
       squareContour(0, 10),
       squareContour(40, 20),

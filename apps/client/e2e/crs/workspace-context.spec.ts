@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('Clinical workspace context @links:CRS-009', () => {
-  test('workspace context is always present with default empty state @links:CRS-009', async ({ page }) => {
+  test('workspace context is always present with default empty state @links:CRS-009 @testing:T1', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByText('Load Patient')).toBeVisible();
     await expect(page.getByText('No active image set')).toBeVisible();
@@ -15,7 +15,7 @@ test.describe('Clinical workspace context @links:CRS-009', () => {
 });
 
 test.describe('Patient and study selection @links:CRS-008', () => {
-  test('clinician can open the patient browser @links:CRS-008', async ({ page }) => {
+  test('clinician can open the patient browser @links:CRS-008 @testing:T1', async ({ page }) => {
     await page.goto('/');
     await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
@@ -26,7 +26,7 @@ test.describe('Patient and study selection @links:CRS-008', () => {
     await expect(page.getByRole('tab', { name: /All/ })).toBeVisible();
   });
 
-  test('clinician can search by patient name or MRN @links:CRS-008', async ({ page }) => {
+  test('clinician can search by patient name or MRN @links:CRS-008 @testing:T2', async ({ page }) => {
     await page.goto('/');
     await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {
@@ -38,7 +38,7 @@ test.describe('Patient and study selection @links:CRS-008', () => {
     await expect(search).toHaveValue('DOE');
   });
 
-  test('clinician can close the patient browser @links:CRS-008', async ({ page }) => {
+  test('clinician can close the patient browser @links:CRS-008 @testing:T3', async ({ page }) => {
     await page.goto('/');
     await page.getByText('Load Patient').waitFor();
     await page.evaluate(() => {

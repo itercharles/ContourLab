@@ -12,6 +12,8 @@ category: Functional
 verification_method:
   - Test
   - Demonstration
+testing: |
+  T1: Given a structure with no contours, the quality analysis reports it as an empty informational item.
 critical_safety: true
 satisfies:
   - CRS-004

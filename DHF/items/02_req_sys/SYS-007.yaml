@@ -11,6 +11,11 @@ category: Functional
 verification_method:
   - Test
   - Demonstration
+testing: |
+  T1: Given an RTSTRUCT dataset, importRtstructDataset maps ROI sequences into a ContourLab structure set with correct names, types, colors, and contour points.
+  T2: Given no slice thickness, importRtstructDataset leaves volume_cc at zero.
+  T3: Given a known slice thickness, importRtstructDataset computes volume_cc from contour geometry.
+  T4: Given multiple ROIs, importRtstructDataset computes volume_cc independently for each structure.
 critical_safety: true
 satisfies:
   - CRS-006

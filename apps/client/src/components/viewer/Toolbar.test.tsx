@@ -358,7 +358,7 @@ describe('Toolbar contour operations', () => {
 });
 
 describe('Toolbar patient name display @links:SRS-030', () => {
-  it('shows formatted patient name in the toolbar brand section when a series is active', () => {
+  it('shows formatted patient name in the toolbar brand section when a series is active @testing:T1', () => {
     renderToolbar();
 
     const matches = screen.getAllByText('Ada Lovelace');
@@ -368,7 +368,7 @@ describe('Toolbar patient name display @links:SRS-030', () => {
     expect(brandSpan).toBeTruthy();
   });
 
-  it('shows placeholder in the toolbar brand section when no series is loaded', () => {
+  it('shows placeholder in the toolbar brand section when no series is loaded @testing:T2', () => {
     useVolumeStore.setState({ loadedSeries: [], activeSeriesUID: null });
     renderToolbar();
 

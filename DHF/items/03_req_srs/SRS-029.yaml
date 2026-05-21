@@ -10,4 +10,12 @@ content: |-
   refresh operation without blocking the rest of the contour workspace.
 derives_from: [SYS-015]
 verification_method: [Test, Demonstration]
+testing: |
+  T1: Given a volume downsampled by a stride factor, the resulting dimensions and spacing are scaled correctly and the scalar type is preserved.
+  T2: Given repeated renderSnapshot calls with the same snapshot, vtk pipelines are reused rather than recreated.
+  T3: Given a changed snapshot, the previous vtk actor, image, mapper, and marching cubes pipeline objects are disposed before creating new ones.
+  T4: Given a camera reset request, the camera is reset only on the first render and retained on subsequent renders.
+  T5: Given an HFP-style volume with flipped direction cosines, direction-signed spacing is passed to vtk.js to keep geometry aligned.
+  T6: Given a manual Refresh 3D button click, renderSnapshot is called again.
+  T7: Given an unmount while a renderSnapshot is in-flight, the AbortSignal is triggered.
 critical_safety: true

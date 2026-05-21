@@ -36,7 +36,7 @@ function makeStructureSet(): StructureSet {
 }
 
 describe('structurePersistence @links:SRS-009', () => {
-  it('round-trips structure sets through JSON-safe payloads', () => {
+  it('round-trips structure sets through JSON-safe payloads @testing:T1', () => {
     const payload = exportStructureSets([makeStructureSet()], 'ss-1', 'structure-1');
     const imported = importStructureSets(JSON.stringify(payload));
 
@@ -49,13 +49,13 @@ describe('structurePersistence @links:SRS-009', () => {
     ]);
   });
 
-  it('rejects unsupported payload versions', () => {
+  it('rejects unsupported payload versions @testing:T2', () => {
     expect(() =>
       importStructureSets(JSON.stringify({ version: 999, structureSets: [] }))
     ).toThrow('Unsupported structure JSON version');
   });
 
-  it('exports only the requested series payload', () => {
+  it('exports only the requested series payload @testing:T3', () => {
     const seriesA = makeStructureSet();
     const seriesB = { ...makeStructureSet(), id: 'ss-2', referencedSeriesUID: 'series-2' };
 
@@ -71,7 +71,7 @@ describe('structurePersistence @links:SRS-009', () => {
     expect(payload.activeStructureSetId).toBe('ss-1');
   });
 
-  it('replaces only the active series structure sets', () => {
+  it('replaces only the active series structure sets @testing:T4', () => {
     const structureSets = replaceStructureSetsForSeries(
       [
         makeStructureSet(),

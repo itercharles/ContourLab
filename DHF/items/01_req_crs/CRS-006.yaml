@@ -7,4 +7,6 @@ content: |-
 user_group: Physician / Dosimetrist / Radiation Therapist
 derives_from:
   - UC-004
+testing: |
+  T1: Given an RTSTRUCT dataset, the import produces a structure set with correct structure names, types, colors, and contour point data.
 priority: Critical

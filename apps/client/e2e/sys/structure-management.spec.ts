@@ -101,20 +101,20 @@ async function injectStructureState(page: Page) {
 // ---------------------------------------------------------------------------
 
 test.describe('Structure management @links:SYS-003', () => {
-  test('structure panel lists injected structures @links:SYS-003', async ({ page }) => {
+  test('structure panel lists injected structures @links:SYS-003 @testing:T1', async ({ page }) => {
     await injectStructureState(page);
     await expect(page.getByText('GTV_Primary').first()).toBeVisible();
     await expect(page.getByText('PTV_High').first()).toBeVisible();
   });
 
-  test('structure panel shows structure types @links:SYS-003', async ({ page }) => {
+  test('structure panel shows structure types @links:SYS-003 @testing:T2', async ({ page }) => {
     await injectStructureState(page);
     // Structure types (GTV, PTV) should be visible as labels or badges
     await expect(page.getByText('GTV').first()).toBeVisible();
     await expect(page.getByText('PTV').first()).toBeVisible();
   });
 
-  test('active structure is highlighted in the panel @links:SYS-003', async ({ page }) => {
+  test('active structure is highlighted in the panel @links:SYS-003 @testing:T3', async ({ page }) => {
     await injectStructureState(page);
     // GTV_Primary is set as activeStructureId — it appears in the active-structure details section
     await expect(page.getByText('GTV_Primary').first()).toBeVisible();
@@ -126,7 +126,7 @@ test.describe('Structure management @links:SYS-003', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Structure draft persistence @links:SYS-005', () => {
-  test('structure panel shows save state indicator @links:SYS-005', async ({ page }) => {
+  test('structure panel shows save state indicator @links:SYS-005 @testing:T1', async ({ page }) => {
     await injectStructureState(page);
     // Mark the series as dirty to simulate an unsaved edit
     await page.waitForFunction(() => !!(window as Record<string, unknown>)['__contourlab_stores']);
@@ -145,7 +145,7 @@ test.describe('Structure draft persistence @links:SYS-005', () => {
     });
   });
 
-  test('workspace context bar reflects draft sync state @links:SYS-005', async ({ page }) => {
+  test('workspace context bar reflects draft sync state @links:SYS-005 @testing:T2', async ({ page }) => {
     await injectStructureState(page);
     // With clean state, context bar shows "Synced"
     await expect(page.getByText('Synced', { exact: true })).toBeVisible();

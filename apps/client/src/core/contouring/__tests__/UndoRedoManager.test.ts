@@ -40,20 +40,20 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('UndoRedoManager @links:SRS-007', () => {
-  it('push executes the command immediately', () => {
+  it('push executes the command immediately @testing:T1', () => {
     const counter = { value: 0 };
     UndoRedoManager.push(makeCounterCommand(counter));
     expect(counter.value).toBe(1);
   });
 
-  it('undo calls undo() on the last command', () => {
+  it('undo calls undo() on the last command @testing:T2', () => {
     const counter = { value: 0 };
     UndoRedoManager.push(makeCounterCommand(counter));
     UndoRedoManager.undo();
     expect(counter.value).toBe(0);
   });
 
-  it('redo re-executes after undo', () => {
+  it('redo re-executes after undo @testing:T3', () => {
     const counter = { value: 0 };
     UndoRedoManager.push(makeCounterCommand(counter));
     UndoRedoManager.undo();
@@ -61,13 +61,13 @@ describe('UndoRedoManager @links:SRS-007', () => {
     expect(counter.value).toBe(1);
   });
 
-  it('canUndo is false before any push, true after push', () => {
+  it('canUndo is false before any push, true after push @testing:T1', () => {
     expect(UndoRedoManager.canUndo()).toBe(false);
     UndoRedoManager.push(makeNoopCommand());
     expect(UndoRedoManager.canUndo()).toBe(true);
   });
 
-  it('canRedo is false before undo, true after undo, false after redo', () => {
+  it('canRedo is false before undo, true after undo, false after redo @testing:T2 @testing:T3', () => {
     UndoRedoManager.push(makeNoopCommand());
     expect(UndoRedoManager.canRedo()).toBe(false);
     UndoRedoManager.undo();
@@ -76,7 +76,7 @@ describe('UndoRedoManager @links:SRS-007', () => {
     expect(UndoRedoManager.canRedo()).toBe(false);
   });
 
-  it('caps the undo stack at 50 entries', () => {
+  it('caps the undo stack at 50 entries @testing:T4', () => {
     // Push 55 commands; only last 50 should remain
     for (let i = 0; i < 55; i++) {
       UndoRedoManager.push(makeNoopCommand(`cmd-${i}`));
@@ -93,7 +93,7 @@ describe('UndoRedoManager @links:SRS-007', () => {
     expect(() => UndoRedoManager.undo()).not.toThrow();
   });
 
-  it('a new push clears the redo stack', () => {
+  it('a new push clears the redo stack @testing:T5', () => {
     UndoRedoManager.push(makeNoopCommand('first'));
     UndoRedoManager.undo();
     expect(UndoRedoManager.canRedo()).toBe(true);
@@ -102,12 +102,12 @@ describe('UndoRedoManager @links:SRS-007', () => {
     expect(UndoRedoManager.canRedo()).toBe(false);
   });
 
-  it('undo on an empty stack is a no-op (no error thrown)', () => {
+  it('undo on an empty stack is a no-op (no error thrown) @testing:T6', () => {
     expect(() => UndoRedoManager.undo()).not.toThrow();
     expect(UndoRedoManager.canUndo()).toBe(false);
   });
 
-  it('redo on an empty stack is a no-op (no error thrown)', () => {
+  it('redo on an empty stack is a no-op (no error thrown) @testing:T6', () => {
     expect(() => UndoRedoManager.redo()).not.toThrow();
     expect(UndoRedoManager.canRedo()).toBe(false);
   });
@@ -129,7 +129,7 @@ describe('UndoRedoManager @links:SRS-007', () => {
     expect(UndoRedoManager.getRedoDescription()).toBe('alpha');
   });
 
-  it('notifies subscribers when stack state changes', () => {
+  it('notifies subscribers when stack state changes @testing:T7', () => {
     const listener = vi.fn();
     const unsubscribe = UndoRedoManager.subscribe(listener);
 

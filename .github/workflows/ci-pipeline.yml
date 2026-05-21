@@ -545,6 +545,18 @@ jobs:
             --requirement-type SYS \
             --requirement-type CRS
 
+      - name: Run test-point coverage gate (TDD)
+        run: |
+          medharness ci test-points \
+            --dhf DHF \
+            --junit-dir test-results/srs \
+            --junit-dir test-results/srs-api \
+            --junit-dir test-results/sys \
+            --junit-dir test-results/crs \
+            --req-type SRS \
+            --req-type SYS \
+            --req-type CRS
+
       - name: Run verification completeness gate
         run: |
           medharness ci validate-verification \
