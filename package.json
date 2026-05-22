@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "pnpm --filter @contourlab/client dev",
     "api": "cd apps/api && dotnet run --launch-profile http",
-    "autocontour:service": "cd apps/autocontour-service && dotnet run",
+    "autocontour:service": "cd apps/autocontour-service && uvicorn main:app --host 127.0.0.1 --port 4010 --reload",
     "repo:up": "docker compose up -d dicom-repo",
     "repo:down": "docker compose down",
     "repo:logs": "docker compose logs -f dicom-repo",
