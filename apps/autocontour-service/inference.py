@@ -65,6 +65,8 @@ def _fetch_pixel_data_from_orthanc(series: dict) -> list[float]:
 
             # Decode DICOM
             ds = dcmread(BytesIO(dicom_resp.content))
+            if ds.pixel_array is None:
+                raise ValueError(f"Instance {inst_id} has no pixel data")
             pixels = ds.pixel_array.astype(np.float32).flatten().tolist()
             all_pixels.extend(pixels)
 
@@ -90,8 +92,11 @@ def build_sitk_image(series: dict) -> sitk.Image:
     expected_voxels = dims[0] * dims[1] * dims[2]
 
     # If pixelData not provided by client, fetch from Orthanc
-    if not pixel_data or len(pixel_data) == 0:
+    if pixel_data is None or (isinstance(pixel_data, list) and len(pixel_data) == 0):
         pixel_data = _fetch_pixel_data_from_orthanc(series)
+
+    if pixel_data is None or not isinstance(pixel_data, (list, np.ndarray)):
+        raise ValueError(f"Invalid pixelData: expected list, got {type(pixel_data)}")
 
     if len(pixel_data) != expected_voxels:
         raise ValueError(f"pixelData size {len(pixel_data)} does not match dimensions {dims} (expected {expected_voxels} voxels).")

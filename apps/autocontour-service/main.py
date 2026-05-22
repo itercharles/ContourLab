@@ -124,7 +124,8 @@ async def _run_job(job_id: str, request: JobCreateRequest, profile: dict, submit
     try:
         _update("running", "Reconstructing volume from pixel data")
         series_data = request.series.model_dump()
-        logger.info(f"Job {job_id}: dimensions={series_data['dimensions']}, pixelData length={len(series_data['pixelData'])}")
+        pixel_data = series_data.get("pixelData")
+        logger.info(f"Job {job_id}: dimensions={series_data['dimensions']}, pixelData provided={pixel_data is not None}")
         image = build_sitk_image(series_data)
 
         _update("running", "Running TotalSeg AI segmentation (this may take several minutes on CPU)")
