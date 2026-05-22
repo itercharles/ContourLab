@@ -5,3 +5,5 @@ numpy>=1.26
 SimpleITK>=2.3
 scikit-image>=0.22
 totalsegmentator>=2.2
+requests>=2.31
+pydicom>=2.4

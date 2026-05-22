@@ -32,7 +32,7 @@ class SeriesPayload(BaseModel):
     directionCosines: list[float]
     windowCenter: float
     windowWidth: float
-    pixelData: list[float]
+    pixelData: Optional[list[float]] = None
     slices: list[SeriesSlice] = []
 
 

@@ -1,6 +1,64 @@
 import numpy as np
 import SimpleITK as sitk
 from datetime import datetime
+import os
+import json
+import requests
+from io import BytesIO
+
+
+def _fetch_pixel_data_from_orthanc(series: dict) -> list[float]:
+    """Fetch pixel data from Orthanc DICOMweb API if not provided by client."""
+    orthanc_url = os.getenv("ORTHANC_URL", "http://127.0.0.1:8042")
+    series_uid = series["seriesUID"]
+    study_uid = series["studyInstanceUID"]
+
+    try:
+        # Fetch metadata to get instance list
+        meta_url = f"{orthanc_url}/dicom-web/studies/{study_uid}/series/{series_uid}/metadata"
+        meta_resp = requests.get(meta_url, timeout=30)
+        meta_resp.raise_for_status()
+        metadata = meta_resp.json()
+
+        if not metadata:
+            raise ValueError(f"No instances found for series {series_uid}")
+
+        # Collect all instances sorted by instance number
+        instances = []
+        for inst_meta in metadata:
+            sop_uid = inst_meta.get("00080018", {}).get("Value", [None])[0]
+            inst_num = int(inst_meta.get("00200013", {}).get("Value", ["0"])[0])
+            if sop_uid:
+                instances.append((inst_num, sop_uid))
+
+        instances.sort()  # Sort by instance number
+        dims = series["dimensions"]
+        expected_voxels = dims[0] * dims[1] * dims[2]
+
+        # Download frames and stack into volume
+        all_pixels = []
+        for inst_num, sop_uid in instances:
+            frame_url = f"{orthanc_url}/dicom-web/studies/{study_uid}/series/{series_uid}/instances/{sop_uid}/frames/1"
+            frame_resp = requests.get(frame_url, timeout=30, headers={"Accept": "application/octet-stream"})
+            frame_resp.raise_for_status()
+
+            # Decode the frame to pixel array
+            from pydicom import dcmread
+
+            ds = dcmread(BytesIO(frame_resp.content))
+            pixels = ds.pixel_array.astype(np.float32).flatten().tolist()
+            all_pixels.extend(pixels)
+
+        if len(all_pixels) != expected_voxels:
+            raise ValueError(
+                f"Loaded {len(all_pixels)} voxels but expected {expected_voxels} "
+                f"(dims {dims}, instances {len(instances)})"
+            )
+
+        return all_pixels
+
+    except Exception as e:
+        raise RuntimeError(f"Failed to fetch pixel data from Orthanc: {e}")
 
 
 def build_sitk_image(series: dict) -> sitk.Image:
@@ -8,11 +66,14 @@ def build_sitk_image(series: dict) -> sitk.Image:
     spacing = series["spacing"]
     origin = series["origin"]
     dc = series["directionCosines"]
-    pixel_data = series["pixelData"]
+    pixel_data = series.get("pixelData")
 
     expected_voxels = dims[0] * dims[1] * dims[2]
+
+    # If pixelData not provided by client, fetch from Orthanc
     if not pixel_data or len(pixel_data) == 0:
-        raise ValueError(f"pixelData is empty. Series dimensions {dims} require {expected_voxels} voxels.")
+        pixel_data = _fetch_pixel_data_from_orthanc(series)
+
     if len(pixel_data) != expected_voxels:
         raise ValueError(f"pixelData size {len(pixel_data)} does not match dimensions {dims} (expected {expected_voxels} voxels).")
 

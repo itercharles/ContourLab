@@ -1788,7 +1788,6 @@ export default function StructurePanel() {
                 disabled={
                   isAutoContourRunning ||
                   !activeLoadedSeries ||
-                  !activeLoadedSeries.volume.pixelData.length ||
                   (selectedAutoContourModel
                     ? selectedAutoContourModel.modality !== activeLoadedSeries.series.modality
                     : false) ||
@@ -1819,9 +1818,6 @@ export default function StructurePanel() {
               ) : null}
               {!activeLoadedSeries ? (
                 <p className="mt-3 text-[var(--color-text-muted)]">Load a CT series to enable auto-contouring.</p>
-              ) : null}
-              {activeLoadedSeries && !activeLoadedSeries.volume.pixelData.length ? (
-                <p className="mt-3 text-[var(--color-text-muted)]">Loading volume data… (this may take a moment for large series)</p>
               ) : null}
               {activeLoadedSeries && selectedAutoContourModel && selectedAutoContourModel.modality !== activeLoadedSeries.series.modality ? (
                 <p className="mt-3 text-[var(--color-text-muted)]">
