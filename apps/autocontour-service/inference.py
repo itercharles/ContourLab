@@ -8,51 +8,70 @@ from io import BytesIO
 
 
 def _fetch_pixel_data_from_orthanc(series: dict) -> list[float]:
-    """Fetch pixel data from Orthanc DICOMweb API if not provided by client."""
+    """Fetch pixel data from Orthanc REST API if not provided by client."""
     orthanc_url = os.getenv("ORTHANC_URL", "http://127.0.0.1:8042")
     series_uid = series["seriesUID"]
-    study_uid = series["studyInstanceUID"]
 
     try:
-        # Fetch metadata to get instance list
-        meta_url = f"{orthanc_url}/dicom-web/studies/{study_uid}/series/{series_uid}/metadata"
-        meta_resp = requests.get(meta_url, timeout=30)
-        meta_resp.raise_for_status()
-        metadata = meta_resp.json()
+        # Query Orthanc for series by SeriesInstanceUID
+        query_url = f"{orthanc_url}/tools/find"
+        query_body = {
+            "Level": "Series",
+            "Query": {"SeriesInstanceUID": series_uid}
+        }
+        query_resp = requests.post(query_url, json=query_body, timeout=30)
+        query_resp.raise_for_status()
+        results = query_resp.json()
 
-        if not metadata:
-            raise ValueError(f"No instances found for series {series_uid}")
+        if not results:
+            raise ValueError(f"Series {series_uid} not found in Orthanc")
 
-        # Collect all instances sorted by instance number
-        instances = []
-        for inst_meta in metadata:
-            sop_uid = inst_meta.get("00080018", {}).get("Value", [None])[0]
-            inst_num = int(inst_meta.get("00200013", {}).get("Value", ["0"])[0])
-            if sop_uid:
-                instances.append((inst_num, sop_uid))
+        orthanc_series_id = results[0]
 
-        instances.sort()  # Sort by instance number
+        # Get all instances in this series
+        series_url = f"{orthanc_url}/series/{orthanc_series_id}"
+        series_resp = requests.get(series_url, timeout=30)
+        series_resp.raise_for_status()
+        series_data = series_resp.json()
+
+        instances = series_data.get("Instances", [])
+        if not instances:
+            raise ValueError(f"No instances found in series {orthanc_series_id}")
+
+        # Sort instances by instance number
+        instance_details = []
+        for inst_id in instances:
+            inst_url = f"{orthanc_url}/instances/{inst_id}"
+            inst_resp = requests.get(inst_url, timeout=30)
+            inst_resp.raise_for_status()
+            inst_data = inst_resp.json()
+            inst_num = int(inst_data.get("MainDicomTags", {}).get("InstanceNumber", "0"))
+            instance_details.append((inst_num, inst_id))
+
+        instance_details.sort()  # Sort by instance number
+
         dims = series["dimensions"]
         expected_voxels = dims[0] * dims[1] * dims[2]
 
-        # Download frames and stack into volume
+        # Download and decode all instances
         all_pixels = []
-        for inst_num, sop_uid in instances:
-            frame_url = f"{orthanc_url}/dicom-web/studies/{study_uid}/series/{series_uid}/instances/{sop_uid}/frames/1"
-            frame_resp = requests.get(frame_url, timeout=30, headers={"Accept": "application/octet-stream"})
-            frame_resp.raise_for_status()
+        from pydicom import dcmread
 
-            # Decode the frame to pixel array
-            from pydicom import dcmread
+        for inst_num, inst_id in instance_details:
+            # Get the DICOM file
+            dicom_url = f"{orthanc_url}/instances/{inst_id}/file"
+            dicom_resp = requests.get(dicom_url, timeout=30)
+            dicom_resp.raise_for_status()
 
-            ds = dcmread(BytesIO(frame_resp.content))
+            # Decode DICOM
+            ds = dcmread(BytesIO(dicom_resp.content))
             pixels = ds.pixel_array.astype(np.float32).flatten().tolist()
             all_pixels.extend(pixels)
 
         if len(all_pixels) != expected_voxels:
             raise ValueError(
                 f"Loaded {len(all_pixels)} voxels but expected {expected_voxels} "
-                f"(dims {dims}, instances {len(instances)})"
+                f"(dims {dims}, instances {len(instance_details)})"
             )
 
         return all_pixels
