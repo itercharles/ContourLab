@@ -8,8 +8,15 @@ def build_sitk_image(series: dict) -> sitk.Image:
     spacing = series["spacing"]
     origin = series["origin"]
     dc = series["directionCosines"]
+    pixel_data = series["pixelData"]
 
-    arr = np.array(series["pixelData"], dtype=np.float32).reshape(
+    expected_voxels = dims[0] * dims[1] * dims[2]
+    if not pixel_data or len(pixel_data) == 0:
+        raise ValueError(f"pixelData is empty. Series dimensions {dims} require {expected_voxels} voxels.")
+    if len(pixel_data) != expected_voxels:
+        raise ValueError(f"pixelData size {len(pixel_data)} does not match dimensions {dims} (expected {expected_voxels} voxels).")
+
+    arr = np.array(pixel_data, dtype=np.float32).reshape(
         [dims[2], dims[1], dims[0]]
     )
 

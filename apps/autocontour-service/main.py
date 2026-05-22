@@ -123,7 +123,9 @@ async def _run_job(job_id: str, request: JobCreateRequest, profile: dict, submit
 
     try:
         _update("running", "Reconstructing volume from pixel data")
-        image = build_sitk_image(request.series.model_dump())
+        series_data = request.series.model_dump()
+        logger.info(f"Job {job_id}: dimensions={series_data['dimensions']}, pixelData length={len(series_data['pixelData'])}")
+        image = build_sitk_image(series_data)
 
         _update("running", "Running TotalSeg AI segmentation (this may take several minutes on CPU)")
         structures = await asyncio.get_event_loop().run_in_executor(
