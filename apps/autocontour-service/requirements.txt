@@ -7,3 +7,5 @@ scikit-image>=0.22
 totalsegmentator>=2.2
 requests>=2.31
 pydicom>=2.4
+nibabel>=5.0
+pytest>=8.0
