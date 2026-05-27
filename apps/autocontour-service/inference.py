@@ -108,11 +108,33 @@ def build_sitk_image(series: dict) -> sitk.Image:
     return image
 
 
+def _detect_device() -> str:
+    """Return the best available compute device for TotalSegmentator.
+
+    Checks in order: env override → CUDA → MPS → CPU.
+    TotalSegmentator uses 'gpu' for CUDA, 'mps' for Apple Silicon, 'cpu' otherwise.
+    """
+    override = os.getenv("TOTALSEG_DEVICE")
+    if override:
+        return override
+
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return "gpu"
+        if torch.backends.mps.is_available():
+            return "mps"
+    except ImportError:
+        pass
+
+    return "cpu"
+
+
 def run_totalseg(image: sitk.Image, profile: dict, series_data: dict | None = None) -> tuple[list[dict], list[str]]:
     from totalsegmentator.python_api import totalsegmentator
     from totalsegmentator.map_to_binary import class_map
 
-    device = os.getenv("TOTALSEG_DEVICE", "mps")
+    device = _detect_device()
     logger.info("TotalSegmentator device: %s  tasks_available: %s", device, sorted(class_map.keys())[:10])
 
     with tempfile.NamedTemporaryFile(suffix=".nii.gz", delete=False) as f:

@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from profiles import PROFILES
-from inference import build_sitk_image, run_totalseg
+from inference import build_sitk_image, run_totalseg, _detect_device
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -79,7 +79,7 @@ _inference_pool = ProcessPoolExecutor(max_workers=1)
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "ContourLab.AutoContourService"}
+    return {"status": "ok", "service": "ContourLab.AutoContourService", "device": _detect_device()}
 
 
 @app.get("/models")

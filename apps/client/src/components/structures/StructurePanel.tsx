@@ -61,7 +61,6 @@ const STRUCTURE_TYPES: StructureType[] = [
 
 const AUTOCONTOUR_POLL_INTERVAL_QUEUED_MS = 750;   // fast while waiting to start
 const AUTOCONTOUR_POLL_INTERVAL_RUNNING_MS = 5000; // back off during long inference
-const AUTOCONTOUR_MAX_POLLS = 360;                 // 360 × 5s ≈ 30 min ceiling
 
 function rgbToHex([r, g, b]: [number, number, number]): string {
   return `#${[r, g, b]
@@ -872,13 +871,10 @@ export default function StructurePanel() {
       let status = await getAutoContourJobStatus(createResponse.jobId, abortController.signal);
       setAutoContourJobStatus(status);
 
-      let polls = 0;
       while (
         !abortController.signal.aborted &&
-        (status.state === 'queued' || status.state === 'running') &&
-        polls < AUTOCONTOUR_MAX_POLLS
+        (status.state === 'queued' || status.state === 'running')
       ) {
-        polls += 1;
         const interval = status.state === 'queued'
           ? AUTOCONTOUR_POLL_INTERVAL_QUEUED_MS
           : AUTOCONTOUR_POLL_INTERVAL_RUNNING_MS;
@@ -899,10 +895,6 @@ export default function StructurePanel() {
 
       if (abortController.signal.aborted || !isMountedRef.current) {
         return;
-      }
-
-      if (polls >= AUTOCONTOUR_MAX_POLLS && (status.state === 'queued' || status.state === 'running')) {
-        throw new Error('Auto-contouring timed out.');
       }
 
       if (status.state !== 'succeeded') {
