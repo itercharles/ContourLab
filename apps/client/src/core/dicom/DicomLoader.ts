@@ -8,6 +8,7 @@ export interface ParsedInstance {
   sopInstanceUID: string;
   instanceNumber: number;
   sliceLocation: number;
+  imagePositionZ?: number;
 }
 
 export interface ParsedSeries {
@@ -61,6 +62,7 @@ export async function loadFiles(
             sopInstanceUID: tags.sopInstanceUID,
             instanceNumber: tags.instanceNumber,
             sliceLocation: tags.sliceLocation,
+            imagePositionZ: tags.imagePositionPatient[2],
           };
 
           if (!seriesMap.has(tags.seriesInstanceUID)) {

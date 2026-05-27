@@ -57,5 +57,15 @@ public sealed class AutoContourController(
             logger.LogWarning(ex, "Auto-contour service request failed with status {StatusCode}", ex.StatusCode);
             return StatusCode((int)ex.StatusCode, ex.Message);
         }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "Auto-contour service is unreachable");
+            return StatusCode(503, "Auto-contour service is unavailable. Ensure it is running on port 4010.");
+        }
+        catch (TaskCanceledException ex) when (!ex.CancellationToken.IsCancellationRequested)
+        {
+            logger.LogError(ex, "Auto-contour service request timed out");
+            return StatusCode(504, "Auto-contour service request timed out.");
+        }
     }
 }

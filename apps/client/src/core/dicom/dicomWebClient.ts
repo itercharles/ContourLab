@@ -22,6 +22,7 @@ export interface DicomWebSeriesSummary {
   studyDate: string;
   studyDescription: string;
   seriesDescription: string;
+  bodyPartExamined?: string;
   modality: string;
   instanceCount: number;
 }
@@ -176,6 +177,7 @@ export async function queryDicomWebSeries(): Promise<DicomWebSeriesSummary[]> {
     'StudyDate',
     'StudyDescription',
     'SeriesDescription',
+    'BodyPartExamined',
     'Modality',
     'StudyInstanceUID',
     'SeriesInstanceUID',
@@ -433,6 +435,7 @@ export async function loadSeriesFromDicomWeb(
     sopInstanceUID: instance.sopInstanceUID,
     instanceNumber: instance.instanceNumber,
     sliceLocation: instance.sliceLocation,
+    imagePositionZ: instance.imagePositionZ,
   }));
 
   const parsedSeries: ParsedSeries = {
@@ -470,6 +473,7 @@ function buildSeriesSummaries(payload: DicomWebDataset[]): DicomWebSeriesSummary
       studyDate: getStringValue(dataset, '00080020'),
       studyDescription: getStringValue(dataset, '00081030'),
       seriesDescription: getStringValue(dataset, '0008103E'),
+      bodyPartExamined: getOptionalStringValue(dataset, '00180015'),
       modality: getStringValue(dataset, '00080060', 'CT'),
       instanceCount: getNumberValue(dataset, '00201209', 0),
     }))
@@ -526,6 +530,7 @@ function parseInstance(
     sopInstanceUID: normalized.sopInstanceUID,
     instanceNumber: normalized.instanceNumber,
     sliceLocation: normalized.sliceLocation,
+    imagePositionZ: normalized.imagePositionPatient[2],
   };
 }
 
@@ -550,6 +555,7 @@ function parseNormalizedMetadata(
     studyDate: summary.studyDate,
     studyDescription: summary.studyDescription,
     seriesDescription: summary.seriesDescription,
+    bodyPartExamined: summary.bodyPartExamined,
     modality: summary.modality,
     rows: getNumberValue(dataset, '00280010', 512),
     columns: getNumberValue(dataset, '00280011', 512),

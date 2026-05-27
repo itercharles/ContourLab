@@ -1,0 +1,11 @@
+fastapi>=0.111
+uvicorn[standard]>=0.29
+pydantic>=2.0
+numpy>=1.26
+SimpleITK>=2.3
+scikit-image>=0.22
+totalsegmentator>=2.2
+requests>=2.31
+pydicom>=2.4
+nibabel>=5.0
+pytest>=8.0

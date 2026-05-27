@@ -23,6 +23,7 @@ export interface Study {
 export interface Series {
   seriesInstanceUID: string;
   seriesDescription?: string;
+  bodyPartExamined?: string;
   modality: 'CT' | 'MR' | 'PT' | 'RTSS' | 'RTPLAN' | 'RTDOSE';
   instances: Instance[];
 }
@@ -31,6 +32,7 @@ export interface Instance {
   sopInstanceUID: string;
   instanceNumber: number;
   sliceLocation?: number;
+  imagePositionZ?: number;  // DICOM ImagePositionPatient[2] (LPS z); always negative for FFS
 }
 
 // ---------------------------------------------------------------------------
@@ -114,6 +116,7 @@ export interface AutoContourModelProfile {
 export interface AutoContourSeriesSlice {
   sopInstanceUID: string;
   sliceLocation?: number;
+  imagePositionZ?: number;  // DICOM ImagePositionPatient[2] (LPS z)
   instanceNumber: number;
 }
 
@@ -152,6 +155,7 @@ export interface AutoContourJobStatus {
   updatedAt: string;
   error?: string;
   resultAvailable: boolean;
+  warnings?: string[];
 }
 
 export interface AutoContourResultPayload {

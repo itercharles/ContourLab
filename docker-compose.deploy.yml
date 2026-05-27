@@ -33,9 +33,11 @@ services:
     image: contourlab-autocontour-service:latest
     container_name: contourlab-autocontour-service
     environment:
-      ASPNETCORE_URLS: http://+:4010
+      PORT: "4010"
     ports:
       - "4010:4010"
+    volumes:
+      - totalseg-models:/root/.totalsegmentator
     restart: unless-stopped
 
   dicom-repo:
@@ -48,3 +50,6 @@ services:
       - ./docker/orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
       - ${CONTOURLAB_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}:/var/lib/orthanc/db
     restart: unless-stopped
+
+volumes:
+  totalseg-models:

@@ -254,14 +254,13 @@ export default function ContourOverlay({
 
   const currentFrame = useMemo(() => {
     const sourceInstances = activeSeries?.series.instances ?? [];
-    const instances: SliceFrame[] = sourceInstances.flatMap((instance) => (
-      Number.isFinite(instance.sliceLocation)
-        ? [{
-            sopInstanceUID: instance.sopInstanceUID,
-            sliceLocation: instance.sliceLocation as number,
-          }]
-        : []
-    ));
+    // Use imagePositionZ (LPS z from ImagePositionPatient[2]) when available so
+    // that FFS scans (where DICOM SliceLocation tag sign is flipped vs LPS z)
+    // match correctly against focalPointZ (which Cornerstone3D always returns in LPS).
+    const instances: SliceFrame[] = sourceInstances.flatMap((instance) => {
+      const z = instance.imagePositionZ ?? instance.sliceLocation;
+      return Number.isFinite(z) ? [{ sopInstanceUID: instance.sopInstanceUID, sliceLocation: z as number }] : [];
+    });
     if (instances.length === 0) return undefined;
 
     const [firstFrame, ...restFrames] = instances;

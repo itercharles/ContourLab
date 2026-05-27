@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import StructurePanel from './StructurePanel';
 import { useStructureStore } from '../../core/store/structureStore';
@@ -41,6 +41,7 @@ vi.mock('../../core/autocontour/autocontourClient', () => ({
       seriesUID: loadedSeries.seriesUID,
     },
   })),
+  inferAutoContourProfile: vi.fn(() => null),
   listAutoContourModels: mocks.listAutoContourModels,
   submitAutoContourJob: mocks.submitAutoContourJob,
   getAutoContourJobStatus: mocks.getAutoContourJobStatus,
@@ -241,6 +242,9 @@ beforeEach(() => {
 });
 
 describe('StructurePanel local draft and structure editing interactions', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it('auto-saves dirty structures to the local browser draft store @links:SRS-009', async () => {
     render(<StructurePanel />);
 
@@ -461,6 +465,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
   });
 
   it('runs auto-contouring and imports an AI draft structure set for the active CT series', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<StructurePanel />);
 
     fireEvent.click(screen.getByRole('button', { name: 'AI' }));
@@ -1223,7 +1228,7 @@ describe('StructurePanel tab navigation driven by uiStore', () => {
   });
 
   it('the panel tab shown corresponds to sidePanelTab in the store', () => {
-    useUIStore.setState({ sidePanelTab: 'ai' });
+    useUIStore.setState({ workflowStage: 'auto' });
 
     render(<StructurePanel />);
 

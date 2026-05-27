@@ -18,6 +18,7 @@ import {
   buildAutoContourRequest,
   getAutoContourJobResult,
   getAutoContourJobStatus,
+  inferAutoContourProfile,
   listAutoContourModels,
   submitAutoContourJob,
 } from '../../core/autocontour/autocontourClient';
@@ -58,8 +59,8 @@ const STRUCTURE_TYPES: StructureType[] = [
   'SUPPORT',
 ];
 
-const AUTOCONTOUR_POLL_INTERVAL_MS = 750;
-const AUTOCONTOUR_MAX_POLLS = 400;
+const AUTOCONTOUR_POLL_INTERVAL_QUEUED_MS = 750;   // fast while waiting to start
+const AUTOCONTOUR_POLL_INTERVAL_RUNNING_MS = 5000; // back off during long inference
 
 function rgbToHex([r, g, b]: [number, number, number]): string {
   return `#${[r, g, b]
@@ -448,6 +449,8 @@ export default function StructurePanel() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const panelTab = useUIStore((s) => s.sidePanelTab) as PanelTab;
   const setPanelTab = useUIStore((s) => s.setSidePanelTab);
+  const workflowStage = useUIStore((s) => s.workflowStage);
+  const setWorkflowStage = useUIStore((s) => s.setWorkflowStage);
   const [axialRevision, setAxialRevision] = useState(0);
   const [isEditingActiveType, setIsEditingActiveType] = useState(false);
   const [marginValue, setMarginValue] = useState(5);
@@ -615,6 +618,17 @@ export default function StructurePanel() {
   }, [isAdding]);
 
   useEffect(() => {
+    const map: Record<typeof workflowStage, PanelTab> = {
+      auto: 'ai',
+      edit: 'structures',
+      qa: 'qa',
+      review: 'review',
+      approve: 'audit',
+    };
+    setPanelTab(map[workflowStage]);
+  }, [workflowStage, setPanelTab]);
+
+  useEffect(() => {
     if (panelTab !== 'ai' || autoContourModelsLoaded) return;
     let cancelled = false;
     const abortController = new AbortController();
@@ -643,6 +657,12 @@ export default function StructurePanel() {
       abortController.abort();
     };
   }, [autoContourModelsLoaded, panelTab]);
+
+  useEffect(() => {
+    if (!autoContourModelsLoaded || !activeLoadedSeries) return;
+    const inferred = inferAutoContourProfile(activeLoadedSeries.series, autoContourModels);
+    if (inferred) setSelectedAutoContourModelId(inferred);
+  }, [activeLoadedSeries?.seriesUID, autoContourModelsLoaded]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let animationFrame: number | null = null;
@@ -828,6 +848,14 @@ export default function StructurePanel() {
       return;
     }
 
+    const existingCount = activeSeriesStructureSet?.structures.length ?? 0;
+    if (existingCount > 0) {
+      const ok = window.confirm(
+        `This series already has ${existingCount} structure${existingCount === 1 ? '' : 's'}. Running auto-contouring will replace all existing structures. Continue?`
+      );
+      if (!ok) return;
+    }
+
     setIsAutoContourRunning(true);
     setLastAutoContourSummary(null);
     setAutoContourJobStatus(null);
@@ -843,15 +871,15 @@ export default function StructurePanel() {
       let status = await getAutoContourJobStatus(createResponse.jobId, abortController.signal);
       setAutoContourJobStatus(status);
 
-      let polls = 0;
       while (
         !abortController.signal.aborted &&
-        (status.state === 'queued' || status.state === 'running') &&
-        polls < AUTOCONTOUR_MAX_POLLS
+        (status.state === 'queued' || status.state === 'running')
       ) {
-        polls += 1;
+        const interval = status.state === 'queued'
+          ? AUTOCONTOUR_POLL_INTERVAL_QUEUED_MS
+          : AUTOCONTOUR_POLL_INTERVAL_RUNNING_MS;
         await new Promise<void>((resolve, reject) => {
-          const timerId = window.setTimeout(resolve, AUTOCONTOUR_POLL_INTERVAL_MS);
+          const timerId = window.setTimeout(resolve, interval);
           abortController.signal.addEventListener(
             'abort',
             () => {
@@ -869,25 +897,30 @@ export default function StructurePanel() {
         return;
       }
 
-      if (polls >= AUTOCONTOUR_MAX_POLLS && (status.state === 'queued' || status.state === 'running')) {
-        throw new Error('Auto-contouring timed out.');
-      }
-
       if (status.state !== 'succeeded') {
         throw new Error(status.error || 'Auto-contouring failed.');
       }
 
-      const result = await getAutoContourJobResult(createResponse.jobId, abortController.signal);
-      replaceStructureSetForSeries(result.structureSet);
-      StructureSetManager.syncSelectionToSeries(activeLoadedSeries.seriesUID);
-      setStatusMessage(
-        `Imported AI draft with ${result.structureSet.structures.length} structure(s).`
-      );
-      setLastAutoContourSummary(
-        `${result.structureSet.source?.modelDisplayName ?? 'AI draft'} imported at ${formatSourceTimestamp(
+      const result = await getAutoContourJobResult(createResponse.jobId, activeLoadedSeries.volume.spacing[2], abortController.signal);
+      const structureCount = result.structureSet.structures.length;
+      const warningCount = status.warnings?.length ?? 0;
+
+      if (structureCount === 0) {
+        const reason = status.warnings?.join('; ') ?? 'No anatomical structures were detected by the model.';
+        setAutoContourModelsError(reason);
+        setStatusMessage(`Auto-contouring completed but found no structures. ${reason}`);
+        setLastAutoContourSummary(`No structures generated. ${reason}`);
+      } else {
+        replaceStructureSetForSeries(result.structureSet);
+        StructureSetManager.syncSelectionToSeries(activeLoadedSeries.seriesUID);
+        const summary = `${result.structureSet.source?.modelDisplayName ?? 'AI draft'} imported at ${formatSourceTimestamp(
           result.structureSet.source?.generatedAt ?? result.structureSet.source?.importedAt ?? new Date().toISOString()
-        )}.`
-      );
+        )}.`;
+        setStatusMessage(
+          `Imported AI draft with ${structureCount} structure(s)${warningCount > 0 ? ` (${warningCount} warning(s))` : ''}.`
+        );
+        setLastAutoContourSummary(`${structureCount} structure(s) generated. ${summary}`);
+      }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         return;
@@ -1352,35 +1385,35 @@ export default function StructurePanel() {
         <button
           type="button"
           className={tabButtonClass(panelTab === 'structures')}
-          onClick={() => setPanelTab('structures')}
+          onClick={() => setWorkflowStage('edit')}
         >
           Structures
         </button>
         <button
           type="button"
           className={tabButtonClass(panelTab === 'ai')}
-          onClick={() => setPanelTab('ai')}
+          onClick={() => setWorkflowStage('auto')}
         >
           AI
         </button>
         <button
           type="button"
           className={tabButtonClass(panelTab === 'qa')}
-          onClick={() => setPanelTab('qa')}
+          onClick={() => setWorkflowStage('qa')}
         >
           QA
         </button>
         <button
           type="button"
           className={tabButtonClass(panelTab === 'review')}
-          onClick={() => setPanelTab('review')}
+          onClick={() => setWorkflowStage('review')}
         >
           Review
         </button>
         <button
           type="button"
           className={tabButtonClass(panelTab === 'audit')}
-          onClick={() => setPanelTab('audit')}
+          onClick={() => setWorkflowStage('approve')}
         >
           Audit
         </button>
@@ -1802,13 +1835,36 @@ export default function StructurePanel() {
                 <div className="mt-3 rounded border border-[var(--color-border)] bg-[var(--color-elevated)] px-2.5 py-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-[var(--color-text)]">Job Status</span>
-                    <span className="text-[var(--color-text-muted)]">
+                    <span
+                      className={`border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${
+                        autoContourJobStatus.state === 'succeeded'
+                          ? 'border-[#14532d] bg-[#12301f] text-[#22c55e]'
+                          : autoContourJobStatus.state === 'failed'
+                            ? 'border-[#7f1d1d] bg-[#2a1212] text-[#ef4444]'
+                            : autoContourJobStatus.state === 'running'
+                              ? 'border-[#854d0e] bg-[#2a2112] text-[#f59e0b]'
+                              : 'border-[var(--color-border)] text-[var(--color-text-muted)]'
+                      }`}
+                    >
                       {formatAutoContourState(autoContourJobStatus.state)}
                     </span>
                   </div>
                   <p className="mt-1 text-[var(--color-text-sec)]">{autoContourJobStatus.progressStage}</p>
                   {autoContourJobStatus.error ? (
-                    <p className="mt-1 text-[#f59e0b]">{autoContourJobStatus.error}</p>
+                    <div className="mt-2 rounded border border-[#7f1d1d] bg-[#2a1212] px-2 py-1.5">
+                      <p className="font-semibold text-[#ef4444]">Error</p>
+                      <p className="mt-0.5 whitespace-pre-wrap text-[#fca5a5]">{autoContourJobStatus.error}</p>
+                    </div>
+                  ) : null}
+                  {autoContourJobStatus.warnings && autoContourJobStatus.warnings.length > 0 ? (
+                    <div className="mt-2 rounded border border-[#854d0e] bg-[#2a2112] px-2 py-1.5">
+                      <p className="font-semibold text-[#f59e0b]">
+                        {autoContourJobStatus.warnings.length} warning{autoContourJobStatus.warnings.length === 1 ? '' : 's'}
+                      </p>
+                      {autoContourJobStatus.warnings.map((warning, i) => (
+                        <p key={i} className="mt-0.5 text-[#fcd34d]">{warning}</p>
+                      ))}
+                    </div>
                   ) : null}
                 </div>
               ) : null}
