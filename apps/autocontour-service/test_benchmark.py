@@ -8,11 +8,13 @@ Metrics
 - Surface DSC @ 3mm tolerance: secondary (clinical acceptability proxy)
 
 Structures compared (RTSTRUCT name → autocontour name):
-  "spinal cord"  → SpinalCord
+  "spinal cord"      → SpinalCord
 
-Note: Parotid_L/R comparison will be re-enabled once MONAI H&N bundle replaces
-TotalSegmentator for head-and-neck structures (parotid requires a commercial
-TotalSegmentator license that ContourLab does not hold).
+Note: Only SpinalCord is benchmarked because headneck-ct-demo currently uses
+only TotalSegmentator's free "total" task (Brain + SpinalCord).
+Parotid/Mandible/BrainStem required licensed tasks (head_glands_cavities,
+craniofacial_structures, brain_structures) and have been removed from the
+profile until MONAI-based segmentation is integrated.
 
 Minimum thresholds represent "clinically usable AI draft" quality.
 Raise thresholds over time as the model pipeline matures.

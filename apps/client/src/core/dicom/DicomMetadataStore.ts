@@ -46,6 +46,7 @@ export interface NormalizedDicomMetadata {
   studyDate: string;
   studyDescription: string;
   seriesDescription: string;
+  bodyPartExamined?: string;
   modality: string;
   rows: number;
   columns: number;
@@ -246,6 +247,7 @@ export async function parseDicomTags(file: File): Promise<NormalizedDicomMetadat
     studyDate: getString('x00080020'),
     studyDescription: getString('x00081030'),
     seriesDescription: getString('x0008103e'),
+    bodyPartExamined: getString('x00180015') || undefined,
     modality: getString('x00080060', 'CT'),
     rows,
     columns,
@@ -301,11 +303,13 @@ export function buildMetadata(
     sopInstanceUID: tags.sopInstanceUID,
     instanceNumber: tags.instanceNumber,
     sliceLocation: tags.sliceLocation,
+    imagePositionZ: tags.imagePositionPatient[2],
   };
 
   const series: Series = {
     seriesInstanceUID: tags.seriesInstanceUID,
     seriesDescription: tags.seriesDescription,
+    bodyPartExamined: tags.bodyPartExamined,
     modality: tags.modality as Series['modality'],
     instances: [instance],
   };

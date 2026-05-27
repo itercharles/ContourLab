@@ -12,6 +12,7 @@ public sealed record AutoContourModelProfile(
 public sealed record AutoContourSeriesSlice(
     string SopInstanceUID,
     double? SliceLocation,
+    double? ImagePositionZ,
     int InstanceNumber
 );
 
@@ -45,7 +46,8 @@ public sealed record AutoContourJobStatus(
     DateTimeOffset SubmittedAt,
     DateTimeOffset UpdatedAt,
     bool ResultAvailable,
-    string? Error = null
+    string? Error = null,
+    IReadOnlyList<string>? Warnings = null
 );
 
 public sealed record AutoContourContourSlice(

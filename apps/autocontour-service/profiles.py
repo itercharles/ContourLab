@@ -1,3 +1,12 @@
+_EXTERNAL = {
+    "id": "external",
+    "name": "External",
+    "type": "EXTERNAL",
+    "color": [255, 255, 255],
+    "totalsegTask": "body",
+    "totalsegLabels": ["body_trunc", "body_extremities"],
+}
+
 PROFILES = [
     {
         "id": "thorax-ct-demo",
@@ -5,8 +14,9 @@ PROFILES = [
         "summary": "Produces bilateral lungs and heart draft candidates.",
         "modality": "CT",
         "anatomyScope": "Thorax",
-        "expectedStructureLabels": ["Lung_L", "Lung_R", "Heart"],
+        "expectedStructureLabels": ["External", "Lung_L", "Lung_R", "Heart"],
         "structures": [
+            _EXTERNAL,
             {
                 "id": "lung_left",
                 "name": "Lung_L",
@@ -36,11 +46,12 @@ PROFILES = [
     {
         "id": "headneck-ct-demo",
         "displayName": "Head & Neck CT · TotalSegmentator",
-        "summary": "Produces brain, brainstem, spinal cord, parotids, and mandible draft candidates.",
+        "summary": "Produces brain and spinal cord draft candidates (free 'total' task only).",
         "modality": "CT",
         "anatomyScope": "Head & Neck",
-        "expectedStructureLabels": ["Brain", "BrainStem", "SpinalCord", "Parotid_L", "Parotid_R", "Mandible"],
+        "expectedStructureLabels": ["External", "Brain", "SpinalCord"],
         "structures": [
+            _EXTERNAL,
             {
                 "id": "brain",
                 "name": "Brain",
@@ -57,38 +68,6 @@ PROFILES = [
                 "totalsegTask": "total",
                 "totalsegLabels": ["spinal_cord"],
             },
-            {
-                "id": "brainstem",
-                "name": "BrainStem",
-                "type": "OAR",
-                "color": [255, 100, 100],
-                "totalsegTask": "brain_structures",
-                "totalsegLabels": ["brainstem"],
-            },
-            {
-                "id": "parotid_left",
-                "name": "Parotid_L",
-                "type": "OAR",
-                "color": [100, 200, 100],
-                "totalsegTask": "head_glands_cavities",
-                "totalsegLabels": ["parotid_gland_left"],
-            },
-            {
-                "id": "parotid_right",
-                "name": "Parotid_R",
-                "type": "OAR",
-                "color": [80, 180, 80],
-                "totalsegTask": "head_glands_cavities",
-                "totalsegLabels": ["parotid_gland_right"],
-            },
-            {
-                "id": "mandible",
-                "name": "Mandible",
-                "type": "OAR",
-                "color": [200, 200, 150],
-                "totalsegTask": "craniofacial_structures",
-                "totalsegLabels": ["mandible"],
-            },
         ],
     },
     {
@@ -97,8 +76,9 @@ PROFILES = [
         "summary": "Produces liver, spleen, kidneys, stomach, spinal cord.",
         "modality": "CT",
         "anatomyScope": "Abdomen",
-        "expectedStructureLabels": ["Liver", "Spleen", "Kidney_L", "Kidney_R", "Stomach", "SpinalCord"],
+        "expectedStructureLabels": ["External", "Liver", "Spleen", "Kidney_L", "Kidney_R", "Stomach", "SpinalCord"],
         "structures": [
+            _EXTERNAL,
             {
                 "id": "liver",
                 "name": "Liver",
@@ -155,8 +135,9 @@ PROFILES = [
         "summary": "Produces bladder, colon, femoral heads, prostate, spinal cord.",
         "modality": "CT",
         "anatomyScope": "Pelvis",
-        "expectedStructureLabels": ["Bladder", "Colon", "FemoralHead_L", "FemoralHead_R", "CTV_Prostate", "SpinalCord"],
+        "expectedStructureLabels": ["External", "Bladder", "Colon", "FemoralHead_L", "FemoralHead_R", "CTV_Prostate", "SpinalCord"],
         "structures": [
+            _EXTERNAL,
             {
                 "id": "bladder",
                 "name": "Bladder",

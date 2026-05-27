@@ -41,6 +41,7 @@ vi.mock('../../core/autocontour/autocontourClient', () => ({
       seriesUID: loadedSeries.seriesUID,
     },
   })),
+  inferAutoContourProfile: vi.fn(() => null),
   listAutoContourModels: mocks.listAutoContourModels,
   submitAutoContourJob: mocks.submitAutoContourJob,
   getAutoContourJobStatus: mocks.getAutoContourJobStatus,
@@ -461,6 +462,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
   });
 
   it('runs auto-contouring and imports an AI draft structure set for the active CT series', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<StructurePanel />);
 
     fireEvent.click(screen.getByRole('button', { name: 'AI' }));
@@ -1223,7 +1225,7 @@ describe('StructurePanel tab navigation driven by uiStore', () => {
   });
 
   it('the panel tab shown corresponds to sidePanelTab in the store', () => {
-    useUIStore.setState({ sidePanelTab: 'ai' });
+    useUIStore.setState({ workflowStage: 'auto' });
 
     render(<StructurePanel />);
 

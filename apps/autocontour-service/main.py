@@ -2,6 +2,8 @@ import asyncio
 import uuid
 import logging
 import os
+import time
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from typing import Optional
 
@@ -11,12 +13,18 @@ from pydantic import BaseModel
 from profiles import PROFILES
 from inference import build_sitk_image, run_totalseg
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(name)s] %(levelname)s %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
 logger = logging.getLogger("autocontour")
 
 
 class SeriesSlice(BaseModel):
     sopInstanceUID: str
     sliceLocation: Optional[float] = None
+    imagePositionZ: Optional[float] = None
     instanceNumber: int
 
 
@@ -45,9 +53,10 @@ jobs: dict[str, dict] = {}
 
 
 def _make_status(job_id: str, state: str, stage: str,
-                 result_available=False, error=None, submitted_at=None) -> dict:
+                 result_available=False, error=None, submitted_at=None,
+                 warnings: list[str] | None = None) -> dict:
     now = datetime.utcnow().isoformat() + "Z"
-    return {
+    status = {
         "jobId": job_id,
         "state": state,
         "progressStage": stage,
@@ -56,9 +65,16 @@ def _make_status(job_id: str, state: str, stage: str,
         "resultAvailable": result_available,
         "error": error,
     }
+    if warnings:
+        status["warnings"] = warnings
+    return status
 
 
 app = FastAPI(title="ContourLab.AutoContourService")
+
+# One-worker process pool: each inference gets a fresh subprocess with clean MPS state.
+# MPS context is process-local; reusing a thread after a completed inference causes hangs.
+_inference_pool = ProcessPoolExecutor(max_workers=1)
 
 
 @app.get("/health")
@@ -83,6 +99,10 @@ def models():
 
 @app.post("/jobs")
 async def create_job(request: JobCreateRequest):
+    s = request.series
+    pixel_count = len(s.pixelData) if s.pixelData else 0
+    print(f"[job] profile={request.modelProfileId} dims={s.dimensions} spacing={[round(x,2) for x in s.spacing]} pixels={pixel_count}", flush=True)
+
     if request.series.modality.upper() != "CT":
         raise HTTPException(400, "Auto-contouring currently supports CT series only.")
 
@@ -118,23 +138,79 @@ def get_job_result(job_id: str):
 
 
 async def _run_job(job_id: str, request: JobCreateRequest, profile: dict, submitted_at: str):
+    t_start = time.monotonic()
+    warnings_list: list[str] = []
+
     def _update(state, stage, **kw):
+        kw.setdefault("warnings", warnings_list if warnings_list else None)
         jobs[job_id].update(_make_status(job_id, state, stage, submitted_at=submitted_at, **kw))
 
-    try:
-        _update("running", "Reconstructing volume from pixel data")
-        series_data = request.series.model_dump()
-        pixel_data = series_data.get("pixelData")
-        logger.info(f"Job {job_id}: dimensions={series_data['dimensions']}, pixelData provided={pixel_data is not None}")
-        image = build_sitk_image(series_data)
+    def _report_progress(stage: str):
+        elapsed = time.monotonic() - t_start
+        logger.info("[%s] +%.1fs %s", job_id[:8], elapsed, stage)
+        _update("running", stage)
 
-        _update("running", "Running TotalSegmentator segmentation (this may take several minutes)")
-        structures = await asyncio.get_event_loop().run_in_executor(
-            None, run_totalseg, image, profile
+    try:
+        series_data = request.series.model_dump()
+        dims = series_data["dimensions"]
+        spacing = series_data["spacing"]
+        pixel_data = series_data.get("pixelData")
+        pixel_count = len(pixel_data) if pixel_data else 0
+        slice_count = len(series_data.get("slices", []))
+        voxel_count = dims[0] * dims[1] * dims[2]
+
+        logger.info(
+            "[%s] JOB_START profile=%s series=%s dims=%s spacing=[%.2f,%.2f,%.2f] voxels=%d slices=%d pixelData=%d",
+            job_id[:8], profile["id"], series_data["seriesUID"][:16],
+            dims, spacing[0], spacing[1], spacing[2], voxel_count, slice_count, pixel_count,
         )
+        raw_slices = series_data.get("slices", [])
+        if raw_slices:
+            locs = [s.get("sliceLocation") for s in raw_slices[:5]]
+            uids = [s.get("sopInstanceUID", "")[-8:] for s in raw_slices[:5]]
+            logger.info("[%s] SLICES sample loc=%s uid_tail=%s", job_id[:8], locs, uids)
+
+        _report_progress("Reconstructing volume from pixel data")
+        image = build_sitk_image(series_data)
+        logger.info(
+            "[%s] volume built: size=%s spacing=%s origin=[%.1f,%.1f,%.1f]",
+            job_id[:8], image.GetSize(), image.GetSpacing(),
+            image.GetOrigin()[0], image.GetOrigin()[1], image.GetOrigin()[2],
+        )
+
+        tasks = list(set(s.get("totalsegTask", "total") for s in profile["structures"]))
+        _report_progress(f"Running {len(tasks)} model task(s): {', '.join(tasks)} (this may take several minutes)")
+
+        structures, task_warnings = await asyncio.get_event_loop().run_in_executor(
+            _inference_pool, run_totalseg, image, profile, series_data
+        )
+        warnings_list.extend(task_warnings)
 
         now = datetime.utcnow().isoformat() + "Z"
         series = request.series
+        elapsed = time.monotonic() - t_start
+
+        logger.info(
+            "[%s] JOB_DONE elapsed=%.1fs structures=%d warnings=%d",
+            job_id[:8], elapsed, len(structures), len(warnings_list),
+        )
+        for st in structures:
+            contours = st.get("contours", [])
+            sample = contours[:3] if contours else []
+            logger.info(
+                "[%s] STRUCT %s: contours=%d z_range=[%.1f..%.1f] sample_z=%s sample_uid=%s",
+                job_id[:8], st.get("name"), len(contours),
+                min((c["slicePosition"] for c in contours), default=0),
+                max((c["slicePosition"] for c in contours), default=0),
+                [round(c["slicePosition"], 1) for c in sample],
+                [c["referencedSOPInstanceUID"][-8:] if c["referencedSOPInstanceUID"] else "(empty)" for c in sample],
+            )
+
+        if not structures and warnings_list:
+            error_msg = "; ".join(warnings_list)
+            _update("failed", "No structures generated", error=error_msg, warnings=warnings_list)
+            return
+
         result = {
             "structureSet": {
                 "id": f"ai-{series.seriesUID}-{int(datetime.utcnow().timestamp())}",
@@ -156,11 +232,58 @@ async def _run_job(job_id: str, request: JobCreateRequest, profile: dict, submit
             }
         }
         jobs[job_id]["_result"] = result
-        _update("succeeded", "Segmentation complete", result_available=True)
+        suffix = f" ({len(warnings_list)} warning(s))" if warnings_list else ""
+        _update("succeeded", f"Segmentation complete: {len(structures)} structure(s){suffix}",
+                result_available=True, warnings=warnings_list if warnings_list else None)
 
     except Exception as exc:
-        logger.exception("Auto-contour job %s failed", job_id)
-        _update("failed", "Failed", error=str(exc))
+        elapsed = time.monotonic() - t_start
+        logger.error("[%s] JOB_FAILED elapsed=%.1fs error=%s", job_id[:8], elapsed, exc, exc_info=True)
+        error_detail = _diagnose_error(exc)
+        _update("failed", error_detail["stage"], error=error_detail["message"],
+                warnings=warnings_list if warnings_list else None)
+
+
+def _diagnose_error(exc: Exception) -> dict[str, str]:
+    """Convert an exception into a user-facing stage + message."""
+    msg = str(exc).lower()
+    cls = type(exc).__name__
+
+    if "no module named" in msg or "modulenotfound" in cls.lower():
+        return {
+            "stage": "Model dependency missing",
+            "message": f"Missing Python package. Install with: pip install totalsegmentator. Detail: {exc}",
+        }
+    if "memory" in msg or "memoryerror" in cls or "oom" in msg:
+        return {
+            "stage": "Out of memory",
+            "message": f"Not enough RAM/VRAM. Try a smaller CT series or use --fast model. Detail: {exc}",
+        }
+    if "cuda" in msg or "gpu" in msg or "mps" in msg:
+        return {
+            "stage": "GPU/device error",
+            "message": f"Hardware device error. Set TOTALSEG_DEVICE=cpu to fall back to CPU. Detail: {exc}",
+        }
+    if "license" in msg or "licensed" in msg:
+        return {
+            "stage": "License required",
+            "message": f"One or more tasks require a commercial license. Free license at github.com/wasserth/TotalSegmentator. Detail: {exc}",
+        }
+    if "orthanc" in msg or "404" in msg or "not found" in msg:
+        return {
+            "stage": "Orthanc data retrieval failed",
+            "message": f"Could not fetch pixel data from Orthanc. Ensure Orthanc is running on port 8042. Detail: {exc}",
+        }
+    if "pixeldata" in msg or "pixel_data" in msg or "pixel" in msg:
+        return {
+            "stage": "Invalid pixel data",
+            "message": f"Pixel data missing or corrupted. Ensure the CT series is fully loaded. Detail: {exc}",
+        }
+
+    return {
+        "stage": "Segmentation failed",
+        "message": str(exc),
+    }
 
 
 if __name__ == "__main__":

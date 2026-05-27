@@ -1,4 +1,5 @@
 import logging
+import time
 import numpy as np
 import SimpleITK as sitk
 import tempfile
@@ -107,17 +108,20 @@ def build_sitk_image(series: dict) -> sitk.Image:
     return image
 
 
-def run_totalseg(image: sitk.Image, profile: dict) -> list[dict]:
+def run_totalseg(image: sitk.Image, profile: dict, series_data: dict | None = None) -> tuple[list[dict], list[str]]:
     from totalsegmentator.python_api import totalsegmentator
     from totalsegmentator.map_to_binary import class_map
 
     device = os.getenv("TOTALSEG_DEVICE", "mps")
+    logger.info("TotalSegmentator device: %s  tasks_available: %s", device, sorted(class_map.keys())[:10])
 
     with tempfile.NamedTemporaryFile(suffix=".nii.gz", delete=False) as f:
         tmp_path = f.name
 
     try:
         sitk.WriteImage(image, tmp_path)
+        img_size = image.GetSize()
+        logger.info("NIfTI written: %s size=%s spacing=%s", tmp_path, img_size, image.GetSpacing())
 
         # Group structures by task so each task model runs only once
         task_groups = defaultdict(list)
@@ -126,15 +130,27 @@ def run_totalseg(image: sitk.Image, profile: dict) -> list[dict]:
             task_groups[task].append(struct_def)
 
         structures = []
+        warnings: list[str] = []
+        skipped_tasks: list[str] = []
+        empty_structs: list[str] = []
+        task_count = 0
 
         for task, task_struct_defs in task_groups.items():
+            task_count += 1
+            struct_names = [s["name"] for s in task_struct_defs]
             all_label_names = []
             for s in task_struct_defs:
                 all_label_names.extend(s.get("totalsegLabels", []))
             roi_subset = list(dict.fromkeys(all_label_names))
 
-            # roi_subset is only supported for 'total' and 'total_mr'
             supports_roi_subset = task in ("total", "total_mr")
+            roi_info = f"roi={roi_subset}" if supports_roi_subset else "roi=all (full task)"
+            logger.info(
+                "[task %d/%d] %s → %s  labels=%s  %s",
+                task_count, len(task_groups), task, struct_names, all_label_names, roi_info,
+            )
+
+            t_task_start = time.monotonic()
 
             try:
                 seg = totalsegmentator(
@@ -148,61 +164,126 @@ def run_totalseg(image: sitk.Image, profile: dict) -> list[dict]:
                     device=device,
                 )
             except SystemExit:
-                # Task requires a license not currently configured — skip gracefully
-                skipped = [s["name"] for s in task_struct_defs]
-                logger.warning("Task '%s' requires a TotalSegmentator license; skipping %s", task, skipped)
+                skipped_tasks.append(task)
+                msg = (
+                    f"'{task}' requires a license. "
+                    f"Get a free non-commercial license at github.com/wasserth/TotalSegmentator, "
+                    f"then run: totalseg_set_license -l <key>. "
+                    f"Skipping: {', '.join(struct_names)}"
+                )
+                logger.warning("[task %d/%d] %s SKIPPED: %s", task_count, len(task_groups), task, msg)
+                warnings.append(msg)
                 continue
 
-            # TotalSeg v2 returns a single multilabel Nifti1Image
+            t_task = time.monotonic() - t_task_start
             seg_data = seg.get_fdata()   # shape [nx, ny, nz]
-            affine = seg.affine          # 4x4 float64
+            logger.info(
+                "[task %d/%d] %s DONE in %.1fs  output_shape=%s",
+                task_count, len(task_groups), task, t_task, seg_data.shape,
+            )
 
             task_map = class_map[task]   # {int: str}
             label_name_to_int = {v: k for k, v in task_map.items()}
 
             for struct_def in task_struct_defs:
+                struct_name = struct_def["name"]
                 combined_mask = np.zeros(seg_data.shape[:3], dtype=bool)
                 for lname in struct_def.get("totalsegLabels", []):
                     lint = label_name_to_int.get(lname)
                     if lint is not None:
                         combined_mask |= (seg_data == lint)
 
+                mask_voxels = int(combined_mask.sum())
                 if not combined_mask.any():
+                    empty_structs.append(struct_name)
+                    logger.warning("[task %d/%d] %s/%s EMPTY (0 voxels in mask)",
+                                   task_count, len(task_groups), task, struct_name)
                     continue
 
-                contours = _mask_to_contour_slices(combined_mask, affine)
+                contours = _mask_to_contour_slices(combined_mask, image, series_data)
                 if not contours:
+                    empty_structs.append(struct_name)
+                    logger.warning("[task %d/%d] %s/%s NO_CONTOURS (mask=%d voxels, 0 contour slices)",
+                                   task_count, len(task_groups), task, struct_name, mask_voxels)
                     continue
 
-                volume_cc = _estimate_volume_cc(combined_mask, affine)
+                volume_cc = _estimate_volume_cc_sitk(combined_mask, image)
+                contour_slices_count = len(contours)
+                total_points = sum(len(c["points"]) // 3 for c in contours)
+                pts_sample = contours[0]["points"][:3] if contours[0]["points"] else []
+                logger.info(
+                    "[task %d/%d] %s/%s OK  mask=%d_voxels  volume=%.1f_cc  contour_slices=%d  points=%d  "
+                    "z_range=[%.1f,%.1f]  pt_sample=[%.1f,%.1f,%.1f]",
+                    task_count, len(task_groups), task, struct_name,
+                    mask_voxels, volume_cc, contour_slices_count, total_points,
+                    contours[0]["slicePosition"] if contours else 0,
+                    contours[-1]["slicePosition"] if contours else 0,
+                    pts_sample[0], pts_sample[1] if len(pts_sample) > 1 else 0,
+                    pts_sample[2] if len(pts_sample) > 2 else 0,
+                )
+
                 structures.append({
                     "id": struct_def["id"],
                     "name": struct_def["name"],
                     "type": struct_def["type"],
                     "color": struct_def["color"],
                     "contours": contours,
-                    "volumeCc": volume_cc,
                     "isLocked": False,
                     "isVisible": True,
                 })
 
-        return structures
+        if skipped_tasks:
+            warnings.append(
+                f"Skipped {len(skipped_tasks)} licensed task(s): {', '.join(skipped_tasks)}. "
+                f"Run 'totalseg_set_license -l <key>' to enable."
+            )
+        if empty_structs:
+            logger.warning("Empty structures (0 voxels or 0 contours): %s", empty_structs)
+
+        return structures, warnings
 
     finally:
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
 
 
-def _mask_to_contour_slices(mask_arr: np.ndarray, affine: np.ndarray) -> list[dict]:
-    """Extract per-slice contour polygons from a binary nibabel-convention mask.
+def _mask_to_contour_slices(mask_arr: np.ndarray, sitk_image: sitk.Image, series_data: dict | None = None) -> list[dict]:
+    """Extract per-slice contour polygons from a binary segmentation mask.
 
-    mask_arr: bool array [nx, ny, nz] from nibabel.get_fdata()
-    affine:   4x4 float64 RAS affine; output points converted to LPS (DICOM)
+    Uses the original SimpleITK image geometry (DICOM LPS coordinates) for
+    voxel-to-world conversion — no RAS→LPS affine math needed.
+    Maps each mask slice to its SOP Instance UID by matching physical z-position
+    (sliceLocation) rather than array index, which is robust to FFS orientation
+    and any ordering mismatch between the client slice list and the volume.
     """
     from skimage.measure import find_contours
 
+    # Build LPS-z → SOP UID map for matching against SimpleITK physical z.
+    # Prefer imagePositionZ (DICOM ImagePositionPatient[2], always LPS z) over
+    # sliceLocation (DICOM tag 0020,1041 which may use scanner z convention for
+    # FFS scans, making it sign-flipped relative to LPS z).
+    slice_loc_uid: list[tuple[float, str]] = []
+    if series_data:
+        for s in series_data.get("slices", []):
+            ipz = s.get("imagePositionZ")
+            loc = ipz if ipz is not None else s.get("sliceLocation")
+            uid = s.get("sopInstanceUID", "")
+            if loc is not None and uid:
+                slice_loc_uid.append((float(loc), uid))
+
+    spacing_z = sitk_image.GetSpacing()[2]
+
+    def _find_sop_uid(slice_z: float) -> str:
+        if not slice_loc_uid:
+            return ""
+        best_loc, best_uid = min(slice_loc_uid, key=lambda x: abs(x[0] - slice_z))
+        if abs(best_loc - slice_z) <= spacing_z:
+            return best_uid
+        return ""
+
     nz = mask_arr.shape[2]
     contour_slices = []
+    uid_miss_count = 0
 
     for k in range(nz):
         slice_2d = mask_arr[:, :, k]
@@ -217,22 +298,36 @@ def _mask_to_contour_slices(mask_arr: np.ndarray, affine: np.ndarray) -> list[di
 
         world_points = []
         for i_f, j_f in largest:
-            w = affine @ np.array([i_f, j_f, float(k), 1.0])
-            # nibabel affine is RAS; DICOM/SimpleITK uses LPS → negate x and y
-            world_points.extend([-float(w[0]), -float(w[1]), float(w[2])])
+            # find_contours returns subpixel floats; use ContinuousIndex variant
+            pt = sitk_image.TransformContinuousIndexToPhysicalPoint((float(i_f), float(j_f), float(k)))
+            world_points.extend([pt[0], pt[1], pt[2]])
 
-        w_centre = affine @ np.array([0.0, 0.0, float(k), 1.0])
-
+        center_pt = sitk_image.TransformContinuousIndexToPhysicalPoint((0.0, 0.0, float(k)))
+        slice_z = float(center_pt[2])
+        sop_uid = _find_sop_uid(slice_z)
+        if not sop_uid:
+            uid_miss_count += 1
         contour_slices.append({
-            "referencedSOPInstanceUID": f"totalseg-sop-z{k}",
-            "slicePosition": float(w_centre[2]),
+            "referencedSOPInstanceUID": sop_uid,
+            "slicePosition": slice_z,
             "points": world_points,
             "isClosed": True,
         })
 
+    if contour_slices:
+        z_values = [c["slicePosition"] for c in contour_slices]
+        uid_hits = sum(1 for c in contour_slices if c["referencedSOPInstanceUID"])
+        logger.info(
+            "_mask_to_contour_slices: slices=%d z=[%.1f..%.1f] uid_hits=%d uid_miss=%d "
+            "client_slices=%d",
+            len(contour_slices), min(z_values), max(z_values),
+            uid_hits, uid_miss_count, len(slice_loc_uid),
+        )
+
     return contour_slices
 
 
-def _estimate_volume_cc(mask_arr: np.ndarray, affine: np.ndarray) -> float:
-    voxel_vol_mm3 = abs(float(np.linalg.det(affine[:3, :3])))
+def _estimate_volume_cc_sitk(mask_arr: np.ndarray, sitk_image: sitk.Image) -> float:
+    spacing = sitk_image.GetSpacing()
+    voxel_vol_mm3 = float(spacing[0]) * float(spacing[1]) * float(spacing[2])
     return float(mask_arr.sum() * voxel_vol_mm3 / 1000.0)
