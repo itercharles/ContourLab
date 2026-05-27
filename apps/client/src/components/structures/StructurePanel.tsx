@@ -59,8 +59,9 @@ const STRUCTURE_TYPES: StructureType[] = [
   'SUPPORT',
 ];
 
-const AUTOCONTOUR_POLL_INTERVAL_MS = 5000;
-const AUTOCONTOUR_MAX_POLLS = 360;
+const AUTOCONTOUR_POLL_INTERVAL_QUEUED_MS = 750;   // fast while waiting to start
+const AUTOCONTOUR_POLL_INTERVAL_RUNNING_MS = 5000; // back off during long inference
+const AUTOCONTOUR_MAX_POLLS = 360;                 // 360 × 5s ≈ 30 min ceiling
 
 function rgbToHex([r, g, b]: [number, number, number]): string {
   return `#${[r, g, b]
@@ -626,7 +627,7 @@ export default function StructurePanel() {
       approve: 'audit',
     };
     setPanelTab(map[workflowStage]);
-  }, [workflowStage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [workflowStage, setPanelTab]);
 
   useEffect(() => {
     if (panelTab !== 'ai' || autoContourModelsLoaded) return;
@@ -639,14 +640,7 @@ export default function StructurePanel() {
         if (cancelled) return;
         setAutoContourModels(models);
         setAutoContourModelsLoaded(true);
-        setSelectedAutoContourModelId((current) => {
-          if (current) return current;
-          const activeSeries = useVolumeStore.getState().loadedSeries.find(
-            (s) => s.seriesUID === useVolumeStore.getState().activeSeriesUID
-          );
-          return (activeSeries ? inferAutoContourProfile(activeSeries.series, models) : null)
-            ?? models[0]?.id ?? '';
-        });
+        setSelectedAutoContourModelId((current) => current || models[0]?.id || '');
         setAutoContourModelsError(null);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
@@ -885,8 +879,11 @@ export default function StructurePanel() {
         polls < AUTOCONTOUR_MAX_POLLS
       ) {
         polls += 1;
+        const interval = status.state === 'queued'
+          ? AUTOCONTOUR_POLL_INTERVAL_QUEUED_MS
+          : AUTOCONTOUR_POLL_INTERVAL_RUNNING_MS;
         await new Promise<void>((resolve, reject) => {
-          const timerId = window.setTimeout(resolve, AUTOCONTOUR_POLL_INTERVAL_MS);
+          const timerId = window.setTimeout(resolve, interval);
           abortController.signal.addEventListener(
             'abort',
             () => {

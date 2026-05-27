@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import StructurePanel from './StructurePanel';
 import { useStructureStore } from '../../core/store/structureStore';
@@ -242,6 +242,9 @@ beforeEach(() => {
 });
 
 describe('StructurePanel local draft and structure editing interactions', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it('auto-saves dirty structures to the local browser draft store @links:SRS-009', async () => {
     render(<StructurePanel />);
 

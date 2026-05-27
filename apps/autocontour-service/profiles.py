@@ -1,11 +1,13 @@
-_EXTERNAL = {
-    "id": "external",
-    "name": "External",
-    "type": "EXTERNAL",
-    "color": [255, 255, 255],
-    "totalsegTask": "body",
-    "totalsegLabels": ["body_trunc", "body_extremities"],
-}
+def _external():
+    return {
+        "id": "external",
+        "name": "External",
+        "type": "EXTERNAL",
+        "color": [255, 255, 255],
+        "totalsegTask": "body",
+        "totalsegLabels": ["body_trunc", "body_extremities"],
+    }
+
 
 PROFILES = [
     {
@@ -16,7 +18,7 @@ PROFILES = [
         "anatomyScope": "Thorax",
         "expectedStructureLabels": ["External", "Lung_L", "Lung_R", "Heart"],
         "structures": [
-            _EXTERNAL,
+            _external(),
             {
                 "id": "lung_left",
                 "name": "Lung_L",
@@ -51,7 +53,7 @@ PROFILES = [
         "anatomyScope": "Head & Neck",
         "expectedStructureLabels": ["External", "Brain", "SpinalCord"],
         "structures": [
-            _EXTERNAL,
+            _external(),
             {
                 "id": "brain",
                 "name": "Brain",
@@ -78,7 +80,7 @@ PROFILES = [
         "anatomyScope": "Abdomen",
         "expectedStructureLabels": ["External", "Liver", "Spleen", "Kidney_L", "Kidney_R", "Stomach", "SpinalCord"],
         "structures": [
-            _EXTERNAL,
+            _external(),
             {
                 "id": "liver",
                 "name": "Liver",
@@ -137,7 +139,7 @@ PROFILES = [
         "anatomyScope": "Pelvis",
         "expectedStructureLabels": ["External", "Bladder", "Colon", "FemoralHead_L", "FemoralHead_R", "CTV_Prostate", "SpinalCord"],
         "structures": [
-            _EXTERNAL,
+            _external(),
             {
                 "id": "bladder",
                 "name": "Bladder",
