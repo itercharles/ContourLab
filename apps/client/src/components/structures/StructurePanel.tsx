@@ -910,8 +910,6 @@ export default function StructurePanel() {
       }
 
       const result = await getAutoContourJobResult(createResponse.jobId, activeLoadedSeries.volume.spacing[2], abortController.signal);
-      replaceStructureSetForSeries(result.structureSet);
-      StructureSetManager.syncSelectionToSeries(activeLoadedSeries.seriesUID);
       const structureCount = result.structureSet.structures.length;
       const warningCount = status.warnings?.length ?? 0;
 
@@ -921,6 +919,8 @@ export default function StructurePanel() {
         setStatusMessage(`Auto-contouring completed but found no structures. ${reason}`);
         setLastAutoContourSummary(`No structures generated. ${reason}`);
       } else {
+        replaceStructureSetForSeries(result.structureSet);
+        StructureSetManager.syncSelectionToSeries(activeLoadedSeries.seriesUID);
         const summary = `${result.structureSet.source?.modelDisplayName ?? 'AI draft'} imported at ${formatSourceTimestamp(
           result.structureSet.source?.generatedAt ?? result.structureSet.source?.importedAt ?? new Date().toISOString()
         )}.`;
