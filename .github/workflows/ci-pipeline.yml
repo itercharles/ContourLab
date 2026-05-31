@@ -553,9 +553,9 @@ jobs:
             --junit-dir test-results/srs-api \
             --junit-dir test-results/sys \
             --junit-dir test-results/crs \
-            --req-type SRS \
-            --req-type SYS \
-            --req-type CRS
+            --requirement-type SRS \
+            --requirement-type SYS \
+            --requirement-type CRS
 
       - name: Run verification completeness gate
         run: |
