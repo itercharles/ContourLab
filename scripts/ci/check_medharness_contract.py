@@ -91,21 +91,24 @@ def main() -> int:
     errors: list[str] = []
 
     help_commands = {
-        "generate-dhf": ("python", "-m", "medharness", "ci", "generate-dhf", "--help"),
-        "develop-cr": ("python", "-m", "medharness", "ci", "develop-cr", "--help"),
-        "validate-code": ("python", "-m", "medharness", "ci", "validate-code", "--help"),
-        "validate-branch": ("python", "-m", "medharness", "ci", "validate-branch", "--help"),
-        # Smoke-check session helpers even though workflows rely on the built-in
-        # threading that generate-dhf and develop-cr perform when --pr is supplied.
-        "claude-session-get": ("python", "-m", "medharness", "ci", "claude-session", "get", "--help"),
-        "claude-session-put": ("python", "-m", "medharness", "ci", "claude-session", "put", "--help"),
+        # change group (formerly ci generate-dhf / develop-cr / cr-status / advance-stage)
+        "change-plan": ("python", "-m", "medharness", "change", "plan", "--help"),
+        "change-implement": ("python", "-m", "medharness", "change", "implement", "--help"),
+        "change-status": ("python", "-m", "medharness", "change", "status", "--help"),
+        "change-advance": ("python", "-m", "medharness", "change", "advance", "--help"),
+        # verify group (formerly ci validate-branch / validate-code)
+        "verify-branch": ("python", "-m", "medharness", "verify", "branch", "--help"),
+        "verify-code": ("python", "-m", "medharness", "verify", "code", "--help"),
+        # approval group (formerly ci approve-gate)
+        "approval-check": ("python", "-m", "medharness", "approval", "check", "--help"),
+        # automation group (formerly ci claude-session get/put)
+        "session-get": ("python", "-m", "medharness", "automation", "session", "get", "--help"),
+        "session-put": ("python", "-m", "medharness", "automation", "session", "put", "--help"),
+        # dhfkit data-layer commands (unchanged)
         "dhf-report": ("dhfkit", "--dhf", ".", "report", "--help"),
         "dhf-context-implementation": ("python", "-m", "medharness", "dhf", "context", "implementation", "--help"),
         "dhfkit-soup-sync": ("dhfkit", "--dhf", ".", "soup-sync", "--help"),
         "dhfkit-release-baseline": ("dhfkit", "--dhf", ".", "release-baseline", "--help"),
-        "ci-approve-gate": ("python", "-m", "medharness", "ci", "approve-gate", "--help"),
-        "ci-cr-status": ("python", "-m", "medharness", "ci", "cr-status", "--help"),
-        "ci-advance-stage": ("python", "-m", "medharness", "ci", "advance-stage", "--help"),
     }
 
     help_output: dict[str, str] = {}
@@ -136,8 +139,18 @@ def main() -> int:
     cr_complete_text = CR_COMPLETE.read_text(encoding="utf-8")
 
     require(
-        "python -m medharness --dhf DHF ci generate-dhf" in cr_text,
-        "cr-lifecycle.yml must call generate-dhf with global --dhf",
+        "python -m medharness --dhf DHF change plan" in cr_text,
+        "cr-lifecycle.yml must call change plan with global --dhf",
+        errors,
+    )
+    require(
+        "python -m medharness --dhf DHF change implement" in cr_text,
+        "cr-lifecycle.yml must call change implement with global --dhf",
+        errors,
+    )
+    require(
+        "python -m medharness --dhf DHF ci generate-dhf" not in cr_text,
+        "cr-lifecycle.yml still contains old ci generate-dhf call — use change plan",
         errors,
     )
     require(
@@ -156,23 +169,23 @@ def main() -> int:
         errors,
     )
     require(
-        "medharness --dhf DHF ci validate-branch" in ci_text,
-        "ci-pipeline.yml must call validate-branch with global --dhf",
+        "medharness --dhf DHF verify branch" in ci_text,
+        "ci-pipeline.yml must call verify branch with global --dhf",
         errors,
     )
     require(
-        "medharness --dhf DHF ci validate-code" in ci_text,
-        "ci-pipeline.yml must call validate-code with global --dhf",
+        "medharness --dhf DHF verify code" in ci_text,
+        "ci-pipeline.yml must call verify code with global --dhf",
         errors,
     )
     require(
-        "medharness ci validate-branch" not in ci_text,
-        "ci-pipeline.yml still contains a local validate-branch invocation",
+        "medharness --dhf DHF ci validate-branch" not in ci_text,
+        "ci-pipeline.yml still contains old ci validate-branch — use verify branch",
         errors,
     )
     require(
-        "medharness ci validate-code" not in ci_text,
-        "ci-pipeline.yml still contains a local validate-code invocation",
+        "medharness --dhf DHF ci validate-code" not in ci_text,
+        "ci-pipeline.yml still contains old ci validate-code — use verify code",
         errors,
     )
     require(
@@ -207,8 +220,13 @@ def main() -> int:
         errors,
     )
     require(
-        "python -m medharness --dhf DHF ci generate-dhf" in issue_to_cr_text,
-        "issue-to-cr.yml must call generate-dhf inline at intake",
+        "python -m medharness --dhf DHF change plan" in issue_to_cr_text,
+        "issue-to-cr.yml must call change plan inline at intake",
+        errors,
+    )
+    require(
+        "python -m medharness --dhf DHF ci generate-dhf" not in issue_to_cr_text,
+        "issue-to-cr.yml still contains old ci generate-dhf — use change plan",
         errors,
     )
 
@@ -229,19 +247,19 @@ def main() -> int:
     )
 
     require(
-        "medharness ci approve-gate" in cr_text,
-        "cr-lifecycle.yml must call approve-gate before develop-cr to guard against event misclassification",
+        "medharness approval check" in cr_text,
+        "cr-lifecycle.yml must call approval check before change implement to guard against event misclassification",
         errors,
     )
     require(
-        "medharness --dhf DHF ci cr-status" in cr_text,
-        "cr-lifecycle.yml must emit a cr-status step for observability in the detect job",
+        "medharness --dhf DHF change status" in cr_text,
+        "cr-lifecycle.yml must emit a change status step for observability in the detect job",
         errors,
     )
 
     require(
-        "medharness ci advance-stage" in cr_text,
-        "cr-lifecycle.yml must use ci advance-stage for label management — no raw gh api label calls",
+        "medharness change advance" in cr_text,
+        "cr-lifecycle.yml must use change advance for label management — no raw gh api label calls",
         errors,
     )
 

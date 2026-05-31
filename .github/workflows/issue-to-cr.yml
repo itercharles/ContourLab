@@ -124,7 +124,7 @@ jobs:
           # No --pr here: passing --pr switches generate-dhf into revision mode
           # (reads PR review feedback), which is wrong on a brand-new draft PR.
           # Revision mode is only used by cr-lifecycle.yml revise-design.
-          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" | tee /tmp/generate-dhf-out.json
+          python -m medharness --dhf DHF change plan --cr "$CR_ID" | tee /tmp/generate-dhf-out.json
 
       - name: Post design failure comment
         if: always() && steps.open_pr.outcome == 'success' && steps.generate_design.outcome != 'success'
