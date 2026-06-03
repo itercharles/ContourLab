@@ -62,7 +62,7 @@ jobs:
       - name: Plan lifecycle action
         id: plan
         run: |
-          python -m medharness ci github-event \
+          python -m medharness automation github-event \
             --stage-label-prefix "cr:stage/" \
             --dispatch-action design=gen-code \
             --dispatch-action code=code-approved \
@@ -115,7 +115,7 @@ jobs:
         run: |
           CR_ID=$(jq -r '.cr_id // ""' /tmp/event-plan.json)
           PR_NUMBER="${{ github.event.pull_request.number }}"
-          [ -n "$CR_ID" ] && medharness --dhf DHF ci cr-status \
+          [ -n "$CR_ID" ] && medharness --dhf DHF change status \
             --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} \
             --branch "${{ github.head_ref || github.ref_name }}"
 
@@ -180,7 +180,7 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/generate-dhf-out.json
+          python -m medharness --dhf DHF change plan --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/generate-dhf-out.json
 
       - name: Upload design payload
         if: always()
@@ -244,7 +244,7 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          if ! python -m medharness ci dhf-validate \
+          if ! python -m medharness verify dhf \
             --dhf DHF \
             --run-schema \
             --run-traceability \
@@ -265,7 +265,7 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
           ISSUE_NUMBER: ${{ needs.detect.outputs.issue_number }}
         run: |
-          medharness ci advance-stage \
+          medharness change advance \
             --pr "$PR_NUMBER" \
             --from-stage cr \
             --to-stage design \
@@ -300,7 +300,7 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF ci generate-dhf --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-generate-dhf-out.json
+          python -m medharness --dhf DHF change plan --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-generate-dhf-out.json
 
       - name: Upload revise-design payload
         if: always()
@@ -368,7 +368,7 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          medharness ci approve-gate --cr "$CR_ID" --stage design --pr "$PR_NUMBER"
+          medharness approval check --cr "$CR_ID" --stage design --pr "$PR_NUMBER"
       - name: Generate implementation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -378,7 +378,7 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/develop-out.json
+          python -m medharness --dhf DHF change implement --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/develop-out.json
 
       - name: Upload develop payload
         if: always()
@@ -436,7 +436,7 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
           ISSUE_NUMBER: ${{ needs.detect.outputs.issue_number }}
         run: |
-          medharness ci advance-stage \
+          medharness change advance \
             --pr "$PR_NUMBER" \
             --from-stage design \
             --to-stage code \
@@ -526,7 +526,7 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF ci develop-cr --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-code-out.json
+          python -m medharness --dhf DHF change implement --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-code-out.json
 
       - name: Upload revise-code payload
         if: always()

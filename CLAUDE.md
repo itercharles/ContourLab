@@ -40,13 +40,14 @@ pnpm --filter @contourlab/client typecheck    # typecheck frontend
 pnpm -r typecheck                         # typecheck all workspaces
 pnpm -r build                             # build all workspaces
 
-# DHF operations (Python)
+# DHF operations (Python) — two CLIs: medharness (AI/CI harness) + dhfkit (data layer)
+# dhfkit is bundled inside the medharness wheel; one install gets both binaries
 pip install -r requirements.txt           # one-time setup
-medharness --dhf DHF dhf item list --type cr          # list all CRs
-medharness --dhf DHF dhf item get CR-NNN              # get CR details
-medharness --dhf DHF dhf item transition CR-NNN <state> --by "Author"
-medharness --dhf DHF dhf validate schema              # validate all item YAMLs
-medharness --dhf DHF dhf doc generate ALL             # regenerate spec documents
+dhfkit --dhf DHF item list --type cr                  # list all CRs
+dhfkit --dhf DHF item get CR-NNN                      # get CR details
+dhfkit --dhf DHF item transition CR-NNN <state> --by "Author"
+dhfkit --dhf DHF validate schema                      # validate all item YAMLs
+dhfkit --dhf DHF doc generate ALL                     # regenerate spec documents
 ```
 
 ## Key Conventions
@@ -56,35 +57,41 @@ medharness --dhf DHF dhf doc generate ALL             # regenerate spec document
 - **Proxy**: Vite proxies `/api` and `/ws` → `localhost:4000`; `/dicom-web` → Orthanc `localhost:8042`
 - **TypeScript**: strict mode throughout, no `any`
 - **Styling**: Tailwind only, no inline styles, dark clinical theme (see `/ux-design`)
-- **DHF**: DHF items live at `DHF/items/`. Use `medharness --dhf DHF dhf ...` commands. The CR
-  design plan lives in the `implementation_notes` field of `DHF/items/09_cr/CR-NNN.yaml`. Do not
-  scatter direct DHF file reads across automation — use the `medharness` CLI facade.
+- **DHF**: DHF items live at `DHF/items/`. Use `dhfkit --dhf DHF ...` for data operations (CRUD,
+  validate, doc generate) and `medharness --dhf DHF ...` for AI/CI harness operations (context,
+  change status, approval). The CR design plan lives in the `implementation_notes` field of
+  `DHF/items/09_cr/CR-NNN.yaml`. Do not scatter direct DHF file reads across automation — use
+  the CLI facade.
 
 ### DHF Facade API Quick Reference
 
 ```bash
+# --- medharness: AI/CI harness commands ---
+
 # Get CR implementation context (spec + DHF overview) for AI/CI consumption
 medharness --dhf DHF dhf context implementation --cr CR-034 --out-dir /tmp/cr-context
 
-# Get scoped context for a specific workflow stage (analyze / design / develop)
+# Get scoped context for a specific workflow stage (stage: analyze | design | develop)
 medharness --dhf DHF dhf context for-stage develop --cr CR-034
 
+# Check CR stage and approval status (machine-readable JSON)
+medharness --dhf DHF change status --cr CR-034 --pr 42
+
+# --- dhfkit: DHF data-layer commands ---
+
 # Print human-readable traceability coverage report
-medharness --dhf DHF dhf report
+dhfkit --dhf DHF report
 
 # Validate DHF schema and traceability locally
-medharness --dhf DHF dhf validate schema
-medharness --dhf DHF dhf validate traceability
-
-# Check CR stage and approval status (machine-readable JSON)
-medharness --dhf DHF ci cr-status --cr CR-034 --pr 42
+dhfkit --dhf DHF validate schema
+dhfkit --dhf DHF validate traceability
 
 # Transition a CR
-medharness --dhf DHF dhf item transition CR-034 completed --by "agent"
+dhfkit --dhf DHF item transition CR-034 completed --by "agent"
 
 # List and inspect items
-medharness --dhf DHF dhf item get SRS-001
-medharness --dhf DHF dhf item list --type SRS
+dhfkit --dhf DHF item get SRS-001
+dhfkit --dhf DHF item list --type SRS
 ```
 
 ## Sources of Truth
@@ -139,7 +146,10 @@ Design and implementation live on the same branch, each committed separately.
 
 3. **Tests** — write alongside every functional change: unit tests for pure logic, component
    tests for React components, regression tests for bug fixes. Colocate at `*.test.ts(x)`.
-   Add `@links:SRS-xxx` or `@links:SYS-xxx` annotations to tests that verify DHF requirements.
+   - Add `@links:SRS-xxx` or `@links:SYS-xxx` annotations to tests that verify DHF requirements.
+   - For numbered test points (`T1:`, `T2:` on a requirement): embed `@testing:T1` in the test
+     name (JS/TS) or use `@pytest.mark.dhf_testing("T1")` (Python) so the CI gate
+     `medharness verify tests` can confirm every test point has passing coverage.
 4. **Design** — `generate-dhf` writes the implementation plan into the CR item's
    `implementation_notes`; treat that as the primary input for `develop-cr`. Invoke
    `/ux-design` before any UI work.
@@ -150,7 +160,7 @@ Design and implementation live on the same branch, each committed separately.
    pnpm --filter @contourlab/client lint && pnpm --filter @contourlab/client typecheck
    dotnet build apps/api/api.csproj --configuration Release   # API changes
    pnpm -r typecheck                                           # data model changes
-   medharness --dhf DHF dhf validate schema                   # DHF item changes
+   dhfkit --dhf DHF validate schema                           # DHF item changes
    ```
 7. **Handoff** — run `/post-implement`; open PR with CR ID in title, change summary,
    DHF files updated, validation run, manual test plan.

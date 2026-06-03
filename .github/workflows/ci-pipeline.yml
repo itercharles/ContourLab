@@ -205,7 +205,7 @@ jobs:
 
       - name: Run DHF validation
         run: |
-          medharness ci dhf-validate \
+          medharness verify dhf \
             --dhf DHF \
             --run-schema \
             --run-traceability \
@@ -252,7 +252,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           CR_ID=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'CR-[0-9]+')
-          if ! medharness --dhf DHF ci validate-branch \
+          if ! medharness --dhf DHF verify branch \
             --cr "$CR_ID" \
             --code-path apps/ \
             --code-path packages/; then
@@ -267,7 +267,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           CR_ID=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'CR-[0-9]+')
-          if ! medharness --dhf DHF ci validate-code \
+          if ! medharness --dhf DHF verify code \
             --cr "$CR_ID"; then
             gh pr comment "$PR_NUMBER" --body \
               "⚠️ **Test annotation check failed** for $CR_ID — one or more items in \`test_plan.needs_new_tc\` are missing \`@links:<ID>\` annotations. See CI logs for details."
@@ -535,7 +535,7 @@ jobs:
 
       - name: Run requirement-test coverage gate
         run: |
-          medharness ci test-coverage \
+          medharness verify tests \
             --dhf DHF \
             --junit-dir test-results/srs \
             --junit-dir test-results/srs-api \
@@ -547,19 +547,19 @@ jobs:
 
       - name: Run test-point coverage gate (TDD)
         run: |
-          medharness ci test-points \
+          medharness verify tests \
             --dhf DHF \
             --junit-dir test-results/srs \
             --junit-dir test-results/srs-api \
             --junit-dir test-results/sys \
             --junit-dir test-results/crs \
-            --req-type SRS \
-            --req-type SYS \
-            --req-type CRS
+            --requirement-type SRS \
+            --requirement-type SYS \
+            --requirement-type CRS
 
       - name: Run verification completeness gate
         run: |
-          medharness ci validate-verification \
+          medharness verify verification \
             --dhf DHF \
             --junit-dir test-results/srs \
             --junit-dir test-results/srs-api \
@@ -625,7 +625,7 @@ jobs:
 
       - name: Generate evidence bundle
         run: |
-          medharness --dhf DHF ci evidence bundle \
+          medharness --dhf DHF evidence bundle \
             --out-dir dhf-artifacts \
             --traceability-type UC \
             --traceability-type CRS \
