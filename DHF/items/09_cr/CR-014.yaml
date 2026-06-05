@@ -1,0 +1,16 @@
+id: CR-014
+title: Add a release note page for the software
+type: CR
+description: 'I want to add a release note page for the software, so I can know what
+  is changed.
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/118'
+justification: I want to know what feature or defect fix are included in the software.
+priority: Medium
+requested_by: itercharles
+target_version: 2026-W23
+category: Feature
+content: there is release note page, can be accessible from the software, displaying
+  the summary of each changes of each version.
+status: new
