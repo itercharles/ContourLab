@@ -1,4 +1,5 @@
 id: CR-014
+affected_risk_items: []
 title: Add a release note page for the software
 type: CR
 description: 'I want to add a release note page for the software, so I can know what
@@ -14,3 +15,67 @@ category: Feature
 content: there is release note page, can be accessible from the software, displaying
   the summary of each changes of each version.
 status: new
+impact_assessment: 'Approved. Complexity: small. Affected subsystems: client. Related
+  CRs: CR-012. Adds a standalone release notes page following the established React
+  router pattern; no backend or clinical workflow changes required.'
+implementation_notes: "## Overview\nCR-014 adds a dedicated Release Notes page to\
+  \ ContourLab, accessible from within the application. The page lists software releases\
+  \ in reverse-chronological order, with each entry showing a version number, release\
+  \ date, and change bullet points. Release data is statically embedded in the component\
+  \ source — no network call or backend change is needed. The feature follows the\
+  \ existing application-page pattern (About, Issues, Settings) used throughout the\
+  \ frontend.\n\n## Current State\nThe application has four routes defined in `apps/client/src/App.tsx`:\n\
+  - `/workspace` → MainWorkspace\n- `/settings` → Settings\n- `/issues` → Issues\n\
+  - `/about` → About\n\nNavigation links for Issues and Settings are in the System\
+  \ footer row of `apps/client/src/components/layout/LeftSidebar.tsx` (the bottom\
+  \ strip with `text-[11px] uppercase tracking-widest` System label and two icon-button\
+  \ Links).\n\nThe `About.tsx` page at `apps/client/src/pages/About.tsx` follows a\
+  \ light-mode card layout (bg-gray-50 page, bg-white cards, border-gray-200 borders)\
+  \ that the new page should match.\n\nThe app has no existing release notes data\
+  \ source — data must be authored at implementation time.\n\n## Changes Required\n\
+  - **`apps/client/src/pages/ReleaseNotes.tsx`** — new file: the page component plus\
+  \ the static release data constant. Follows the About.tsx layout convention (light-mode,\
+  \ max-w-5xl centered layout).\n- **`apps/client/src/App.tsx`** — modify existing:\
+  \ add `import ReleaseNotes from ./pages/ReleaseNotes` and `<Route path=\"/release-notes\"\
+  \ element={<ReleaseNotes />} />` before the catch-all redirect.\n- **`apps/client/src/components/layout/LeftSidebar.tsx`**\
+  \ — modify existing: add a Link to `/release-notes` in the System footer row icon\
+  \ group, alongside the Issues and Settings links.\n- **`apps/client/src/pages/ReleaseNotes.test.tsx`**\
+  \ — new file: Vitest component tests covering SRS-031 T1 and T2 test points.\n\n\
+  ## Implementation Steps\n1. Author the `ReleaseEntry` interface and `RELEASE_NOTES`\
+  \ constant in `ReleaseNotes.tsx`. Include at least the current version entry sourced\
+  \ from `package.json` (already imported in About.tsx as `import { version } from\
+  \ ../../package.json`).\n2. Implement the `ReleaseNotes` component: header matching\
+  \ About.tsx style, one card per entry with version + date header and a bulleted\
+  \ change list.\n3. Register the route in `App.tsx`: import the component and add\
+  \ the route before the `<Route path=\"*\">` catch-all.\n4. Add the navigation link\
+  \ in `LeftSidebar.tsx`: add a `<Link to=\"/release-notes\" reloadDocument ...>`\
+  \ icon button in the System footer row. Use a changelog-style SVG icon (e.g., list\
+  \ or document icon at 13×13px, same style as the Issues icon).\n5. Write tests in\
+  \ `ReleaseNotes.test.tsx` covering T1 (page renders at least one entry with version\
+  \ and change text) and T2 (first rendered entry is the most recent — assert `RELEASE_NOTES[0].version`\
+  \ appears first in the DOM).\n6. Run `pnpm --filter @contourlab/client typecheck`\
+  \ — expect zero errors.\n7. Run `pnpm --filter @contourlab/client test` — all tests\
+  \ must pass.\n8. Manual check: open the app, click the release notes icon in the\
+  \ sidebar System footer, confirm the page loads and shows version entries.\n\n##\
+  \ Edge Cases & Constraints\n- `RELEASE_NOTES` must have at least one entry or the\
+  \ page renders an empty state — guard or ensure the constant is non-empty.\n- The\
+  \ `/release-notes` route must appear before the `<Route path=\"*\">` catch-all in\
+  \ App.tsx or it will never match.\n- Styling must follow the light-mode page pattern\
+  \ (bg-gray-50, bg-white cards) from About.tsx — not the dark clinical workspace\
+  \ theme. The page is outside the workspace viewport.\n- No `rounded-xl` or larger.\
+  \ No inline styles. No `any` TypeScript.\n- The `reloadDocument` prop on the Link\
+  \ in LeftSidebar is used by existing navigation links (Issues, Settings) to do a\
+  \ full navigation away from the Cornerstone3D viewport; use it here too.\n- SRS-031\
+  \ requirement says data is a static constant — do not fetch from GitHub Releases\
+  \ API or read a file at runtime.\n\n## Tests\n- **Unit / component tests** (`ReleaseNotes.test.tsx`):\n\
+  \  - `@links:SRS-031` annotation on the describe block\n  - T1: render the component\
+  \ with the default static data; assert at least one version string and one change\
+  \ item appear in the DOM. `@testing:T1`\n  - T2: assert that `RELEASE_NOTES[0].version`\
+  \ appears before `RELEASE_NOTES[1].version` in the rendered output (if there are\
+  \ ≥2 entries). `@testing:T2`\n- **Typecheck**: `pnpm --filter @contourlab/client\
+  \ typecheck` — zero errors\n- **Manual confirmation**: navigate to /release-notes\
+  \ in a running dev server; verify the page renders correctly with at least one release\
+  \ entry."
+affected_items:
+- CR-014
+- SYSARCH-001

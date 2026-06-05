@@ -1,0 +1,27 @@
+id: SYS-016
+satisfies:
+- CRS-013
+title: System shall provide an in-application release notes page displaying version
+  history
+content: The system shall provide a dedicated release notes page accessible from within
+  the application. The page shall list software releases in reverse-chronological
+  order. Each release entry shall include the version number, release date, and a
+  human-readable summary of changes. The page shall be reachable via application navigation
+  without requiring authentication beyond normal application access.
+category: Functional
+verification_method:
+- Test
+- Demonstration
+testing: 'T1: Given the application is running, the release notes page is reachable
+  and renders at least one release entry containing a version number and change summary.
+
+  T2: Given multiple release entries, they are ordered newest-first by version or
+  date.
+
+  '
+critical_safety: false
+verification_criteria: The release notes page renders at /release-notes with at least
+  one entry; each entry displays a non-empty version string, a release date, and a
+  non-empty change summary; entries are ordered newest-first; the page is accessible
+  without any authentication gate.
+type: SYS
