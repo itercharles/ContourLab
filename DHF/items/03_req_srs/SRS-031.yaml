@@ -1,0 +1,23 @@
+id: SRS-031
+derives_from:
+- SYS-016
+title: Software shall display a dedicated release notes page listing version, date,
+  and change entries
+content: 'The client application shall render a dedicated release notes page at the
+  route /release-notes. The page shall present a statically defined list of release
+  entries in reverse-chronological order. Each entry shall include: (1) the version
+  string, (2) the release date, and (3) one or more change description items. The
+  page shall be linked from the application navigation so users can reach it without
+  returning to the workspace. The release data shall be embedded in the client source
+  as a static constant to avoid runtime dependencies.'
+verification_method:
+- Test
+testing: 'T1: Given the release notes page, it renders the release data with at least
+  one entry showing a version string and change summary.
+
+  T2: Given multiple release entries, the first rendered entry is the most recent
+  version.
+
+  '
+critical_safety: false
+type: SRS

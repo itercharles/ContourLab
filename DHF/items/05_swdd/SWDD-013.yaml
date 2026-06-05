@@ -1,0 +1,22 @@
+id: SWDD-013
+implements:
+- SRS-031
+module:
+- MODULE-010
+title: Release notes static data model and ReleaseNotes page component
+content: "Release data is a static constant defined in apps/client/src/pages/ReleaseNotes.tsx\
+  \ (or a colocated releaseData.ts). The data structure is an array of ReleaseEntry\
+  \ objects sorted newest-first:\n\n  interface ReleaseEntry {\n    version: string;\
+  \   // semver string, e.g. \"1.2.0\"\n    date: string;      // ISO-8601 date, e.g.\
+  \ \"2026-06-05\"\n    changes: string[]; // one item per change bullet\n  }\n\n\
+  Statically embedding the data avoids runtime network dependencies and makes the\
+  \ content predictable and auditable.\n\nThe ReleaseNotes page component maps over\
+  \ the data array and renders each entry as a card: version and date in the header,\
+  \ change items as a bulleted list. The component does not use any Zustand stores.\n\
+  \nRouting: App.tsx registers the route <Route path=\"/release-notes\" element={<ReleaseNotes\
+  \ />} />. Navigation: LeftSidebar.tsx adds a link to /release-notes in the System\
+  \ footer row alongside the existing Issues and Settings links.\n\nStyling follows\
+  \ the ApplicationPages pattern (bg-gray-50 page background, bg-white cards with\
+  \ border-gray-200, text-gray-900/600/400 — light-mode page layout used by About\
+  \ and Settings), not the dark clinical workspace theme."
+type: SWDD

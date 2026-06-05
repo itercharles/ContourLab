@@ -1,0 +1,22 @@
+id: CRS-013
+derives_from:
+- UC-006
+title: Users shall be able to view software version and release change history
+content: 'As a radiation therapist, physician, dosimetrist, or administrator, I need
+  to access a release notes page within the application that lists each software version
+  with its release date and a summary of changes, so that I can confirm which features
+  and fixes are present in the installed version.
+
+
+  Verification criteria: The release notes page is reachable from the application
+  navigation without authentication, displays entries in reverse-chronological order,
+  and each entry includes at minimum a version number, release date, and change summary
+  text.'
+user_group: Radiation Therapist / Physician / Dosimetrist / Administrator
+priority: Medium
+testing: 'T1: Given the application is running, a release notes page is accessible
+  from within the application and displays at least one release entry with a version
+  number and change summary.
+
+  '
+type: CRS
