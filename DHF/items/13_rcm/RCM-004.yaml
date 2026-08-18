@@ -8,5 +8,3 @@ content: |-
   indicators.
 mitigates: [RISK-001]
 implements: [SYS-009]
-verification_method: [Test]
-residual_risk: Low

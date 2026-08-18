@@ -26,4 +26,3 @@ testing: |
   T5: Given a structure set with reference and naming problems, analyzeRtssQuality detects series-mismatch, missing-rtstruct-source, duplicate-roi-name, foreign-contour-reference, and empty-roi issues.
   T6: Given a disabled RTSS QA rule, analyzeRtssQuality omits issues of that type.
   T7: Given a structure set with only geometry issues, analyzeRtssQuality does not report them as RTSS-level issues.
-critical_safety: true

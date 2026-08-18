@@ -1,12 +1,12 @@
 id: SYS-004
 title: System shall provide freehand, polygon, brush, and eraser contouring tools
+category: Functional
 content: |-
   The system shall provide contouring tools operating on the active viewport.
   Freehand and polygon tools produce closed ContourSlice polygons. Brush and
   eraser tools provide per-slice contour correction operations compatible with
   the stored ContourSlice representation. All edits shall be undoable up to 50
   levels via Cmd/Ctrl+Z.
-category: Functional
 verification_method:
   - Test
   - Demonstration
@@ -16,6 +16,5 @@ testing: |
   T3: Given a locked structure, ContourEngine.addContour rejects the operation.
   T4: Given a delete command, ContourEngine.deleteContourOnSlice removes the contour and its undo restores it.
   T5: Given multiple interpolated slices, ContourEngine.addContours wraps all in one undoable command.
-critical_safety: true
 satisfies:
   - CRS-002

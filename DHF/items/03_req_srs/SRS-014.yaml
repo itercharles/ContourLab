@@ -28,4 +28,3 @@ testing: |
   T4: Given a contour gap exceeding the configured maximum, interpolateMissingContoursForFrames returns no interpolated contours.
   T5: Given multiple interpolated contours, ContourEngine.addContours wraps all in a single undoable command that restores the prior contour state on undo.
   T6: Given a locked structure, ContourEngine.addContours returns false without mutating data or pushing a command.
-critical_safety: true

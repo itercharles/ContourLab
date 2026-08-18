@@ -64,4 +64,3 @@ testing: |
   T6: Given markSeriesClean called for a series, only the draft dirty flag is cleared; repository dirty state is preserved.
   T7: Given markSeriesRepositoryClean called, the repository dirty state is cleared independently.
   T8: Given a structure set added to the store, the referenced series is marked as both draft and repository dirty.
-critical_safety: true

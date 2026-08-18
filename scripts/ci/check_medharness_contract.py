@@ -104,6 +104,8 @@ def main() -> int:
         # automation group (formerly ci claude-session get/put)
         "session-get": ("python", "-m", "medharness", "automation", "session", "get", "--help"),
         "session-put": ("python", "-m", "medharness", "automation", "session", "put", "--help"),
+        # verify soup — OSV CVE scan gate (0.11.0+)
+        "verify-soup": ("python", "-m", "medharness", "verify", "soup", "--help"),
         # dhfkit data-layer commands (unchanged)
         "dhf-report": ("dhfkit", "--dhf", ".", "report", "--help"),
         "dhf-context-implementation": ("python", "-m", "medharness", "dhf", "context", "implementation", "--help"),
@@ -166,6 +168,11 @@ def main() -> int:
     require(
         "python -m medharness --dhf DHF ci validate-design" not in cr_text,
         "cr-lifecycle.yml must not call validate-design",
+        errors,
+    )
+    require(
+        "medharness --dhf DHF verify soup" in ci_text,
+        "ci-pipeline.yml must call verify soup to gate on SOUP CVEs (0.11.0+)",
         errors,
     )
     require(

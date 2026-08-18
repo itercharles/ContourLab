@@ -2,7 +2,7 @@ code: CRS
 role: customer_requirement
 name: Customer Requirement
 prefix: CRS-
-directory: 01_req_crs
+directory: 01_crs
 properties:
 - id
 - name: title
@@ -40,9 +40,17 @@ properties:
 - name: testing
   format: long_text
   label: Testing
-icon: 🎯
-page_enabled: true
-page_number: 5
+- name: verification_criteria
+  format: long_text
+  label: Verification Criteria
+- name: verification_method
+  format: multiselect
+  label: Verification Method
+  options:
+  - Test
+  - Inspection
+  - Analysis
+  - Demonstration
 has_verification: true
 verification_states:
 - not_verified

@@ -1,17 +1,16 @@
 id: SYS-002
 title: System shall render axial, sagittal, and coronal viewports simultaneously
+category: Functional
 content: |-
   Using Cornerstone3D, the system shall render three synchronized orthogonal
   viewports. Scrolling in one view shall update the crosshair position visible
   in all three views. Window/level changes shall apply globally across all
   viewports.
-category: Functional
 verification_method:
   - Test
   - Demonstration
 testing: |
   T1: Given a loaded series, three viewport panels labelled axial, sagittal, and coronal are visible on the workspace canvas.
   T2: Given a structure set is active, contour overlays are visible in the correct orthogonal plane for each viewport.
-critical_safety: false
 satisfies:
   - CRS-001

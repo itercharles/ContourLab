@@ -2,7 +2,7 @@ code: DEF
 role: defect
 name: Defect
 prefix: DEF-
-directory: 14_defects
+directory: 12_def
 properties:
 - id
 - name: title
@@ -62,9 +62,6 @@ properties:
   target_types:
   - REL
   label: Fixed in Release
-icon: 🐛
-page_enabled: true
-page_number: 13
 lifecycle:
   transitions:
   - from_states:

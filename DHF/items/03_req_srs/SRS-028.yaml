@@ -14,4 +14,3 @@ testing: |
   T2: Given a structure with stacked contours, buildStructureMaskVolume produces a non-null mask with correct dimensions and filled voxels.
   T3: Given nested contours on the same slice, buildStructureMaskVolume preserves interior holes (inner contour is unfilled).
   T4: Given a 3D viewport component with loaded series and structures, the viewport label and visible-structure count are rendered.
-critical_safety: true

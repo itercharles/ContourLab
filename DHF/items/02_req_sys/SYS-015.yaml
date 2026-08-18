@@ -1,17 +1,16 @@
 id: SYS-015
 title: System shall refresh 3D structure presentation after contour and visibility updates
+category: Functional
 content: |-
   The system shall refresh the 3D representation of visible structures after a
   contour add, contour update, contour delete, structure visibility toggle,
   structure-set switch, or active-series switch. The refreshed 3D presentation
   shall remain aligned to the active image set and shall provide a manual
   refresh path when automatic rebuilding cannot complete.
-category: Functional
 verification_method:
   - Test
   - Demonstration
 testing: |
   T1: Given a manual Refresh 3D click, the 3D scene rerenders and displays updated structure count and CT status.
-critical_safety: false
 satisfies:
   - CRS-012

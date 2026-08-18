@@ -1,4 +1,4 @@
-# {{ doc_type_name }} Specification
+# Architecture Design Specification
 
 ---
 
@@ -16,244 +16,164 @@
 
 ## 1. Purpose
 
-This document defines the software architecture baseline for {{ project_name }} and identifies
-the software items that constitute the system, in accordance with IEC 62304 §5.3.
+This Architecture Design Specification defines the durable architectural model
+for {{ project_name }} and records the formal design items that implement that
+model. The architecture bundles two complementary layers — an orchestration
+layer and a reusable engine layer — in a single tooling repository so that
+engineering execution and design-controlled structure stay connected without
+becoming the same system.
 
-It serves two roles:
+## 2. Architectural Context
 
-1. Describe the current system decomposition and the requirements allocated to each software item
-2. Constrain how the system is allowed to evolve — boundaries, responsibilities, and data flow
+{{ project_name }} is delivered from a single tooling-first repository:
 
-This is not a product roadmap document. Future-oriented statements must be interpreted through
-the Product Strategy. This document may constrain how future work is implemented, but it must
-not independently expand product scope ahead of that document.
+- `medharness` is the orchestration CLI, CI gate logic, and scaffolding system
+- `dhfkit` is the reusable DHF engine for items, traceability, lifecycle, and document generation
+- product repositories hold executable code, tests, and product CI workflows
+- DHF repositories (generated from bundled templates) hold controlled requirements, architecture, risk, change, and evidence structure
 
----
+The architecture exists to keep these responsibilities explicit. Product code
+changes are driven by controlled design inputs, and DHF changes remain visible,
+versioned, and auditable as first-class repository content.
 
-## 2. Architectural Goals
+## 3. Repository Boundaries and Responsibilities
 
-The architecture must optimize for:
+### 3.1 Orchestration Layer (`medharness`)
 
-1. Repository-backed clinical workflow
-2. Predictable contour review behavior
-3. Explicit and testable boundaries
-4. Minimal duplication of domain logic and data contracts
-5. Incremental evolution without hidden coupling
+`medharness` owns product-side orchestration concerns:
 
----
+- onboarding and repository scaffolding through `medharness init`
+- requirement-to-test coverage evaluation from JUnit evidence
+- runtime evidence bundle generation from CI artifacts and repository state
+- product-facing workflow conventions, including CR-aware CI and agent entrypoints
 
-## 3. System Context
+### 3.2 Engine Layer (`dhfkit`)
 
-{{ project_name }} sits between clinical users and a DICOMweb-capable repository.
+`dhfkit` owns DHF-side structural and design-control concerns:
 
-```mermaid
-flowchart LR
-  User["Clinical User"] --> Client["ContourLab Client (React / Browser)"]
-  Client --> Api["ContourLab API (ASP.NET Core)"]
-  Client --> Repo["DICOM Repository (Orthanc / DICOMweb-compatible)"]
-  Api --> Repo
-  Client --> Shared["Shared Domain Types"]
-  Api --> Shared
-```
+- DHF document templates and controlled plan/spec documents
+- item schemas, lifecycle rules, and required traceability paths
+- item CRUD, validation, graph operations, and document generation
+- repository content that scaffolds DHF-side workflows and agent guidance
 
----
+### 3.3 Product Repo vs DHF Repo
 
-## 4. Software Items
+The product repository is optimized for implementation and verification
+execution. The DHF repository is optimized for controlled design records.
+Neither repository is a projection of the other; they cooperate through shared
+identifiers, explicit traceability links, CI contracts, and generated evidence.
 
-The system is decomposed into the following software items per IEC 62304 §5.3:
+## 4. Runtime Delivery Model
+
+DHF repositories are scaffolded from bundled templates rather than fetched from
+a separate source repo:
+
+1. `medharness init` copies template assets from `medharness/templates/`.
+2. The scaffolded DHF repository becomes the controlled starting point for a product program.
+3. Product CI installs `medharness` (which includes `dhfkit`) and uses the commands against the DHF repository selected for that product.
+4. Generated specification documents and evidence outputs are produced from the live DHF and CI artifacts at runtime.
+
+This model keeps the tooling self-contained and allows the bundled templates to
+evolve as the canonical source of structure and document templates within a
+single repository.
+
+## 5. Agent Guidance Model
+
+AI-assisted workflows are grounded in documents and prompts rather than a
+bundled harness payload. Guidance comes from:
+
+- DHF-side formal documents such as the CRS, architecture specification, and development plan
+- repo-local guidance files such as `CLAUDE.md`
+- workflow prompts and automation-specific instructions stored with the relevant repository
+- controlled item schemas and traceability requirements loaded through `dhfkit`
+
+This model makes AI behavior easier to audit because the instructions that shape
+agent work live in versioned repository content.
+
+## 6. Durable Architectural Principles
+
+The architecture follows these durable principles:
+
+- design control is repository-native and traceability-first
+- design records are constrained structurally before they are interpreted semantically
+- product code and DHF content remain separated but explicitly linked
+- runtime outputs such as generated specifications and evidence bundles derive from controlled source content
+- the tooling ships as a single repository with clear layer boundaries between orchestration and engine
+
+## 7. Major Components
+
+### 7.1 Orchestration Layer
+
+The orchestration layer contains:
+
+- CLI commands that orchestrate scaffolding, coverage gating, evidence generation, and CR flows
+- CI workflow templates written into product repositories
+- adapter-facing logic that reads DHF structure without owning DHF content
+
+### 7.2 Engine Layer
+
+The engine layer contains:
+
+- YAML-based DHF item storage and configuration
+- `dhfkit` services for validation, lifecycle, graph traversal, and document generation
+- controlled templates and plans that define the formal DHF document set
+
+### 7.3 Verification and Evidence Interfaces
+
+The boundary between implementation and formal evidence is carried by:
+
+- JUnit XML with requirement linkage metadata
+- CR identifiers shared across PRs, workflow automation, and DHF records
+- generated evidence bundles assembled from runtime artifacts rather than prepacked release assets
+
+## 8. Architecture Items
 
 {% for item in items %}
-### {{ item.id }}: {{ item.title }}
+### {{ loop.index }}. {{ item.id }}: {{ item.title }}
 
 <div class="architecture-section" markdown="1">
 
-**Status**: <span class="status-{{ item.status }}">{{ item.status | upper }}</span>
+**Status**: <span class="status-{{ item.status }}">{{ item.status | upper }}</span>  
+{% if item.component %}**Component**: {{ item.component }}  {% endif %}
+{% if item.architecture_type %}**Architecture Type**: {{ item.architecture_type }}  {% endif %}
+
+#### Overview
 
 {{ item.content }}
 
-{% if item.design %}
-**Allocated System Requirements**
+{% if item.links %}
+#### Linked Items
 
-{% for req in item.design %}
-- {{ req }}
+{% for link in item.links %}
+- {{ link }}
 {% endfor %}
 {% endif %}
 
 </div>
 
----
-{% endfor %}
-
-## 5. Runtime Topology
-
-### Local Development
-
-```mermaid
-flowchart LR
-  Browser["Browser :3000"] --> Vite["Vite Dev Server"]
-  Vite --> Client["React Client"]
-  Vite --> Api["ASP.NET Core API :4000"]
-  Vite --> Repo["Orthanc DICOMweb :8042"]
-  Api --> Repo
-```
-
-Local startup: `pnpm repo:up` → `pnpm dev` + `pnpm api` → `pnpm local:doctor`
-
-Architecture constraint: local setup must remain reproducible through documented scripts;
-startup dependencies must stay simple enough to diagnose in one pass.
-
-### CI Topology
-
-CI verifies: frontend lint · typecheck · test · build — API build — shared-types typecheck
-and build — local smoke validation via `pnpm local:doctor`.
-
-Architecture constraint: new architectural layers should not be introduced unless they can
-be validated in CI or have a deliberate plan to become CI-verifiable.
-
----
-
-## 6. Data Flow
-
-### Image Loading
-
-1. User selects patient / image context
-2. Client queries DICOMweb repository via QIDO-RS
-3. Client retrieves series metadata and bulk data via WADO-RS
-4. Client builds browser-side renderable volume (VolumeBuilder → Cornerstone3D)
-5. Viewports render axial / sagittal / coronal views
-
-Constraint: image loading must remain repository-first; browser memory may cache loaded
-image state temporarily, but cache semantics must stay invisible to end users.
-
-### Structure Flow
-
-1. User activates a structure set associated with an image set
-2. Client imports RTSTRUCT into browser editing state
-3. Browser maintains transient draft state for editing, undo/redo, and review
-4. Push/export produces a new RTSTRUCT payload stored via STOW-RS
-
-Constraint: repository-backed RTSTRUCT is the durable source of truth; browser-local draft
-state is transient and must never be confused with durable repository state.
-
----
-
-## 7. State Ownership
-
-### Repository-owned
-
-- Image series
-- Finalized RTSTRUCT instances
-- Future RTDOSE and planning objects
-
-### Browser-owned (transient)
-
-- Active workspace selection and loaded viewport state
-- Tool mode and window/level settings
-- Local contour draft changes before push
-- Measurement annotations
-
-### Shared-contract-owned
-
-- TypeScript interfaces in `packages/shared-types` representing cross-workspace business objects
-
-Constraint: if ownership is ambiguous, prefer explicit documentation or an ADR before adding
-another persistence path.
-
----
-
-## 8. Evolution Rules
-
-1. **Repository-first remains primary** — direct local file support may exist for debugging,
-   but must not redefine the main product interaction model.
-
-2. **API stays thin until justified** — move logic from client to API only when there is a
-   clear need for security, orchestration, environment isolation, or long-running execution.
-
-3. **New compute services require a documented boundary** — any future dose engine, AI contour
-   service, or worker tier must be introduced through an ADR and CI/testability plan, and only
-   when that capability is in scope per product strategy.
-
-4. **Shared types remain authoritative** — new modules must not fork patient / image /
-   structure / plan contracts.
-
-5. **Architecture becomes more explicit, not more magical** — hidden event buses, implicit
-   caches, or opaque orchestration layers are not acceptable substitutes for clear boundaries.
-
-6. **Architecture does not authorize scope expansion** — if a capability is not supported by
-   current product strategy, this document should not be used to justify implementing it early.
-
----
-
-## 9. Non-Functional Constraints
-
-Must support:
-- Deterministic local bootstrap
-- Reproducible CI validation
-- Actionable logs for startup and integration failures
-- Incremental deployment hardening without redesigning the core workflow
-
-Must avoid:
-- Hidden machine-local coupling
-- Environment-specific behavior embedded in product logic
-- Repository lock-in that breaks DICOMweb portability
-- Untestable infrastructure additions
-
----
-
-## 10. Open Architectural Decisions
-
-These areas remain open and must be resolved through ADRs before major implementation work:
-
-- Production deployment topology
-- RTDOSE ingestion path
-- Future compute-service boundary for AI or dose operations
-- Formal persistence strategy for browser draft recovery
-
-These are architecture placeholders only; implementation timing is governed by product strategy.
-
----
-
-## 11. Requirements Traceability
-
-The following system requirements are addressed by the software items above:
-
-{% set all_reqs = [] %}
-{% for item in items %}
-  {% if item.design %}
-    {% for req in item.design %}
-      {% if req not in all_reqs %}
-        {% set _ = all_reqs.append(req) %}
-      {% endif %}
-    {% endfor %}
-  {% endif %}
-{% endfor %}
-
-| Requirement | Addressed by |
-|-------------|--------------|
-{% for req in all_reqs | sort %}
-| {{ req }} | {% for item in items %}{% if item.design and req in item.design %}{{ item.id }} {% endif %}{% endfor %} |
 {% endfor %}
 
 ---
 
-## 12. Summary
+## 9. Summary
+
+### 9.1 Statistics
 
 | Metric | Count |
 |--------|-------|
-| **Software Items** | {{ items | length }} |
-| **System Requirements Covered** | {{ all_reqs | length }} |
+| **Total Architecture Items** | {{ items | length }} |
+| **Approved** | {{ items | selectattr('status', 'equalto', 'approved') | list | length }} |
+| **Draft** | {{ items | selectattr('status', 'equalto', 'draft') | list | length }} |
+| **Retired** | {{ items | selectattr('status', 'equalto', 'retired') | list | length }} |
 
 ---
 
-## 13. Document Control
+## 10. Document Control
 
-**Standard**: IEC 62304:2006+AMD1:2015 §5.3
-**Last Updated**: {{ generation_date }}
-
-Architecture changes that modify major system boundaries, runtime topology, state ownership
-rules, or primary data flows must be reflected here. Concrete architectural decisions must
-also be captured in an ADR.
+**Document Owner**: Engineering Lead  
+**Last Updated**: {{ generation_date }}  
+**Next Review**: TBD
 
 ---
 
-*Generated from DHF items in {{ project_name }}.*
+*This document was automatically generated by `dhfkit` from controlled DHF content.*

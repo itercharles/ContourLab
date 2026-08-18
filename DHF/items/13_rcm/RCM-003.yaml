@@ -7,5 +7,3 @@ content: |-
   and a degenerate polygon with fewer than 3 points (returns 0).
 mitigates: [RISK-003]
 implements: [SYS-010]
-verification_method: [Test]
-residual_risk: Low

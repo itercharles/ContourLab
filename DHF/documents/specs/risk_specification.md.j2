@@ -16,43 +16,15 @@
 
 ## 1. Introduction
 
-This document specifies the Risk Analysis for {{ project_name }}, in accordance with ISO 14971:2019
-and IEC 62304 §4.2. It forms part of the Design History File (DHF).
+This document specifies the Risk Analysis for {{ project_name }}. This specification is part of the Design History File (DHF) and provides comprehensive risk assessment and traceability for regulatory compliance per ISO 14971.
 
-### 1.1 Intended Use and User Population
+### 1.1 Purpose
 
-**Intended use:** {{ project_name }} is used by qualified radiation therapy treatment planners to
-create, review, and export radiation treatment structures for cancer patients.
+This document provides a comprehensive list of all identified risks, their severity and probability assessments, risk control measures, and residual risk evaluations.
 
-**Intended users:** Radiation therapy treatment planners, dosimetrists, radiation oncologists.
+### 1.2 Scope
 
-**Intended environment:** Clinical workstation with modern browser (Chrome/Chromium), connected
-to a hospital DICOMweb-compatible PACS or DICOM repository.
-
-**Reasonably foreseeable misuse:**
-- Using the system without qualified clinical oversight
-- Relying on contour suggestions without independent verification
-- Operating on patient data outside of a validated network environment
-
-### 1.2 Risk Acceptability Criteria
-
-Risk acceptability is determined using a 5×5 severity-probability matrix:
-
-| | Negligible (1) | Minor (2) | Serious (3) | Critical (4) | Catastrophic (5) |
-|---|---|---|---|---|---|
-| **Improbable (1)** | Acceptable | Acceptable | Acceptable | ALARP | Unacceptable |
-| **Remote (2)** | Acceptable | Acceptable | ALARP | Unacceptable | Unacceptable |
-| **Occasional (3)** | Acceptable | ALARP | Unacceptable | Unacceptable | Unacceptable |
-| **Probable (4)** | ALARP | Unacceptable | Unacceptable | Unacceptable | Unacceptable |
-| **Frequent (5)** | Unacceptable | Unacceptable | Unacceptable | Unacceptable | Unacceptable |
-
-**Severity:** Negligible (1) no patient impact → Catastrophic (5) death or permanent severe disability.
-
-**ALARP:** Risk control required; residual risk must be justified by documented clinical benefit.
-
-### 1.3 Scope
-
-This specification covers all risks identified in {{ project_name }} as of {{ generation_date }}.
+This specification covers all risks identified in the MedHarness system as of {{ generation_date }}.
 
 ---
 
@@ -63,30 +35,50 @@ This specification covers all risks identified in {{ project_name }} as of {{ ge
 
 <div class="risk-section" markdown="1">
 
-{% if item.status %}**Status**: <span class="status-{{ item.status }}">{{ item.status | upper }}</span>  {% endif %}
-{% if item.category %}**Category**: {{ item.category }}  {% endif %}
+**Status**: <span class="status-{{ item.status }}">{{ item.status | upper }}</span>  
+{% if item.reviewer %}**Reviewer**: {{ item.reviewer }}  {% endif %}
+{% if item.review_date %}**Review Date**: {{ item.review_date | format_date }}  {% endif %}
 
 #### Hazard
 
 {{ item.hazard }}
 
-#### Harm
+#### Cause
 
-{{ item.harm }}
+{{ item.cause }}
 
-#### Risk Assessment
+#### Effect
+
+{{ item.effect }}
+
+#### Pre-Mitigation Risk Assessment
 
 | Metric | Value |
 |--------|-------|
-| **Severity** | {{ item.severity }} |
-| **Probability** | {{ item.probability }} |
-| **Risk Level** | {{ item.risk_level }} |
+| **Severity** | {{ item.severity_pre }} |
+| **Probability** | {{ item.probability_pre }} |
+| **Risk Level** | {{ item.severity_pre }}-{{ item.probability_pre }} |
 
-{% if item.related_requirements %}
-#### Related Requirements
+#### Post-Mitigation Risk Assessment
 
-{% for req in item.related_requirements %}
-- {{ req }}
+| Metric | Value |
+|--------|-------|
+| **Severity** | {{ item.severity_post }} |
+| **Probability** | {{ item.probability_post }} |
+| **Risk Level** | {{ item.severity_post }}-{{ item.probability_post }} |
+| **Acceptability** | {{ item.risk_acceptability }} |
+
+{% if item.risk_benefit %}
+#### Risk-Benefit Analysis
+
+{{ item.risk_benefit }}
+{% endif %}
+
+{% if item.mitigated_by %}
+#### Risk Control Measures
+
+{% for rcm in item.mitigated_by %}
+- {{ rcm }}
 {% endfor %}
 {% endif %}
 
@@ -104,23 +96,25 @@ This specification covers all risks identified in {{ project_name }} as of {{ ge
 |--------|-------|
 | **Total Risks** | {{ items | length }} |
 | **Approved** | {{ items | selectattr('status', 'equalto', 'approved') | list | length }} |
+| **Under Review** | {{ items | selectattr('status', 'equalto', 'under_review') | list | length }} |
 | **Draft** | {{ items | selectattr('status', 'equalto', 'draft') | list | length }} |
 
-### 3.2 Risk Level Distribution
+### 3.2 Risk Acceptability
 
-| Risk Level | Count |
-|------------|-------|
-| **High** | {{ items | selectattr('risk_level', 'equalto', 'High') | list | length }} |
-| **Medium** | {{ items | selectattr('risk_level', 'equalto', 'Medium') | list | length }} |
-| **Low** | {{ items | selectattr('risk_level', 'equalto', 'Low') | list | length }} |
+| Acceptability | Count |
+|---------------|-------|
+| **Acceptable** | {{ items | selectattr('risk_acceptability', 'equalto', 'Acceptable') | list | length }} |
+| **ALARP** | {{ items | selectattr('risk_acceptability', 'equalto', 'ALARP') | list | length }} |
+| **Unacceptable** | {{ items | selectattr('risk_acceptability', 'equalto', 'Unacceptable') | list | length }} |
 
 ---
 
 ## 4. Document Control
 
-**Standard**: ISO 14971:2019
-**Last Updated**: {{ generation_date }}
+**Document Owner**: Risk Management  
+**Last Updated**: {{ generation_date }}  
+**Next Review**: TBD
 
 ---
 
-*Generated from DHF items in {{ project_name }}.*
+*This document was automatically generated by MedHarness in accordance with ISO 14971.*

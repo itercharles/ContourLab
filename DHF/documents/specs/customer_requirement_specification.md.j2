@@ -1,4 +1,4 @@
-# {{ doc_type_name }} Specification
+# Customer Requirement Specification
 
 ---
 
@@ -14,159 +14,159 @@
 
 ---
 
-## 1. Introduction
+## 1. Purpose
 
-This document specifies the Customer Requirements for {{ project_name }}, in accordance with
-IEC 62304:2006+AMD1:2015 §5.2. It forms part of the Design History File (DHF) and provides
-traceability for regulatory compliance.
+This Customer Requirement Specification (CRS) defines the product-level customer
+requirements and the operating context for {{ project_name }}. It serves as the
+formal customer-facing requirements document within the Design History File
+(DHF) while also recording the stable product direction that shapes those
+requirements.
 
-Customer requirements capture what clinical users need the system to do, derived from use cases.
-They drive the system-level requirements decomposition and are the primary basis for clinical
-workflow validation (Test-CRS).
+{{ project_name }} is developed as an AI-native, design-controlled medical
+software delivery system built from a single tooling-first repository:
 
-### 1.1 Traceability Position
+- `medharness` is the orchestration CLI, CI gate logic, and scaffolding system
+- `dhfkit` is the reusable DHF engine for items, traceability, lifecycle,
+  and document generation — bundled in the same repository
 
-```
-UC (Use Cases)
- └── CRS (Customer Requirements)  ← this document
-      └── SYS (System Requirements)
-           └── SRS (Software Requirements)
-```
+The product goal is to constrain implementation by design and traceability so
+that engineering work, AI-assisted workflows, and formal DHF records stay aligned
+throughout the software lifecycle.
 
----
+## 2. Intended Users and Environment
 
-## 2. Product Context
+### 2.1 Intended Users
 
-### 2.1 Product Position
+The primary users are software teams building medical device software under
+design control, including:
 
-{{ project_name }} is a browser-based radiation therapy planning workspace. The near-term product
-is **not** a full TPS replacement. The current focus is a clinical workstation for:
+- software engineers implementing regulated product behavior
+- systems and software architects defining traceable designs
+- quality and regulatory contributors reviewing DHF structure and evidence
+- AI-assisted development agents operating under explicit project constraints
 
-- DICOM repository-backed image access
-- RT Structure Set review
-- Contour correction and QA
-- Repository round-trip for RTSTRUCT publishing
+### 2.2 Intended Environment
 
-The product remains narrow until the review workflow is operationally stable.
+The product is intended for repository-centric development environments that use:
 
-### 2.2 Intended Users
+- Git-based source control and pull-request review
+- a product repository for source code, tests, and product CI
+- a DHF repository for controlled requirements, design, risk, and traceability artifacts
+- Python-based command-line tooling for scaffolding, validation, and evidence handling
+- CI infrastructure that can execute tests, store JUnit XML, and publish build artifacts
 
-- Radiation oncologists
-- Medical physicists
-- Dosimetrists / radiation therapy treatment planners
+The product is not positioned as a standalone compliance portal or document
+management suite. It assumes that teams work in code, documents, Git history,
+and CI systems.
 
-### 2.3 Intended Environment
+## 3. Product Context
 
-Clinical workstation with modern browser (Chrome/Chromium), connected to a hospital
-DICOMweb-compatible PACS or DICOM repository.
+{{ project_name }} operates in a single tooling repository that generates
+separate product and DHF repositories. Product code and test execution remain
+in the product repository, while design-controlled DHF content remains in the
+DHF repository. The orchestration and engine layers cooperate at runtime:
 
-### 2.4 Current Phase Focus (Phase A — Contouring)
+- the DHF repository defines the allowed structure, item schemas, and document templates
+- the harness reads DHF structure to drive product-side coverage and evidence workflows
+- AI guidance is derived from controlled documents, repo guidance files, and workflow prompts
+- formal DHF documents are generated from controlled templates and item data in the DHF repository
 
-User priorities for this phase:
+This structure allows engineering workflows to move quickly without collapsing
+design control into ad hoc narrative notes or disconnected spreadsheets.
 
-- Predictable repository-driven loading
-- Stable contour display and editing
-- Clear active patient / image / RTSS context
-- QA visibility and review ergonomics
-- Trustworthy save / push behavior
+## 4. Roadmap
 
-### 2.5 Explicitly Deferred
+### 4.1 Phase 1: Core Tooling
 
-The following are roadmap items not in current scope:
+Establish the single-repo tooling baseline:
 
-- Full RT Plan authoring
-- Optimization engine and dose calculation
-- Broad AI segmentation platform integration
-- Advanced multi-user workflow management
+- DHF repo scaffolding from bundled templates via `medharness init`
+- product CI scaffolding in `medharness`
+- controlled DHF item model, document templates, and `dhfkit` operations
+- requirement-to-test coverage and structural traceability workflows
 
-### 2.6 Product Guardrails
+### 4.2 Phase 2: Enhanced Workflows
 
-New requests should be challenged if they:
+Improve the quality of AI-assisted change execution by expanding:
 
-- Bypass the repository-backed workflow in favor of direct local-file UX
-- Add workflow complexity without improving contour review reliability
-- Expose technical cache / load semantics to end users
-- Introduce planning features before review workflow hardening is complete
-- Increase UI complexity without a clinical workflow reason
+- CR-driven planning and development flows
+- document-grounded agent guidance
+- design-aware review and verification support
+- richer evidence capture from normal engineering workflows
 
-### 2.7 Roadmap
+### 4.3 Phase 3: Hardened Adoption
 
-Ordered by execution priority, not aspiration.
+Focus on stability and adoption across real product programs through:
 
-**Phase A — Infrastructure Hardening** (current)
-- Stabilize local setup, startup, and smoke validation
-- Make CI reflect the real repository structure
-- Establish linting, test, and build baselines
-- Define product, technical, and test strategy as explicit source documents
-- Exit: setup / up / doctor reliable; CI validates frontend + API + shared types + smoke startup
+- more robust onboarding and migration paths
+- broader verification workflow support
+- improved operational documentation and audit readiness outputs
+- continued refinement of the orchestration/engine layer boundaries
 
-**Phase B — Review Workflow Hardening**
-- Improve repository loading robustness
-- Harden RTSTRUCT load / compare / push workflows
-- Improve contour QA usability and navigation
-- Reduce hidden state and stale-context bugs
-- Exit: contour review reproducible across multiple patient datasets; repository round-trip stable
-
-**Phase C — Dose Review Foundation**
-- RTDOSE ingestion and dose colorwash overlay
-- DVH and dose statistics
-- Dose review-oriented comparison workflows
-- Starts only after Phase B exit criteria are met
-
-**Phase D — Planning Foundation**
-- Planning data model refinement
-- Plan / structure / image relationships
-- Early planning review surfaces
-- Gated behind mature review and dose workflows
-
-**Ongoing (continuous)**
-- Developer ergonomics
-- CI / release engineering
-- Observability and operational diagnostics
-- Test evidence quality
-- DHF traceability discipline
-
----
-
-## 3. Customer Requirements
+## 5. Customer Requirements
 
 {% for item in items %}
 ### {{ loop.index }}. {{ item.id }}: {{ item.title }}
 
 <div class="requirement-section" markdown="1">
 
-{% if item.status %}**Status**: <span class="status-{{ item.status }}">{{ item.status | upper }}</span>  {% endif %}
-{% if item.priority %}**Priority**: {{ item.priority }}  {% endif %}
-{% if item.user_group %}**User Group**: {{ item.user_group }}  {% endif %}
+**Status**: <span class="status-{{ item.status }}">{{ item.status | upper }}</span>  
+{% if item.reviewer %}**Reviewer**: {{ item.reviewer }}  {% endif %}
+{% if item.review_date %}**Review Date**: {{ item.review_date | format_date }}  {% endif %}
+{% if item.category %}**Category**: {{ item.category }}  {% endif %}
+{% if item.verification_method %}**Verification Method**: {{ item.verification_method }}  {% endif %}
+
+#### Description
 
 {{ item.content }}
 
-{% if item.derives_from %}
-**Derived From:** {% for link in item.derives_from %}{{ link }}{% if not loop.last %}, {% endif %}{% endfor %}
+{% if item.links %}
+#### Linked Items
 
+{% for link in item.links %}
+- {{ link }}
+{% endfor %}
+{% endif %}
+
+{% if item.verification_status %}
+#### Verification Status
+
+**Status**: {{ item.verification_status }}
 {% endif %}
 
 </div>
 
----
 {% endfor %}
 
-## 4. Summary
+---
+
+## 6. Summary
+
+### 6.1 Statistics
 
 | Metric | Count |
 |--------|-------|
-| **Total CRS Items** | {{ items | length }} |
-| **Critical Priority** | {{ items | selectattr('priority', 'equalto', 'Critical') | list | length }} |
-| **High Priority** | {{ items | selectattr('priority', 'equalto', 'High') | list | length }} |
-| **Medium Priority** | {{ items | selectattr('priority', 'equalto', 'Medium') | list | length }} |
+| **Total Requirements** | {{ items | length }} |
+| **Approved** | {{ items | selectattr('status', 'equalto', 'approved') | list | length }} |
+| **Draft** | {{ items | selectattr('status', 'equalto', 'draft') | list | length }} |
+| **Retired** | {{ items | selectattr('status', 'equalto', 'retired') | list | length }} |
+
+### 6.2 Approval Status
+
+{% set approved_count = items | selectattr('status', 'equalto', 'approved') | list | length %}
+{% set total_count = items | length %}
+{% if total_count > 0 %}
+**Approval Rate**: {{ (approved_count / total_count * 100) | round(1) }}% ({{ approved_count }}/{{ total_count }})
+{% endif %}
 
 ---
 
-## 5. Document Control
+## 7. Document Control
 
-**Standard**: IEC 62304:2006+AMD1:2015 §5.2
-**Last Updated**: {{ generation_date }}
+**Document Owner**: Quality Assurance  
+**Last Updated**: {{ generation_date }}  
+**Next Review**: TBD
 
 ---
 
-*Generated from DHF items in {{ project_name }}.*
+*This document was automatically generated by `dhfkit` from controlled DHF content.*

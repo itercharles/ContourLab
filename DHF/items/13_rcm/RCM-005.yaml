@@ -7,5 +7,3 @@ content: |-
   in the toolbar and shortcuts, and locked structures reject contour mutations.
 mitigates: [RISK-001]
 implements: [SYS-004]
-verification_method: [Test]
-residual_risk: Low

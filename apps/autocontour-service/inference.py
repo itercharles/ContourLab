@@ -49,11 +49,21 @@ def _fetch_pixel_data_from_orthanc(series: dict) -> list[float]:
         expected_voxels = dims[0] * dims[1] * dims[2]
 
         from pydicom import dcmread
+        from pydicom.dataset import FileMetaDataset
+        from pydicom.uid import ExplicitVRLittleEndian
         all_pixels = []
         for _inst_num, inst_id in instance_details:
             dicom_resp = requests.get(f"{orthanc_url}/instances/{inst_id}/file", timeout=30)
             dicom_resp.raise_for_status()
-            ds = dcmread(BytesIO(dicom_resp.content))
+            ds = dcmread(BytesIO(dicom_resp.content), force=True)
+            # Orthanc may serve instances without a File Meta Information header.
+            # When force=True is used, pydicom skips meta parsing, leaving no
+            # TransferSyntaxUID for pixel decoding. Inject Explicit VR Little
+            # Endian (the implicit default for headerless CT data) so pixel_array works.
+            if not hasattr(ds, "file_meta") or ds.file_meta is None:
+                ds.file_meta = FileMetaDataset()
+            if not hasattr(ds.file_meta, "TransferSyntaxUID"):
+                ds.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
             slope = float(getattr(ds, "RescaleSlope", 1.0))
             intercept = float(getattr(ds, "RescaleIntercept", 0.0))
             hu = ds.pixel_array.astype(np.float32) * slope + intercept
@@ -98,11 +108,16 @@ def build_sitk_image(series: dict) -> sitk.Image:
     image.SetSpacing([float(spacing[0]), float(spacing[1]), float(spacing[2])])
     image.SetOrigin([float(origin[0]), float(origin[1]), float(origin[2])])
 
-    # DICOM direction cosines [row_dir, col_dir] → sitk direction matrix columns
+    # DICOM ImageOrientationPatient gives 6 values: row direction (dc[0:3]) and
+    # column direction (dc[3:6]). SimpleITK needs a full 3×3 direction matrix, so
+    # compute the normal (slice) axis as the cross product of row × col.
+    row = np.array(dc[0:3], dtype=np.float64)
+    col = np.array(dc[3:6], dtype=np.float64)
+    normal = np.cross(row, col)
     direction = (
-        dc[0], dc[3], dc[6],
-        dc[1], dc[4], dc[7],
-        dc[2], dc[5], dc[8],
+        row[0],    col[0],    normal[0],
+        row[1],    col[1],    normal[1],
+        row[2],    col[2],    normal[2],
     )
     image.SetDirection(direction)
     return image

@@ -1,5 +1,6 @@
 id: SYS-001
 title: System shall load DICOM CT series from a DICOMweb repository
+category: Functional
 content: |-
   The system shall query a DICOMweb-compatible repository for available
   planning CT image series, excluding non-planning modalities and CBCT-like
@@ -8,7 +9,6 @@ content: |-
   slice ordering, pixel spacing, and image position patient metadata. The
   viewer shall use DICOMweb as the primary image acquisition mechanism rather
   than directly opening local image files in the browser.
-category: Functional
 verification_method:
   - Test
   - Demonstration
@@ -16,6 +16,5 @@ testing: |
   T1: Given a mocked DICOMweb repository, the patient browser lists all patients with name and MRN from the response.
   T2: Given a patient browser, study description metadata is visible for each patient.
   T3: Given a search term, the patient browser filters the list to show only matching patients.
-critical_safety: false
 satisfies:
   - CRS-001

@@ -17,4 +17,3 @@ testing: |
   T2: Given an import payload with an unsupported version number, the import throws with a descriptive error.
   T3: Given a multi-series store, exportStructureSetsForSeries exports only the structure sets for the requested series.
   T4: Given a replace operation targeting a specific series, only that series' structure sets are swapped while others are preserved.
-critical_safety: true

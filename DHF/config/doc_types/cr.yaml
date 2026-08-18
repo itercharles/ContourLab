@@ -2,7 +2,7 @@ code: CR
 role: change_request
 name: Change Request
 prefix: CR-
-directory: 09_cr
+directory: 07_cr
 properties:
 - id
 - name: title
@@ -51,6 +51,12 @@ properties:
 - name: implementation_notes
   format: long_text
   label: Implementation Notes
+- name: proposed_new_items
+  label: Proposed New Items
+  # list of {type, title} dicts written by generate-dhf; no format validator applies
+- name: triage_result
+  label: Triage Result
+  # {verdict, complexity, affected_subsystems, related_crs, notes} written by generate-dhf Step 1
 - name: target_release
   format: relationship
   target_types:
@@ -68,15 +74,9 @@ lifecycle:
   - from_states:
     - design
     to_state: develop
-    label: Start Implementation
+    label: Start Development
   - from_states:
-    - new
-    - design
     - develop
-    - planned
-    - in_review
-    - designing
-    - implementing
     to_state: completed
     label: Complete
   - from_states:
@@ -84,9 +84,3 @@ lifecycle:
     - design
     to_state: rejected
     label: Reject
-  - from_states:
-    - new
-    - design
-    - develop
-    to_state: cancelled
-    label: Cancel

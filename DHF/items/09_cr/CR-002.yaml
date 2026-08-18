@@ -10,6 +10,5 @@ justification: Low contrast causes difficulties reading text in dark mode.
 priority: Medium
 requested_by: itercharles
 target_version: 2026-W19
-category: Feature
 content: similar contrast with Github webpage in dark mode.
 status: cancelled

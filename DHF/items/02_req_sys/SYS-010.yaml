@@ -1,5 +1,6 @@
 id: SYS-010
 title: System shall compute and display contour quality analysis for structures
+category: Functional
 content: |-
   The system shall analyze the active structure's contour geometry and report
   quality issues including open contours, degenerate contours with insufficient
@@ -8,12 +9,10 @@ content: |-
   system shall also aggregate quality issues across all structures into an RTSS
   QA checklist. Selecting a checklist item shall activate the corresponding
   structure and navigate to the relevant image slice.
-category: Functional
 verification_method:
   - Test
   - Demonstration
 testing: |
   T1: Given a structure with no contours, the quality analysis reports it as an empty informational item.
-critical_safety: true
 satisfies:
   - CRS-004

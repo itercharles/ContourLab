@@ -7,5 +7,3 @@ content: |-
   Slice ordering shall be verified for both instance-number and z-position sorting.
 mitigates: [RISK-002]
 implements: [SYS-001]
-verification_method: [Test]
-residual_risk: Low

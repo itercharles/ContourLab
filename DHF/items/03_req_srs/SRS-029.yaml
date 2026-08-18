@@ -18,4 +18,3 @@ testing: |
   T5: Given an HFP-style volume with flipped direction cosines, direction-signed spacing is passed to vtk.js to keep geometry aligned.
   T6: Given a manual Refresh 3D button click, renderSnapshot is called again.
   T7: Given an unmount while a renderSnapshot is in-flight, the AbortSignal is triggered.
-critical_safety: true

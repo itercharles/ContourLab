@@ -21,9 +21,14 @@ properties:
   target_types:
   - MODULE
   label: Module
-icon: 📋
-page_enabled: true
-page_number: 10
+- name: verification_status
+  format: enum
+  values:
+  - not_verified
+  - verified
+  - failed
+  label: Verification Status
+  default: not_verified
 verification_states:
 - not_verified
 - verified

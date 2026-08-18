@@ -2,6 +2,7 @@ id: SYS-012
 satisfies:
 - CRS-009
 title: System shall display persistent workspace context
+category: Functional
 content: 'The system shall continuously display the active patient, active image series,
 
   active RTSTRUCT or structure set source, and repository synchronization state
@@ -9,13 +10,11 @@ content: 'The system shall continuously display the active patient, active image
   in the top operation bar throughout all clinical workflow interactions. The
 
   display shall update immediately when any of these context values change.'
-category: Functional
 verification_method:
 - Test
 - Demonstration
 testing: |
   T1: Given the workspace loads with no active series, the context bar shows the "Load Patient" and "No active image set" placeholders and the "Synced" sync indicator.
-critical_safety: false
 verification_criteria: When a DICOM series is active, the top operation bar renders
   the patient name, active series description, active RTSTRUCT label, and repository
   sync state. Each field reflects the current store value within one render cycle

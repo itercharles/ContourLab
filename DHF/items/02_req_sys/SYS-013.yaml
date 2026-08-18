@@ -1,17 +1,16 @@
 id: SYS-013
 title: System shall expose a health status endpoint for operational monitoring
+category: Functional
 content: |-
   The system shall provide a health status interface that allows operators,
   CI pipelines, and local development tools to verify that the application
   services are running and reachable without requiring clinical authentication.
   The health response shall include at minimum the service name and a status
   indicator.
-category: Functional
 verification_method:
   - Test
 testing: |
   T1: Given the health endpoint contract, the path is GET /api/health and requires no authentication.
   T2: Given a health response, it contains at minimum a service name and a status indicator field.
-critical_safety: false
 satisfies:
   - CRS-010

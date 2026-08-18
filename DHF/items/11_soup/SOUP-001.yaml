@@ -11,6 +11,7 @@ purpose: |-
   and interactive camera control (TrackballCamera interactor style). Used
   exclusively in the review viewport; no path to treatment planning calculations.
 homepage: https://kitware.github.io/vtk-js
+ecosystem: npm
 cve_count: "0"
 risk_rating: Low
 safety_class: C (non-safety-critical display aid; clinician must verify contours

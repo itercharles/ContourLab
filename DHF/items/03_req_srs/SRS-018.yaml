@@ -15,5 +15,4 @@ testing: |
   T3: Given a click on "Maximize View", onMaximize is called with the viewport orientation and the menu closes.
   T4: Given a click on "Restore View", onMaximize is called with null and the menu closes.
   T5: Given a mousedown outside the menu, the menu closes.
-critical_safety: false
 type: SRS

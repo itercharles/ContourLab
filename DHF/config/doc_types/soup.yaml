@@ -2,7 +2,7 @@ code: SOUP
 role: soup
 name: Software of Unknown Provenance
 prefix: SOUP-
-directory: 11_soup
+directory: 09_soup
 properties:
 - id
 - name: title
@@ -29,6 +29,10 @@ properties:
 - name: homepage
   format: short_text
   label: Homepage
+- name: ecosystem
+  format: short_text
+  label: Package Ecosystem
+  # OSV ecosystem identifier for vulnerability scanning, e.g. PyPI, npm, Go, Maven
 - name: cve_count
   format: short_text
   label: CVE Count
@@ -41,6 +45,3 @@ properties:
 - name: verification_method
   format: short_text
   label: Verification Method
-icon: 📦
-page_enabled: true
-page_number: 11

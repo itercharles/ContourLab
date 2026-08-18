@@ -20,7 +20,6 @@ justification: >
 priority: Medium
 requested_by: itercharles
 target_version: 2026-W20
-category: Feature
 content: >
   Submit form + CR status board accessible from the LeftSidebar footer.
   Backend proxy to GitHub Issues API; GITHUB_TOKEN injected at deploy time

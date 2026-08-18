@@ -2,7 +2,7 @@ code: SYS
 role: system_requirement
 name: System Requirement
 prefix: SYS-
-directory: 02_req_sys
+directory: 02_sys
 properties:
 - id
 - name: title
@@ -12,9 +12,6 @@ properties:
   format: long_text
   label: Requirement Description
   required: true
-  height: 200
-  placeholder: Describe the system requirement in detail...
-  help: Provide a clear, testable requirement statement per IEC 62304
 - name: category
   format: select
   label: Category
@@ -29,7 +26,6 @@ properties:
   - Change Control
   - Document Management
   default: Functional
-  help: Select the requirement category
 - name: verification_method
   format: multiselect
   label: Verification Methods
@@ -38,11 +34,6 @@ properties:
   - Inspection
   - Analysis
   - Demonstration
-  help: Select applicable verification methods per IEC 62304 5.7
-- name: verification_criteria
-  format: long_text
-  label: Verification Criteria
-  help: Measurable pass/fail criterion used to verify this system requirement
 - name: critical_safety
   format: checkbox
   label: Critical Safety
@@ -51,30 +42,30 @@ properties:
   label: Satisfies (Customer Requirements)
   target_types:
   - CRS
-  help: Link to parent customer requirements
 - name: implements
   format: item_multiselect
   label: Implements (Risk Control Measures)
   target_types:
   - RCM
-  help: Link to risk control measures this requirement implements
 - name: derives_from
   format: item_multiselect
   label: Derives From
   target_types:
   - CRS
-  help: Alternative relationship to customer requirements
 - name: testing
   format: long_text
   label: Testing
-relations:
-- target: CRS
-  label: satisfies
-- target: RCM
-  label: implements
-icon: ⚙️
-page_enabled: true
-page_number: 6
+- name: verification_criteria
+  format: long_text
+  label: Verification Criteria
+- name: verification_method
+  format: multiselect
+  label: Verification Method
+  options:
+  - Test
+  - Inspection
+  - Analysis
+  - Demonstration
 has_verification: true
 verification_states:
 - not_verified

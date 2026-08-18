@@ -10,7 +10,6 @@ justification: the actual workflow has been changed.
 priority: Medium
 requested_by: itercharles
 target_version: 2026-W20
-category: Feature
 content: the workflow in about dialog match the current cr-lifecycle workflow.
 status: completed
 implementation_notes: "## Overview\nCR-012 updates the about box workflow diagram\

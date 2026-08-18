@@ -34,6 +34,5 @@ justification: Eliminates a class of silent-failure bugs (RTSTRUCT drop, unhandl
 priority: Medium
 requested_by: itercharles
 target_version: 2026-W19
-category: Refactor
 content: ''
 status: completed

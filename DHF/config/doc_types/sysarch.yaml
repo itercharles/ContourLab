@@ -2,7 +2,7 @@ code: SYSARCH
 role: architecture
 name: System Architecture
 prefix: SYSARCH-
-directory: 06_sys_arch
+directory: 06_sysarch
 properties:
 - id
 - name: title
@@ -19,6 +19,3 @@ properties:
 relations:
 - target: SYS
   label: design
-icon: 🏗️
-page_enabled: true
-page_number: 8

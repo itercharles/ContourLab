@@ -216,6 +216,9 @@ jobs:
             --coverage-pair SYS:SYSARCH \
             --coverage-pair RISK:RCM
 
+      - name: Scan SOUP items for known vulnerabilities (OSV)
+        run: medharness --dhf DHF verify soup
+
       - name: Print traceability report
         if: always()
         continue-on-error: true

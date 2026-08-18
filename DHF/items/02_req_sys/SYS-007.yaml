@@ -1,5 +1,6 @@
 id: SYS-007
 title: System shall retrieve and load RTSTRUCT objects from the DICOM repository
+category: Functional
 content: |-
   The system shall query the connected DICOMweb repository for RT Structure Set
   objects associated with the active patient study, present candidates in
@@ -7,7 +8,6 @@ content: |-
   user-selected object by activating the matching image series and replacing the
   active in-memory structure set. The loaded object shall be marked as the
   active repository source.
-category: Functional
 verification_method:
   - Test
   - Demonstration
@@ -16,6 +16,5 @@ testing: |
   T2: Given no slice thickness, importRtstructDataset leaves volume_cc at zero.
   T3: Given a known slice thickness, importRtstructDataset computes volume_cc from contour geometry.
   T4: Given multiple ROIs, importRtstructDataset computes volume_cc independently for each structure.
-critical_safety: true
 satisfies:
   - CRS-006

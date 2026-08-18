@@ -2,7 +2,7 @@ code: RCM
 role: risk_control
 name: Risk Control Measure
 prefix: RCM-
-directory: 13_rcm
+directory: 11_rcm
 properties:
 - id
 - name: title
@@ -40,20 +40,3 @@ properties:
   - Not Verified
   - Verified
   label: Verification Status
-- name: verification_method
-  format: multiselect
-  label: Verification Methods
-  options:
-  - Test
-  - Inspection
-  - Analysis
-  - Demonstration
-- name: critical_safety
-  format: checkbox
-  label: Critical Safety
-- name: residual_risk
-  format: short_text
-  label: Residual Risk
-icon: 🛡️
-page_enabled: true
-page_number: 11
