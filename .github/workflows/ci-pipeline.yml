@@ -219,6 +219,10 @@ jobs:
       - name: Scan SOUP items for known vulnerabilities (OSV)
         run: medharness --dhf DHF verify soup
 
+      - name: Check IEC 62304 safety class and required activities
+        continue-on-error: true
+        run: medharness --dhf DHF verify classification
+
       - name: Print traceability report
         if: always()
         continue-on-error: true

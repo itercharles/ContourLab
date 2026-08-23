@@ -104,8 +104,13 @@ def main() -> int:
         # automation group (formerly ci claude-session get/put)
         "session-get": ("python", "-m", "medharness", "automation", "session", "get", "--help"),
         "session-put": ("python", "-m", "medharness", "automation", "session", "put", "--help"),
-        # verify soup — OSV CVE scan gate (0.11.0+)
+        # verify group (0.11.0+)
         "verify-soup": ("python", "-m", "medharness", "verify", "soup", "--help"),
+        "verify-completion": ("python", "-m", "medharness", "verify", "completion", "--help"),
+        "verify-classification": ("python", "-m", "medharness", "verify", "classification", "--help"),
+        # cr workflow group (0.13.0+)
+        "cr-check-status": ("python", "-m", "medharness", "cr", "check-status", "--help"),
+        "cr-workflow-complete": ("python", "-m", "medharness", "cr", "workflow", "complete", "--help"),
         # dhfkit data-layer commands (unchanged)
         "dhf-report": ("dhfkit", "--dhf", ".", "report", "--help"),
         "dhf-context-implementation": ("python", "-m", "medharness", "dhf", "context", "implementation", "--help"),
@@ -267,6 +272,22 @@ def main() -> int:
     require(
         "medharness change advance" in cr_text,
         "cr-lifecycle.yml must use change advance for label management — no raw gh api label calls",
+        errors,
+    )
+
+    require(
+        "medharness --dhf DHF ci cr-complete" not in cr_complete_text,
+        "cr-complete.yml still contains old ci cr-complete — use verify completion",
+        errors,
+    )
+    require(
+        "medharness verify completion" in cr_complete_text,
+        "cr-complete.yml must call verify completion for CR closure gate",
+        errors,
+    )
+    require(
+        "medharness --dhf DHF verify classification" in ci_text,
+        "ci-pipeline.yml must call verify classification (IEC 62304 §4.3 safety class check)",
         errors,
     )
 

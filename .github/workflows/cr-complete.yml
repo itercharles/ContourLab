@@ -80,7 +80,8 @@ jobs:
         env:
           CR_ID: ${{ needs.complete-cr.outputs.cr_id }}
         run: |
-          medharness --dhf DHF ci cr-complete \
+          medharness verify completion \
+            --dhf DHF \
             --cr "$CR_ID" \
             --junit-dir test-results/srs \
             --junit-dir test-results/srs-api \
