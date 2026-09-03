@@ -83,7 +83,30 @@ classes:
       - validation_plan
       - integration_plan
       - maintenance_plan
+    # Per-type test level mapping (IEC 62304 §5.5–5.7).
+    #
+    # Rationale (recorded per DHF convention — development_plan.md §3.3):
+    #
+    #   SRS items express software unit behaviour. They are the target of
+    #   §5.5 (software unit testing) and §5.6 (software integration testing).
+    #   ContourLab verifies SRS items with Vitest, tagged @links:SRS-xxx and
+    #   run at unit + integration levels.
+    #
+    #   SYS items express system-level behaviour. They are the target of
+    #   §5.7 (software system testing). ContourLab verifies SYS items with
+    #   Playwright end-to-end tests, tagged @links:SYS-xxx, run at system level.
+    #
+    #   Assigning [unit, integration, system] to SRS would require every
+    #   software requirement to also have a Playwright system test — an
+    #   over-constraint not called out by §5.5/5.6. Similarly, assigning
+    #   [unit, integration] to SYS would require unit-level coverage for
+    #   system requirements that are only meaningfully tested end-to-end.
+    #
+    #   This mapping avoids that double-testing burden while satisfying all
+    #   three standard clauses.
     required_test_levels:
-      - unit
-      - integration
-      - system
+      SRS:
+        - unit
+        - integration
+      SYS:
+        - system
