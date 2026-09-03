@@ -105,8 +105,5 @@ classes:
     #   This mapping avoids that double-testing burden while satisfying all
     #   three standard clauses.
     required_test_levels:
-      SRS:
-        - unit
-        - integration
-      SYS:
-        - system
+      SRS: [unit, integration]
+      SYS: [system]
