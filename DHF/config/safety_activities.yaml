@@ -85,25 +85,29 @@ classes:
       - maintenance_plan
     # Per-type test level mapping (IEC 62304 §5.5–5.7).
     #
-    # Rationale (recorded per DHF convention — development_plan.md §3.3):
+    # Source: development_plan.md §10.2 (Test-SRS and Test-SYS definitions),
+    # which is a controlled document under the project's GitOps document
+    # control procedure.
     #
-    #   SRS items express software unit behaviour. They are the target of
-    #   §5.5 (software unit testing) and §5.6 (software integration testing).
-    #   ContourLab verifies SRS items with Vitest, tagged @links:SRS-xxx and
-    #   run at unit + integration levels.
+    # §10.2 assigns the clauses explicitly:
     #
-    #   SYS items express system-level behaviour. They are the target of
-    #   §5.7 (software system testing). ContourLab verifies SYS items with
-    #   Playwright end-to-end tests, tagged @links:SYS-xxx, run at system level.
+    #   "Test-SRS — Software Requirement Verification (IEC 62304 §5.5–5.6)
+    #    Verifies software units and components satisfy SRS items.
+    #    Automated via Vitest with @links:SRS-xxx annotations."
     #
-    #   Assigning [unit, integration, system] to SRS would require every
-    #   software requirement to also have a Playwright system test — an
-    #   over-constraint not called out by §5.5/5.6. Similarly, assigning
-    #   [unit, integration] to SYS would require unit-level coverage for
-    #   system requirements that are only meaningfully tested end-to-end.
+    #   "Test-SYS — System Requirement Verification (IEC 62304 §5.7)
+    #    Verifies the integrated system (frontend + API + DICOM repository)
+    #    satisfies SYS items. Automated via Playwright browser tests against
+    #    the full running stack."
     #
-    #   This mapping avoids that double-testing burden while satisfying all
-    #   three standard clauses.
+    # Note on §5.7 scope: IEC 62304 §5.7 is titled "Software system testing"
+    # and some interpretations scope it to verifying software requirements
+    # (SRS). ContourLab's development_plan.md §10.2 assigns §5.7 to SYS items
+    # because SYS in this project represents the system-level software
+    # requirements verified end-to-end against the integrated stack. This
+    # interpretation is recorded here as the project's regulatory position and
+    # requires human confirmation from the regulatory responsible person before
+    # test annotation work proceeds at scale.
     required_test_levels:
       SRS: [unit, integration]
       SYS: [system]
