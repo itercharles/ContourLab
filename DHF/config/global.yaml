@@ -1,12 +1,12 @@
 project_name: "ContourLab"
 
 # IEC 62304 §4.3 safety class declaration.
-# Class C: death or serious injury is possible.
-# Rationale: ContourLab calculates radiation dose and delivers treatment plans
-# directly to radiotherapy equipment. A software failure in dose calculation or
-# plan delivery could result in over- or under-dose to the patient, causing
-# serious injury or death.
 software_safety_class: "C"
+classification_rationale: >
+  ContourLab calculates radiation dose and delivers treatment plans directly to
+  radiotherapy equipment. A software failure in dose calculation or plan delivery
+  could result in over- or under-dose to the patient, causing serious injury or
+  death. Class C applies per IEC 62304 §4.3(c).
 
 global_lifecycle:
   states:
@@ -41,11 +41,21 @@ global_lifecycle:
     action_label: Approve
     icon: ✅
     color: success
+  - id: design
+    label: Design
+    action_label: Start Design
+    icon: "📐"
+    color: info
   - id: designing
     label: Designing
     action_label: Start Design
     icon: 📐
     color: info
+  - id: develop
+    label: Develop
+    action_label: Start Development
+    icon: "🔧"
+    color: warning
   - id: implementing
     label: Implementing
     action_label: Start Implementation
