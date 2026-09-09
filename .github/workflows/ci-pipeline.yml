@@ -226,7 +226,7 @@ jobs:
       - name: Print traceability report
         if: always()
         continue-on-error: true
-        run: dhfkit --dhf DHF report
+        run: medharness --dhf DHF verify dhf
 
   # ── CR BRANCH VALIDATION ─────────────────────────────────────────────────
   # Phase 2b: For feat/CR-* implementation branches, verifies the branch

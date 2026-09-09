@@ -54,5 +54,4 @@ implementation_notes: "## Overview\nCR-012 updates the about box workflow diagra
   \ `pnpm --filter @contourlab/client test` — all existing Toolbar tests must continue\
   \ to pass.\n- No new automated test is warranted: the workflow diagram is purely\
   \ informational UI with no linked SRS requirement."
-affected_items:
-- CR-012
+affected_items: []

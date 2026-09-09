@@ -112,7 +112,7 @@ def main() -> int:
         "cr-check-status": ("python", "-m", "medharness", "cr", "check-status", "--help"),
         "cr-workflow-complete": ("python", "-m", "medharness", "cr", "workflow", "complete", "--help"),
         # dhfkit data-layer commands (unchanged)
-        "dhf-report": ("dhfkit", "--dhf", ".", "report", "--help"),
+        "dhf-verify-dhf": ("python", "-m", "medharness", "verify", "dhf", "--help"),
         "dhf-context-implementation": ("python", "-m", "medharness", "dhf", "context", "implementation", "--help"),
         "dhfkit-soup-sync": ("dhfkit", "--dhf", ".", "soup-sync", "--help"),
         "dhfkit-release-baseline": ("dhfkit", "--dhf", ".", "release-baseline", "--help"),
@@ -243,8 +243,8 @@ def main() -> int:
     )
 
     require(
-        "dhfkit --dhf DHF report" in ci_text,
-        "ci-pipeline.yml must emit a dhf report step via dhfkit for human-readable traceability output",
+        "medharness --dhf DHF verify dhf" in ci_text,
+        "ci-pipeline.yml must emit a dhf traceability step via medharness verify dhf",
         errors,
     )
     require(

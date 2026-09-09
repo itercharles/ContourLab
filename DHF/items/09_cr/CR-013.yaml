@@ -116,6 +116,5 @@ implementation_notes: '## Overview
   appears next to the brand mark; switch patients and verify it updates; clear patient
   and verify the placeholder appears.'
 affected_items:
-- CR-013
 - MODULE-008
 - SYS-012
