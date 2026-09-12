@@ -413,6 +413,22 @@ jobs:
           fi
           echo "COMMITTED=$COMMITTED" >> "$GITHUB_ENV"
 
+      - name: Analyse risk impact
+        # ISO 14971 §10 — surface which risks the implementation touches.
+        # Informational: continue-on-error so a gap in coverage doesn't block the PR.
+        if: env.COMMITTED == 'true'
+        continue-on-error: true
+        env:
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPORT=$(medharness --dhf DHF analyse risk-impact --since-ref origin/main 2>&1) || true
+          if [ -n "$REPORT" ]; then
+            gh pr comment "$PR_NUMBER" \
+              --body "$(printf '### Risk impact for %s\n\n```\n%s\n```' "$CR_ID" "$REPORT")"
+          fi
+
       - name: Advance to next review stage
         # Advance label BEFORE pushing so the PR-triggered CI run sees cr:stage/code
         # and the stage-gate allows dev tests (lint · typecheck · build) to run.
