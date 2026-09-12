@@ -415,7 +415,8 @@ jobs:
 
       - name: Analyse risk impact
         # ISO 14971 §10 — surface which risks the implementation touches.
-        # Informational: continue-on-error so a gap in coverage doesn't block the PR.
+        # stdout = JSON (machine); stderr = human-readable summary.
+        # continue-on-error: coverage gaps don't block the PR, but failures are visible.
         if: env.COMMITTED == 'true'
         continue-on-error: true
         env:
@@ -423,10 +424,18 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          REPORT=$(medharness --dhf DHF analyse risk-impact --since-ref origin/main 2>&1) || true
-          if [ -n "$REPORT" ]; then
+          RISK_JSON=$(medharness --dhf DHF analyse risk-impact --since-ref origin/main \
+            2>/tmp/risk-stderr.txt)
+          EXIT_CODE=$?
+          RISK_HUMAN=$(cat /tmp/risk-stderr.txt)
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "::warning::risk-impact failed — no risk analysis was performed: $RISK_HUMAN"
+            exit 0
+          fi
+          RISK_COUNT=$(echo "$RISK_JSON" | jq '.affected_risks | length' 2>/dev/null || echo "0")
+          if [ "${RISK_COUNT:-0}" -gt 0 ]; then
             gh pr comment "$PR_NUMBER" \
-              --body "$(printf '### Risk impact for %s\n\n```\n%s\n```' "$CR_ID" "$REPORT")"
+              --body "$(printf '### Risk impact for %s\n\n```\n%s\n```' "$CR_ID" "$RISK_HUMAN")"
           fi
 
       - name: Advance to next review stage
