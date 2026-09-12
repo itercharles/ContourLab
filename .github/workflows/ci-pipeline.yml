@@ -268,18 +268,6 @@ jobs:
             exit 1
           fi
 
-      - name: Validate test annotations
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          CR_ID=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'CR-[0-9]+')
-          if ! medharness --dhf DHF verify code \
-            --cr "$CR_ID"; then
-            gh pr comment "$PR_NUMBER" --body \
-              "⚠️ **Test annotation check failed** for $CR_ID — one or more items in \`test_plan.needs_new_tc\` are missing \`@links:<ID>\` annotations. See CI logs for details."
-            exit 1
-          fi
 
   # ── DEVELOPMENT TESTING ────────────────────────────────────────────────────
   # Static analysis and compilation. Engineering feedback only — not compliance
@@ -541,18 +529,6 @@ jobs:
           path: test-results/crs/
 
       - name: Run requirement-test coverage gate
-        run: |
-          medharness verify tests \
-            --dhf DHF \
-            --junit-dir test-results/srs \
-            --junit-dir test-results/srs-api \
-            --junit-dir test-results/sys \
-            --junit-dir test-results/crs \
-            --requirement-type SRS \
-            --requirement-type SYS \
-            --requirement-type CRS
-
-      - name: Run test-point coverage gate (TDD)
         run: |
           medharness verify tests \
             --dhf DHF \

@@ -34,7 +34,7 @@ jobs:
         run: |
           mkdir -p artifacts
           WRITE_FLAG=${{ inputs.write == true && '--write' || '' }}
-          dhfkit --dhf DHF release-baseline \
+          medharness --dhf DHF release baseline \
             --version "${{ inputs.version }}" \
             --manifest requirements.txt \
             --manifest package.json \

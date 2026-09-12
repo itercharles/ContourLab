@@ -30,13 +30,20 @@ jobs:
       - name: Complete CR
         id: complete
         run: |
-          RESULT=$(medharness cr workflow complete-from-github-pr \
-            --dhf-repo . \
-            --event "$GITHUB_EVENT_PATH" \
-            --by "github-actions[bot]" \
-            --push)
-          echo "$RESULT"
-          CR_ID=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cr_id',''))" 2>/dev/null || true)
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          CR_ID=$(echo "$BRANCH" | grep -oE 'CR-[0-9]+')
+          if [ -z "$CR_ID" ]; then
+            echo "::error::Could not extract CR ID from branch $BRANCH" >&2
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          dhfkit --dhf DHF item transition "$CR_ID" completed --by "github-actions[bot]"
+          git add DHF/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: complete $CR_ID [skip ci]"
+            git push
+          fi
           echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
 
   closure-gate:

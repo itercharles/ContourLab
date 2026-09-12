@@ -107,17 +107,6 @@ jobs:
           fi
           echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
 
-      - name: CR status (observability)
-        if: always()
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          CR_ID=$(jq -r '.cr_id // ""' /tmp/event-plan.json)
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          [ -n "$CR_ID" ] && medharness --dhf DHF change status \
-            --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} \
-            --branch "${{ github.head_ref || github.ref_name }}"
 
   # ── CANCEL ────────────────────────────────────────────────────────────────
 
@@ -265,11 +254,8 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
           ISSUE_NUMBER: ${{ needs.detect.outputs.issue_number }}
         run: |
-          medharness change advance \
-            --pr "$PR_NUMBER" \
-            --from-stage cr \
-            --to-stage design \
-            ${ISSUE_NUMBER:+--issue "$ISSUE_NUMBER"}
+          gh pr edit "$PR_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/design" 2>/dev/null || true
+          [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/design" 2>/dev/null || true
 
   # ── DESIGN: REVISE ────────────────────────────────────────────────────────
 
@@ -436,11 +422,8 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
           ISSUE_NUMBER: ${{ needs.detect.outputs.issue_number }}
         run: |
-          medharness change advance \
-            --pr "$PR_NUMBER" \
-            --from-stage design \
-            --to-stage code \
-            ${ISSUE_NUMBER:+--issue "$ISSUE_NUMBER"}
+          gh pr edit "$PR_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code"
+          [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code" 2>/dev/null || true
           gh pr ready "$PR_NUMBER" 2>/dev/null || true
 
       - name: Push and wait for CI

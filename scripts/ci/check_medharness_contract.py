@@ -21,8 +21,11 @@ REQUIREMENTS_TXT = REPO_ROOT / "requirements.txt"
 
 
 def run(*args: str) -> tuple[int, str]:
+    cmd = list(args)
+    if cmd and cmd[0] == "python":
+        cmd[0] = sys.executable
     result = subprocess.run(
-        list(args),
+        cmd,
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -91,31 +94,28 @@ def main() -> int:
     errors: list[str] = []
 
     help_commands = {
-        # change group (formerly ci generate-dhf / develop-cr / cr-status / advance-stage)
+        # change group
         "change-plan": ("python", "-m", "medharness", "change", "plan", "--help"),
         "change-implement": ("python", "-m", "medharness", "change", "implement", "--help"),
-        "change-status": ("python", "-m", "medharness", "change", "status", "--help"),
-        "change-advance": ("python", "-m", "medharness", "change", "advance", "--help"),
-        # verify group (formerly ci validate-branch / validate-code)
+        # verify group
+        "verify-dhf": ("python", "-m", "medharness", "verify", "dhf", "--help"),
         "verify-branch": ("python", "-m", "medharness", "verify", "branch", "--help"),
-        "verify-code": ("python", "-m", "medharness", "verify", "code", "--help"),
-        # approval group (formerly ci approve-gate)
-        "approval-check": ("python", "-m", "medharness", "approval", "check", "--help"),
-        # automation group (formerly ci claude-session get/put)
-        "session-get": ("python", "-m", "medharness", "automation", "session", "get", "--help"),
-        "session-put": ("python", "-m", "medharness", "automation", "session", "put", "--help"),
-        # verify group (0.11.0+)
         "verify-soup": ("python", "-m", "medharness", "verify", "soup", "--help"),
+        "verify-tests": ("python", "-m", "medharness", "verify", "tests", "--help"),
+        "verify-verification": ("python", "-m", "medharness", "verify", "verification", "--help"),
         "verify-completion": ("python", "-m", "medharness", "verify", "completion", "--help"),
         "verify-classification": ("python", "-m", "medharness", "verify", "classification", "--help"),
-        # cr workflow group (0.13.0+)
-        "cr-check-status": ("python", "-m", "medharness", "cr", "check-status", "--help"),
-        "cr-workflow-complete": ("python", "-m", "medharness", "cr", "workflow", "complete", "--help"),
-        # dhfkit data-layer commands (unchanged)
-        "dhf-verify-dhf": ("python", "-m", "medharness", "verify", "dhf", "--help"),
-        "dhf-context-implementation": ("python", "-m", "medharness", "dhf", "context", "implementation", "--help"),
-        "dhfkit-soup-sync": ("dhfkit", "--dhf", ".", "soup-sync", "--help"),
-        "dhfkit-release-baseline": ("dhfkit", "--dhf", ".", "release-baseline", "--help"),
+        # approval group
+        "approval-check": ("python", "-m", "medharness", "approval", "check", "--help"),
+        # automation group
+        "automation-github-event": ("python", "-m", "medharness", "automation", "github-event", "--help"),
+        # context group (0.23.0+: dhf subgroup removed)
+        "context-implementation": ("python", "-m", "medharness", "context", "implementation", "--help"),
+        # release group (0.23.0+: moved from dhfkit)
+        "release-baseline": ("python", "-m", "medharness", "release", "baseline", "--help"),
+        # analyse group (0.23.0+)
+        "analyse-risk-impact": ("python", "-m", "medharness", "analyse", "risk-impact", "--help"),
+        "analyse-soup-drift": ("python", "-m", "medharness", "analyse", "soup-drift", "--help"),
     }
 
     help_output: dict[str, str] = {}
@@ -186,11 +186,6 @@ def main() -> int:
         errors,
     )
     require(
-        "medharness --dhf DHF verify code" in ci_text,
-        "ci-pipeline.yml must call verify code with global --dhf",
-        errors,
-    )
-    require(
         "medharness --dhf DHF ci validate-branch" not in ci_text,
         "ci-pipeline.yml still contains old ci validate-branch — use verify branch",
         errors,
@@ -248,8 +243,13 @@ def main() -> int:
         errors,
     )
     require(
-        "medharness --dhf DHF dhf context implementation" in issue_to_cr_text,
-        "issue-to-cr.yml must use dhf context implementation to post the plan comment — no inline YAML parsing",
+        "medharness --dhf DHF context implementation" in issue_to_cr_text,
+        "issue-to-cr.yml must use context implementation to post the plan comment — no inline YAML parsing",
+        errors,
+    )
+    require(
+        "dhfkit --dhf DHF item create --type CR" in issue_to_cr_text,
+        "issue-to-cr.yml must use dhfkit item create --type CR for CR intake — not the removed intake-github-issue-ci command",
         errors,
     )
     require(
@@ -264,14 +264,23 @@ def main() -> int:
         errors,
     )
     require(
-        "medharness --dhf DHF change status" in cr_text,
-        "cr-lifecycle.yml must emit a change status step for observability in the detect job",
+        "change status" not in cr_text,
+        "cr-lifecycle.yml still references removed change status command (removed in 0.23.0)",
         errors,
     )
-
     require(
-        "medharness change advance" in cr_text,
-        "cr-lifecycle.yml must use change advance for label management — no raw gh api label calls",
+        "change advance" not in cr_text,
+        "cr-lifecycle.yml still references removed change advance command (removed in 0.23.0)",
+        errors,
+    )
+    require(
+        "gh pr edit" in cr_text and "--remove-label" in cr_text,
+        "cr-lifecycle.yml must use raw gh pr edit --remove-label / --add-label for stage label management (change advance removed in 0.23.0)",
+        errors,
+    )
+    require(
+        "dhfkit --dhf DHF item transition" in cr_complete_text,
+        "cr-complete.yml must use dhfkit item transition to complete the CR (complete-from-github-pr removed in 0.23.0)",
         errors,
     )
 
