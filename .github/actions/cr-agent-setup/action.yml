@@ -18,3 +18,16 @@ runs:
     - name: Install Claude Code
       shell: bash
       run: npm install -g @anthropic-ai/claude-code
+
+    - name: Trust Claude Code workspace on runner
+      shell: bash
+      run: |
+        SETTINGS="$HOME/.claude.json"
+        PROJ="/home/runner/work/ContourLab/ContourLab"
+        if [ -f "$SETTINGS" ]; then
+          tmp=$(mktemp)
+          jq --arg p "$PROJ" '.projects[$p].hasTrustDialogAccepted = true' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
+        else
+          mkdir -p "$(dirname "$SETTINGS")"
+          printf '{"projects":{"%s":{"hasTrustDialogAccepted":true}}}\n' "$PROJ" > "$SETTINGS"
+        fi
