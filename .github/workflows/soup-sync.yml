@@ -33,7 +33,7 @@ jobs:
         id: sync
         run: |
           WRITE_FLAG=${{ inputs.write == true && '--write' || '' }}
-          dhfkit --dhf DHF soup-sync \
+          medharness --dhf DHF soup-sync \
             --manifest requirements.txt \
             --manifest package.json \
             --manifest apps/client/package.json \

@@ -16,6 +16,7 @@ CI_PIPELINE = REPO_ROOT / ".github" / "workflows" / "ci-pipeline.yml"
 CR_LIFECYCLE = REPO_ROOT / ".github" / "workflows" / "cr-lifecycle.yml"
 ISSUE_TO_CR = REPO_ROOT / ".github" / "workflows" / "issue-to-cr.yml"
 CR_COMPLETE = REPO_ROOT / ".github" / "workflows" / "cr-complete.yml"
+SOUP_SYNC = REPO_ROOT / ".github" / "workflows" / "soup-sync.yml"
 MEDHARNESS_ACTION = REPO_ROOT / ".github" / "actions" / "medharness-setup" / "action.yml"
 REQUIREMENTS_TXT = REPO_ROOT / "requirements.txt"
 
@@ -112,6 +113,8 @@ def main() -> int:
         "context-implementation": ("python", "-m", "medharness", "context", "implementation", "--help"),
         # release group
         "release-baseline": ("python", "-m", "medharness", "release", "baseline", "--help"),
+        # soup-sync (0.23.0+: moved from dhfkit to medharness)
+        "soup-sync": ("python", "-m", "medharness", "soup-sync", "--help"),
     }
 
     help_output: dict[str, str] = {}
@@ -140,6 +143,7 @@ def main() -> int:
     cr_text = CR_LIFECYCLE.read_text(encoding="utf-8")
     issue_to_cr_text = ISSUE_TO_CR.read_text(encoding="utf-8")
     cr_complete_text = CR_COMPLETE.read_text(encoding="utf-8")
+    soup_sync_text = SOUP_SYNC.read_text(encoding="utf-8")
 
     require(
         "python -m medharness --dhf DHF change plan" in cr_text,
@@ -311,11 +315,23 @@ def main() -> int:
         errors,
     )
 
+    require(
+        "medharness --dhf DHF soup-sync" in soup_sync_text,
+        "soup-sync.yml must call medharness soup-sync (moved from dhfkit in 0.23.0)",
+        errors,
+    )
+    require(
+        "dhfkit" not in soup_sync_text or "soup-sync" not in soup_sync_text,
+        "soup-sync.yml still calls dhfkit soup-sync — command moved to medharness in 0.23.0",
+        errors,
+    )
+
     for v in check_workflow_step_refs({
         "ci-pipeline.yml": ci_text,
         "cr-lifecycle.yml": cr_text,
         "issue-to-cr.yml": issue_to_cr_text,
         "cr-complete.yml": cr_complete_text,
+        "soup-sync.yml": soup_sync_text,
     }):
         require(False, v, errors)
 
