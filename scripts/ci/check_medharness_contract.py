@@ -105,8 +105,8 @@ def main() -> int:
         "verify-soup": ("python", "-m", "medharness", "verify", "soup", "--help"),
         "verify-tests": ("python", "-m", "medharness", "verify", "tests", "--help"),
         "verify-classification": ("python", "-m", "medharness", "verify", "classification", "--help"),
-        # approval group
-        "approval-check": ("python", "-m", "medharness", "approval", "check", "--help"),
+        # approval (0.26.0+: moved to change group, renamed verify-approval)
+        "change-verify-approval": ("python", "-m", "medharness", "change", "verify-approval", "--help"),
         # automation group
         "automation-github-event": ("python", "-m", "medharness", "automation", "github-event", "--help"),
         # context group
@@ -264,8 +264,13 @@ def main() -> int:
     )
 
     require(
-        "medharness approval check" in cr_text,
-        "cr-lifecycle.yml must call approval check before change implement to guard against event misclassification",
+        "medharness change verify-approval" in cr_text,
+        "cr-lifecycle.yml must call change verify-approval (0.26.0+: approval check renamed) before change implement",
+        errors,
+    )
+    require(
+        "medharness approval check" not in cr_text,
+        "cr-lifecycle.yml still uses removed approval check — rename to change verify-approval (0.26.0+)",
         errors,
     )
     require(

@@ -134,8 +134,7 @@ jobs:
           git fetch origin "$BRANCH" --depth 1
           git checkout "origin/$BRANCH" -- "DHF/items/09_cr/$CR_ID.yaml"
           dhfkit --dhf DHF item transition \
-            "$CR_ID" cancelled \
-            --by "github-actions[bot]"
+            "$CR_ID" cancelled
           git add DHF/
           if ! git diff --staged --quiet; then
             git commit -m "chore: cancel $CR_ID [skip ci]"
@@ -354,7 +353,7 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          medharness approval check --cr "$CR_ID" --stage design --pr "$PR_NUMBER"
+          medharness change verify-approval --cr "$CR_ID" --stage design --pr "$PR_NUMBER"
       - name: Generate implementation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
