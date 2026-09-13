@@ -86,10 +86,11 @@ jobs:
       - name: Run CR closure gate
         env:
           CR_ID: ${{ needs.complete-cr.outputs.cr_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          medharness verify completion \
-            --dhf DHF \
+          medharness --dhf DHF change verify-completion \
             --cr "$CR_ID" \
+            --pr "$PR_NUMBER" \
             --junit-dir test-results/srs \
             --junit-dir test-results/srs-api \
             --junit-dir test-results/sys

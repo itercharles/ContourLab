@@ -97,25 +97,21 @@ def main() -> int:
         # change group
         "change-plan": ("python", "-m", "medharness", "change", "plan", "--help"),
         "change-implement": ("python", "-m", "medharness", "change", "implement", "--help"),
-        # verify group
+        "change-verify-branch": ("python", "-m", "medharness", "change", "verify-branch", "--help"),
+        "change-verify-completion": ("python", "-m", "medharness", "change", "verify-completion", "--help"),
+        # verify group (verify verification removed in 0.25.0 — merged into verify tests)
         "verify-dhf": ("python", "-m", "medharness", "verify", "dhf", "--help"),
-        "verify-branch": ("python", "-m", "medharness", "verify", "branch", "--help"),
         "verify-soup": ("python", "-m", "medharness", "verify", "soup", "--help"),
         "verify-tests": ("python", "-m", "medharness", "verify", "tests", "--help"),
-        "verify-verification": ("python", "-m", "medharness", "verify", "verification", "--help"),
-        "verify-completion": ("python", "-m", "medharness", "verify", "completion", "--help"),
         "verify-classification": ("python", "-m", "medharness", "verify", "classification", "--help"),
         # approval group
         "approval-check": ("python", "-m", "medharness", "approval", "check", "--help"),
         # automation group
         "automation-github-event": ("python", "-m", "medharness", "automation", "github-event", "--help"),
-        # context group (0.23.0+: dhf subgroup removed)
+        # context group
         "context-implementation": ("python", "-m", "medharness", "context", "implementation", "--help"),
-        # release group (0.23.0+: moved from dhfkit)
+        # release group
         "release-baseline": ("python", "-m", "medharness", "release", "baseline", "--help"),
-        # analyse group (0.23.0+)
-        "analyse-risk-impact": ("python", "-m", "medharness", "analyse", "risk-impact", "--help"),
-        "analyse-soup-drift": ("python", "-m", "medharness", "analyse", "soup-drift", "--help"),
     }
 
     help_output: dict[str, str] = {}
@@ -181,13 +177,18 @@ def main() -> int:
         errors,
     )
     require(
-        "medharness --dhf DHF verify branch" in ci_text,
-        "ci-pipeline.yml must call verify branch with global --dhf",
+        "medharness --dhf DHF change verify-branch" in ci_text,
+        "ci-pipeline.yml must call change verify-branch (0.25.0+: verify branch renamed)",
+        errors,
+    )
+    require(
+        "medharness --dhf DHF verify branch" not in ci_text,
+        "ci-pipeline.yml still contains old verify branch — use change verify-branch (0.25.0+)",
         errors,
     )
     require(
         "medharness --dhf DHF ci validate-branch" not in ci_text,
-        "ci-pipeline.yml still contains old ci validate-branch — use verify branch",
+        "ci-pipeline.yml still contains old ci validate-branch — use change verify-branch",
         errors,
     )
     require(
@@ -286,12 +287,22 @@ def main() -> int:
 
     require(
         "medharness --dhf DHF ci cr-complete" not in cr_complete_text,
-        "cr-complete.yml still contains old ci cr-complete — use verify completion",
+        "cr-complete.yml still contains old ci cr-complete — use change verify-completion",
         errors,
     )
     require(
-        "medharness verify completion" in cr_complete_text,
-        "cr-complete.yml must call verify completion for CR closure gate",
+        "medharness verify completion" not in cr_complete_text,
+        "cr-complete.yml still uses old verify completion — use change verify-completion (0.25.0+)",
+        errors,
+    )
+    require(
+        "medharness --dhf DHF change verify-completion" in cr_complete_text,
+        "cr-complete.yml must call change verify-completion for CR closure gate (0.25.0+)",
+        errors,
+    )
+    require(
+        "--pr" in cr_complete_text,
+        "cr-complete.yml must pass --pr to change verify-completion for review-based approval evidence",
         errors,
     )
     require(

@@ -217,7 +217,12 @@ jobs:
             --coverage-pair RISK:RCM
 
       - name: Scan SOUP items for known vulnerabilities (OSV)
-        run: medharness --dhf DHF verify soup
+        run: |
+          medharness --dhf DHF verify soup \
+            --manifest requirements.txt \
+            --manifest package.json \
+            --manifest apps/client/package.json \
+            --manifest packages/shared-types/package.json
 
       - name: Check IEC 62304 safety class and required activities
         continue-on-error: true
@@ -259,7 +264,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           CR_ID=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'CR-[0-9]+')
-          if ! medharness --dhf DHF verify branch \
+          if ! medharness --dhf DHF change verify-branch \
             --cr "$CR_ID" \
             --code-path apps/ \
             --code-path packages/; then
@@ -540,15 +545,6 @@ jobs:
             --requirement-type SYS \
             --requirement-type CRS
 
-      - name: Run verification completeness gate
-        run: |
-          medharness verify verification \
-            --dhf DHF \
-            --junit-dir test-results/srs \
-            --junit-dir test-results/srs-api \
-            --junit-dir test-results/sys \
-            --requirement-type SRS \
-            --requirement-type SYS
 
   # ── ARTIFACTS (main only) ─────────────────────────────────────────────────
   # After acceptance passes on main: generate DHF documents and traceability PDF.
