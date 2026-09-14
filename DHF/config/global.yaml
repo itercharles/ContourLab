@@ -199,9 +199,3 @@ document_specifications:
     output: DHF/documents/specs/Change_Request_Specification.md
     doc_type_name: Change Request
 
-test_integration:
-  result_store:
-    path: test-results/results.yaml
-  manual:
-    require_verified_by: true
-    require_verification_date: true
