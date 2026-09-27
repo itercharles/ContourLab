@@ -39,7 +39,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          dhfkit --dhf DHF item transition "$CR_ID" completed
+          medharness --dhf DHF item transition "$CR_ID" completed
           git add DHF/
           if ! git diff --staged --quiet; then
             BRANCH_NAME="chore/complete-$CR_ID"

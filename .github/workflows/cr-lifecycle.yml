@@ -152,7 +152,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin "$BRANCH" --depth 1
           git checkout "origin/$BRANCH" -- "DHF/items/09_cr/$CR_ID.yaml"
-          dhfkit --dhf DHF item transition \
+          medharness --dhf DHF item transition \
             "$CR_ID" cancelled
           git add DHF/
           if ! git diff --staged --quiet; then
@@ -253,7 +253,7 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          if ! python -m medharness --dhf DHF verify dhf --fail-on-uncovered; then
+          if ! python -m medharness --dhf DHF verify dhf --strict; then
             gh pr comment "$PR_NUMBER" \
               --body "⚠️ DHF traceability check failed after design generation for $CR_ID. Correct the DHF items and re-approve to retry."
             exit 1
@@ -391,8 +391,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if [ "$(dhfkit --dhf DHF item get "$CR_ID" | jq -r .status)" = "design" ]; then
-            dhfkit --dhf DHF item transition "$CR_ID" develop
+          if [ "$(medharness --dhf DHF item get "$CR_ID" | jq -r .status)" = "design" ]; then
+            medharness --dhf DHF item transition "$CR_ID" develop
           fi
           git add -A
           COMMITTED=false

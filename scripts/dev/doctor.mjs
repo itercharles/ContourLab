@@ -38,7 +38,7 @@ async function main() {
   printSection('DHF');
   const medharnessFound = await capture('medharness', ['--version']);
   if (medharnessFound.ok) {
-    ok = (await checkCommand('medharness', ['--dhf', 'DHF', 'doctor'], 'MedHarness DHF')) && ok;
+    ok = (await checkCommand('medharness', ['--dhf', 'DHF', 'verify', 'dhf'], 'MedHarness DHF')) && ok;
   } else {
     console.log('SKIP MedHarness DHF (not installed — run: pip install -r requirements.txt)');
   }

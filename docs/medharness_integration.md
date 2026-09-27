@@ -8,8 +8,8 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ## Current Pin
 
-- `medharness[docs]==0.43.2`
-- `dhfkit` is consumed through the pinned MedHarness install
+- `medharness[docs]==0.44.0`
+- One CLI, `medharness`; `dhfkit` is a library inside it with no command of its own
 
 ## Sources Of Truth
 
@@ -25,20 +25,20 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ### Issue Intake And CR Lifecycle
 
-- `dhfkit --dhf DHF item create --type CR --data ...` (`issue-to-cr.yml`)
+- `medharness --dhf DHF item create --type CR --data ...` (`issue-to-cr.yml`)
 - `medharness --dhf DHF build plan --cr CR-NNN [--pr N]` (design generation and revision)
 - `medharness --dhf DHF build code --cr CR-NNN [--pr N]` (implementation and revision)
 - Event routing (event → CR, stage, action) is plain shell in `cr-lifecycle.yml`'s `detect` job: the stage comes from the PR's `cr:stage/<stage>` label or the dispatch input
 - `medharness workflow check-approval --pr N` (review on the current head commit)
-- `dhfkit --dhf DHF item get CR-NNN` (implementation plan for the PR comment)
-- `dhfkit --dhf DHF item transition CR-NNN <state>` (cancel, complete)
+- `medharness --dhf DHF item get CR-NNN` (implementation plan for the PR comment)
+- `medharness --dhf DHF item transition CR-NNN <state>` (cancel, complete)
 
 ### CI Gates
 
 Every gate prints `{gate, passed, summary, errors, warnings}` to stdout and
 exits 0 (pass), 1 (fail) or 2 (usage error).
 
-- `medharness --dhf DHF verify dhf --fail-on-uncovered`
+- `medharness --dhf DHF verify dhf --strict`
 - `medharness --dhf DHF verify soup --manifest ...`
 - `medharness --dhf DHF verify tests --junit DIR ...`
 - `medharness --dhf DHF workflow check-changes --cr CR-NNN --since-ref origin/main --code-path ...`
@@ -69,5 +69,5 @@ When bumping MedHarness:
 
 1. Update `requirements.txt` and `.github/actions/medharness-setup/action.yml`.
 2. Run `python scripts/ci/check_medharness_contract.py`.
-3. Run `medharness --dhf DHF doctor` and `medharness --dhf DHF verify dhf`.
+3. Run `medharness --dhf DHF verify dhf`.
 4. Update this document only if the adopted command surface changed.

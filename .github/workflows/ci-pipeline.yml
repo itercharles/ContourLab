@@ -205,7 +205,7 @@ jobs:
 
       - name: Run DHF validation
         run: |
-          medharness --dhf DHF verify dhf --fail-on-uncovered
+          medharness --dhf DHF verify dhf --strict
 
       - name: Scan SOUP items for known vulnerabilities (OSV)
         run: |
@@ -612,18 +612,10 @@ jobs:
             --manifest package.json \
             --manifest apps/client/package.json \
             --manifest packages/shared-types/package.json \
-            --traceability-type UC \
-            --traceability-type CRS \
-            --traceability-type SYS \
-            --traceability-type SRS \
-            --traceability-type SWDD \
             --junit test-results/srs \
             --junit test-results/srs-api \
             --junit test-results/sys \
-            --junit test-results/crs \
-            --run-id "${{ github.run_id }}" \
-            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --commit "${{ github.sha }}"
+            --junit test-results/crs
 
       - name: Upload DHF artifacts
         if: always()
