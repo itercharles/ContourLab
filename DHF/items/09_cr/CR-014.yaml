@@ -77,5 +77,4 @@ implementation_notes: "## Overview\nCR-014 adds a dedicated Release Notes page t
   \ in a running dev server; verify the page renders correctly with at least one release\
   \ entry."
 affected_items:
-- CR-014
 - SYSARCH-001
