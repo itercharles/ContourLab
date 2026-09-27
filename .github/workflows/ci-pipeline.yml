@@ -523,6 +523,23 @@ jobs:
             --junit test-results/sys \
             --junit test-results/crs
 
+      # Before the merge, so a CR that did not deliver what it recorded cannot land.
+      - name: Run CR closure gate
+        if: |
+          github.event_name == 'pull_request' &&
+          startsWith(github.event.pull_request.head.ref, 'feat/CR-') &&
+          contains(github.event.pull_request.labels.*.name, 'cr:stage/code')
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+')
+          medharness --dhf DHF verify completion \
+            --cr "$CR_ID" \
+            --junit test-results/srs \
+            --junit test-results/srs-api \
+            --junit test-results/sys \
+            --junit test-results/crs
+
 
   # ── ARTIFACTS (main only) ─────────────────────────────────────────────────
   # After acceptance passes on main: generate DHF documents and traceability PDF.

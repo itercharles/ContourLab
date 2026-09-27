@@ -145,6 +145,7 @@ def main() -> int:
             "medharness --dhf DHF verify tests",
             "medharness --dhf DHF workflow check-changes",
             "medharness --dhf DHF build release",
+            "medharness --dhf DHF verify completion",
         ],
         "cr-lifecycle.yml": [
             "medharness --dhf DHF build plan",
@@ -159,7 +160,6 @@ def main() -> int:
         ],
         "cr-complete.yml": [
             "dhfkit --dhf DHF item transition",
-            "medharness --dhf DHF verify completion",
             "gh pr create",
         ],
         "soup-sync.yml": ["medharness --dhf DHF build soup"],
@@ -197,6 +197,13 @@ def main() -> int:
             f"{filename} has a bare `git push` — push a branch and open a PR instead",
             errors,
         )
+
+    # The closure gate belongs before the merge, where it can block one.
+    require(
+        "verify completion" not in texts["cr-complete.yml"],
+        "cr-complete.yml runs verify completion after the merge — run it on the CR PR in ci-pipeline.yml",
+        errors,
+    )
 
     for v in check_workflow_step_refs(texts):
         require(False, v, errors)
