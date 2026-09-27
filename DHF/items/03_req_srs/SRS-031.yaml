@@ -19,5 +19,4 @@ testing: 'T1: Given the release notes page, it renders the release data with at 
   version.
 
   '
-critical_safety: false
 type: SRS
