@@ -8,14 +8,16 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ## Current Pin
 
-- `medharness[full]==0.8.0`
+- `medharness[docs]==0.38.1`
 - `dhfkit` is consumed through the pinned MedHarness install
 
 ## Sources Of Truth
 
 - DHF root: `DHF/`
 - CR items: `DHF/items/09_cr/CR-NNN.yaml`
-- generated reviews: `docs/reviews/CR-NNN-Code-Review.md`
+- DHF config: `DHF/config/global.yaml` holds only ContourLab's overrides; every
+  other default (doc types, lifecycle, traceability rules, spec templates) comes
+  from the installed package
 - MedHarness setup action: [`.github/actions/medharness-setup/action.yml`](../.github/actions/medharness-setup/action.yml)
 - contract guard: [`scripts/ci/check_medharness_contract.py`](../scripts/ci/check_medharness_contract.py)
 
@@ -23,40 +25,37 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ### Issue Intake And CR Lifecycle
 
-- `medharness cr workflow intake-github-issue-ci`
-- `python -m medharness --dhf DHF ci generate-dhf`
-- `python -m medharness --dhf DHF ci develop-cr`
-- `python -m medharness ci github-event`
-- `python -m medharness ci approve-gate`
-- `python -m medharness ci advance-stage`
-- `python -m medharness --dhf DHF ci cr-status`
-- `medharness cr workflow complete-from-github-pr`
-- `medharness --dhf DHF dhf item transition CR-NNN ...`
+- `dhfkit --dhf DHF item create --type CR --data ...` (`issue-to-cr.yml`)
+- `medharness --dhf DHF build plan --cr CR-NNN [--pr N]` (design generation and revision)
+- `medharness --dhf DHF build code --cr CR-NNN [--pr N]` (implementation and revision)
+- `medharness workflow github-event ...` (event → CR, stage, action)
+- `medharness workflow check-approval --cr CR-NNN --pr N` (review on the current head commit)
+- `medharness --dhf DHF context --cr CR-NNN` (implementation plan for the PR comment)
+- `dhfkit --dhf DHF item transition CR-NNN <state>` (cancel, complete)
 
 ### CI Gates
 
-- `medharness ci dhf-validate --dhf DHF ...`
-- `medharness --dhf DHF ci validate-branch ...`
-- `medharness --dhf DHF ci validate-code ...`
-- `medharness ci test-coverage --dhf DHF --junit-dir ...`
-- `medharness --dhf DHF ci evidence bundle --out-dir ...`
+Every gate prints `{gate, passed, summary, errors, warnings}` to stdout and
+exits 0 (pass), 1 (fail) or 2 (usage error).
 
-### DHF Helpers
+- `medharness --dhf DHF verify dhf --fail-on-uncovered`
+- `medharness --dhf DHF verify soup --manifest ...`
+- `medharness --dhf DHF verify tests --junit-dir ...`
+- `medharness --dhf DHF workflow check-changes --cr CR-NNN --since-ref origin/main --code-path ...`
+- `medharness --dhf DHF verify completion --cr CR-NNN --junit-dir ...`
 
-- `medharness --dhf DHF dhf context implementation ...`
-- `dhfkit --dhf DHF report`
+### Artifacts And Releases
 
-`dhf report` moved out of `medharness` and now comes from `dhfkit`. The CI
-contract checker already enforces that split.
+- `medharness --dhf DHF build release --version ... --out-dir ...` — dry run on
+  every main push (evidence bundle); with `--write` in `release-baseline.yml` to
+  record a REL item
+- `medharness --dhf DHF build dhf --manifest ... [--write]` — SOUP register sync
 
 ## Usage Notes
 
-- Commands that read DHF items require the global `--dhf DHF` flag before the
-  subcommand.
-- `generate-dhf` and `develop-cr` automatically manage Claude session threading
-  when `--pr N` is supplied.
-- `docs/reviews/` is intentionally tracked so generated review markdown can be
-  committed by workflow runs.
+- `--dhf PATH` goes before the command on both CLIs and defaults to `DHF`.
+- Workflows that record a DHF change from `main` (complete, cancel, SOUP sync,
+  release) push a `chore/*` branch and open a PR; `main` is protected.
 
 ## Update Checklist
 
@@ -64,5 +63,5 @@ When bumping MedHarness:
 
 1. Update `requirements.txt` and `.github/actions/medharness-setup/action.yml`.
 2. Run `python scripts/ci/check_medharness_contract.py`.
-3. Run `medharness --dhf DHF doctor`.
+3. Run `medharness --dhf DHF doctor` and `medharness --dhf DHF verify dhf`.
 4. Update this document only if the adopted command surface changed.

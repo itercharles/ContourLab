@@ -16,8 +16,7 @@ jobs:
     runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: write
-    outputs:
-      cr_id: ${{ steps.complete.outputs.cr_id }}
+      pull-requests: write
     steps:
       - name: Check out repo
         uses: actions/checkout@v5
@@ -29,19 +28,31 @@ jobs:
 
       - name: Complete CR
         id: complete
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RESULT=$(medharness cr workflow complete-from-github-pr \
-            --dhf-repo . \
-            --event "$GITHUB_EVENT_PATH" \
-            --by "github-actions[bot]" \
-            --push)
-          echo "$RESULT"
-          CR_ID=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cr_id',''))" 2>/dev/null || true)
-          echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          CR_ID=$(echo "$BRANCH" | grep -oE 'CR-[0-9]+')
+          if [ -z "$CR_ID" ]; then
+            echo "::error::Could not extract CR ID from branch $BRANCH" >&2
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          dhfkit --dhf DHF item transition "$CR_ID" completed
+          git add DHF/
+          if ! git diff --staged --quiet; then
+            BRANCH_NAME="chore/complete-$CR_ID"
+            git checkout -b "$BRANCH_NAME"
+            git commit -m "chore: complete $CR_ID"
+            git push origin "$BRANCH_NAME"
+            gh pr create --base main --head "$BRANCH_NAME" \
+              --title "chore: complete $CR_ID" \
+              --body "Lifecycle transition to completed for $CR_ID, merged via PR #${{ github.event.pull_request.number }}."
+          fi
 
   closure-gate:
-    needs: complete-cr
-    if: needs.complete-cr.outputs.cr_id != ''
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'feat/CR-')
     runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: read
@@ -77,27 +88,11 @@ jobs:
           fi
 
       - name: Run CR closure gate
-        env:
-          CR_ID: ${{ needs.complete-cr.outputs.cr_id }}
         run: |
-          medharness verify completion \
-            --dhf DHF \
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          CR_ID=$(echo "$BRANCH" | grep -oE 'CR-[0-9]+')
+          medharness --dhf DHF verify completion \
             --cr "$CR_ID" \
             --junit-dir test-results/srs \
             --junit-dir test-results/srs-api \
             --junit-dir test-results/sys
-
-  # Squash merges of a CR branch can inherit [skip ci] from intermediate
-  # lifecycle / transition commits, which suppresses the push-to-main Product
-  # CI/CD run. Fire it explicitly via workflow_dispatch — that event ignores
-  # [skip ci].
-  trigger-ci-on-main:
-    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'feat/CR-')
-    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
-    permissions:
-      actions: write
-    steps:
-      - name: Trigger Product CI/CD on main
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run ci-pipeline.yml --repo "${{ github.repository }}" --ref main

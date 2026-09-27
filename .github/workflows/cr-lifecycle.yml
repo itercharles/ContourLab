@@ -62,7 +62,7 @@ jobs:
       - name: Plan lifecycle action
         id: plan
         run: |
-          python -m medharness automation github-event \
+          python -m medharness workflow github-event \
             --stage-label-prefix "cr:stage/" \
             --dispatch-action design=gen-code \
             --dispatch-action code=code-approved \
@@ -107,17 +107,6 @@ jobs:
           fi
           echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
 
-      - name: CR status (observability)
-        if: always()
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          CR_ID=$(jq -r '.cr_id // ""' /tmp/event-plan.json)
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          [ -n "$CR_ID" ] && medharness --dhf DHF change status \
-            --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} \
-            --branch "${{ github.head_ref || github.ref_name }}"
 
   # ── CANCEL ────────────────────────────────────────────────────────────────
 
@@ -128,6 +117,7 @@ jobs:
     runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -137,6 +127,8 @@ jobs:
       - uses: ./.github/actions/medharness-setup
 
       - name: Cancel CR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CR_ID="${{ needs.detect.outputs.cr_id }}"
           BRANCH="${{ needs.detect.outputs.branch }}"
@@ -145,12 +137,16 @@ jobs:
           git fetch origin "$BRANCH" --depth 1
           git checkout "origin/$BRANCH" -- "DHF/items/09_cr/$CR_ID.yaml"
           dhfkit --dhf DHF item transition \
-            "$CR_ID" cancelled \
-            --by "github-actions[bot]"
+            "$CR_ID" cancelled
           git add DHF/
           if ! git diff --staged --quiet; then
-            git commit -m "chore: cancel $CR_ID [skip ci]"
-            git push
+            CANCEL_BRANCH="chore/cancel-$CR_ID"
+            git checkout -b "$CANCEL_BRANCH"
+            git commit -m "chore: cancel $CR_ID"
+            git push origin "$CANCEL_BRANCH"
+            gh pr create --base main --head "$CANCEL_BRANCH" \
+              --title "chore: cancel $CR_ID" \
+              --body "Lifecycle transition to cancelled for $CR_ID after its PR was closed without merging."
           fi
 
   # ── DESIGN: GENERATE ──────────────────────────────────────────────────────
@@ -180,7 +176,7 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF change plan --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/generate-dhf-out.json
+          python -m medharness --dhf DHF build plan --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/generate-dhf-out.json
 
       - name: Upload design payload
         if: always()
@@ -244,16 +240,7 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          if ! python -m medharness verify dhf \
-            --dhf DHF \
-            --run-schema \
-            --run-traceability \
-            --coverage-pair UC:CRS \
-            --coverage-pair CRS:SYS \
-            --coverage-pair SYS:SRS \
-            --coverage-pair SRS:SWDD \
-            --coverage-pair SYS:SYSARCH \
-            --coverage-pair RISK:RCM; then
+          if ! python -m medharness --dhf DHF verify dhf --fail-on-uncovered; then
             gh pr comment "$PR_NUMBER" \
               --body "⚠️ DHF traceability check failed after design generation for $CR_ID. Correct the DHF items and re-approve to retry."
             exit 1
@@ -265,11 +252,8 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
           ISSUE_NUMBER: ${{ needs.detect.outputs.issue_number }}
         run: |
-          medharness change advance \
-            --pr "$PR_NUMBER" \
-            --from-stage cr \
-            --to-stage design \
-            ${ISSUE_NUMBER:+--issue "$ISSUE_NUMBER"}
+          gh pr edit "$PR_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/design" 2>/dev/null || true
+          [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/cr" --add-label "cr:stage/design" 2>/dev/null || true
 
   # ── DESIGN: REVISE ────────────────────────────────────────────────────────
 
@@ -300,7 +284,7 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF change plan --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-generate-dhf-out.json
+          python -m medharness --dhf DHF build plan --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-generate-dhf-out.json
 
       - name: Upload revise-design payload
         if: always()
@@ -368,7 +352,7 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          medharness approval check --cr "$CR_ID" --stage design --pr "$PR_NUMBER"
+          medharness workflow check-approval --cr "$CR_ID" --pr "$PR_NUMBER"
       - name: Generate implementation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -378,7 +362,7 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF change implement --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/develop-out.json
+          python -m medharness --dhf DHF build code --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/develop-out.json
 
       - name: Upload develop payload
         if: always()
@@ -436,18 +420,13 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
           ISSUE_NUMBER: ${{ needs.detect.outputs.issue_number }}
         run: |
-          medharness change advance \
-            --pr "$PR_NUMBER" \
-            --from-stage design \
-            --to-stage code \
-            ${ISSUE_NUMBER:+--issue "$ISSUE_NUMBER"}
+          gh pr edit "$PR_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code"
+          [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code" 2>/dev/null || true
           gh pr ready "$PR_NUMBER" 2>/dev/null || true
 
       - name: Push and wait for CI
         # We push manually here rather than letting the checkout push because
-        # we need to watch the resulting CI run. Squash-merging the feat/* branch
-        # later will inherit [skip ci] from intermediate commits, so cr-complete.yml
-        # fires workflow_dispatch on main to re-trigger the full suite.
+        # we need to watch the resulting CI run.
         if: env.COMMITTED == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -526,7 +505,7 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF change implement --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-code-out.json
+          python -m medharness --dhf DHF build code --cr "$CR_ID" --pr "$PR_NUMBER" | tee /tmp/revise-code-out.json
 
       - name: Upload revise-code payload
         if: always()

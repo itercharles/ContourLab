@@ -16,13 +16,18 @@ CI_PIPELINE = REPO_ROOT / ".github" / "workflows" / "ci-pipeline.yml"
 CR_LIFECYCLE = REPO_ROOT / ".github" / "workflows" / "cr-lifecycle.yml"
 ISSUE_TO_CR = REPO_ROOT / ".github" / "workflows" / "issue-to-cr.yml"
 CR_COMPLETE = REPO_ROOT / ".github" / "workflows" / "cr-complete.yml"
+SOUP_SYNC = REPO_ROOT / ".github" / "workflows" / "soup-sync.yml"
+RELEASE_BASELINE = REPO_ROOT / ".github" / "workflows" / "release-baseline.yml"
 MEDHARNESS_ACTION = REPO_ROOT / ".github" / "actions" / "medharness-setup" / "action.yml"
 REQUIREMENTS_TXT = REPO_ROOT / "requirements.txt"
 
 
 def run(*args: str) -> tuple[int, str]:
+    cmd = list(args)
+    if cmd and cmd[0] == "python":
+        cmd[0] = sys.executable
     result = subprocess.run(
-        list(args),
+        cmd,
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
@@ -91,38 +96,24 @@ def main() -> int:
     errors: list[str] = []
 
     help_commands = {
-        # change group (formerly ci generate-dhf / develop-cr / cr-status / advance-stage)
-        "change-plan": ("python", "-m", "medharness", "change", "plan", "--help"),
-        "change-implement": ("python", "-m", "medharness", "change", "implement", "--help"),
-        "change-status": ("python", "-m", "medharness", "change", "status", "--help"),
-        "change-advance": ("python", "-m", "medharness", "change", "advance", "--help"),
-        # verify group (formerly ci validate-branch / validate-code)
-        "verify-branch": ("python", "-m", "medharness", "verify", "branch", "--help"),
-        "verify-code": ("python", "-m", "medharness", "verify", "code", "--help"),
-        # approval group (formerly ci approve-gate)
-        "approval-check": ("python", "-m", "medharness", "approval", "check", "--help"),
-        # automation group (formerly ci claude-session get/put)
-        "session-get": ("python", "-m", "medharness", "automation", "session", "get", "--help"),
-        "session-put": ("python", "-m", "medharness", "automation", "session", "put", "--help"),
-        # verify group (0.11.0+)
-        "verify-soup": ("python", "-m", "medharness", "verify", "soup", "--help"),
-        "verify-completion": ("python", "-m", "medharness", "verify", "completion", "--help"),
-        "verify-classification": ("python", "-m", "medharness", "verify", "classification", "--help"),
-        # cr workflow group (0.13.0+)
-        "cr-check-status": ("python", "-m", "medharness", "cr", "check-status", "--help"),
-        "cr-workflow-complete": ("python", "-m", "medharness", "cr", "workflow", "complete", "--help"),
-        # dhfkit data-layer commands (unchanged)
-        "dhf-report": ("dhfkit", "--dhf", ".", "report", "--help"),
-        "dhf-context-implementation": ("python", "-m", "medharness", "dhf", "context", "implementation", "--help"),
-        "dhfkit-soup-sync": ("dhfkit", "--dhf", ".", "soup-sync", "--help"),
-        "dhfkit-release-baseline": ("dhfkit", "--dhf", ".", "release-baseline", "--help"),
+        "verify dhf": ("python", "-m", "medharness", "verify", "dhf", "--help"),
+        "verify tests": ("python", "-m", "medharness", "verify", "tests", "--help"),
+        "verify soup": ("python", "-m", "medharness", "verify", "soup", "--help"),
+        "verify completion": ("python", "-m", "medharness", "verify", "completion", "--help"),
+        "build plan": ("python", "-m", "medharness", "build", "plan", "--help"),
+        "build code": ("python", "-m", "medharness", "build", "code", "--help"),
+        "build dhf": ("python", "-m", "medharness", "build", "dhf", "--help"),
+        "build release": ("python", "-m", "medharness", "build", "release", "--help"),
+        "workflow check-changes": ("python", "-m", "medharness", "workflow", "check-changes", "--help"),
+        "workflow check-approval": ("python", "-m", "medharness", "workflow", "check-approval", "--help"),
+        "workflow github-event": ("python", "-m", "medharness", "workflow", "github-event", "--help"),
+        "context": ("python", "-m", "medharness", "context", "--help"),
+        "dhfkit item": ("python", "-m", "dhfkit", "item", "--help"),
+        "dhfkit validate": ("python", "-m", "dhfkit", "validate", "--help"),
     }
-
-    help_output: dict[str, str] = {}
     for name, command in help_commands.items():
-        code, output = run(*command)
-        require(code == 0, f"{name} --help failed", errors)
-        help_output[name] = output
+        code, _ = run(*command)
+        require(code == 0, f"`{name} --help` failed — command missing from the pinned medharness", errors)
 
     action_text = MEDHARNESS_ACTION.read_text(encoding="utf-8")
     req_text = REQUIREMENTS_TXT.read_text(encoding="utf-8")
@@ -140,163 +131,72 @@ def main() -> int:
         if not req_match:
             errors.append("requirements.txt does not contain a pinned medharness==X.Y.Z line")
 
-    ci_text = CI_PIPELINE.read_text(encoding="utf-8")
-    cr_text = CR_LIFECYCLE.read_text(encoding="utf-8")
-    issue_to_cr_text = ISSUE_TO_CR.read_text(encoding="utf-8")
-    cr_complete_text = CR_COMPLETE.read_text(encoding="utf-8")
+    texts = {
+        "ci-pipeline.yml": CI_PIPELINE.read_text(encoding="utf-8"),
+        "cr-lifecycle.yml": CR_LIFECYCLE.read_text(encoding="utf-8"),
+        "issue-to-cr.yml": ISSUE_TO_CR.read_text(encoding="utf-8"),
+        "cr-complete.yml": CR_COMPLETE.read_text(encoding="utf-8"),
+        "soup-sync.yml": SOUP_SYNC.read_text(encoding="utf-8"),
+        "release-baseline.yml": RELEASE_BASELINE.read_text(encoding="utf-8"),
+    }
 
-    require(
-        "python -m medharness --dhf DHF change plan" in cr_text,
-        "cr-lifecycle.yml must call change plan with global --dhf",
-        errors,
-    )
-    require(
-        "python -m medharness --dhf DHF change implement" in cr_text,
-        "cr-lifecycle.yml must call change implement with global --dhf",
-        errors,
-    )
-    require(
-        "python -m medharness --dhf DHF ci generate-dhf" not in cr_text,
-        "cr-lifecycle.yml still contains old ci generate-dhf call — use change plan",
-        errors,
-    )
-    require(
-        "python -m medharness --dhf DHF ci design-cr" not in cr_text,
-        "cr-lifecycle.yml must not call design-cr",
-        errors,
-    )
-    require(
-        "python -m medharness --dhf DHF ci analyze-cr" not in cr_text,
-        "cr-lifecycle.yml must not call analyze-cr",
-        errors,
-    )
-    require(
-        "python -m medharness --dhf DHF ci validate-design" not in cr_text,
-        "cr-lifecycle.yml must not call validate-design",
-        errors,
-    )
-    require(
-        "medharness --dhf DHF verify soup" in ci_text,
-        "ci-pipeline.yml must call verify soup to gate on SOUP CVEs (0.11.0+)",
-        errors,
-    )
-    require(
-        "medharness --dhf DHF verify branch" in ci_text,
-        "ci-pipeline.yml must call verify branch with global --dhf",
-        errors,
-    )
-    require(
-        "medharness --dhf DHF verify code" in ci_text,
-        "ci-pipeline.yml must call verify code with global --dhf",
-        errors,
-    )
-    require(
-        "medharness --dhf DHF ci validate-branch" not in ci_text,
-        "ci-pipeline.yml still contains old ci validate-branch — use verify branch",
-        errors,
-    )
-    require(
-        "medharness --dhf DHF ci validate-code" not in ci_text,
-        "ci-pipeline.yml still contains old ci validate-code — use verify code",
-        errors,
-    )
-    require(
-        "design-cr" not in cr_text,
-        "cr-lifecycle.yml still contains design-cr references",
-        errors,
-    )
-    require(
-        "analyze-cr" not in cr_text,
-        "cr-lifecycle.yml still contains analyze-cr references",
-        errors,
-    )
-    require(
-        "validate-design" not in cr_text,
-        "cr-lifecycle.yml still contains validate-design references",
-        errors,
-    )
+    required = {
+        "ci-pipeline.yml": [
+            "medharness --dhf DHF verify dhf",
+            "medharness --dhf DHF verify soup",
+            "medharness --dhf DHF verify tests",
+            "medharness --dhf DHF workflow check-changes",
+            "medharness --dhf DHF build release",
+        ],
+        "cr-lifecycle.yml": [
+            "medharness workflow github-event",
+            "medharness --dhf DHF build plan",
+            "medharness --dhf DHF build code",
+            "medharness workflow check-approval",
+            "dhfkit --dhf DHF item transition",
+        ],
+        "issue-to-cr.yml": [
+            "dhfkit --dhf DHF item create --type CR",
+            "medharness --dhf DHF build plan",
+            "medharness --dhf DHF context",
+        ],
+        "cr-complete.yml": [
+            "dhfkit --dhf DHF item transition",
+            "medharness --dhf DHF verify completion",
+            "gh pr create",
+        ],
+        "soup-sync.yml": ["medharness --dhf DHF build dhf"],
+        "release-baseline.yml": ["medharness --dhf DHF build release", "gh pr create"],
+    }
+    for filename, needles in required.items():
+        for needle in needles:
+            require(needle in texts[filename], f"{filename} must call `{needle}`", errors)
 
-    require(
-        "cr=gen-design" not in cr_text,
-        "cr-lifecycle.yml must not have cr=gen-design dispatch action",
-        errors,
-    )
-    require(
-        "cr-no-revise" not in cr_text,
-        "cr-lifecycle.yml must not reference cr-no-revise",
-        errors,
-    )
-    require(
-        '--label "cr:stage/cr"' not in issue_to_cr_text,
-        "issue-to-cr.yml must not open PRs with cr:stage/cr label",
-        errors,
-    )
-    require(
-        "python -m medharness --dhf DHF change plan" in issue_to_cr_text,
-        "issue-to-cr.yml must call change plan inline at intake",
-        errors,
-    )
-    require(
-        "python -m medharness --dhf DHF ci generate-dhf" not in issue_to_cr_text,
-        "issue-to-cr.yml still contains old ci generate-dhf — use change plan",
-        errors,
-    )
+    # Retired in 0.32–0.38 (see MedHarness tests/guards/test_the_verbs_are_the_surface.py).
+    retired = [
+        r"medharness (?:--dhf \S+ )?(?:change|automation|soup-sync|upgrade|evidence|release)\b",
+        r"verify (?:classification|branch|verification|plans|code)\b",
+        r"context (?:overview|implementation|for-stage)\b",
+        r"dhfkit (?:--dhf \S+ )?(?:validate schema|doc generate|doc export|report)\b",
+        r"--(?:run-schema|run-traceability|coverage-pair|requirement-type|continue-on-gate-failure)\b",
+        r"check-approval[^\n]*--stage\b",
+        r"\[skip ci\]",
+    ]
+    for filename, text in texts.items():
+        for pattern in retired:
+            match = re.search(pattern, text)
+            require(match is None, f"{filename} uses retired form `{match.group(0) if match else ''}`", errors)
 
-    require(
-        "dhfkit --dhf DHF report" in ci_text,
-        "ci-pipeline.yml must emit a dhf report step via dhfkit for human-readable traceability output",
-        errors,
-    )
-    require(
-        "medharness --dhf DHF dhf context implementation" in issue_to_cr_text,
-        "issue-to-cr.yml must use dhf context implementation to post the plan comment — no inline YAML parsing",
-        errors,
-    )
-    require(
-        "yaml.safe_load" not in issue_to_cr_text,
-        "issue-to-cr.yml must not parse CR YAML inline — use dhf context implementation",
-        errors,
-    )
+    # These check out main; a push straight to it fails on a protected branch (GH006).
+    for filename in ("cr-complete.yml", "soup-sync.yml", "release-baseline.yml"):
+        text = texts[filename]
+        require(
+            re.search(r"^\s*git push\s*$", text, flags=re.MULTILINE) is None,
+            f"{filename} has a bare `git push` — push a branch and open a PR instead",
+            errors,
+        )
 
-    require(
-        "medharness approval check" in cr_text,
-        "cr-lifecycle.yml must call approval check before change implement to guard against event misclassification",
-        errors,
-    )
-    require(
-        "medharness --dhf DHF change status" in cr_text,
-        "cr-lifecycle.yml must emit a change status step for observability in the detect job",
-        errors,
-    )
-
-    require(
-        "medharness change advance" in cr_text,
-        "cr-lifecycle.yml must use change advance for label management — no raw gh api label calls",
-        errors,
-    )
-
-    require(
-        "medharness --dhf DHF ci cr-complete" not in cr_complete_text,
-        "cr-complete.yml still contains old ci cr-complete — use verify completion",
-        errors,
-    )
-    require(
-        "medharness verify completion" in cr_complete_text,
-        "cr-complete.yml must call verify completion for CR closure gate",
-        errors,
-    )
-    require(
-        "medharness --dhf DHF verify classification" in ci_text,
-        "ci-pipeline.yml must call verify classification (IEC 62304 §4.3 safety class check)",
-        errors,
-    )
-
-    for v in check_workflow_step_refs({
-        "ci-pipeline.yml": ci_text,
-        "cr-lifecycle.yml": cr_text,
-        "issue-to-cr.yml": issue_to_cr_text,
-        "cr-complete.yml": cr_complete_text,
-    }):
+    for v in check_workflow_step_refs(texts):
         require(False, v, errors)
 
     if errors:
