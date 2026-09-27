@@ -212,16 +212,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add DHF/
           if ! git diff --staged --quiet; then
-            COMMIT_BODY=""
+            # What this run staged; files_changed/items_changed span the whole branch.
+            COMMIT_BODY="$(git diff --cached --stat | tail -1)"
             if [ -f /tmp/generate-dhf-out.json ]; then
-              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/generate-dhf-out.json)
-              CREATED=$(jq -r '.artifacts.items_changed.created | join(", ")' /tmp/generate-dhf-out.json)
-              UPDATED=$(jq -r '.artifacts.items_changed.updated | join(", ")' /tmp/generate-dhf-out.json)
-              DELETED=$(jq -r '.artifacts.items_changed.deleted | join(", ")' /tmp/generate-dhf-out.json)
-              [ -n "$CREATED" ] && COMMIT_BODY="${COMMIT_BODY}Created: ${CREATED}"$'\n'
-              [ -n "$UPDATED" ] && COMMIT_BODY="${COMMIT_BODY}Updated: ${UPDATED}"$'\n'
-              [ -n "$DELETED" ] && COMMIT_BODY="${COMMIT_BODY}Deleted: ${DELETED}"$'\n'
-              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
+              COMMIT_BODY="${COMMIT_BODY}"$'\n'"Outcome: $(jq -r '.outcome // "unknown"' /tmp/generate-dhf-out.json)"
             fi
             if [ -n "$COMMIT_BODY" ]; then
               git commit -m "feat: design $CR_ID" -m "$COMMIT_BODY"
@@ -247,9 +241,9 @@ jobs:
           SUMMARY=$(jq -r '.summary // ""' /tmp/generate-dhf-out.json)
           BODY="**Design output for $CR_ID**"$'\n'
           [ -n "$SUMMARY" ] && BODY="${BODY}"$'\n'"$SUMMARY"$'\n'
-          [ -n "$CREATED" ] && BODY="${BODY}"$'\n'"**Created:** $CREATED"$'\n'
-          [ -n "$UPDATED" ] && BODY="${BODY}"$'\n'"**Updated:** $UPDATED"$'\n'
-          [ -n "$DELETED" ] && BODY="${BODY}"$'\n'"**Deleted:** $DELETED"$'\n'
+          [ -n "$CREATED" ] && BODY="${BODY}"$'\n'"**Created on the branch:** $CREATED"$'\n'
+          [ -n "$UPDATED" ] && BODY="${BODY}"$'\n'"**Updated on the branch:** $UPDATED"$'\n'
+          [ -n "$DELETED" ] && BODY="${BODY}"$'\n'"**Deleted on the branch:** $DELETED"$'\n'
           BODY="${BODY}"$'\n'"The implementation plan is written to \`DHF/items/09_cr/$CR_ID.yaml\` in \`implementation_notes\`."
           gh pr comment "$PR_NUMBER" --body "$BODY"
 
@@ -323,16 +317,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add DHF/
           if ! git diff --staged --quiet; then
-            COMMIT_BODY=""
+            # What this run staged; files_changed/items_changed span the whole branch.
+            COMMIT_BODY="$(git diff --cached --stat | tail -1)"
             if [ -f /tmp/revise-generate-dhf-out.json ]; then
-              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-generate-dhf-out.json)
-              CREATED=$(jq -r '.artifacts.items_changed.created | join(", ")' /tmp/revise-generate-dhf-out.json)
-              UPDATED=$(jq -r '.artifacts.items_changed.updated | join(", ")' /tmp/revise-generate-dhf-out.json)
-              DELETED=$(jq -r '.artifacts.items_changed.deleted | join(", ")' /tmp/revise-generate-dhf-out.json)
-              [ -n "$CREATED" ] && COMMIT_BODY="${COMMIT_BODY}Created: ${CREATED}"$'\n'
-              [ -n "$UPDATED" ] && COMMIT_BODY="${COMMIT_BODY}Updated: ${UPDATED}"$'\n'
-              [ -n "$DELETED" ] && COMMIT_BODY="${COMMIT_BODY}Deleted: ${DELETED}"$'\n'
-              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
+              COMMIT_BODY="${COMMIT_BODY}"$'\n'"Outcome: $(jq -r '.outcome // "unknown"' /tmp/revise-generate-dhf-out.json)"
             fi
             if [ -n "$COMMIT_BODY" ]; then
               git commit -m "feat: revise design $CR_ID" -m "$COMMIT_BODY"
@@ -406,14 +394,10 @@ jobs:
           git add -A
           COMMITTED=false
           if ! git diff --staged --quiet; then
-            COMMIT_BODY=""
+            # What this run staged; files_changed/items_changed span the whole branch.
+            COMMIT_BODY="$(git diff --cached --stat | tail -1)"
             if [ -f /tmp/develop-out.json ]; then
-              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/develop-out.json)
-              CREATED_COUNT=$(jq -r '.artifacts.files_changed.created | length' /tmp/develop-out.json)
-              UPDATED_COUNT=$(jq -r '.artifacts.files_changed.updated | length' /tmp/develop-out.json)
-              DELETED_COUNT=$(jq -r '.artifacts.files_changed.deleted | length' /tmp/develop-out.json)
-              COMMIT_BODY="Files: +${CREATED_COUNT} ~${UPDATED_COUNT} -${DELETED_COUNT}"$'\n'
-              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
+              COMMIT_BODY="${COMMIT_BODY}"$'\n'"Outcome: $(jq -r '.outcome // "unknown"' /tmp/develop-out.json)"
             fi
             if [ -n "$COMMIT_BODY" ]; then
               git commit -m "feat: implement $CR_ID" -m "$COMMIT_BODY"
@@ -551,14 +535,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           if ! git diff --staged --quiet; then
-            COMMIT_BODY=""
+            # What this run staged; files_changed/items_changed span the whole branch.
+            COMMIT_BODY="$(git diff --cached --stat | tail -1)"
             if [ -f /tmp/revise-code-out.json ]; then
-              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/revise-code-out.json)
-              CREATED_COUNT=$(jq -r '.artifacts.files_changed.created | length' /tmp/revise-code-out.json)
-              UPDATED_COUNT=$(jq -r '.artifacts.files_changed.updated | length' /tmp/revise-code-out.json)
-              DELETED_COUNT=$(jq -r '.artifacts.files_changed.deleted | length' /tmp/revise-code-out.json)
-              COMMIT_BODY="Files: +${CREATED_COUNT} ~${UPDATED_COUNT} -${DELETED_COUNT}"$'\n'
-              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
+              COMMIT_BODY="${COMMIT_BODY}"$'\n'"Outcome: $(jq -r '.outcome // "unknown"' /tmp/revise-code-out.json)"
             fi
             if [ -n "$COMMIT_BODY" ]; then
               git commit -m "fix: revise implementation $CR_ID" -m "$COMMIT_BODY"
