@@ -3,18 +3,15 @@ import { render, screen } from '@testing-library/react';
 import ReleaseNotes from './ReleaseNotes';
 import { RELEASE_NOTES } from './releaseNotesData';
 
-// @links:SRS-031
-describe('ReleaseNotes', () => {
-  // @testing:T1
-  it('renders at least one entry with a version string and change text', () => {
+describe('ReleaseNotes @links:SRS-031,SYS-016', () => {
+  it('renders at least one entry with a version string and change text @testing:T1', () => {
     render(<ReleaseNotes />);
     expect(RELEASE_NOTES.length).toBeGreaterThan(0);
     expect(screen.getByText(`v${RELEASE_NOTES[0].version}`)).toBeTruthy();
     expect(screen.getByText(RELEASE_NOTES[0].changes[0])).toBeTruthy();
   });
 
-  // @testing:T2
-  it('renders the most recent entry first', () => {
+  it('renders the most recent entry first @testing:T2', () => {
     if (RELEASE_NOTES.length < 2) return;
     render(<ReleaseNotes />);
     const first = screen.getByText(`v${RELEASE_NOTES[0].version}`);
