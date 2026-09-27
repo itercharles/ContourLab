@@ -8,7 +8,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ## Current Pin
 
-- `medharness[docs]==0.38.1`
+- `medharness[docs]==0.39.0`
 - `dhfkit` is consumed through the pinned MedHarness install
 
 ## Sources Of Truth
@@ -30,7 +30,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 - `medharness --dhf DHF build code --cr CR-NNN [--pr N]` (implementation and revision)
 - `medharness workflow github-event ...` (event → CR, stage, action)
 - `medharness workflow check-approval --cr CR-NNN --pr N` (review on the current head commit)
-- `medharness --dhf DHF context --cr CR-NNN` (implementation plan for the PR comment)
+- `dhfkit --dhf DHF item get CR-NNN` (implementation plan for the PR comment)
 - `dhfkit --dhf DHF item transition CR-NNN <state>` (cancel, complete)
 
 ### CI Gates
@@ -42,7 +42,7 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 - `medharness --dhf DHF verify soup --manifest ...`
 - `medharness --dhf DHF verify tests --junit-dir ...`
 - `medharness --dhf DHF workflow check-changes --cr CR-NNN --since-ref origin/main --code-path ...`
-- `medharness --dhf DHF verify completion --cr CR-NNN --junit-dir ...`
+- `medharness --dhf DHF verify completion --cr CR-NNN --junit-dir ...` (reads the CR's `affected_items`)
 
 ### Artifacts And Releases
 
@@ -54,6 +54,9 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 ## Usage Notes
 
 - `--dhf PATH` goes before the command on both CLIs and defaults to `DHF`.
+- Items live in legacy directories (`09_cr/`, `01_req_crs/`, …). Reads find them by
+  prefix and updates rewrite them in place; `item create` writes new items to the
+  package's default directories (a new CR lands in `07_cr/`).
 - Workflows that record a DHF change from `main` (complete, cancel, SOUP sync,
   release) push a `chore/*` branch and open a PR; `main` is protected.
 

@@ -107,7 +107,6 @@ def main() -> int:
         "workflow check-changes": ("python", "-m", "medharness", "workflow", "check-changes", "--help"),
         "workflow check-approval": ("python", "-m", "medharness", "workflow", "check-approval", "--help"),
         "workflow github-event": ("python", "-m", "medharness", "workflow", "github-event", "--help"),
-        "context": ("python", "-m", "medharness", "context", "--help"),
         "dhfkit item": ("python", "-m", "dhfkit", "item", "--help"),
         "dhfkit validate": ("python", "-m", "dhfkit", "validate", "--help"),
     }
@@ -158,7 +157,7 @@ def main() -> int:
         "issue-to-cr.yml": [
             "dhfkit --dhf DHF item create --type CR",
             "medharness --dhf DHF build plan",
-            "medharness --dhf DHF context",
+            "dhfkit --dhf DHF item get",
         ],
         "cr-complete.yml": [
             "dhfkit --dhf DHF item transition",
@@ -176,7 +175,7 @@ def main() -> int:
     retired = [
         r"medharness (?:--dhf \S+ )?(?:change|automation|soup-sync|upgrade|evidence|release)\b",
         r"verify (?:classification|branch|verification|plans|code)\b",
-        r"context (?:overview|implementation|for-stage)\b",
+        r"medharness (?:--dhf \S+ )?context\b",
         r"dhfkit (?:--dhf \S+ )?(?:validate schema|doc generate|doc export|report)\b",
         r"--(?:run-schema|run-traceability|coverage-pair|requirement-type|continue-on-gate-failure)\b",
         r"check-approval[^\n]*--stage\b",
