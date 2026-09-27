@@ -144,7 +144,7 @@ jobs:
 
       - name: Cancel CR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.ACTIONS_PAT }}
         run: |
           CR_ID="${{ needs.detect.outputs.cr_id }}"
           BRANCH="${{ needs.detect.outputs.branch }}"

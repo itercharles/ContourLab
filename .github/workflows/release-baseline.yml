@@ -55,7 +55,7 @@ jobs:
       - name: Open a pull request for the REL item
         if: ${{ inputs.write == true }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.ACTIONS_PAT }}
           VERSION: ${{ inputs.version }}
         run: |
           git config user.name "github-actions[bot]"

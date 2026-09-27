@@ -44,7 +44,7 @@ jobs:
       - name: Open a pull request for the SOUP changes
         if: ${{ inputs.write == true }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.ACTIONS_PAT }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

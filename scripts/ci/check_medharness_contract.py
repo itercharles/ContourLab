@@ -205,6 +205,20 @@ def main() -> int:
         errors,
     )
 
+    # A PR opened with the default GITHUB_TOKEN starts no workflow, so its
+    # required checks never report.
+    for filename, text in texts.items():
+        doc = yaml.safe_load(text)
+        for job_name, job in (doc.get("jobs") or {}).items():
+            for step in job.get("steps") or []:
+                if "gh pr create" in str(step.get("run", "")):
+                    token = str((step.get("env") or {}).get("GH_TOKEN", ""))
+                    require(
+                        "secrets.ACTIONS_PAT" in token,
+                        f"{filename}: job '{job_name}' opens a PR without ACTIONS_PAT — CI will not run on it",
+                        errors,
+                    )
+
     for v in check_workflow_step_refs(texts):
         require(False, v, errors)
 
