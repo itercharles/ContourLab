@@ -8,7 +8,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ## Current Pin
 
-- `medharness[full]==0.38.0`
+- `medharness[docs]==0.38.1`
 - `dhfkit` is consumed through the pinned MedHarness install
 
 ## Sources Of Truth
