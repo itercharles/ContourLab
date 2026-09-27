@@ -391,6 +391,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ "$(dhfkit --dhf DHF item get "$CR_ID" | jq -r .status)" = "design" ]; then
+            dhfkit --dhf DHF item transition "$CR_ID" develop
+          fi
           git add -A
           COMMITTED=false
           if ! git diff --staged --quiet; then

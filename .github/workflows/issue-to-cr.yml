@@ -173,6 +173,9 @@ jobs:
         if: always() && steps.generate_design.outcome == 'success'
         run: |
           CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          if [ "$(dhfkit --dhf DHF item get "$CR_ID" | jq -r .status)" = "new" ]; then
+            dhfkit --dhf DHF item transition "$CR_ID" design
+          fi
           git add DHF/
           if ! git diff --staged --quiet; then
             # What this run staged; files_changed/items_changed span the whole branch.
