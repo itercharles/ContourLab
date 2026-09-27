@@ -14,7 +14,7 @@ target_version: 2026-W23
 category: Feature
 content: there is release note page, can be accessible from the software, displaying
   the summary of each changes of each version.
-status: new
+status: develop
 impact_assessment: 'Approved. Complexity: small. Affected subsystems: client. Related
   CRs: CR-012. Adds a standalone release notes page following the established React
   router pattern; no backend or clinical workflow changes required.'
@@ -77,4 +77,18 @@ implementation_notes: "## Overview\nCR-014 adds a dedicated Release Notes page t
   \ in a running dev server; verify the page renders correctly with at least one release\
   \ entry."
 affected_items:
+- UC-006
+- CRS-013
+- SYS-016
+- SRS-031
+- MODULE-010
+- SWDD-013
 - SYSARCH-001
+triage_result:
+  verdict: approved
+  complexity: small
+  affected_subsystems:
+  - client
+  related_crs: []
+  notes: 'Recorded after the fact: CR-014 was designed before build plan wrote triage_result.
+    Design approved by itercharles on PR #119 (2026-06-05).'

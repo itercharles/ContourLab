@@ -20,3 +20,5 @@ testing: 'T1: Given the application is running, a release notes page is accessib
 
   '
 type: CRS
+verification_method:
+- Test
