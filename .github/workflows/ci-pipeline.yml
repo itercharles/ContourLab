@@ -205,16 +205,7 @@ jobs:
 
       - name: Run DHF validation
         run: |
-          medharness verify dhf \
-            --dhf DHF \
-            --run-schema \
-            --run-traceability \
-            --coverage-pair UC:CRS \
-            --coverage-pair CRS:SYS \
-            --coverage-pair SYS:SRS \
-            --coverage-pair SRS:SWDD \
-            --coverage-pair SYS:SYSARCH \
-            --coverage-pair RISK:RCM
+          medharness --dhf DHF verify dhf --fail-on-uncovered
 
       - name: Scan SOUP items for known vulnerabilities (OSV)
         run: |
@@ -223,15 +214,6 @@ jobs:
             --manifest package.json \
             --manifest apps/client/package.json \
             --manifest packages/shared-types/package.json
-
-      - name: Check IEC 62304 safety class and required activities
-        continue-on-error: true
-        run: medharness --dhf DHF verify classification
-
-      - name: Print traceability report
-        if: always()
-        continue-on-error: true
-        run: medharness --dhf DHF verify dhf
 
   # ── CR BRANCH VALIDATION ─────────────────────────────────────────────────
   # Phase 2b: For feat/CR-* implementation branches, verifies the branch
@@ -254,9 +236,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 1
-      - name: Fetch base for diff
-        run: git fetch origin main --depth 1
+          fetch-depth: 0
       - uses: ./.github/actions/medharness-setup
       - name: Validate branch coupling
         env:
@@ -264,8 +244,9 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           CR_ID=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'CR-[0-9]+')
-          if ! medharness --dhf DHF change verify-branch \
+          if ! medharness --dhf DHF workflow check-changes \
             --cr "$CR_ID" \
+            --since-ref origin/main \
             --code-path apps/ \
             --code-path packages/; then
             gh pr comment "$PR_NUMBER" --body \
@@ -535,15 +516,11 @@ jobs:
 
       - name: Run requirement-test coverage gate
         run: |
-          medharness verify tests \
-            --dhf DHF \
+          medharness --dhf DHF verify tests \
             --junit-dir test-results/srs \
             --junit-dir test-results/srs-api \
             --junit-dir test-results/sys \
-            --junit-dir test-results/crs \
-            --requirement-type SRS \
-            --requirement-type SYS \
-            --requirement-type CRS
+            --junit-dir test-results/crs
 
 
   # ── ARTIFACTS (main only) ─────────────────────────────────────────────────
@@ -602,10 +579,17 @@ jobs:
           name: validate-crs-junit
           path: test-results/crs/
 
+      # Dry run (no --write): the full release bundle for this commit, no REL item.
       - name: Generate evidence bundle
         run: |
-          medharness --dhf DHF evidence bundle \
+          medharness --dhf DHF build release \
+            --version "0.0.0+${GITHUB_SHA::7}" \
             --out-dir dhf-artifacts \
+            --doc-format pdf \
+            --manifest requirements.txt \
+            --manifest package.json \
+            --manifest apps/client/package.json \
+            --manifest packages/shared-types/package.json \
             --traceability-type UC \
             --traceability-type CRS \
             --traceability-type SYS \
@@ -617,8 +601,7 @@ jobs:
             --junit-dir test-results/crs \
             --run-id "${{ github.run_id }}" \
             --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --commit "${{ github.sha }}" \
-            --continue-on-gate-failure
+            --commit "${{ github.sha }}"
 
       - name: Upload DHF artifacts
         if: always()

@@ -88,14 +88,11 @@ jobs:
           fi
 
       - name: Run CR closure gate
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           BRANCH="${{ github.event.pull_request.head.ref }}"
           CR_ID=$(echo "$BRANCH" | grep -oE 'CR-[0-9]+')
-          medharness --dhf DHF change verify-completion \
+          medharness --dhf DHF verify completion \
             --cr "$CR_ID" \
-            --pr "$PR_NUMBER" \
             --junit-dir test-results/srs \
             --junit-dir test-results/srs-api \
             --junit-dir test-results/sys

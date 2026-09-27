@@ -33,7 +33,7 @@ jobs:
         id: sync
         run: |
           WRITE_FLAG=${{ inputs.write == true && '--write' || '' }}
-          medharness --dhf DHF soup-sync \
+          medharness --dhf DHF build dhf \
             --manifest requirements.txt \
             --manifest package.json \
             --manifest apps/client/package.json \
@@ -41,15 +41,22 @@ jobs:
             $WRITE_FLAG \
             | tee /tmp/soup-sync-out.json
 
-      - name: Commit DHF changes
+      - name: Open a pull request for the SOUP changes
         if: ${{ inputs.write == true }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add DHF/
           if ! git diff --staged --quiet; then
-            git commit -m "chore: soup-sync — update SOUP items from manifests [skip ci]"
-            git push
+            BRANCH="chore/soup-sync-${{ github.run_id }}"
+            git checkout -b "$BRANCH"
+            git commit -m "chore: update SOUP items from manifests"
+            git push origin "$BRANCH"
+            gh pr create --base main --head "$BRANCH" \
+              --title "chore: update SOUP items from manifests" \
+              --body "SOUP register reconciled by \`medharness build dhf --write\`."
           else
             echo "No DHF changes to commit."
           fi

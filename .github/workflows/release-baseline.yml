@@ -22,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v5
@@ -34,7 +35,7 @@ jobs:
         run: |
           mkdir -p artifacts
           WRITE_FLAG=${{ inputs.write == true && '--write' || '' }}
-          medharness --dhf DHF release baseline \
+          medharness --dhf DHF build release \
             --version "${{ inputs.version }}" \
             --manifest requirements.txt \
             --manifest package.json \
@@ -51,15 +52,23 @@ jobs:
           path: artifacts/
           retention-days: 90
 
-      - name: Commit REL item
+      - name: Open a pull request for the REL item
         if: ${{ inputs.write == true }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add DHF/
           if ! git diff --staged --quiet; then
-            git commit -m "chore: release baseline ${{ inputs.version }} [skip ci]"
-            git push
+            BRANCH="chore/release-$VERSION"
+            git checkout -b "$BRANCH"
+            git commit -m "chore: release $VERSION"
+            git push origin "$BRANCH"
+            gh pr create --base main --head "$BRANCH" \
+              --title "chore: release $VERSION" \
+              --body "REL item and software BOM for $VERSION, written by \`medharness build release --write\`. Artifacts are attached to the workflow run."
           else
             echo "No DHF changes to commit."
           fi
