@@ -14,7 +14,7 @@ target_version: 2026-W23
 category: Feature
 content: there is release note page, can be accessible from the software, displaying
   the summary of each changes of each version.
-status: develop
+status: completed
 impact_assessment: 'Approved. Complexity: small. Affected subsystems: client. Related
   CRs: CR-012. Adds a standalone release notes page following the established React
   router pattern; no backend or clinical workflow changes required.'
