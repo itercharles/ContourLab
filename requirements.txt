@@ -1,1 +1,1 @@
-medharness[docs]==0.41.0
+medharness[docs]==0.43.2

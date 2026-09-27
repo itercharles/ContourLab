@@ -173,16 +173,15 @@ jobs:
         if: always() && steps.generate_design.outcome == 'success'
         run: |
           CR_ID=$(jq -r '.cr_id' /tmp/issue-to-cr.json)
+          if [ "$(dhfkit --dhf DHF item get "$CR_ID" | jq -r .status)" = "new" ]; then
+            dhfkit --dhf DHF item transition "$CR_ID" design
+          fi
           git add DHF/
           if ! git diff --staged --quiet; then
-            COMMIT_BODY=""
+            # What this run staged; files_changed/items_changed span the whole branch.
+            COMMIT_BODY="$(git diff --cached --stat | tail -1)"
             if [ -f /tmp/generate-dhf-out.json ]; then
-              CREATED=$(jq -r '.artifacts.items_changed.created | join(", ")' /tmp/generate-dhf-out.json)
-              UPDATED=$(jq -r '.artifacts.items_changed.updated | join(", ")' /tmp/generate-dhf-out.json)
-              OUTCOME=$(jq -r '.outcome // "unknown"' /tmp/generate-dhf-out.json)
-              [ -n "$CREATED" ] && COMMIT_BODY="${COMMIT_BODY}Created: ${CREATED}"$'\n'
-              [ -n "$UPDATED" ] && COMMIT_BODY="${COMMIT_BODY}Updated: ${UPDATED}"$'\n'
-              COMMIT_BODY="${COMMIT_BODY}Outcome: ${OUTCOME}"
+              COMMIT_BODY="${COMMIT_BODY}"$'\n'"Outcome: $(jq -r '.outcome // "unknown"' /tmp/generate-dhf-out.json)"
             fi
             if [ -n "$COMMIT_BODY" ]; then
               git commit -m "feat: design $CR_ID" -m "$COMMIT_BODY"
@@ -213,8 +212,8 @@ jobs:
           DESIGN_SUMMARY=$(jq -r '.summary // ""' /tmp/generate-dhf-out.json)
           BODY="**Design output for $CR_ID**"$'\n'
           [ -n "$DESIGN_SUMMARY" ] && BODY="${BODY}"$'\n'"$DESIGN_SUMMARY"$'\n'
-          [ -n "$CREATED" ] && BODY="${BODY}"$'\n'"**Created:** $CREATED"$'\n'
-          [ -n "$UPDATED" ] && BODY="${BODY}"$'\n'"**Updated:** $UPDATED"$'\n'
+          [ -n "$CREATED" ] && BODY="${BODY}"$'\n'"**Created on the branch:** $CREATED"$'\n'
+          [ -n "$UPDATED" ] && BODY="${BODY}"$'\n'"**Updated on the branch:** $UPDATED"$'\n'
           gh pr comment "$PR_NUMBER" \
             --repo "${{ github.repository }}" \
             --body "$BODY"
