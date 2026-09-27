@@ -228,6 +228,9 @@ jobs:
             else
               git commit -m "feat: design $CR_ID"
             fi
+          fi
+          # The agent may have committed its own work; push whatever is ahead.
+          if [ "$(git rev-list --count "origin/$(git rev-parse --abbrev-ref HEAD)..HEAD")" -gt 0 ]; then
             git push
           fi
 
@@ -336,6 +339,9 @@ jobs:
             else
               git commit -m "feat: revise design $CR_ID"
             fi
+          fi
+          # The agent may have committed its own work; push whatever is ahead.
+          if [ "$(git rev-list --count "origin/$(git rev-parse --abbrev-ref HEAD)..HEAD")" -gt 0 ]; then
             git push
           fi
 
@@ -414,6 +420,10 @@ jobs:
             else
               git commit -m "feat: implement $CR_ID"
             fi
+            COMMITTED=true
+          fi
+          # The agent may have committed its own work; that counts too.
+          if [ "$(git rev-list --count "origin/$(git rev-parse --abbrev-ref HEAD)..HEAD")" -gt 0 ]; then
             COMMITTED=true
           fi
           git fetch origin main --depth 1
@@ -555,6 +565,9 @@ jobs:
             else
               git commit -m "fix: revise implementation $CR_ID"
             fi
+          fi
+          # The agent may have committed its own work; push whatever is ahead.
+          if [ "$(git rev-list --count "origin/$(git rev-parse --abbrev-ref HEAD)..HEAD")" -gt 0 ]; then
             git push
           fi
 
