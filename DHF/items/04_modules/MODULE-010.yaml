@@ -1,0 +1,23 @@
+id: MODULE-010
+title: ApplicationPages
+content: 'Standalone informational and administrative pages rendered outside the clinical
+  workspace viewport.
+
+
+  Responsibilities:
+
+  - About page (/about): product description, tech stack, compliance standards, version
+
+  - Issues/Change Requests page (/issues): GitHub-backed CR submission and monitoring
+
+  - Settings page (/settings): user preferences and configuration
+
+  - Release Notes page (/release-notes): version history and change summaries
+
+
+  Each page is a React route component registered in App.tsx (React Router 7). Pages
+  share the application shell (navigation, routing) but are otherwise independent
+  of the clinical workspace stores (volumeStore, structureStore). Pages may use uiStore
+  only for global UI state (theme, sidebar). No DICOM or contouring logic belongs
+  in this module.'
+type: MODULE

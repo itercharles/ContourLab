@@ -1,0 +1,29 @@
+id: UC-006
+title: View Release History
+content: 'A user opens the release notes page to find out what changed in the current
+  and previous software versions.
+
+
+  Actor: Radiation Therapist / Physician / Dosimetrist / Administrator
+
+
+  Preconditions:
+
+  - The application is running and the user can navigate to any page
+
+
+  Primary Flow:
+
+  1. User navigates to the release notes page from within the application
+
+  2. System displays a list of software releases in reverse-chronological order
+
+  3. Each entry shows the version number, release date, and a summary of changes
+
+  4. User reviews the change entries to understand what is new or fixed
+
+
+  Postconditions:
+
+  - User understands which features and fixes are included in the installed version'
+type: UC
