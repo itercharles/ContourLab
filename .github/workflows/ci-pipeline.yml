@@ -580,7 +580,10 @@ jobs:
           path: test-results/crs/
 
       # Dry run (no --write): the full release bundle for this commit, no REL item.
+      # Non-blocking, as the old evidence bundle step was; release readiness
+      # (open CRs, unassessed defects) is enforced in release-baseline.yml.
       - name: Generate evidence bundle
+        continue-on-error: true
         run: |
           medharness --dhf DHF build release \
             --version "0.0.0+${GITHUB_SHA::7}" \
