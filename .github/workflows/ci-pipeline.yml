@@ -516,11 +516,12 @@ jobs:
 
       - name: Run requirement-test coverage gate
         run: |
+          mkdir -p test-results/srs test-results/srs-api test-results/sys test-results/crs
           medharness --dhf DHF verify tests \
-            --junit-dir test-results/srs \
-            --junit-dir test-results/srs-api \
-            --junit-dir test-results/sys \
-            --junit-dir test-results/crs
+            --junit test-results/srs \
+            --junit test-results/srs-api \
+            --junit test-results/sys \
+            --junit test-results/crs
 
 
   # ── ARTIFACTS (main only) ─────────────────────────────────────────────────
@@ -585,6 +586,7 @@ jobs:
       - name: Generate evidence bundle
         continue-on-error: true
         run: |
+          mkdir -p test-results/srs test-results/srs-api test-results/sys test-results/crs
           medharness --dhf DHF build release \
             --version "0.0.0+${GITHUB_SHA::7}" \
             --out-dir dhf-artifacts \
@@ -598,10 +600,10 @@ jobs:
             --traceability-type SYS \
             --traceability-type SRS \
             --traceability-type SWDD \
-            --junit-dir test-results/srs \
-            --junit-dir test-results/srs-api \
-            --junit-dir test-results/sys \
-            --junit-dir test-results/crs \
+            --junit test-results/srs \
+            --junit test-results/srs-api \
+            --junit test-results/sys \
+            --junit test-results/crs \
             --run-id "${{ github.run_id }}" \
             --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --commit "${{ github.sha }}"

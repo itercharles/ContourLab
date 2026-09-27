@@ -102,11 +102,10 @@ def main() -> int:
         "verify completion": ("python", "-m", "medharness", "verify", "completion", "--help"),
         "build plan": ("python", "-m", "medharness", "build", "plan", "--help"),
         "build code": ("python", "-m", "medharness", "build", "code", "--help"),
-        "build dhf": ("python", "-m", "medharness", "build", "dhf", "--help"),
+        "build soup": ("python", "-m", "medharness", "build", "soup", "--help"),
         "build release": ("python", "-m", "medharness", "build", "release", "--help"),
         "workflow check-changes": ("python", "-m", "medharness", "workflow", "check-changes", "--help"),
         "workflow check-approval": ("python", "-m", "medharness", "workflow", "check-approval", "--help"),
-        "workflow github-event": ("python", "-m", "medharness", "workflow", "github-event", "--help"),
         "dhfkit item": ("python", "-m", "dhfkit", "item", "--help"),
         "dhfkit validate": ("python", "-m", "dhfkit", "validate", "--help"),
     }
@@ -148,7 +147,6 @@ def main() -> int:
             "medharness --dhf DHF build release",
         ],
         "cr-lifecycle.yml": [
-            "medharness workflow github-event",
             "medharness --dhf DHF build plan",
             "medharness --dhf DHF build code",
             "medharness workflow check-approval",
@@ -164,7 +162,7 @@ def main() -> int:
             "medharness --dhf DHF verify completion",
             "gh pr create",
         ],
-        "soup-sync.yml": ["medharness --dhf DHF build dhf"],
+        "soup-sync.yml": ["medharness --dhf DHF build soup"],
         "release-baseline.yml": ["medharness --dhf DHF build release", "gh pr create"],
     }
     for filename, needles in required.items():
@@ -178,7 +176,12 @@ def main() -> int:
         r"medharness (?:--dhf \S+ )?context\b",
         r"dhfkit (?:--dhf \S+ )?(?:validate schema|doc generate|doc export|report)\b",
         r"--(?:run-schema|run-traceability|coverage-pair|requirement-type|continue-on-gate-failure)\b",
-        r"check-approval[^\n]*--stage\b",
+        r"check-approval[^\n]*--(?:stage|cr)\b",
+        r"workflow github-event\b",
+        r"medharness (?:--dhf \S+ )?build dhf\b",
+        r"--(?:junit-dir|ci-failures|require-method)\b",
+        r"dhfkit (?:--dhf \S+ )?init\b",
+        r"sbom[^\n]*--stdout\b",
         r"\[skip ci\]",
     ]
     for filename, text in texts.items():

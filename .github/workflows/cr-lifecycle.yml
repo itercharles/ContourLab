@@ -54,27 +54,43 @@ jobs:
       branch: ${{ steps.enrich.outputs.branch }}
       issue_number: ${{ steps.enrich.outputs.issue_number }}
     steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 1
-      - uses: ./.github/actions/medharness-setup
-
+      # Stage comes from the PR's cr:stage/<stage> label, or the dispatch input.
       - name: Plan lifecycle action
         id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          REVIEW_STATE: ${{ github.event.review.state }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          INPUT_CR: ${{ inputs.cr_id }}
+          INPUT_STAGE: ${{ inputs.stage }}
         run: |
-          python -m medharness workflow github-event \
-            --stage-label-prefix "cr:stage/" \
-            --dispatch-action design=gen-code \
-            --dispatch-action code=code-approved \
-            --review-action "approved:design=gen-code" \
-            --review-action "approved:code=code-approved" \
-            --review-action "changes_requested:design=revise-design" \
-            --review-action "changes_requested:code=revise-code" \
-            --pr-action "merged=noop" \
-            --pr-action "closed=cancel" \
-            --default-action noop \
-            --github-output "$GITHUB_OUTPUT" \
-            | tee /tmp/event-plan.json
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            CR_ID="$INPUT_CR"; STAGE="$INPUT_STAGE"
+          else
+            CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+' || true)
+            STAGE=$(jq -r '[.pull_request.labels[].name | select(startswith("cr:stage/")) | ltrimstr("cr:stage/")][0] // ""' "$GITHUB_EVENT_PATH")
+          fi
+
+          case "$EVENT_NAME:$REVIEW_STATE:$STAGE" in
+            workflow_dispatch::design)                 ACTION=gen-code ;;
+            workflow_dispatch::code)                   ACTION=code-approved ;;
+            pull_request_review:approved:design)       ACTION=gen-code ;;
+            pull_request_review:approved:code)         ACTION=code-approved ;;
+            pull_request_review:changes_requested:design) ACTION=revise-design ;;
+            pull_request_review:changes_requested:code)   ACTION=revise-code ;;
+            pull_request::*) [ "$MERGED" = "true" ] && ACTION=noop || ACTION=cancel ;;
+            *)                                         ACTION=noop ;;
+          esac
+
+          echo "event=$EVENT_NAME review=$REVIEW_STATE stage=$STAGE cr=$CR_ID -> action=$ACTION"
+          {
+            echo "action=$ACTION"
+            echo "cr_id=$CR_ID"
+          } >> "$GITHUB_OUTPUT"
+          jq -n --arg cr_id "$CR_ID" --arg branch_ref "$HEAD_REF" \
+            --arg pr_number "${{ github.event.pull_request.number }}" \
+            '{cr_id: $cr_id, branch_ref: $branch_ref, pr_number: $pr_number}' > /tmp/event-plan.json
 
       - name: Enrich with PR number, branch, and linked issue
         id: enrich
@@ -352,7 +368,7 @@ jobs:
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
-          medharness workflow check-approval --cr "$CR_ID" --pr "$PR_NUMBER"
+          medharness workflow check-approval --pr "$PR_NUMBER"
       - name: Generate implementation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

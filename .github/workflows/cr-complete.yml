@@ -77,8 +77,8 @@ jobs:
             --limit 1 \
             --json databaseId \
             -q '.[0].databaseId' 2>/dev/null || true)
+          mkdir -p test-results/srs test-results/srs-api test-results/sys
           if [ -n "$RUN_ID" ]; then
-            mkdir -p test-results/srs test-results/srs-api test-results/sys
             gh run download "$RUN_ID" -n verify-srs-junit     -D test-results/srs/     2>/dev/null || true
             gh run download "$RUN_ID" -n verify-srs-api-junit -D test-results/srs-api/ 2>/dev/null || true
             gh run download "$RUN_ID" -n verify-sys-junit     -D test-results/sys/     2>/dev/null || true
@@ -93,6 +93,6 @@ jobs:
           CR_ID=$(echo "$BRANCH" | grep -oE 'CR-[0-9]+')
           medharness --dhf DHF verify completion \
             --cr "$CR_ID" \
-            --junit-dir test-results/srs \
-            --junit-dir test-results/srs-api \
-            --junit-dir test-results/sys
+            --junit test-results/srs \
+            --junit test-results/srs-api \
+            --junit test-results/sys

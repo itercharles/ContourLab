@@ -33,7 +33,7 @@ jobs:
         id: sync
         run: |
           WRITE_FLAG=${{ inputs.write == true && '--write' || '' }}
-          medharness --dhf DHF build dhf \
+          medharness --dhf DHF build soup \
             --manifest requirements.txt \
             --manifest package.json \
             --manifest apps/client/package.json \
@@ -56,7 +56,7 @@ jobs:
             git push origin "$BRANCH"
             gh pr create --base main --head "$BRANCH" \
               --title "chore: update SOUP items from manifests" \
-              --body "SOUP register reconciled by \`medharness build dhf --write\`."
+              --body "SOUP register reconciled by \`medharness build soup --write\`."
           else
             echo "No DHF changes to commit."
           fi
