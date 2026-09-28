@@ -106,8 +106,7 @@ def main() -> int:
         "build release": ("python", "-m", "medharness", "build", "release", "--help"),
         "workflow check-changes": ("python", "-m", "medharness", "workflow", "check-changes", "--help"),
         "workflow check-approval": ("python", "-m", "medharness", "workflow", "check-approval", "--help"),
-        "dhfkit item": ("python", "-m", "dhfkit", "item", "--help"),
-        "dhfkit validate": ("python", "-m", "dhfkit", "validate", "--help"),
+        "item": ("python", "-m", "medharness", "item", "--help"),
     }
     for name, command in help_commands.items():
         code, _ = run(*command)
@@ -151,15 +150,15 @@ def main() -> int:
             "medharness --dhf DHF build plan",
             "medharness --dhf DHF build code",
             "medharness workflow check-approval",
-            "dhfkit --dhf DHF item transition",
+            "medharness --dhf DHF item transition",
         ],
         "issue-to-cr.yml": [
-            "dhfkit --dhf DHF item create --type CR",
+            "medharness --dhf DHF item create --type CR",
             "medharness --dhf DHF build plan",
-            "dhfkit --dhf DHF item get",
+            "medharness --dhf DHF item get",
         ],
         "cr-complete.yml": [
-            "dhfkit --dhf DHF item transition",
+            "medharness --dhf DHF item transition",
             "gh pr create",
         ],
         "soup-sync.yml": ["medharness --dhf DHF build soup"],
@@ -174,13 +173,14 @@ def main() -> int:
         r"medharness (?:--dhf \S+ )?(?:change|automation|soup-sync|upgrade|evidence|release)\b",
         r"verify (?:classification|branch|verification|plans|code)\b",
         r"medharness (?:--dhf \S+ )?context\b",
-        r"dhfkit (?:--dhf \S+ )?(?:validate schema|doc generate|doc export|report)\b",
+        r"\bdhfkit (?:--dhf \S+ )?[a-z]",
         r"--(?:run-schema|run-traceability|coverage-pair|requirement-type|continue-on-gate-failure)\b",
         r"check-approval[^\n]*--(?:stage|cr)\b",
         r"workflow github-event\b",
         r"medharness (?:--dhf \S+ )?build dhf\b",
         r"--(?:junit-dir|ci-failures|require-method)\b",
-        r"dhfkit (?:--dhf \S+ )?init\b",
+        r"medharness (?:--dhf \S+ )?doctor\b",
+        r"--(?:fail-on-uncovered|fail-on-drift|fail-on-missing-method|traceability-type|run-id|run-url)\b",
         r"sbom[^\n]*--stdout\b",
         r"\[skip ci\]",
     ]
