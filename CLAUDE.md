@@ -40,14 +40,13 @@ pnpm --filter @contourlab/client typecheck    # typecheck frontend
 pnpm -r typecheck                         # typecheck all workspaces
 pnpm -r build                             # build all workspaces
 
-# DHF operations (Python) — two CLIs: medharness (AI/CI harness) + dhfkit (data layer)
-# dhfkit is bundled inside the medharness wheel; one install gets both binaries
+# DHF operations (Python) — one CLI: medharness
 pip install -r requirements.txt           # one-time setup
-dhfkit --dhf DHF item list --type cr                  # list all CRs
-dhfkit --dhf DHF item get CR-NNN                      # get CR details
-dhfkit --dhf DHF item transition CR-NNN <state> --by "Author"
-dhfkit --dhf DHF validate schema                      # validate all item YAMLs
-dhfkit --dhf DHF doc generate ALL                     # regenerate spec documents
+medharness --dhf DHF item list --type CR              # list all CRs
+medharness --dhf DHF item get CR-NNN                  # get CR details
+medharness --dhf DHF item transition CR-NNN <state>
+medharness --dhf DHF verify dhf                       # schema, links, cycles, coverage
+medharness --dhf DHF build doc ALL                    # regenerate spec documents
 ```
 
 ## Key Conventions
@@ -57,41 +56,41 @@ dhfkit --dhf DHF doc generate ALL                     # regenerate spec document
 - **Proxy**: Vite proxies `/api` and `/ws` → `localhost:4000`; `/dicom-web` → Orthanc `localhost:8042`
 - **TypeScript**: strict mode throughout, no `any`
 - **Styling**: Tailwind only, no inline styles, dark clinical theme (see `/ux-design`)
-- **DHF**: DHF items live at `DHF/items/`. Use `dhfkit --dhf DHF ...` for data operations (CRUD,
-  validate, doc generate) and `medharness --dhf DHF ...` for AI/CI harness operations (context,
-  change status, approval). The CR design plan lives in the `implementation_notes` field of
-  `DHF/items/09_cr/CR-NNN.yaml`. Do not scatter direct DHF file reads across automation — use
-  the CLI facade.
+- **DHF**: DHF items live at `DHF/items/`. Use `medharness --dhf DHF ...` for everything: item
+  CRUD (`item`), checks (`verify`), generation (`build`) and Git/GitHub questions (`workflow`).
+  The CR design plan lives in the CR's `implementation_notes` field — read it with
+  `medharness --dhf DHF item get CR-NNN`. Do not scatter direct DHF file reads across
+  automation — use the CLI.
+- **Commits**: in CI, `build plan` / `build code` leave their work uncommitted and the workflow
+  commits it. An agent running those stages must not commit, push, or open a PR itself.
 
 ### DHF Facade API Quick Reference
 
 ```bash
-# --- medharness: AI/CI harness commands ---
+# Every command prints JSON to stdout and a readable log to stderr.
+# Gates exit 0 (pass), 1 (fail), 2 (usage error).
 
-# Get CR implementation context (spec + DHF overview) for AI/CI consumption
-medharness --dhf DHF dhf context implementation --cr CR-034 --out-dir /tmp/cr-context
+# Read and write items
+medharness --dhf DHF item get SRS-001
+medharness --dhf DHF item list --type SRS
+medharness --dhf DHF item update CR-034 --data '{"affected_items": ["SRS-001"]}'
+medharness --dhf DHF item transition CR-034            # list where it can go
+medharness --dhf DHF item transition CR-034 develop
 
-# Get scoped context for a specific workflow stage (stage: analyze | design | develop)
-medharness --dhf DHF dhf context for-stage develop --cr CR-034
+# Check the DHF: schema, links, cycles, coverage (--strict fails on coverage gaps)
+medharness --dhf DHF verify dhf --strict
 
-# Check CR stage and approval status (machine-readable JSON)
-medharness --dhf DHF change status --cr CR-034 --pr 42
+# Requirement → test coverage from JUnit results (file or directory)
+medharness --dhf DHF verify tests --junit apps/client/test-results
 
-# --- dhfkit: DHF data-layer commands ---
+# Did a CR deliver what it recorded (affected_items present and verified)?
+medharness --dhf DHF verify completion --cr CR-034 --junit apps/client/test-results
 
-# Print human-readable traceability coverage report
-dhfkit --dhf DHF report
+# Did the branch change the items the CR lists, and only those?
+medharness --dhf DHF workflow check-changes --cr CR-034 --since-ref origin/main
 
-# Validate DHF schema and traceability locally
-dhfkit --dhf DHF validate schema
-dhfkit --dhf DHF validate traceability
-
-# Transition a CR
-dhfkit --dhf DHF item transition CR-034 completed --by "agent"
-
-# List and inspect items
-dhfkit --dhf DHF item get SRS-001
-dhfkit --dhf DHF item list --type SRS
+# Regenerate specifications
+medharness --dhf DHF build doc ALL
 ```
 
 ## Sources of Truth
@@ -109,8 +108,8 @@ each gated by human approval:
 | Stage | Branch | Produced by |
 |---|---|---|
 | 1. CR Review | `feat/CR-NNN` | Human |
-| 2. Design Review | `feat/CR-NNN` | Agent (`generate-dhf` — DHF items + implementation plan) |
-| 3. Implementation Review | `feat/CR-NNN` | Agent (`develop-cr` — product code) |
+| 2. Design Review | `feat/CR-NNN` | Agent (`build plan` — DHF items + implementation plan) |
+| 3. Implementation Review | `feat/CR-NNN` | Agent (`build code` — product code) |
 
 Design and implementation live on the same branch, each committed separately.
 
@@ -119,8 +118,8 @@ Design and implementation live on the same branch, each committed separately.
 | Status | Meaning |
 |---|---|
 | `new` | CR created, awaiting design review |
-| `design` | `generate-dhf` running or design under review |
-| `develop` | `develop-cr` running or implementation under review |
+| `design` | `build plan` running or design under review |
+| `develop` | `build code` running or implementation under review |
 | `completed` | Implementation merged; DHF closed out |
 | `rejected` | Triaged out during design |
 | `cancelled` | PR closed without merging |
@@ -150,8 +149,8 @@ Design and implementation live on the same branch, each committed separately.
    - For numbered test points (`T1:`, `T2:` on a requirement): embed `@testing:T1` in the test
      name (JS/TS) or use `@pytest.mark.dhf_testing("T1")` (Python) so the CI gate
      `medharness verify tests` can confirm every test point has passing coverage.
-4. **Design** — `generate-dhf` writes the implementation plan into the CR item's
-   `implementation_notes`; treat that as the primary input for `develop-cr`. Invoke
+4. **Design** — `build plan` writes the implementation plan into the CR item's
+   `implementation_notes`; treat that as the primary input for `build code`. Invoke
    `/ux-design` before any UI work.
 5. **Modify** — keep changes in the workspace that owns the behavior; shared types first.
 6. **Validate locally**:
@@ -160,7 +159,7 @@ Design and implementation live on the same branch, each committed separately.
    pnpm --filter @contourlab/client lint && pnpm --filter @contourlab/client typecheck
    dotnet build apps/api/api.csproj --configuration Release   # API changes
    pnpm -r typecheck                                           # data model changes
-   dhfkit --dhf DHF validate schema                           # DHF item changes
+   medharness --dhf DHF verify dhf                            # DHF item changes
    ```
 7. **Handoff** — run `/post-implement`; open PR with CR ID in title, change summary,
    DHF files updated, validation run, manual test plan.
