@@ -46,7 +46,7 @@ medharness --dhf DHF item list --type CR              # list all CRs
 medharness --dhf DHF item get CR-NNN                  # get CR details
 medharness --dhf DHF item transition CR-NNN <state>
 medharness --dhf DHF verify dhf                       # schema, links, cycles, coverage
-medharness --dhf DHF build doc ALL                    # regenerate spec documents
+medharness --dhf DHF build release --version 0.0.0-preview --out-dir /tmp/dhf-preview  # render specs, traceability, SBOM (preview; changes nothing)
 ```
 
 ## Key Conventions
@@ -89,8 +89,8 @@ medharness --dhf DHF verify completion --cr CR-034 --junit apps/client/test-resu
 # Did the branch change the items the CR lists, and only those?
 medharness --dhf DHF workflow check-changes --cr CR-034 --since-ref origin/main
 
-# Regenerate specifications
-medharness --dhf DHF build doc ALL
+# Render specifications, traceability and SBOM into --out-dir (no --write: a preview)
+medharness --dhf DHF build release --version 0.0.0-preview --out-dir /tmp/dhf-preview
 ```
 
 ## Sources of Truth
