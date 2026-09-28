@@ -198,6 +198,24 @@ def main() -> int:
             errors,
         )
 
+    require(
+        "--write" not in texts["soup-sync.yml"],
+        "soup-sync.yml passes --write — build soup always writes the working tree (0.46+) and rejects the flag",
+        errors,
+    )
+    gen_code = yaml.safe_load(texts["cr-lifecycle.yml"])["jobs"]["gen-code"]["steps"]
+    for step in gen_code:
+        run_text = "\n".join(
+            line for line in str(step.get("run", "")).splitlines() if not line.lstrip().startswith("#")
+        )
+        if "build code" in run_text:
+            require(
+                "--pr" not in run_text,
+                "cr-lifecycle.yml gen-code passes --pr to build code — it would revise the design reviews "
+                "and push before the PR moves to cr:stage/code",
+                errors,
+            )
+
     # The closure gate belongs before the merge, where it can block one.
     require(
         "verify completion" not in texts["cr-complete.yml"],

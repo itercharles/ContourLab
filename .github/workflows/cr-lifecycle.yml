@@ -372,7 +372,10 @@ jobs:
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF build code --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/develop-out.json
+          # No --pr: this is fresh generation from the approved design, not a
+          # revision of the design reviews, and the job commits and pushes after
+          # moving the PR to cr:stage/code so the CI it triggers sees that label.
+          python -m medharness --dhf DHF build code --cr "$CR_ID" | tee /tmp/develop-out.json
 
       - name: Upload develop payload
         if: always()

@@ -8,7 +8,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ## Current Pin
 
-- `medharness[docs]==0.45.0`
+- `medharness[docs]==0.46.0`
 - One CLI, `medharness`; `dhfkit` is a library inside it with no command of its own
 
 ## Sources Of Truth
@@ -49,7 +49,7 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 - `medharness --dhf DHF build release --version ... --out-dir ...` — dry run on
   every main push (evidence bundle); with `--write` in `release-baseline.yml` to
   record a REL item
-- `medharness --dhf DHF build soup --manifest ... [--write]` — SOUP register sync
+- `medharness --dhf DHF build soup --manifest ...` — SOUP register sync (always writes the working tree)
 
 ## Usage Notes
 

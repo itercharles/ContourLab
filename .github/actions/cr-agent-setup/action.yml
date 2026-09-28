@@ -19,6 +19,13 @@ runs:
       shell: bash
       run: npm install -g @anthropic-ai/claude-code
 
+    # build plan/build code --pr commit and push their own work.
+    - name: Configure git identity
+      shell: bash
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
     - name: Trust Claude Code workspace on runner
       shell: bash
       run: |
