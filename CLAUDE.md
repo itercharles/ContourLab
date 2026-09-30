@@ -18,7 +18,7 @@ DHF/                   — Design History File (items, config, documents, test-r
 DHF/items/             — YAML DHF items by type (CR, SYS, SRS, RISK, etc.)
 DHF/config/            — DHF configuration (change-controlled)
 DHF/documents/         — Spec and plan templates
-tests/dhf/             — DHF Python tests
+tests/workflow/        — CR workflow tests: event routing, CR lifecycle, verify changes, commit step
 .github/workflows/     — CI pipeline and CR automation
 ```
 
@@ -35,6 +35,7 @@ pnpm api                                  # API dev server (port 4000)
 pnpm repo:up                              # start local Orthanc (port 8042)
 pnpm repo:down                            # stop local Orthanc
 pnpm local:doctor                         # health check all local services
+pnpm workflow:test                        # CR workflow tests (no model, no GitHub; needs medharness installed)
 pnpm --filter @contourlab/client test         # frontend tests
 pnpm --filter @contourlab/client typecheck    # typecheck frontend
 pnpm -r typecheck                         # typecheck all workspaces
