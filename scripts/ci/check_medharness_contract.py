@@ -188,6 +188,24 @@ def main() -> int:
             match = re.search(pattern, text)
             require(match is None, f"{filename} uses retired form `{match.group(0) if match else ''}`", errors)
 
+    # An event field pasted into a run script is shell source: a title or branch name with a
+    # quote or $(...) breaks the step, or runs as a command on a runner that holds secrets.
+    # Pass it through env: and use "$VAR".
+    untrusted = re.compile(
+        r"\$\{\{\s*(github\.event\.(issue\.(title|body|milestone\.title|user\.login|html_url)"
+        r"|pull_request\.(title|head\.ref|head\.label|body)|review\.body|comment\.body"
+        r"|head_commit\.message)|inputs\.[a-z_]+|github\.head_ref)\s*\}\}"
+    )
+    for filename, text in texts.items():
+        for job_name, job in (yaml.safe_load(text).get("jobs") or {}).items():
+            for step in job.get("steps") or []:
+                found = untrusted.search(str(step.get("run", "")))
+                require(
+                    found is None,
+                    f"{filename}: job '{job_name}' pastes {found.group(0) if found else ''} into a run script — use env:",
+                    errors,
+                )
+
     # These check out main; a push straight to it fails on a protected branch (GH006).
     for filename in ("cr-complete.yml", "soup-sync.yml", "release-baseline.yml"):
         text = texts[filename]

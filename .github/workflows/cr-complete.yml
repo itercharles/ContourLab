@@ -30,8 +30,9 @@ jobs:
         id: complete
         env:
           GH_TOKEN: ${{ secrets.ACTIONS_PAT }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
-          BRANCH="${{ github.event.pull_request.head.ref }}"
+          BRANCH="$HEAD_REF"
           CR_ID=$(echo "$BRANCH" | grep -oE 'CR-[0-9]+')
           if [ -z "$CR_ID" ]; then
             echo "::error::Could not extract CR ID from branch $BRANCH" >&2
