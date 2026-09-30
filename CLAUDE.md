@@ -57,10 +57,14 @@ medharness --dhf DHF build release --version 0.0.0-preview --out-dir /tmp/dhf-pr
 - **TypeScript**: strict mode throughout, no `any`
 - **Styling**: Tailwind only, no inline styles, dark clinical theme (see `/ux-design`)
 - **DHF**: DHF items live at `DHF/items/`. Use `medharness --dhf DHF ...` for everything: item
-  CRUD (`item`), checks (`verify`), generation (`build`) and Git/GitHub questions (`workflow`).
-  The CR design plan lives in the CR's `implementation_notes` field — read it with
-  `medharness --dhf DHF item get CR-NNN`. Do not scatter direct DHF file reads across
-  automation — use the CLI.
+  CRUD (`item`), checks (`verify`) and generation (`build`). The CR design plan lives in the
+  CR's `implementation_notes` field — read it with `medharness --dhf DHF item get CR-NNN`.
+  - **Read** DHF items only with `medharness item list --type <TYPE>` and `medharness item get <ID>`
+    (`get` includes every ID the item links to).
+  - **Write** only with `medharness item create|update|transition`, never by editing files under
+    `DHF/`: these check the schema before writing, allocate IDs, enforce the lifecycle and change
+    only the fields you pass.
+  - After any DHF change, run `medharness --dhf DHF verify dhf`.
 - **Commits**: in CI, `build plan` / `build code` leave their work uncommitted and the workflow
   commits it. An agent running those stages must not commit, push, or open a PR itself.
 
@@ -86,8 +90,8 @@ medharness --dhf DHF verify tests --junit apps/client/test-results
 # Did a CR deliver what it recorded (affected_items present and verified)?
 medharness --dhf DHF verify completion --cr CR-034 --junit apps/client/test-results
 
-# Did the branch change the items the CR lists, and only those?
-medharness --dhf DHF workflow check-changes --cr CR-034 --since-ref origin/main
+# Did the branch change the items the CR lists? (compares the working tree)
+medharness --dhf DHF verify changes --cr CR-034 --since-ref origin/main
 
 # Render specifications, traceability and SBOM into --out-dir (no --write: a preview)
 medharness --dhf DHF build release --version 0.0.0-preview --out-dir /tmp/dhf-preview

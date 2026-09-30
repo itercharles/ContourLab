@@ -8,7 +8,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ## Current Pin
 
-- `medharness[docs]==0.46.1`
+- `medharness[docs]==0.48.0`
 - One CLI, `medharness`; `dhfkit` is a library inside it with no command of its own
 
 ## Sources Of Truth
@@ -29,7 +29,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 - `medharness --dhf DHF build plan --cr CR-NNN [--pr N]` (design generation and revision)
 - `medharness --dhf DHF build code --cr CR-NNN [--pr N]` (implementation and revision)
 - Event routing (event → CR, stage, action) is plain shell in `cr-lifecycle.yml`'s `detect` job: the stage comes from the PR's `cr:stage/<stage>` label or the dispatch input
-- `medharness workflow check-approval --pr N` (review on the current head commit)
+- Design approval → code stage: the `detect` job acts on an `approved` review only when its `commit_id` is the PR's current head; a stale approval is ignored. The server-side enforcement is branch protection on `main` (Require approvals; Dismiss stale approvals when new commits are pushed)
 - `medharness --dhf DHF item get CR-NNN` (implementation plan for the PR comment)
 - `medharness --dhf DHF item transition CR-NNN <state>` (cancel, complete)
 
@@ -41,7 +41,7 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 - `medharness --dhf DHF verify dhf --strict`
 - `medharness --dhf DHF verify soup --manifest ...`
 - `medharness --dhf DHF verify tests --junit DIR ...`
-- `medharness --dhf DHF workflow check-changes --cr CR-NNN --since-ref origin/main --code-path ...`
+- `medharness --dhf DHF verify changes --cr CR-NNN --since-ref origin/main --code-path ...` (compares the working tree, so it also runs locally before a commit)
 - `medharness --dhf DHF verify completion --cr CR-NNN --junit DIR ...` (reads the CR's `affected_items`)
 
 ### Artifacts And Releases
@@ -56,7 +56,8 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 - `--junit PATH` takes a file or a directory; a path that does not exist is a
   usage error (exit 2), so workflows `mkdir -p` the result directories first.
 
-- `--dhf PATH` goes before the command on both CLIs and defaults to `DHF`.
+- `--dhf PATH` goes before the command and defaults to `DHF`.
+- `build code` treats the whole repository except `DHF/` as code unless `MEDHARNESS_CODE_PATHS` narrows it; ContourLab's jobs set `apps/,packages/`.
 - Items live in legacy directories (`09_cr/`, `01_req_crs/`, …). Reads find them by
   prefix and updates rewrite them in place; `item create` writes new items to the
   package's default directories (a new CR lands in `07_cr/`).

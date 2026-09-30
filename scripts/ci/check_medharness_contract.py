@@ -104,8 +104,7 @@ def main() -> int:
         "build code": ("python", "-m", "medharness", "build", "code", "--help"),
         "build soup": ("python", "-m", "medharness", "build", "soup", "--help"),
         "build release": ("python", "-m", "medharness", "build", "release", "--help"),
-        "workflow check-changes": ("python", "-m", "medharness", "workflow", "check-changes", "--help"),
-        "workflow check-approval": ("python", "-m", "medharness", "workflow", "check-approval", "--help"),
+        "verify changes": ("python", "-m", "medharness", "verify", "changes", "--help"),
         "item": ("python", "-m", "medharness", "item", "--help"),
     }
     for name, command in help_commands.items():
@@ -142,14 +141,13 @@ def main() -> int:
             "medharness --dhf DHF verify dhf",
             "medharness --dhf DHF verify soup",
             "medharness --dhf DHF verify tests",
-            "medharness --dhf DHF workflow check-changes",
+            "medharness --dhf DHF verify changes",
             "medharness --dhf DHF build release",
             "medharness --dhf DHF verify completion",
         ],
         "cr-lifecycle.yml": [
             "medharness --dhf DHF build plan",
             "medharness --dhf DHF build code",
-            "medharness workflow check-approval",
             "medharness --dhf DHF item transition",
         ],
         "issue-to-cr.yml": [
@@ -175,8 +173,8 @@ def main() -> int:
         r"medharness (?:--dhf \S+ )?context\b",
         r"\bdhfkit (?:--dhf \S+ )?[a-z]",
         r"--(?:run-schema|run-traceability|coverage-pair|requirement-type|continue-on-gate-failure)\b",
-        r"check-approval[^\n]*--(?:stage|cr)\b",
-        r"workflow github-event\b",
+        r"\bworkflow (?:check-changes|check-approval|github-event)\b",
+        r"\bcheck-approval\b",
         r"medharness (?:--dhf \S+ )?build dhf\b",
         r"--(?:junit-dir|ci-failures|require-method)\b",
         r"medharness (?:--dhf \S+ )?doctor\b",
@@ -215,6 +213,16 @@ def main() -> int:
                 "and push before the PR moves to cr:stage/code",
                 errors,
             )
+
+    # 0.48 counts the whole repository except DHF/ as code unless told otherwise.
+    for job_name in ("gen-code", "revise-code"):
+        for step in yaml.safe_load(texts["cr-lifecycle.yml"])["jobs"][job_name]["steps"]:
+            if "build code" in str(step.get("run", "")):
+                require(
+                    "MEDHARNESS_CODE_PATHS" in (step.get("env") or {}),
+                    f"cr-lifecycle.yml {job_name}: build code step must set MEDHARNESS_CODE_PATHS (apps/,packages/)",
+                    errors,
+                )
 
     # The closure gate belongs before the merge, where it can block one.
     require(
