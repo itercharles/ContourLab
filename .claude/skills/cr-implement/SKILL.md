@@ -75,7 +75,7 @@ Create or update the DHF items listed in the spec directly in this repo's `DHF/i
 
 Validate:
 ```bash
-medharness --dhf DHF dhf validate schema
+medharness --dhf DHF verify dhf
 ```
 
 **Include DHF changes in the same Implementation PR** — the single-repo model means product code and DHF items live together.

@@ -29,7 +29,7 @@ Before stating any task is done, complete all five steps:
 | API builds | `dotnet build apps/api/api.csproj --no-restore -v q` |
 | Shared types compile | `pnpm --filter @contourlab/shared-types typecheck` |
 | Full stack healthy | `pnpm local:doctor` |
-| DHF schema valid | `medharness --dhf DHF dhf validate schema` |
+| DHF schema valid | `medharness --dhf DHF verify dhf` |
 
 ## What Is Not Verification
 

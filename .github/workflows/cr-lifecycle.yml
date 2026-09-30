@@ -61,6 +61,8 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           REVIEW_STATE: ${{ github.event.review.state }}
+          REVIEW_COMMIT: ${{ github.event.review.commit_id }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           MERGED: ${{ github.event.pull_request.merged }}
           INPUT_CR: ${{ inputs.cr_id }}
           INPUT_STAGE: ${{ inputs.stage }}
@@ -70,6 +72,14 @@ jobs:
           else
             CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+' || true)
             STAGE=$(jq -r '[.pull_request.labels[].name | select(startswith("cr:stage/")) | ltrimstr("cr:stage/")][0] // ""' "$GITHUB_EVENT_PATH")
+          fi
+
+          # An approval of an earlier commit approved work that has since changed.
+          # Branch protection (dismiss stale approvals) is the server-side enforcement.
+          if [ "$EVENT_NAME" = "pull_request_review" ] && [ "$REVIEW_STATE" = "approved" ] \
+             && [ "$REVIEW_COMMIT" != "$HEAD_SHA" ]; then
+            echo "approval is of $REVIEW_COMMIT, head is $HEAD_SHA: stale, ignoring"
+            REVIEW_STATE="stale"
           fi
 
           case "$EVENT_NAME:$REVIEW_STATE:$STAGE" in
@@ -356,23 +366,20 @@ jobs:
       - name: Fetch base ref for diff
         run: git fetch origin main --depth 1
       - uses: ./.github/actions/cr-agent-setup
-      - name: Verify design approval
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
-        run: |
-          medharness workflow check-approval --pr "$PR_NUMBER"
       - name: Generate implementation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
+          MEDHARNESS_CODE_PATHS: apps/,packages/
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
         run: |
           set -o pipefail
-          python -m medharness --dhf DHF build code --cr "$CR_ID" ${PR_NUMBER:+--pr "$PR_NUMBER"} | tee /tmp/develop-out.json
+          # No --pr: this is fresh generation from the approved design, not a
+          # revision of the design reviews, and the job commits and pushes after
+          # moving the PR to cr:stage/code so the CI it triggers sees that label.
+          python -m medharness --dhf DHF build code --cr "$CR_ID" | tee /tmp/develop-out.json
 
       - name: Upload develop payload
         if: always()
@@ -513,6 +520,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_MODEL: ${{ vars.CR_DEVELOP_MODEL }}
+          MEDHARNESS_CODE_PATHS: apps/,packages/
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}

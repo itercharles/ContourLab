@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       write:
-        description: 'Apply creates/updates to DHF (dry-run if unchecked)'
+        description: 'Open a PR with the SOUP item changes (report only if unchecked)'
         required: false
         type: boolean
         default: false
@@ -31,14 +31,14 @@ jobs:
 
       - name: Sync SOUP items
         id: sync
+        # build soup always updates the SOUP items in the working tree; the
+        # write input decides whether they are proposed in a PR below.
         run: |
-          WRITE_FLAG=${{ inputs.write == true && '--write' || '' }}
           medharness --dhf DHF build soup \
             --manifest requirements.txt \
             --manifest package.json \
             --manifest apps/client/package.json \
             --manifest packages/shared-types/package.json \
-            $WRITE_FLAG \
             | tee /tmp/soup-sync-out.json
 
       - name: Open a pull request for the SOUP changes
@@ -56,7 +56,7 @@ jobs:
             git push origin "$BRANCH"
             gh pr create --base main --head "$BRANCH" \
               --title "chore: update SOUP items from manifests" \
-              --body "SOUP register reconciled by \`medharness build soup --write\`."
+              --body "SOUP register reconciled by \`medharness build soup\`."
           else
             echo "No DHF changes to commit."
           fi
