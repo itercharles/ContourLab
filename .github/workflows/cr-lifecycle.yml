@@ -423,7 +423,7 @@ jobs:
           git fetch origin main --depth 1
           CODE_EXISTS=$(git diff origin/main -- . \
             ':(exclude)DHF/' \
-            | grep -c "^+" || echo "0")
+            | grep -c "^+" || true)
           if [ "$COMMITTED" != "true" ] && [ "$CODE_EXISTS" = "0" ]; then
             gh pr comment "$PR_NUMBER" \
               --body "⚠️ Implementation produced no code changes for $CR_ID — stage not advanced. Re-trigger via Actions → workflow_dispatch (stage: design) and check Claude logs."
