@@ -15,6 +15,7 @@
     "automation:stage1:plan-spec": "node scripts/automation/stage1-plan-spec.mjs",
     "automation:stage2:implementation": "node scripts/automation/stage2-implementation-pr.mjs",
     "automation:reconcile-labels": "node scripts/automation/reconcile-labels.mjs",
+    "workflow:test": "python -m unittest discover -s tests/workflow -v",
     "automation:test": "python -m unittest discover -s scripts/automation/tests -p '*.py'",
     "build": "pnpm -r build",
     "test": "pnpm -r test",

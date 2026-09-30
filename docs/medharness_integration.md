@@ -64,6 +64,13 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 - Workflows that record a DHF change from `main` (complete, cancel, SOUP sync,
   release) push a `chore/*` branch and open a PR; `main` is protected.
 
+## Tests
+
+`tests/workflow/` runs in the `MedHarness Contract` job and locally with `pnpm workflow:test`.
+No model and no GitHub: the `detect` routing, a CR's lifecycle and `verify changes` on a
+scratch copy of the DHF, and gen-code's commit step against a local git remote with a stub
+`gh`. The real AI stages (`build plan|code` with a model) are not covered.
+
 ## Update Checklist
 
 When bumping MedHarness:
@@ -71,4 +78,5 @@ When bumping MedHarness:
 1. Update `requirements.txt` and `.github/actions/medharness-setup/action.yml`.
 2. Run `python scripts/ci/check_medharness_contract.py`.
 3. Run `medharness --dhf DHF verify dhf`.
-4. Update this document only if the adopted command surface changed.
+4. Run `pnpm workflow:test`.
+5. Update this document only if the adopted command surface changed.

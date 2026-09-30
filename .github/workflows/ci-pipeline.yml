@@ -33,6 +33,11 @@ jobs:
       - name: Validate MedHarness contract
         run: python scripts/ci/check_medharness_contract.py
 
+      # No model and no GitHub: event routing, CR lifecycle, verify changes and the
+      # commit step, against a scratch copy of the DHF and a local git remote.
+      - name: Run CR workflow tests
+        run: python -m unittest discover -s tests/workflow -v
+
   # ── CHANGE DETECTION ─────────────────────────────────────────────────────────
   # Detects which workspaces changed so downstream jobs can skip irrelevant work.
   # On main and workflow_dispatch all flags are forced true — full suite always runs.
