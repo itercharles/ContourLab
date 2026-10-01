@@ -256,8 +256,15 @@ def main() -> int:
         doc = yaml.safe_load(text)
         for job_name, job in (doc.get("jobs") or {}).items():
             for step in job.get("steps") or []:
-                if "gh pr create" in str(step.get("run", "")):
-                    token = str((step.get("env") or {}).get("GH_TOKEN", ""))
+                run_text = str(step.get("run", ""))
+                if "gh pr create" in run_text:
+                    env = step.get("env") or {}
+                    token = str(env.get("GH_TOKEN", ""))
+                    # Either the whole step runs as the PAT, or just `gh pr create` does:
+                    # GH_TOKEN="$VAR" gh pr create, where VAR holds the PAT.
+                    scoped = re.search(r'GH_TOKEN="\$(\w+)"\s+gh pr create', run_text)
+                    if scoped:
+                        token = str(env.get(scoped.group(1), ""))
                     require(
                         "secrets.ACTIONS_PAT" in token,
                         f"{filename}: job '{job_name}' opens a PR without ACTIONS_PAT — CI will not run on it",
