@@ -63,6 +63,11 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
   package's default directories (a new CR lands in `07_cr/`).
 - Workflows that record a DHF change from `main` (complete, cancel, SOUP sync,
   release) push a `chore/*` branch and open a PR; `main` is protected.
+- Who opens a PR decides who can review it. The `chore/*` PRs above are opened with
+  `ACTIONS_PAT` (the maintainer's account), so CI runs on them and the maintainer
+  merges them with a review bypass. The CR design PR that intake opens is opened with
+  the workflow token, so the bot is its author: GitHub bars an author from approving or
+  requesting changes on their own PR, and those two reviews are the design and code gates.
 
 ## Tests
 

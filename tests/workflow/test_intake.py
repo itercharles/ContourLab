@@ -59,9 +59,14 @@ class IntakeTitle(s.Scratch):
 
 
 class OpenDraftPr(s.Scratch):
-    """The PAT opens the PR so CI runs on it, but cannot edit issues (CR-015 intake, 2026-10-01)."""
+    """The CR PR is opened by the bot, so its reviewer is not its author.
 
-    def test_the_pr_is_opened_with_the_pat_and_the_issue_is_edited_with_the_workflow_token(self):
+    GitHub bars an author from approving or requesting changes on their own PR. With the PAT
+    opening it (the user's account), the maintainer could only comment, and the design gate
+    could not be tested (CR-016, 2026-10-01). The PAT also cannot edit issues (CR-015).
+    """
+
+    def run_step(self) -> list[str]:
         Path("/tmp/issue-to-cr.json").write_text(json.dumps({"cr_id": "CR-099"}))
         log = self.tmp / "gh.log"
         bin_dir = self.tmp / "bin"
@@ -77,10 +82,17 @@ case "$1 $2" in "pr create") echo https://example.test/pull/1 ;; esac
                 "GH_TOKEN": "workflow-token", "PR_TOKEN": "pat-token", "ISSUE_TITLE": "a title",
             },
         )
-        calls = dict(line.split("|", 1)[::-1] for line in log.read_text().splitlines())
-        self.assertEqual(calls["pr create"], "pat-token")
-        self.assertEqual(calls["issue edit"], "workflow-token")
-        self.assertEqual(calls["issue comment"], "workflow-token")
+        return log.read_text().splitlines()
+
+    def test_every_call_uses_the_workflow_token_so_the_bot_is_the_author(self):
+        calls = dict(line.split("|", 1)[::-1] for line in self.run_step())
+        for call in ("pr create", "issue edit", "issue comment"):
+            self.assertEqual(calls[call], "workflow-token", call)
+
+    def test_the_pat_is_not_available_to_this_step(self):
+        env = next(st for st in s.yaml.safe_load((s.WORKFLOWS / "issue-to-cr.yml").read_text())["jobs"]["create-cr"]["steps"]
+                   if st.get("id") == "open_pr")["env"]
+        self.assertNotIn("ACTIONS_PAT", json.dumps(env))
 
 
 if __name__ == "__main__":
