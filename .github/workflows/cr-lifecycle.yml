@@ -69,6 +69,11 @@ jobs:
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             CR_ID="$INPUT_CR"; STAGE="$INPUT_STAGE"
+            case "$CR_ID" in
+              CR-[0-9]*) ;;
+              *) echo "::error::cr_id must look like CR-123, got: $CR_ID"; exit 1 ;;
+            esac
+            case "$CR_ID" in *[!A-Za-z0-9-]*) echo "::error::cr_id has unexpected characters"; exit 1 ;; esac
           else
             CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+' || true)
             STAGE=$(jq -r '[.pull_request.labels[].name | select(startswith("cr:stage/")) | ltrimstr("cr:stage/")][0] // ""' "$GITHUB_EVENT_PATH")
@@ -155,13 +160,20 @@ jobs:
       - name: Cancel CR
         env:
           GH_TOKEN: ${{ secrets.ACTIONS_PAT }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          BRANCH: ${{ needs.detect.outputs.branch }}
         run: |
-          CR_ID="${{ needs.detect.outputs.cr_id }}"
-          BRANCH="${{ needs.detect.outputs.branch }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin "$BRANCH" --depth 1
-          git checkout "origin/$BRANCH" -- "DHF/items/09_cr/$CR_ID.yaml"
+          # A CR created by `item create` lands in the default directory (07_cr/), older
+          # ones sit in 09_cr/: find the file wherever the branch has it.
+          CR_FILE=$(git ls-tree -r --name-only "origin/$BRANCH" -- DHF/items | grep -E "/$CR_ID\.yaml$" | head -1)
+          if [ -z "$CR_FILE" ]; then
+            echo "::error::$CR_ID has no item file on $BRANCH"
+            exit 1
+          fi
+          git checkout "origin/$BRANCH" -- "$CR_FILE"
           medharness --dhf DHF item transition \
             "$CR_ID" cancelled
           git add DHF/
@@ -254,7 +266,7 @@ jobs:
           [ -n "$CREATED" ] && BODY="${BODY}"$'\n'"**Created on the branch:** $CREATED"$'\n'
           [ -n "$UPDATED" ] && BODY="${BODY}"$'\n'"**Updated on the branch:** $UPDATED"$'\n'
           [ -n "$DELETED" ] && BODY="${BODY}"$'\n'"**Deleted on the branch:** $DELETED"$'\n'
-          BODY="${BODY}"$'\n'"The implementation plan is written to \`DHF/items/09_cr/$CR_ID.yaml\` in \`implementation_notes\`."
+          BODY="${BODY}"$'\n'"The implementation plan is in the CR's \`implementation_notes\` (\`medharness item get $CR_ID\`)."
           gh pr comment "$PR_NUMBER" --body "$BODY"
 
       - name: Validate DHF traceability

@@ -14,7 +14,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 ## Sources Of Truth
 
 - DHF root: `DHF/`
-- CR items: `DHF/items/09_cr/CR-NNN.yaml`
+- CR items: `DHF/items/09_cr/CR-NNN.yaml` for the older CRs, `DHF/items/07_cr/CR-NNN.yaml` for new ones (`item create` uses the default directory); find one by ID, not by path
 - DHF config: `DHF/config/global.yaml` holds only ContourLab's overrides; every
   other default (doc types, lifecycle, traceability rules, spec templates) comes
   from the installed package
