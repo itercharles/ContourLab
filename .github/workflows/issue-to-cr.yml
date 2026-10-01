@@ -38,15 +38,17 @@ jobs:
 
       - name: Prepare CR from issue
         id: prepare
+        # Event fields go through the environment: interpolated into the script, a title
+        # containing a quote or $(...) would be run as shell.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          REQUESTED_BY: ${{ github.event.issue.user.login }}
+          MILESTONE: ${{ github.event.issue.milestone.title }}
         run: |
-          ISSUE_TITLE="${{ github.event.issue.title }}"
           ISSUE_BODY=$(gh issue view "${{ github.event.issue.number }}" \
             --repo "${{ github.repository }}" --json body --jq '.body // ""')
-          ISSUE_URL="${{ github.event.issue.html_url }}"
-          REQUESTED_BY="${{ github.event.issue.user.login }}"
-          MILESTONE="${{ github.event.issue.milestone.title }}"
 
           DESCRIPTION=$(printf '%s\n\nSource issue: %s' "$ISSUE_BODY" "$ISSUE_URL")
           DATA=$(jq -n \

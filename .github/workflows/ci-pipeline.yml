@@ -247,8 +247,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
-          CR_ID=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'CR-[0-9]+')
+          CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+')
           if ! medharness --dhf DHF verify changes \
             --cr "$CR_ID" \
             --since-ref origin/main \
