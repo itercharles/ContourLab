@@ -251,21 +251,26 @@ def main() -> int:
         errors,
     )
 
-    # A PR opened with the default GITHUB_TOKEN starts no workflow, so its
-    # required checks never report.
+    # Who opens a PR decides what it can do:
+    # - a chore/* PR (complete, cancel, SOUP, release) is opened with the PAT: a PR opened with
+    #   the default GITHUB_TOKEN starts no workflow, so its required checks never report;
+    # - the CR PR that intake opens is opened with the workflow token, so the bot is its author:
+    #   GitHub bars an author from approving or requesting changes on their own PR, and those
+    #   two reviews are the design and code gates.
     for filename, text in texts.items():
         doc = yaml.safe_load(text)
         for job_name, job in (doc.get("jobs") or {}).items():
             for step in job.get("steps") or []:
-                run_text = str(step.get("run", ""))
-                if "gh pr create" in run_text:
-                    env = step.get("env") or {}
-                    token = str(env.get("GH_TOKEN", ""))
-                    # Either the whole step runs as the PAT, or just `gh pr create` does:
-                    # GH_TOKEN="$VAR" gh pr create, where VAR holds the PAT.
-                    scoped = re.search(r'GH_TOKEN="\$(\w+)"\s+gh pr create', run_text)
-                    if scoped:
-                        token = str(env.get(scoped.group(1), ""))
+                if "gh pr create" not in str(step.get("run", "")):
+                    continue
+                token = str((step.get("env") or {}).get("GH_TOKEN", ""))
+                if filename == "issue-to-cr.yml":
+                    require(
+                        "ACTIONS_PAT" not in token,
+                        f"{filename}: job '{job_name}' opens the CR PR with the PAT — the maintainer could not review it",
+                        errors,
+                    )
+                else:
                     require(
                         "secrets.ACTIONS_PAT" in token,
                         f"{filename}: job '{job_name}' opens a PR without ACTIONS_PAT — CI will not run on it",
