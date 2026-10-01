@@ -61,6 +61,22 @@ class EventRouting(s.Scratch):
         self.assertEqual(self.route("pull_request_review", "approved", DESIGN, "a1", "a1", "", "", "")["cr_id"], "CR-014")
         self.assertEqual(self.route("workflow_dispatch", "", [], "", "", "", "CR-099", "design")["cr_id"], "CR-099")
 
+    def test_a_dispatch_cr_id_that_is_not_a_cr_id_is_refused(self):
+        payload = self.tmp / "event.json"
+        payload.write_text(json.dumps({"pull_request": {"labels": []}}))
+        out = self.tmp / "out"
+        out.write_text("")
+        for bad in ('CR-1"; touch PWNED; "', "CR-12 extra", "$(id)", "../x", ""):
+            with self.subTest(bad):
+                result = s.run(
+                    ["bash", "-e", "-c", SCRIPT], cwd=self.tmp, check=False,
+                    env={"EVENT_NAME": "workflow_dispatch", "REVIEW_STATE": "", "MERGED": "", "HEAD_REF": "",
+                         "REVIEW_COMMIT": "", "HEAD_SHA": "", "INPUT_CR": bad, "INPUT_STAGE": "design",
+                         "GHA_EXPR": "1", "GITHUB_EVENT_PATH": str(payload), "GITHUB_OUTPUT": str(out)},
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(list(self.tmp.glob("PWNED*")), [])
+
     def test_a_branch_without_a_cr_id_yields_no_cr(self):
         out = self.route("pull_request_review", "approved", DESIGN, "a1", "a1", "", "", "", branch="feat/other")
         self.assertEqual(out["cr_id"], "")

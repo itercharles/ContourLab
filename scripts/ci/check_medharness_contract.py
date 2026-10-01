@@ -194,7 +194,8 @@ def main() -> int:
     untrusted = re.compile(
         r"\$\{\{\s*(github\.event\.(issue\.(title|body|milestone\.title|user\.login|html_url)"
         r"|pull_request\.(title|head\.ref|head\.label|body)|review\.body|comment\.body"
-        r"|head_commit\.message)|inputs\.[a-z_]+|github\.head_ref)\s*\}\}"
+        r"|head_commit\.message)|inputs\.[a-z_]+|github\.head_ref"
+        r"|needs\.[\w-]+\.outputs\.(branch|cr_id))\s*\}\}"
     )
     for filename, text in texts.items():
         for job_name, job in (yaml.safe_load(text).get("jobs") or {}).items():
