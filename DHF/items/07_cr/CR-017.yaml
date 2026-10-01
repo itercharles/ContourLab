@@ -1,0 +1,26 @@
+id: CR-017
+title: 'Release notes page: add a "Back to workspace" link in the header'
+description: 'The Release Notes page has no way back to the workspace except the browser''s
+  back button.
+
+
+  Acceptance criteria:
+
+  - The page header shows a "Back to workspace" link that navigates to `/workspace`
+
+  - The link is keyboard focusable and has a visible focus style
+
+  - No change to the release entries or the existing header text
+
+
+  This is a small, UI-only change in `apps/client/src/pages/ReleaseNotes.tsx` and
+  its test. It is also the test change request for the medharness 0.48.0 end-to-end
+  run.
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/129'
+requested_by: itercharles
+priority: Medium
+status: new
+target_version: 2026-W23
+type: CR
