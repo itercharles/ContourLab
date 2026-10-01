@@ -9,7 +9,9 @@ content: 'The client application shall render a dedicated release notes page at 
   string, (2) the release date, and (3) one or more change description items. The
   page shall be linked from the application navigation so users can reach it without
   returning to the workspace. The release data shall be embedded in the client source
-  as a static constant to avoid runtime dependencies.'
+  as a static constant to avoid runtime dependencies. The page header shall include
+  a keyboard-focusable "Back to workspace" link that navigates to /workspace and displays
+  a visible focus indicator.'
 verification_method:
 - Test
 testing: 'T1: Given the release notes page, it renders the release data with at least
@@ -18,5 +20,12 @@ testing: 'T1: Given the release notes page, it renders the release data with at 
   T2: Given multiple release entries, the first rendered entry is the most recent
   version.
 
+  T3: Given the release notes page, a "Back to workspace" link is present in the header,
+  is reachable by keyboard focus (Tab key), and navigates to /workspace when activated.
+
   '
 type: SRS
+verification_criteria: The release notes page at /release-notes renders at least one
+  entry with version string, date, and change items ordered newest-first; the page
+  header contains a link labelled "Back to workspace" that (a) is navigable by keyboard
+  Tab, (b) displays a visible focus ring or outline, and (c) routes to /workspace.

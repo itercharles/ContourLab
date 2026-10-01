@@ -21,6 +21,107 @@ description: 'The Release Notes page has no way back to the workspace except the
   Source issue: https://github.com/itercharles/ContourLab/issues/129'
 requested_by: itercharles
 priority: Medium
-status: new
+status: design
 target_version: 2026-W23
 type: CR
+triage_result:
+  verdict: approved
+  complexity: small
+  affected_subsystems:
+  - ApplicationPages
+  related_crs:
+  - CR-015
+  notes: Approved as valid re-submission of cancelled CR-015; feature absent from
+    codebase; single-subsystem UI change adding a back-navigation link to the existing
+    ReleaseNotes page header.
+affected_risk_items: []
+implementation_notes: '## Overview
+
+  This CR adds a "Back to workspace" navigation link to the header of the Release
+  Notes page (`/release-notes`). The link navigates to `/workspace` and must be keyboard-focusable
+  with a visible focus style. No changes to release entry data or existing header
+  text are required.
+
+
+  ## Current State
+
+  The Release Notes page lives in `apps/client/src/pages/ReleaseNotes.tsx`. It imports
+  `RELEASE_NOTES` from `./releaseNotesData` (a static array of `{ version, date, changes
+  }` objects). The `<header>` element currently contains only the page title (`Release
+  Notes`) and a subtitle paragraph. There is no back-navigation affordance. The page
+  uses no Zustand stores and no React Router hooks — it is a pure presentational component.
+  Existing tests for this page live in `apps/client/src/pages/ReleaseNotes.test.tsx`
+  (or `.test.ts`).
+
+
+  ## Changes Required
+
+  - **`apps/client/src/pages/ReleaseNotes.tsx`** (modify existing): Add a React Router
+  `<Link to="/workspace">` element labelled "Back to workspace" inside the existing
+  `<header>`. Layout: flex row with `justify-between` so the title/subtitle block
+  stays left and the back-link appears right. The Link needs `focus-visible:ring-2
+  focus-visible:ring-offset-2` (or equivalent Tailwind classes) to satisfy the visible-focus-style
+  acceptance criterion.
+
+  - **`apps/client/src/pages/ReleaseNotes.test.tsx`** (modify existing): Add a test
+  case asserting the back-link is present in the header and points to `/workspace`.
+
+
+  No new files are required. No changes to routing, sidebar, or shared types.
+
+
+  ## Implementation Steps
+
+  1. Open `apps/client/src/pages/ReleaseNotes.tsx`.
+
+  2. Add `import { Link } from ''react-router-dom'';` at the top (if not already imported).
+
+  3. Wrap the `<header>` inner content in a `flex items-center justify-between` container.
+
+  4. Add `<Link to="/workspace" className="text-sm font-medium text-blue-600 hover:text-blue-700
+  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+  rounded">Back to workspace</Link>`. Use exactly this label — it matches the acceptance
+  criterion wording and the test query `/back to workspace/i`.
+
+  5. Open the test file and add a test: render `<ReleaseNotes />` inside a `MemoryRouter`,
+  query `getByRole(''link'', { name: /back to workspace/i })`, assert `href` ends
+  with `/workspace`.
+
+  6. Run `pnpm --filter @contourlab/client test` — all tests must pass.
+
+  7. Run `pnpm --filter @contourlab/client typecheck` — no type errors.
+
+
+  ## Edge Cases & Constraints
+
+  - The `Link` component requires a Router context; the test must wrap the component
+  in `MemoryRouter` (or use the existing test setup if one already provides it).
+
+  - Do not use `useNavigate` + `<button>` — a semantic `<a>` element (rendered by
+  `<Link>`) is required for keyboard-focusability without extra ARIA.
+
+  - Do not change existing header text ("Release Notes" title and subtitle paragraph)
+  or the release entry rendering.
+
+  - The focus style must be visible in both light and dark modes; `focus-visible:ring-*`
+  Tailwind utilities satisfy this without affecting mouse users.
+
+  - No inline styles — Tailwind only per project conventions.
+
+
+  ## Tests
+
+  - **Unit/component test** (new test case in existing file): Verify the back-link
+  renders with accessible label and correct href. Annotate with `@links:SRS-031` and
+  `@testing:T3`.
+
+  - **Existing tests** (SRS-031 T1/T2): Ensure they still pass — the header change
+  must not break rendering of release entries.
+
+  - **Manual confirmation**: Open the app in a browser, navigate to `/release-notes`,
+  press Tab to reach the back-link, confirm visible focus ring, activate the link,
+  confirm navigation to `/workspace`.'
+affected_items:
+- SRS-031
+- SWDD-013
+- SYS-016

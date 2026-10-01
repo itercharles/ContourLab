@@ -4,15 +4,19 @@ implements:
 module:
 - MODULE-010
 title: Release notes static data model and ReleaseNotes page component
-content: "Release data is a static constant defined in apps/client/src/pages/ReleaseNotes.tsx\
-  \ (or a colocated releaseData.ts). The data structure is an array of ReleaseEntry\
-  \ objects sorted newest-first:\n\n  interface ReleaseEntry {\n    version: string;\
-  \   // semver string, e.g. \"1.2.0\"\n    date: string;      // ISO-8601 date, e.g.\
-  \ \"2026-06-05\"\n    changes: string[]; // one item per change bullet\n  }\n\n\
-  Statically embedding the data avoids runtime network dependencies and makes the\
-  \ content predictable and auditable.\n\nThe ReleaseNotes page component maps over\
-  \ the data array and renders each entry as a card: version and date in the header,\
-  \ change items as a bulleted list. The component does not use any Zustand stores.\n\
+content: "Release data is a static constant defined in apps/client/src/pages/releaseNotesData.ts.\
+  \ The data structure is an array of ReleaseEntry objects sorted newest-first:\n\n\
+  \  interface ReleaseEntry {\n    version: string;   // semver string, e.g. \"1.2.0\"\
+  \n    date: string;      // ISO-8601 date, e.g. \"2026-06-05\"\n    changes: string[];\
+  \ // one item per change bullet\n  }\n\nStatically embedding the data avoids runtime\
+  \ network dependencies and makes the content predictable and auditable.\n\nThe ReleaseNotes\
+  \ page component maps over the data array and renders each entry as a card: version\
+  \ and date in the header, change items as a bulleted list. The component does not\
+  \ use any Zustand stores.\n\nPage header: The <header> element contains a two-element\
+  \ row: the page title/subtitle block on the left and a React Router <Link to=\"\
+  /workspace\"> element labelled \"Back to workspace\" on the right. The Link uses\
+  \ Tailwind utility classes to ensure a visible focus-visible ring (e.g. focus-visible:ring-2)\
+  \ meeting WCAG 2.1 SC 2.4.7. No new state or hooks are required for this link.\n\
   \nRouting: App.tsx registers the route <Route path=\"/release-notes\" element={<ReleaseNotes\
   \ />} />. Navigation: LeftSidebar.tsx adds a link to /release-notes in the System\
   \ footer row alongside the existing Issues and Settings links.\n\nStyling follows\

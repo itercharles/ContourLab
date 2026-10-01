@@ -7,7 +7,9 @@ content: The system shall provide a dedicated release notes page accessible from
   the application. The page shall list software releases in reverse-chronological
   order. Each release entry shall include the version number, release date, and a
   human-readable summary of changes. The page shall be reachable via application navigation
-  without requiring authentication beyond normal application access.
+  without requiring authentication beyond normal application access. The page shall
+  provide a navigation affordance allowing the user to return to the primary workspace
+  without relying on browser controls.
 category: Functional
 verification_method:
 - Test
@@ -18,10 +20,14 @@ testing: 'T1: Given the application is running, the release notes page is reacha
   T2: Given multiple release entries, they are ordered newest-first by version or
   date.
 
+  T3: Given the release notes page, the header contains a keyboard-focusable "Back
+  to workspace" link that navigates to /workspace when activated.
+
   '
 critical_safety: false
 verification_criteria: The release notes page renders at /release-notes with at least
   one entry; each entry displays a non-empty version string, a release date, and a
   non-empty change summary; entries are ordered newest-first; the page is accessible
-  without any authentication gate.
+  without any authentication gate; the page header includes a "Back to workspace"
+  link that is keyboard-focusable and navigates to /workspace.
 type: SYS
