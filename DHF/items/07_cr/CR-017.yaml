@@ -21,6 +21,121 @@ description: 'The Release Notes page has no way back to the workspace except the
   Source issue: https://github.com/itercharles/ContourLab/issues/129'
 requested_by: itercharles
 priority: Medium
-status: new
+status: design
 target_version: 2026-W23
 type: CR
+triage_result:
+  verdict: approved
+  complexity: small
+  affected_subsystems:
+  - ApplicationPages
+  related_crs:
+  - CR-015
+  - CR-016
+  notes: Approved as third re-submission of the same cancelled feature; back-navigation
+    link is still absent from ReleaseNotes.tsx; single-subsystem UI change with no
+    architecture or risk impact.
+affected_risk_items: []
+implementation_notes: '## Overview
+
+  This CR adds a "Back to workspace" navigation link to the header of the Release
+  Notes page (`/release-notes`). The link navigates to `/workspace` and must be keyboard-focusable
+  with a visible focus indicator. No changes to release entry data or existing header
+  text are required.
+
+
+  ## Current State
+
+  The Release Notes page lives in `apps/client/src/pages/ReleaseNotes.tsx`. It imports
+  `RELEASE_NOTES` from `./releaseNotesData` (a static array of `{ version, date, changes
+  }` objects). The `<header>` element currently contains a single `<div>` with the
+  page title (`h1 Release Notes`) and a subtitle `p`. There is no back-navigation
+  affordance; the component imports nothing from React Router. Existing tests live
+  in `apps/client/src/pages/ReleaseNotes.test.tsx`.
+
+
+  ## Changes Required
+
+  - **`apps/client/src/pages/ReleaseNotes.tsx`** (modify existing): Add `import {
+  Link } from ''react-router-dom''`. Wrap the header inner content in a `flex items-center
+  justify-between` container so the title/subtitle block stays left and the back-link
+  appears right. Add a React Router `Link` element with `to="/workspace"` labelled
+  "Back to workspace" and Tailwind focus-visible ring classes to satisfy the visible-focus-indicator
+  requirement in SRS-031 T3. A semantic anchor rendered by `Link` provides native
+  keyboard focusability without extra ARIA.
+
+  - **`apps/client/src/pages/ReleaseNotes.test.tsx`** (modify existing): Add a test
+  asserting the back-link is present with accessible label matching `/back to workspace/i`
+  and href resolving to `/workspace`. Annotate with `@links:SRS-031` and `@testing:T3`.
+  Ensure the component is rendered inside a `MemoryRouter`; add it if the existing
+  test setup does not already provide one.
+
+
+  No new files are required. No changes to routing, sidebar, or shared types.
+
+
+  ## Implementation Steps
+
+  1. Open `apps/client/src/pages/ReleaseNotes.tsx`.
+
+  2. Add `import { Link } from ''react-router-dom''` at the top (check first if already
+  imported).
+
+  3. In the header, change the inner `div` to add `flex items-center justify-between`
+  classes to the existing `max-w-5xl mx-auto px-6 py-8` div.
+
+  4. Wrap the existing `h1` and `p` in a nested `div` so the flex container can place
+  them left and the back-link right.
+
+  5. Add `Link to="/workspace" className="text-sm font-medium text-blue-400 hover:text-blue-300
+  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+  rounded"` labelled "Back to workspace" as the second flex child.
+
+  6. Open `apps/client/src/pages/ReleaseNotes.test.tsx`.
+
+  7. Ensure the render helper wraps `ReleaseNotes` in `MemoryRouter` (import from
+  `react-router-dom`).
+
+  8. Add test case annotated `@links:SRS-031 @testing:T3`: query `getByRole(''link'',
+  { name: /back to workspace/i })` and assert `href` attribute ends with `/workspace`.
+
+  9. Run `pnpm --filter @contourlab/client test` — all tests must pass.
+
+  10. Run `pnpm --filter @contourlab/client typecheck` — no type errors.
+
+
+  ## Edge Cases & Constraints
+
+  - The `Link` component requires a Router context; the test must wrap the component
+  in `MemoryRouter`. Check whether the existing test file already uses `MemoryRouter`
+  before adding it.
+
+  - Do not use `useNavigate` + `button` — a semantic `a` element rendered by `Link`
+  is required for keyboard-focusability without extra ARIA.
+
+  - Do not change existing header text ("Release Notes" h1, subtitle paragraph) or
+  the release entry rendering below the header.
+
+  - The focus ring must be visible when keyboard-navigating. `focus-visible:ring-*`
+  Tailwind utilities satisfy this without affecting mouse users.
+
+  - No inline styles — Tailwind only per project conventions. Do not use `rounded-xl`
+  (prohibited by design rules); use `rounded` instead.
+
+
+  ## Tests
+
+  - **Unit/component test** (new test case in existing `ReleaseNotes.test.tsx`): Verify
+  the back-link renders with accessible label `/back to workspace/i` and href `/workspace`.
+  Annotate `@links:SRS-031 @testing:T3`.
+
+  - **Existing tests** (SRS-031 T1, T2 / SYS-016 T1, T2): Ensure they still pass —
+  the header flex change must not break rendering of release entries.
+
+  - **Manual confirmation**: Open the app in a browser, navigate to `/release-notes`,
+  press Tab to reach the back-link, confirm visible focus ring, activate the link,
+  confirm navigation to `/workspace`.'
+affected_items:
+- SRS-031
+- SWDD-013
+- SYS-016

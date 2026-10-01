@@ -4,19 +4,26 @@ implements:
 module:
 - MODULE-010
 title: Release notes static data model and ReleaseNotes page component
-content: "Release data is a static constant defined in apps/client/src/pages/ReleaseNotes.tsx\
-  \ (or a colocated releaseData.ts). The data structure is an array of ReleaseEntry\
-  \ objects sorted newest-first:\n\n  interface ReleaseEntry {\n    version: string;\
-  \   // semver string, e.g. \"1.2.0\"\n    date: string;      // ISO-8601 date, e.g.\
-  \ \"2026-06-05\"\n    changes: string[]; // one item per change bullet\n  }\n\n\
-  Statically embedding the data avoids runtime network dependencies and makes the\
-  \ content predictable and auditable.\n\nThe ReleaseNotes page component maps over\
-  \ the data array and renders each entry as a card: version and date in the header,\
-  \ change items as a bulleted list. The component does not use any Zustand stores.\n\
-  \nRouting: App.tsx registers the route <Route path=\"/release-notes\" element={<ReleaseNotes\
-  \ />} />. Navigation: LeftSidebar.tsx adds a link to /release-notes in the System\
-  \ footer row alongside the existing Issues and Settings links.\n\nStyling follows\
-  \ the ApplicationPages pattern (bg-gray-50 page background, bg-white cards with\
-  \ border-gray-200, text-gray-900/600/400 — light-mode page layout used by About\
-  \ and Settings), not the dark clinical workspace theme."
+content: "Release data is a static constant defined in apps/client/src/pages/releaseNotesData.ts.\
+  \ The data structure is an array of ReleaseEntry objects sorted newest-first:\n\n\
+  \  interface ReleaseEntry {\n    version: string;   // semver string, e.g. \"1.2.0\"\
+  \n    date: string;      // ISO-8601 date, e.g. \"2026-06-05\"\n    changes: string[];\
+  \ // one item per change bullet\n  }\n\nStatically embedding the data avoids runtime\
+  \ network dependencies and makes the content predictable and auditable.\n\nThe ReleaseNotes\
+  \ page component maps over the data array and renders each entry as a card: version\
+  \ and date in the header, change items as a bulleted list. The component does not\
+  \ use any Zustand stores.\n\nBack-navigation: The page header div uses a flex row\
+  \ with justify-between so the title/subtitle block stays left-aligned and a React\
+  \ Router <Link to=\"/workspace\"> element appears on the right. The link is labelled\
+  \ \"Back to workspace\" and carries Tailwind focus-visible ring classes (focus-visible:outline-none\
+  \ focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded)\
+  \ to satisfy the keyboard-accessibility and visible-focus-indicator requirements\
+  \ in SRS-031 T3. A semantic <a> element (rendered by React Router Link) provides\
+  \ native keyboard focusability without additional ARIA roles.\n\nRouting: App.tsx\
+  \ registers the route <Route path=\"/release-notes\" element={<ReleaseNotes />}\
+  \ />. Navigation: LeftSidebar.tsx adds a link to /release-notes in the System footer\
+  \ row alongside the existing Issues and Settings links.\n\nStyling follows the ApplicationPages\
+  \ pattern (bg-gray-50 page background, bg-white cards with border-gray-200, text-gray-900/600/400\
+  \ — light-mode page layout used by About and Settings), not the dark clinical workspace\
+  \ theme."
 type: SWDD
