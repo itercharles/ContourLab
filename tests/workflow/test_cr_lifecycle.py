@@ -13,6 +13,12 @@ import _support as s
 
 
 class Lifecycle(s.Scratch):
+    def legacy_cr(self, root) -> str:
+        """CR-013 lives in a legacy directory (09_cr/). Put it in a known state: the real record
+        moves on (it is `completed` now), and these cases must not depend on that."""
+        s.medharness(root, "item", "update", "CR-013", "--data", json.dumps({"status": "new"}))
+        return "CR-013"
+
     def test_a_cr_moves_new_design_develop_completed_and_closes(self):
         root = self.scratch_dhf()
         cr = self.new_cr(root)
@@ -40,22 +46,25 @@ class Lifecycle(s.Scratch):
 
     def test_closure_fails_for_a_cr_that_was_never_planned(self):
         root = self.scratch_dhf()
-        closure = s.medharness(root, "verify", "completion", "--cr", "CR-013", check=False)
+        closure = s.medharness(root, "verify", "completion", "--cr", self.legacy_cr(root), check=False)
         self.assertFalse(closure["passed"])
 
     def test_updating_an_item_in_a_legacy_directory_keeps_one_file_in_place(self):
         root = self.scratch_dhf()
-        (before,) = self.item_files(root, "CR-013")
-        s.medharness(root, "item", "update", "CR-013", "--data", json.dumps({"priority": "High"}))
-        after = self.item_files(root, "CR-013")
+        cr = self.legacy_cr(root)
+        (before,) = self.item_files(root, cr)
+        s.medharness(root, "item", "update", cr, "--data", json.dumps({"priority": "High"}))
+        after = self.item_files(root, cr)
         self.assertEqual(after, [before], "update must not leave a second copy in another directory")
         self.assertTrue(s.medharness(root, "verify", "dhf")["passed"])
 
     def test_transitioning_an_item_in_a_legacy_directory_keeps_one_file_in_place(self):
         root = self.scratch_dhf()
-        (before,) = self.item_files(root, "CR-013")
-        s.medharness(root, "item", "transition", "CR-013", "design")
-        self.assertEqual(self.item_files(root, "CR-013"), [before])
+        cr = self.legacy_cr(root)
+        (before,) = self.item_files(root, cr)
+        s.medharness(root, "item", "transition", cr, "design")
+        self.assertEqual(self.item_files(root, cr), [before])
+        self.assertEqual(s.medharness(root, "item", "get", cr)["status"], "design")
 
     def test_an_update_changes_only_the_fields_passed(self):
         root = self.scratch_dhf()
