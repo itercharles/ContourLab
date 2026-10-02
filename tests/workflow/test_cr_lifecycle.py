@@ -173,6 +173,23 @@ class Changes(s.Scratch):
         s.medharness(self.root, "item", "update", self.cr, "--data", json.dumps({"reviewed_items": asked}))
         self.assertTrue(self.changes()["passed"])
 
+    def test_a_branch_is_not_blamed_for_what_landed_on_main_after_it_branched(self):
+        """CR-017's branch was cut, then a record fix merged to main. The diff base is the
+        merge-base, not main's tip (0.49.1); against the tip, SOUP-001 looked like the branch's."""
+        self.change_sys()
+        s.git(self.root, "add", "-A")
+        s.git(self.root, "commit", "-q", "-m", "branch work")
+        branch = s.git(self.root, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+        s.git(self.root, "checkout", "-q", "main")
+        s.medharness(self.root, "item", "update", "SOUP-001", "--data", json.dumps({"version": "34.15.2"}))
+        s.git(self.root, "add", "-A")
+        s.git(self.root, "commit", "-q", "-m", "landed on main after the branch was cut")
+        s.git(self.root, "checkout", "-q", branch)
+        self.assertEqual(s.git(self.root, "rev-list", "--count", f"{branch}..main").stdout.strip(), "1")
+        result = self.review_dependents()
+        self.assertNotIn("SOUP-001", json.dumps(result["errors"]))
+        self.assertTrue(result["passed"], result["errors"])
+
     def test_impact_depth_zero_turns_the_check_off(self):
         config = self.root / "DHF" / "config" / "global.yaml"
         config.write_text(config.read_text() + "\nimpact_depth: 0\n")
