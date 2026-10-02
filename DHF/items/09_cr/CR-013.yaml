@@ -23,7 +23,7 @@ priority: Medium
 requested_by: itercharles
 target_version: 2026-W21
 content: ''
-status: new
+status: completed
 implementation_notes: '## Overview
 
   This CR adds the active patient name to the primary toolbar header row, immediately

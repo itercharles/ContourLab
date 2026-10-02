@@ -1,0 +1,20 @@
+id: REL-001
+title: Baseline of change requests completed before closure records
+version: baseline
+included_items:
+- CR-003
+- CR-004
+- CR-005
+- CR-006
+- CR-007
+- CR-008
+- CR-009
+- CR-010
+- CR-011
+- CR-012
+- CR-013
+release_notes: 'Completed before the closure criteria (implementation_notes, affected_items,
+  triage_result) existed; accepted as they are. Their closure fields are not backfilled:
+  a triage approval written afterwards would not be a record of anything.'
+type: REL
+status: draft
