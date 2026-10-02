@@ -24,4 +24,4 @@ content: >
   Submit form + CR status board accessible from the LeftSidebar footer.
   Backend proxy to GitHub Issues API; GITHUB_TOKEN injected at deploy time
   via ISSUES_TOKEN repository secret.
-status: implementing
+status: completed

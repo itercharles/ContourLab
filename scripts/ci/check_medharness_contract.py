@@ -234,6 +234,21 @@ def main() -> int:
                 errors,
             )
 
+    # build plan/code diff the branch against origin/main to find what it changed. A depth-1
+    # clone has no origin/main ("bad revision"), so the step ends completed_with_errors after
+    # it has already committed and pushed. Full history also lets a merge-base be found.
+    for filename in ("cr-lifecycle.yml", "issue-to-cr.yml"):
+        for job_name, job in (yaml.safe_load(texts[filename]).get("jobs") or {}).items():
+            steps = job.get("steps") or []
+            if not any(re.search(r"build (plan|code)\b", str(st.get("run", ""))) for st in steps):
+                continue
+            checkout = next((st for st in steps if str(st.get("uses", "")).startswith("actions/checkout")), {})
+            require(
+                (checkout.get("with") or {}).get("fetch-depth") == 0,
+                f"{filename}: job '{job_name}' runs build plan/code but does not check out with fetch-depth: 0",
+                errors,
+            )
+
     # 0.48 counts the whole repository except DHF/ as code unless told otherwise.
     for job_name in ("gen-code", "revise-code"):
         for step in yaml.safe_load(texts["cr-lifecycle.yml"])["jobs"][job_name]["steps"]:
