@@ -19,7 +19,8 @@ status: approved
 content: "The primary software item running in the clinical user's browser. Responsible\
   \ for\nall user interaction, DICOM rendering, contouring workflow, and local state\
   \ management.\n\nTechnology stack:\n- React 18 + TypeScript (strict) + Vite — component\
-  \ framework and build tooling\n- Cornerstone3D — GPU-accelerated DICOM rendering\
+  \ framework and build tooling\n- React Router (react-router-dom) — client-side declarative\
+  \ routing and in-app navigation\n- Cornerstone3D — GPU-accelerated DICOM rendering\
   \ via WebGL (axial/sagittal/coronal MPR)\n- Zustand + Immer — reactive state management\
   \ (volumeStore, structureStore, uiStore)\n- Tailwind CSS — dark clinical UI theme\n\
   \nKey sub-components:\n- ViewportManager: manages Cornerstone3D rendering contexts\
@@ -27,11 +28,14 @@ content: "The primary software item running in the clinical user's browser. Resp
   \ viewports\n- ContourEngine: freehand, polygon, brush, and eraser contouring tools;\
   \ undo/redo\n- DICOMweb client: QIDO-RS (query), WADO-RS (retrieve), STOW-RS (store)\
   \ via /dicom-web proxy\n- IndexedDB adapter: browser-local auto-save of in-progress\
-  \ structure set drafts\n\nExternal interfaces:\n- /dicom-web/* → Orthanc DICOMweb\
-  \ (proxied by Vite in dev, reverse proxy in prod)\n- /api/* → ASP.NET Core API (proxied\
-  \ by Vite in dev)\n- /ws → WebSocket for real-time updates (proxied)\n\nData flows:\n\
-  - Image loading: QIDO-RS query → WADO-RS metadata → Cornerstone image IDs →\n  VolumeBuilder\
-  \ → Cornerstone3D volume → ViewportManager.setVolume() → GPU render\n- Contouring:\
-  \ user gesture → ContourEngine.addContour() → UndoRedoManager →\n  structureStore\
-  \ → React re-render\n- Draft persistence: structureStore dirty → IndexedDB auto-save\
-  \ → restore on reload\n- Structure upload: active RTSTRUCT → STOW-RS to DICOM repository"
+  \ structure set drafts\n- Page router: React Router declarative routes for Workspace,\
+  \ ReleaseNotes, and other application pages; the Release Notes page provides keyboard-accessible\
+  \ back-navigation to the workspace via a React Router Link\n\nExternal interfaces:\n\
+  - /dicom-web/* → Orthanc DICOMweb (proxied by Vite in dev, reverse proxy in prod)\n\
+  - /api/* → ASP.NET Core API (proxied by Vite in dev)\n- /ws → WebSocket for real-time\
+  \ updates (proxied)\n\nData flows:\n- Image loading: QIDO-RS query → WADO-RS metadata\
+  \ → Cornerstone image IDs →\n  VolumeBuilder → Cornerstone3D volume → ViewportManager.setVolume()\
+  \ → GPU render\n- Contouring: user gesture → ContourEngine.addContour() → UndoRedoManager\
+  \ →\n  structureStore → React re-render\n- Draft persistence: structureStore dirty\
+  \ → IndexedDB auto-save → restore on reload\n- Structure upload: active RTSTRUCT\
+  \ → STOW-RS to DICOM repository"
