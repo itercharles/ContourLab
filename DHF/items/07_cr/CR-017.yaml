@@ -67,8 +67,10 @@ implementation_notes: '## Overview
   - **`apps/client/src/pages/ReleaseNotes.test.tsx`** (modify existing): Add a test
   asserting the back-link is present with accessible label matching `/back to workspace/i`
   and href resolving to `/workspace`. Annotate with `@links:SRS-031` and `@testing:T3`.
-  Ensure the component is rendered inside a `MemoryRouter`; add it if the existing
-  test setup does not already provide one.
+  Add a second assertion (T4) verifying the existing heading text and subtitle are
+  unchanged and all pre-existing release entries are still rendered. Ensure the component
+  is rendered inside a `MemoryRouter`; add it if the existing test setup does not
+  already provide one.
 
 
   No new files are required. No changes to routing, sidebar, or shared types.
@@ -99,9 +101,13 @@ implementation_notes: '## Overview
   8. Add test case annotated `@links:SRS-031 @testing:T3`: query `getByRole(''link'',
   { name: /back to workspace/i })` and assert `href` attribute ends with `/workspace`.
 
-  9. Run `pnpm --filter @contourlab/client test` — all tests must pass.
+  9. Add test case annotated `@links:SRS-031 @testing:T4`: assert the `h1` heading
+  still contains "Release Notes", the subtitle paragraph text is unchanged, and the
+  rendered release entry count matches the source data length.
 
-  10. Run `pnpm --filter @contourlab/client typecheck` — no type errors.
+  10. Run `pnpm --filter @contourlab/client test` — all tests must pass.
+
+  11. Run `pnpm --filter @contourlab/client typecheck` — no type errors.
 
 
   ## Edge Cases & Constraints
@@ -125,9 +131,15 @@ implementation_notes: '## Overview
 
   ## Tests
 
-  - **Unit/component test** (new test case in existing `ReleaseNotes.test.tsx`): Verify
-  the back-link renders with accessible label `/back to workspace/i` and href `/workspace`.
-  Annotate `@links:SRS-031 @testing:T3`.
+  - **Unit/component test (T3)** (new test case in existing `ReleaseNotes.test.tsx`):
+  Verify the back-link renders with accessible label `/back to workspace/i` and href
+  `/workspace`. Annotate `@links:SRS-031 @testing:T3`.
+
+  - **Unit/component test (T4)** (new test case in existing `ReleaseNotes.test.tsx`):
+  Verify that after adding the back-navigation link, the existing "Release Notes"
+  heading text and subtitle paragraph are unchanged and all pre-existing release entries
+  remain present with their correct version, date, and change items. Annotate `@links:SRS-031
+  @testing:T4`.
 
   - **Existing tests** (SRS-031 T1, T2 / SYS-016 T1, T2): Ensure they still pass —
   the header flex change must not break rendering of release entries.

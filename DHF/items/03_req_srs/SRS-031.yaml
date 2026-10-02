@@ -24,9 +24,14 @@ testing: 'T1: Given the release notes page, it renders the release data with at 
   to workspace" is present in the header, its href resolves to /workspace, and it
   receives a visible focus ring when keyboard-focused.
 
+  T4: Given the release notes page after the back-navigation link is added, the existing
+  "Release Notes" heading text and subtitle paragraph are unchanged and all pre-existing
+  release entries remain present with their correct version, date, and change items.
+
   '
 type: SRS
 verification_criteria: The release notes page renders at /release-notes with all entries
   in newest-first order, each showing version, date, and changes; a link labelled
   "Back to workspace" appears in the header, navigates to /workspace, and displays
-  a Tailwind focus-visible ring when keyboard-focused.
+  a Tailwind focus-visible ring when keyboard-focused; and adding the back-navigation
+  link does not alter the existing header text or any release entry content.
