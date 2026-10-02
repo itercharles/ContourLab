@@ -201,7 +201,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: ./.github/actions/cr-agent-setup
@@ -306,7 +306,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: ./.github/actions/cr-agent-setup
@@ -372,11 +372,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
-      - name: Fetch base ref for diff
-        run: git fetch origin main --depth 1
       - uses: ./.github/actions/cr-agent-setup
       - name: Generate implementation
         env:
@@ -432,7 +430,7 @@ jobs:
           if [ "$(git rev-list --count "origin/$(git rev-parse --abbrev-ref HEAD)..HEAD")" -gt 0 ]; then
             COMMITTED=true
           fi
-          git fetch origin main --depth 1
+          git fetch -q origin main
           CODE_EXISTS=$(git diff origin/main -- . \
             ':(exclude)DHF/' \
             | grep -c "^+" || true)
@@ -522,11 +520,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
-      - name: Fetch base ref for diff
-        run: git fetch origin main --depth 1
       - uses: ./.github/actions/cr-agent-setup
       - name: Revise implementation
         env:
