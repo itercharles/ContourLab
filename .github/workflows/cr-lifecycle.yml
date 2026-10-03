@@ -376,6 +376,10 @@ jobs:
           token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: ./.github/actions/cr-agent-setup
+      # The model is told to run lint, typecheck and the tests (CLAUDE.md, and the typecheck hook in
+      # .claude/settings.json). Without pnpm and the workspace dependencies it cannot, and a revision
+      # of CR-018 shipped a type error it had no way to see.
+      - uses: ./.github/actions/setup-contourlab-frontend
       - name: Generate implementation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -524,6 +528,10 @@ jobs:
           token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
       - uses: ./.github/actions/cr-agent-setup
+      # The model is told to run lint, typecheck and the tests (CLAUDE.md, and the typecheck hook in
+      # .claude/settings.json). Without pnpm and the workspace dependencies it cannot, and a revision
+      # of CR-018 shipped a type error it had no way to see.
+      - uses: ./.github/actions/setup-contourlab-frontend
       - name: Revise implementation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
