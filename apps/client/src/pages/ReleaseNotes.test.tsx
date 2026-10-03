@@ -50,5 +50,6 @@ describe('ReleaseNotes @links:SRS-031,SYS-016', () => {
     renderPage();
     const link = screen.getByRole('link', { name: /back to workspace/i });
     expect(link.parentElement?.className).toContain('flex-wrap');
+    expect(link).toHaveClass('whitespace-nowrap', 'shrink-0');
   });
 });
