@@ -66,19 +66,20 @@ implementation_notes: '## Overview
   ## Changes Required
 
   - **apps/client/src/pages/ReleaseNotes.tsx** (modify): import `Link` from `react-router-dom`;
-  make the header inner div `flex items-center justify-between`; wrap h1 and p in
-  a nested div (text unchanged); add `<Link to="/workspace" reloadDocument ...>Back
-  to workspace</Link>` with light-theme classes, e.g. `text-sm font-medium text-blue-600
-  hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
-  focus-visible:ring-offset-2 rounded`. NOTE: the page is light-mode, so do not use
-  blue-400/300 (low contrast on white). Use `reloadDocument` to match the sidebar
-  links, which leave the page cleanly toward the Cornerstone viewport (check how LeftSidebar
-  does it; if tests with MemoryRouter make href assertions awkward, plain Link is
-  acceptable).
+  make the header inner div `flex flex-wrap items-center justify-between gap-4` (the
+  row wraps when content no longer fits, so at 400 px and narrower the link stays
+  visible with no horizontal scroll); wrap h1 and p in a nested div (text unchanged);
+  add `<Link to="/workspace" reloadDocument ...>Back to workspace</Link>` with light-theme
+  classes, e.g. `shrink-0 whitespace-nowrap text-sm font-medium text-blue-600 hover:text-blue-700
+  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+  rounded`. NOTE: the page is light-mode, so do not use blue-400/300 (low contrast
+  on white). `reloadDocument` is required, matching the LeftSidebar, Settings and
+  Issues links, which leave the page cleanly toward the Cornerstone viewport; under
+  MemoryRouter the rendered href is still `/workspace`, so T3 is unaffected.
 
   - **apps/client/src/pages/ReleaseNotes.test.tsx** (modify): wrap renders in `MemoryRouter`
-  (existing T1/T2 tests need it now that Link needs Router context); add T3 and T4
-  tests.
+  (existing T1/T2 tests need it now that Link needs Router context); add T3, T4 and
+  T5 tests.
 
   - DHF items SRS-031 and SWDD-013 already updated by this plan. No change to routing,
   sidebar, shared types, release data.
@@ -97,9 +98,14 @@ implementation_notes: '## Overview
   changed in each version of ContourLab" present, and each RELEASE_NOTES version rendered
   (count matches).
 
-  5. Run `pnpm --filter @contourlab/client test`, `lint`, `typecheck`.
+  5. Add T5 (`@links:SRS-031 @testing:T5`): get the link via getByRole(''link'', {name:
+  /back to workspace/i}) and assert its `parentElement` (the header inner div that
+  also contains the title block) has class `flex-wrap`. This is a class-presence proxy;
+  real wrapping is checked manually.
 
-  6. `medharness --dhf DHF verify dhf` and `verify changes --cr CR-018`.
+  6. Run `pnpm --filter @contourlab/client test`, `lint`, `typecheck`.
+
+  7. `medharness --dhf DHF verify dhf` and `verify changes --cr CR-018`.
 
 
   ## Edge Cases & Constraints
@@ -118,16 +124,20 @@ implementation_notes: '## Overview
 
   ## Tests
 
-  - Component tests in ReleaseNotes.test.tsx: SRS-031 T3, T4; existing T1, T2 still
-  pass (SRS-031/SYS-016).
+  - Component tests in ReleaseNotes.test.tsx: SRS-031 T3, T4, T5; existing T1, T2
+  still pass (SRS-031/SYS-016).
 
-  - Manual: open /release-notes, Tab to link, see focus ring, activate, land on /workspace.'
+  - Manual: open /release-notes, Tab to link, see focus ring, activate, land on /workspace.
+  Narrow viewport (DevTools at 399 px): link wraps below the title, label stays on
+  one line, and no horizontal scrollbar appears (SRS-031 Demonstration).'
 impact_analysis:
   assumptions:
   - The link is a client-side Link to /workspace in the page header; the CR's description
     is identical to cancelled CR-015/016/017 and none of that code exists, so it is
     not a duplicate.
   - Page is light-themed, so link colours follow the light theme.
+  - jsdom does no layout, so narrow-width wrapping is verified by Demonstration in
+    addition to the T5 class check.
   anchors:
   - id: SRS-031
     evidence: ReleaseNotes.test.tsx @links:SRS-031,SYS-016; SRS-031 text covers the
@@ -150,7 +160,8 @@ impact_analysis:
     items: []
   - dimension: requirements
     verdict: required
-    reason: SRS-031 gains the back link requirement with T3/T4 and a measurable criterion.
+    reason: SRS-031 gains the back link requirement with T3/T4/T5 and a measurable
+      criterion.
     items:
     - SRS-031
   - dimension: architecture
@@ -168,7 +179,8 @@ impact_analysis:
     items: []
   - dimension: test
     verdict: required
-    reason: New test points T3 and T4 on SRS-031.
+    reason: New test points T3, T4 and T5 on SRS-031. T5 is a class-presence proxy;
+      narrow-width rendering is covered by Demonstration.
     items:
     - SRS-031
   - dimension: regulatory
@@ -181,8 +193,8 @@ impact_analysis:
     items: []
   - dimension: usability
     verdict: required
-    reason: Adds a way back to the workspace with keyboard focus and visible focus
-      style.
+    reason: Adds a way back to the workspace with keyboard focus, visible focus style
+      and wrapping at narrow widths (<400 px).
     items:
     - SRS-031
     - SWDD-013

@@ -4,8 +4,8 @@ implements:
 module:
 - MODULE-010
 title: Release notes static data model and ReleaseNotes page component
-content: "Release data is a static constant defined in apps/client/src/pages/ReleaseNotes.tsx\
-  \ (or a colocated releaseData.ts). The data structure is an array of ReleaseEntry\
+content: "Release data is a static constant RELEASE_NOTES defined in apps/client/src/pages/releaseNotesData.ts\
+  \ and imported by ReleaseNotes.tsx. The data structure is an array of ReleaseEntry\
   \ objects sorted newest-first:\n\n  interface ReleaseEntry {\n    version: string;\
   \   // semver string, e.g. \"1.2.0\"\n    date: string;      // ISO-8601 date, e.g.\
   \ \"2026-06-05\"\n    changes: string[]; // one item per change bullet\n  }\n\n\
@@ -19,7 +19,12 @@ content: "Release data is a static constant defined in apps/client/src/pages/Rel
   \ the ApplicationPages pattern (bg-gray-50 page background, bg-white cards with\
   \ border-gray-200, text-gray-900/600/400 — light-mode page layout used by About\
   \ and Settings), not the dark clinical workspace theme.\n\nThe page header is a\
-  \ flex row: title/subtitle block on the left and a react-router Link to /workspace\
-  \ labelled \"Back to workspace\" on the right (light-theme link colours, focus-visible\
-  \ ring). The page therefore needs a Router context in tests."
+  \ flex row: title/subtitle block on the left and a react-router Link (with reloadDocument,\
+  \ matching the LeftSidebar, Settings and Issues links) to /workspace labelled \"\
+  Back to workspace\" on the right (light-theme link colours, focus-visible ring).\
+  \ The header row (flex flex-wrap items-center justify-between gap-4) wraps whenever\
+  \ its content no longer fits, including at 400 px and narrower (no fixed breakpoint);\
+  \ the link carries shrink-0 and whitespace-nowrap so its label never breaks and\
+  \ it drops below the title block and stays visible without horizontal scrolling\
+  \ (SRS-031 T5). The page therefore needs a Router context in tests."
 type: SWDD
