@@ -1,14 +1,24 @@
+import { Link } from 'react-router-dom';
 import { RELEASE_NOTES } from './releaseNotesData';
 
 function ReleaseNotes() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-6 py-8">
-          <h1 className="text-3xl font-bold text-gray-900">Release Notes</h1>
-          <p className="mt-2 text-lg text-gray-600">
-            What's changed in each version of ContourLab
-          </p>
+        <div className="max-w-5xl mx-auto px-6 py-8 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Release Notes</h1>
+            <p className="mt-2 text-lg text-gray-600">
+              What's changed in each version of ContourLab
+            </p>
+          </div>
+          <Link
+            to="/workspace"
+            reloadDocument
+            className="shrink-0 whitespace-nowrap text-sm font-medium text-blue-600 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded"
+          >
+            Back to workspace
+          </Link>
         </div>
       </header>
 
