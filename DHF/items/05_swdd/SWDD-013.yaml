@@ -18,5 +18,8 @@ content: "Release data is a static constant defined in apps/client/src/pages/Rel
   \ footer row alongside the existing Issues and Settings links.\n\nStyling follows\
   \ the ApplicationPages pattern (bg-gray-50 page background, bg-white cards with\
   \ border-gray-200, text-gray-900/600/400 — light-mode page layout used by About\
-  \ and Settings), not the dark clinical workspace theme."
+  \ and Settings), not the dark clinical workspace theme.\n\nThe page header is a\
+  \ flex row: title/subtitle block on the left and a react-router Link to /workspace\
+  \ labelled \"Back to workspace\" on the right (light-theme link colours, focus-visible\
+  \ ring). The page therefore needs a Router context in tests."
 type: SWDD
