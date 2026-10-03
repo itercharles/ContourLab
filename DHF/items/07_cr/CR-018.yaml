@@ -1,0 +1,200 @@
+id: CR-018
+title: 'Release notes page: add a "Back to workspace" link in the header'
+description: 'The Release Notes page has no way back to the workspace except the browser''s
+  back button.
+
+
+  Acceptance criteria:
+
+  - The page header shows a "Back to workspace" link that navigates to `/workspace`
+
+  - The link is keyboard focusable and has a visible focus style
+
+  - No change to the release entries or the existing header text
+
+
+  This is a small, UI-only change in `apps/client/src/pages/ReleaseNotes.tsx` and
+  its test. It is also the test change request for the medharness 0.48.0 end-to-end
+  run.
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/129'
+requested_by: itercharles
+priority: Medium
+status: develop
+target_version: 2026-W23
+type: CR
+triage_result:
+  verdict: approved
+  complexity: small
+  affected_subsystems:
+  - ApplicationPages
+  related_crs:
+  - CR-014
+  - CR-015
+  - CR-016
+  - CR-017
+  notes: Back link is absent from ReleaseNotes.tsx (re-submission of cancelled CR-015/16/17);
+    single-module UI change, refine SRS-031 only.
+affected_risk_items: []
+affected_items:
+- SRS-031
+- SWDD-013
+reviewed_items:
+- SYS-016
+- MODULE-010
+- SYSARCH-001
+implementation_notes: '## Overview
+
+  Add a "Back to workspace" link to the header of the Release Notes page (/release-notes)
+  navigating to /workspace. Keyboard focusable with visible focus style. Release entries
+  and existing header text must not change. Prior attempts (CR-015/016/017) were cancelled;
+  this is the same scope.
+
+
+  ## Current State
+
+  `apps/client/src/pages/ReleaseNotes.tsx` renders a light-theme page (bg-gray-50,
+  white header with border-gray-200). Header = `<header className="bg-white border-b
+  border-gray-200">` containing `<div className="max-w-5xl mx-auto px-6 py-8">` with
+  `h1` "Release Notes" and a subtitle `p`. Data comes from `RELEASE_NOTES` in `./releaseNotesData`.
+  The component imports no router code. `ReleaseNotes.test.tsx` has T1/T2 tests, rendering
+  `<ReleaseNotes />` without a Router. Route registered in `App.tsx`; sidebar link
+  in `LeftSidebar.tsx` uses `reloadDocument`.
+
+
+  ## Changes Required
+
+  - **apps/client/src/pages/ReleaseNotes.tsx** (modify): import `Link` from `react-router-dom`;
+  make the header inner div `flex flex-wrap items-center justify-between gap-4` (the
+  row wraps when content no longer fits, so at 400 px and narrower the link stays
+  visible with no horizontal scroll); wrap h1 and p in a nested div (text unchanged);
+  add `<Link to="/workspace" reloadDocument ...>Back to workspace</Link>` with light-theme
+  classes, e.g. `shrink-0 whitespace-nowrap text-sm font-medium text-blue-600 hover:text-blue-700
+  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+  rounded`. NOTE: the page is light-mode, so do not use blue-400/300 (low contrast
+  on white). `reloadDocument` is required, matching the LeftSidebar, Settings and
+  Issues links, which leave the page cleanly toward the Cornerstone viewport; under
+  MemoryRouter the rendered href is still `/workspace`, so T3 is unaffected.
+
+  - **apps/client/src/pages/ReleaseNotes.test.tsx** (modify): wrap renders in `MemoryRouter`
+  (existing T1/T2 tests need it now that Link needs Router context); add T3, T4 and
+  T5 tests.
+
+  - DHF items SRS-031 and SWDD-013 already updated by this plan. No change to routing,
+  sidebar, shared types, release data.
+
+
+  ## Implementation Steps
+
+  1. Edit ReleaseNotes.tsx as above.
+
+  2. Update test file: MemoryRouter wrapper helper; keep T1/T2.
+
+  3. Add T3 (`@links:SRS-031 @testing:T3`): getByRole(''link'', {name: /back to workspace/i})
+  has href ''/workspace'' and className containing `focus-visible:ring`.
+
+  4. Add T4 (`@links:SRS-031 @testing:T4`): h1 text "Release Notes", subtitle "What''s
+  changed in each version of ContourLab" present, and each RELEASE_NOTES version rendered
+  (count matches).
+
+  5. Add T5 (`@links:SRS-031 @testing:T5`): get the link via getByRole(''link'', {name:
+  /back to workspace/i}) and assert its `parentElement` (the header inner div that
+  also contains the title block) has class `flex-wrap`. This is a class-presence proxy;
+  real wrapping is checked manually.
+
+  6. Run `pnpm --filter @contourlab/client test`, `lint`, `typecheck`.
+
+  7. `medharness --dhf DHF verify dhf` and `verify changes --cr CR-018`.
+
+
+  ## Edge Cases & Constraints
+
+  - Must be a semantic anchor (Link), not button+useNavigate.
+
+  - Tailwind only, no inline styles, no rounded-xl, no any.
+
+  - Existing header text and entries unchanged.
+
+  - The route is wrapped in a Router in the app (App.tsx); only tests need explicit
+  MemoryRouter.
+
+  - No risk, SOUP, security or architecture impact.
+
+
+  ## Tests
+
+  - Component tests in ReleaseNotes.test.tsx: SRS-031 T3, T4, T5; existing T1, T2
+  still pass (SRS-031/SYS-016).
+
+  - Manual: open /release-notes, Tab to link, see focus ring, activate, land on /workspace.
+  Narrow viewport (DevTools at 399 px): link wraps below the title, label stays on
+  one line, and no horizontal scrollbar appears (SRS-031 Demonstration).'
+impact_analysis:
+  assumptions:
+  - The link is a client-side Link to /workspace in the page header; the CR's description
+    is identical to cancelled CR-015/016/017 and none of that code exists, so it is
+    not a duplicate.
+  - Page is light-themed, so link colours follow the light theme.
+  - jsdom does no layout, so narrow-width wrapping is verified by Demonstration in
+    addition to the T5 class check.
+  anchors:
+  - id: SRS-031
+    evidence: ReleaseNotes.test.tsx @links:SRS-031,SYS-016; SRS-031 text covers the
+      release notes page and navigation.
+  - id: SWDD-013
+    evidence: Implements SRS-031 and describes the ReleaseNotes component.
+  unchanged:
+  - id: SYS-016
+    reason: Reachability and content of the release notes page are unchanged; back
+      navigation is a software-level detail at SRS tier.
+  - id: MODULE-010
+    reason: ApplicationPages responsibility unchanged.
+  - id: SYSARCH-001
+    reason: No boundary, data flow or deployment change.
+  created: []
+  dimensions:
+  - dimension: product
+    verdict: not_required
+    reason: Small navigation affordance; UC-006 stays accurate.
+    items: []
+  - dimension: requirements
+    verdict: required
+    reason: SRS-031 gains the back link requirement with T3/T4/T5 and a measurable
+      criterion.
+    items:
+    - SRS-031
+  - dimension: architecture
+    verdict: not_required
+    reason: Local change in one component.
+    items: []
+  - dimension: risk
+    verdict: not_required
+    reason: No hazard, control or data path affected; RISK-001..003 and RCM-001..005
+      assessed and unrelated.
+    items: []
+  - dimension: soup
+    verdict: not_required
+    reason: react-router-dom already in use.
+    items: []
+  - dimension: test
+    verdict: required
+    reason: New test points T3, T4 and T5 on SRS-031. T5 is a class-presence proxy;
+      narrow-width rendering is covered by Demonstration.
+    items:
+    - SRS-031
+  - dimension: regulatory
+    verdict: not_required
+    reason: No intended use, labelling or UDI change.
+    items: []
+  - dimension: security
+    verdict: not_required
+    reason: Internal route link only.
+    items: []
+  - dimension: usability
+    verdict: required
+    reason: Adds a way back to the workspace with keyboard focus, visible focus style
+      and wrapping at narrow widths (<400 px).
+    items:
+    - SRS-031
+    - SWDD-013

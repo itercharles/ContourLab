@@ -9,14 +9,38 @@ content: 'The client application shall render a dedicated release notes page at 
   string, (2) the release date, and (3) one or more change description items. The
   page shall be linked from the application navigation so users can reach it without
   returning to the workspace. The release data shall be embedded in the client source
-  as a static constant to avoid runtime dependencies.'
+  as a static constant to avoid runtime dependencies. The page header shall contain
+  a "Back to workspace" link, rendered as a semantic anchor that navigates to /workspace,
+  is keyboard focusable and shows a visible focus style. The header row (title block
+  and link) shall wrap rather than overflow whenever its content no longer fits, including
+  at viewport widths of 400 px and narrower, so the link stays visible without horizontal
+  scrolling; no fixed 400 px breakpoint is required. The existing header title, subtitle
+  and release entries are unchanged.'
 verification_method:
 - Test
+- Demonstration
 testing: 'T1: Given the release notes page, it renders the release data with at least
   one entry showing a version string and change summary.
 
   T2: Given multiple release entries, the first rendered entry is the most recent
   version.
 
+  T3: Given the release notes page, the header contains a link named "Back to workspace"
+  whose href is /workspace and which has a visible focus-visible style class.
+
+  T4: Given the release notes page with the back link, the heading "Release Notes",
+  the subtitle and every release entry in RELEASE_NOTES are still rendered.
+
+  T5: Given the release notes page header, the header row containing the title block
+  and the "Back to workspace" link has the wrapping class flex-wrap. This unit test
+  is a class-presence proxy (jsdom does no layout); the rendered behaviour is verified
+  by Demonstration: at a 399 px viewport the link wraps under the title block and
+  the page has no horizontal scrollbar.
+
   '
 type: SRS
+verification_criteria: The /release-notes header contains exactly one link with accessible
+  name "Back to workspace" and href /workspace, reachable by Tab with a focus-visible
+  ring class; the h1 text, subtitle text and the count of rendered release entries
+  equal RELEASE_NOTES.length, unchanged. The header row has flex-wrap (Test, T5);
+  at a 399 px viewport the link remains visible with no horizontal scrolling (Demonstration).
