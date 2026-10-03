@@ -249,6 +249,17 @@ def main() -> int:
                 errors,
             )
 
+    # The code jobs run a model told to lint, typecheck and test the client. With no pnpm and no
+    # workspace dependencies on the runner it can only write blind (CR-018's revision did, and
+    # shipped a TS2339 the CI then caught).
+    for job_name in ("gen-code", "revise-code"):
+        uses = [str(st.get("uses", "")) for st in yaml.safe_load(texts["cr-lifecycle.yml"])["jobs"][job_name]["steps"]]
+        require(
+            any("setup-contourlab-frontend" in u for u in uses),
+            f"cr-lifecycle.yml {job_name}: install the workspace dependencies (setup-contourlab-frontend) before build code",
+            errors,
+        )
+
     # 0.48 counts the whole repository except DHF/ as code unless told otherwise.
     for job_name in ("gen-code", "revise-code"):
         for step in yaml.safe_load(texts["cr-lifecycle.yml"])["jobs"][job_name]["steps"]:
