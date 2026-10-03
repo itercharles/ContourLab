@@ -21,7 +21,7 @@ description: 'The Release Notes page has no way back to the workspace except the
   Source issue: https://github.com/itercharles/ContourLab/issues/129'
 requested_by: itercharles
 priority: Medium
-status: develop
+status: completed
 target_version: 2026-W23
 type: CR
 triage_result:
