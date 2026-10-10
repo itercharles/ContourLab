@@ -9,7 +9,7 @@
  * Links on a describe block are inherited by all descendant test cases.
  */
 
-import type { Reporter } from 'vitest/node'
+import type { Reporter, TestModule } from 'vitest/node'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, relative } from 'node:path'
 import process from 'node:process'
@@ -44,6 +44,12 @@ function escapeXml(s: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;')
+}
+
+interface RawFile {
+  filepath: string
+  name: string
+  tasks?: unknown[]
 }
 
 interface Entry {
@@ -89,8 +95,9 @@ export default class VerificationReporter implements Reporter {
     this.outputFile = options.outputFile ?? 'test-results/verification-junit.xml'
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onFinished(files: any[] = []) {
+  // Vitest 4 dropped onFinished(files); the module's raw task is the same File tree.
+  onTestRunEnd(testModules: ReadonlyArray<TestModule>) {
+    const files = testModules.map((m) => (m as unknown as { task: RawFile }).task)
     const entries: Entry[] = []
     for (const file of files) {
       const classname = relative(process.cwd(), file.filepath as string).replace(/\\/g, '/')
