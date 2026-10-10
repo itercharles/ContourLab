@@ -10,3 +10,5 @@ derives_from:
 testing: |
   T1: Given an active structure set, the structure panel is visible and lists all structures.
 priority: Critical
+verification_method:
+- Test

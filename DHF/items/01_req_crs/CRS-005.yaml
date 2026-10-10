@@ -10,3 +10,5 @@ derives_from:
 testing: |
   T1: Given unsynchronized changes, the Save Changes action triggers export and upload and clears the repository dirty state.
 priority: Critical
+verification_method:
+- Test

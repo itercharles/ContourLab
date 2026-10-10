@@ -10,3 +10,5 @@ derives_from:
 testing: |
   T1: Given two structure set versions, compareStructureSets reports added, removed, and changed structures with volume and slice-count deltas.
 priority: Medium
+verification_method:
+- Test
