@@ -40,7 +40,7 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 
 - `medharness --dhf DHF verify dhf --strict`
 - `medharness --dhf DHF verify soup --manifest ...`
-- `medharness --dhf DHF verify tests --junit DIR ...`
+- `medharness --dhf DHF verify tests --strict --junit DIR ...` (`--strict` also fails a requirement with no verification method and a test `@links:` to an ID that is not in the DHF)
 - `medharness --dhf DHF verify changes --cr CR-NNN --since-ref origin/main --code-path ...` (compares the working tree, so it also runs locally before a commit)
 - `medharness --dhf DHF verify completion --cr CR-NNN --junit DIR ...` (reads the CR's `affected_items`)
 
