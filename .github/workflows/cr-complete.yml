@@ -1,6 +1,6 @@
 name: Complete CR In DHF
 
-run-name: CR completion | #${{ github.event.pull_request.number }}
+run-name: "CR completion | #${{ github.event.pull_request.number }}"
 
 on:
   pull_request:
