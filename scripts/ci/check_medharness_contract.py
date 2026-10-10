@@ -260,6 +260,13 @@ def main() -> int:
             errors,
         )
 
+    # An unquoted run-name with " #" loses everything from the # on: YAML reads it as a comment, so a
+    # title meant to be "CR completion | #146" was shown as "CR completion |".
+    for filename, text in texts.items():
+        rn = yaml.safe_load(text).get("run-name")
+        if isinstance(rn, str) and re.search(r"[|]\s*$", rn.strip()):
+            errors.append(f"{filename}: run-name {rn!r} ends in a bare '|' — a '#' in it was read as a YAML comment; quote it")
+
     # 0.48 counts the whole repository except DHF/ as code unless told otherwise.
     for job_name in ("gen-code", "revise-code"):
         for step in yaml.safe_load(texts["cr-lifecycle.yml"])["jobs"][job_name]["steps"]:
