@@ -214,7 +214,7 @@ jobs:
 
       - name: Scan SOUP items for known vulnerabilities (OSV)
         run: |
-          medharness --dhf DHF verify soup \
+          medharness --dhf DHF verify soup --strict \
             --manifest requirements.txt \
             --manifest pnpm-lock.yaml
 
