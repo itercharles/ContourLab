@@ -214,7 +214,7 @@ jobs:
 
       - name: Scan SOUP items for known vulnerabilities (OSV)
         run: |
-          medharness --dhf DHF verify soup \
+          medharness --dhf DHF verify soup --strict \
             --manifest requirements.txt \
             --manifest pnpm-lock.yaml
 
@@ -521,7 +521,7 @@ jobs:
       - name: Run requirement-test coverage gate
         run: |
           mkdir -p test-results/srs test-results/srs-api test-results/sys test-results/crs
-          medharness --dhf DHF verify tests \
+          medharness --dhf DHF verify tests --strict \
             --junit test-results/srs \
             --junit test-results/srs-api \
             --junit test-results/sys \
