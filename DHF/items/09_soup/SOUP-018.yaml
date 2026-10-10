@@ -1,0 +1,10 @@
+id: SOUP-018
+type: SOUP
+name: zustand
+version: 5.0.12
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/pmndrs/zustand

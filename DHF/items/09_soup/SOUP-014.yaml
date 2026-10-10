@@ -1,0 +1,10 @@
+id: SOUP-014
+type: SOUP
+name: react
+version: 18.3.1
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://reactjs.org/

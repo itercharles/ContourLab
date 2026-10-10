@@ -1,0 +1,10 @@
+id: SOUP-032
+type: SOUP
+name: jsdom
+version: 25.0.1
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/jsdom/jsdom#readme

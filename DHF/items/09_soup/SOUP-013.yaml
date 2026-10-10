@@ -1,0 +1,10 @@
+id: SOUP-013
+type: SOUP
+name: immer
+version: 11.1.4
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/immerjs/immer#readme

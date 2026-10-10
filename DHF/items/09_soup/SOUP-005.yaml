@@ -1,0 +1,9 @@
+id: SOUP-005
+type: SOUP
+name: '@cornerstonejs/codec-libjpeg-turbo-8bit'
+version: 1.2.2
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: ISC
+source: pnpm-lock.yaml

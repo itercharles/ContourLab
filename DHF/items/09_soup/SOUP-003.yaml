@@ -1,0 +1,10 @@
+id: SOUP-003
+type: SOUP
+name: typescript
+version: 5.9.3
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: Apache-2.0
+source: pnpm-lock.yaml
+homepage: https://www.typescriptlang.org/

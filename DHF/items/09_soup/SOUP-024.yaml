@@ -1,0 +1,10 @@
+id: SOUP-024
+type: SOUP
+name: '@types/react-dom'
+version: 18.3.7
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom

@@ -1,0 +1,10 @@
+id: SOUP-016
+type: SOUP
+name: react-router-dom
+version: 7.14.0
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/remix-run/react-router#readme

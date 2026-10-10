@@ -40,9 +40,7 @@ jobs:
           medharness --dhf DHF build release \
             --version "$RELEASE_VERSION" \
             --manifest requirements.txt \
-            --manifest package.json \
-            --manifest apps/client/package.json \
-            --manifest packages/shared-types/package.json \
+            --manifest pnpm-lock.yaml \
             --out-dir artifacts \
             $WRITE_FLAG \
             | tee /tmp/release-baseline-out.json

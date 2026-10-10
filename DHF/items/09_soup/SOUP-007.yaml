@@ -1,0 +1,10 @@
+id: SOUP-007
+type: SOUP
+name: '@cornerstonejs/codec-openjph'
+version: 2.4.7
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/chafey/openjphjs#readme

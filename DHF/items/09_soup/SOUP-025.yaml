@@ -1,0 +1,9 @@
+id: SOUP-025
+type: SOUP
+name: '@types/uuid'
+version: 11.0.0
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml

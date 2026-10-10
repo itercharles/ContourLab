@@ -1,0 +1,10 @@
+id: SOUP-037
+type: SOUP
+name: vitest
+version: 4.1.11
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://vitest.dev

@@ -1,0 +1,10 @@
+id: SOUP-031
+type: SOUP
+name: globals
+version: 17.5.0
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/sindresorhus/globals#readme

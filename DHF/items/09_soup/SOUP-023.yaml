@@ -1,0 +1,10 @@
+id: SOUP-023
+type: SOUP
+name: '@types/react'
+version: 18.3.28
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react

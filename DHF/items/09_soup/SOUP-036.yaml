@@ -1,0 +1,10 @@
+id: SOUP-036
+type: SOUP
+name: vite
+version: 6.4.4
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://vite.dev

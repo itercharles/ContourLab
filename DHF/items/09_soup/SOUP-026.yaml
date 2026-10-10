@@ -1,0 +1,10 @@
+id: SOUP-026
+type: SOUP
+name: '@vitejs/plugin-react'
+version: 4.7.0
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#readme

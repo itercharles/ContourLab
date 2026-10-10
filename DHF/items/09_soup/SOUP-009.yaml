@@ -1,0 +1,10 @@
+id: SOUP-009
+type: SOUP
+name: '@cornerstonejs/dicom-image-loader'
+version: 4.21.0
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/cornerstonejs/cornerstone3D

@@ -1,0 +1,10 @@
+id: SOUP-034
+type: SOUP
+name: tailwindcss
+version: 3.4.19
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://tailwindcss.com

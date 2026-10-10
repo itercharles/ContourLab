@@ -1,0 +1,10 @@
+id: SOUP-021
+type: SOUP
+name: '@testing-library/jest-dom'
+version: 6.9.1
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/testing-library/jest-dom#readme
