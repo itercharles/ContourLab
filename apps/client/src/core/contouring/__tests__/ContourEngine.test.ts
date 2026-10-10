@@ -251,7 +251,7 @@ describe('ContourEngine.addContours @links:SRS-014,SYS-004', () => {
 // deleteContourOnSlice
 // ---------------------------------------------------------------------------
 
-describe('ContourEngine.deleteContourOnSlice @links:SRS-023,SYS-004', () => {
+describe('ContourEngine.deleteContourOnSlice @links:SYS-004', () => {
   it('returns early without pushing to UndoRedoManager when no contour exists', () => {
     const structure = makeStructure([]); // no contours at all
     const ss = makeStructureSet([structure]);

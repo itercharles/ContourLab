@@ -96,7 +96,7 @@ describe('dicomWebClient summary parsing', () => {
     ]);
   });
 
-  it('keeps planning CT series and excludes non-planning modalities or CBCT-like series @links:SRS-021', () => {
+  it('keeps planning CT series and excludes non-planning modalities or CBCT-like series @links:SRS-001', () => {
     expect(__testables__.isPlanningCtSeries({
       patientId: 'MRN-1',
       patientName: 'DOE^JANE',

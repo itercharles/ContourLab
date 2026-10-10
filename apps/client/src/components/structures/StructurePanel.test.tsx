@@ -287,7 +287,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     );
   });
 
-  it('shows active structure details without a redundant structure-set header and edits its color @links:SRS-022', async () => {
+  it('shows active structure details without a redundant structure-set header and edits its color @links:SYS-003', async () => {
     render(<StructurePanel />);
 
     expect(screen.queryByText('Structure Set')).toBeNull();
@@ -439,7 +439,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     );
   });
 
-  it('records structure row edits for toolbar undo and redo @links:SRS-007,SRS-023', async () => {
+  it('records structure row edits for toolbar undo and redo @links:SRS-007', async () => {
     render(<StructurePanel />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Lock PTV' }));
@@ -603,7 +603,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(mocks.renderViewport).toHaveBeenCalled();
   });
 
-  it('summarizes RTSS QA separately from contour geometry QA @links:SRS-024', () => {
+  it('summarizes RTSS QA separately from contour geometry QA @links:SYS-010', () => {
     const loadedSeries = makeLoadedSeries();
     loadedSeries.series.instances = [
       { sopInstanceUID: 'sop-1', instanceNumber: 1, sliceLocation: 0 },
@@ -840,7 +840,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(container.textContent).toContain('PTV − Cord');
   });
 
-  it('applies boolean subtract to the active structure @links:SRS-025', async () => {
+  it('applies boolean subtract to the active structure', async () => {
     const loadedSeries = makeLoadedSeries();
     loadedSeries.volume.dimensions = [32, 32, 2];
     loadedSeries.volume.pixelData = new Float32Array(32 * 32 * 2);
@@ -952,7 +952,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByText('Interpolated 2 contour slices.')).toBeTruthy();
   });
 
-  it('applies a positive margin to the active structure @links:SRS-026', async () => {
+  it('applies a positive margin to the active structure', async () => {
     const loadedSeries = makeLoadedSeries();
     loadedSeries.volume.dimensions = [32, 32, 2];
     loadedSeries.volume.pixelData = new Float32Array(32 * 32 * 2);

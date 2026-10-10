@@ -29,7 +29,7 @@ function squareContour(z: number, min: number, max: number, sop = `sop-${z}`): C
   };
 }
 
-describe('BooleanContourEngine @links:SRS-025', () => {
+describe('BooleanContourEngine', () => {
   it('builds union contours for overlapping slices', () => {
     const contours = computeBooleanContoursForStructure(
       [squareContour(0, 4, 12)],
