@@ -62,6 +62,8 @@ export default defineConfig({
     globals: true,
     reporters: ['default', './verification-reporter.ts'],
     exclude: ['**/node_modules/**', '**/e2e/**'],
+    // Vitest 3 will not load these UMD codecs inlined ("Cannot set property default of [object Module]").
+    server: { deps: { external: [/@cornerstonejs\/codec-/] } },
   },
   plugins: [react()],
   worker: {
