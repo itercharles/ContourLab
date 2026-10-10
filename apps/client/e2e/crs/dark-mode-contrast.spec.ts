@@ -1,5 +1,4 @@
 /**
- * @links:CRS-011
  * Smoke test: dark mode UI meets WCAG AA contrast on the patient browser
  * and structure panel surfaces.
  */
@@ -30,9 +29,9 @@ function wcagContrast(hex1: string, hex2: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-test.describe('dark mode WCAG AA contrast @links:CRS-011', () => {
+test.describe('dark mode WCAG AA contrast', () => {
   test(
-    'patient browser and structure panel surfaces meet WCAG AA @links:CRS-011',
+    'patient browser and structure panel surfaces meet WCAG AA',
     async ({ page }) => {
       await page.goto('/');
       await expect(page.getByText('Load Patient')).toBeVisible();
