@@ -1,0 +1,10 @@
+id: SOUP-022
+type: SOUP
+name: '@testing-library/react'
+version: 16.3.2
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/testing-library/react-testing-library#readme

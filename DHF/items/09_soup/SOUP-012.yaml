@@ -1,0 +1,10 @@
+id: SOUP-012
+type: SOUP
+name: dicom-parser
+version: 1.8.21
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/cornerstonejs/dicomParser

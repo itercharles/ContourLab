@@ -1,0 +1,10 @@
+id: SOUP-030
+type: SOUP
+name: eslint-plugin-react-refresh
+version: 0.5.2
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/ArnaudBarre/eslint-plugin-react-refresh#readme

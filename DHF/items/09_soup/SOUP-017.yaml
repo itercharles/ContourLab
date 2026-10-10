@@ -1,0 +1,10 @@
+id: SOUP-017
+type: SOUP
+name: uuid
+version: 13.0.2
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/uuidjs/uuid#readme

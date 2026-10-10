@@ -36,9 +36,7 @@ jobs:
         run: |
           medharness --dhf DHF build soup \
             --manifest requirements.txt \
-            --manifest package.json \
-            --manifest apps/client/package.json \
-            --manifest packages/shared-types/package.json \
+            --manifest pnpm-lock.yaml \
             | tee /tmp/soup-sync-out.json
 
       - name: Open a pull request for the SOUP changes

@@ -1,0 +1,10 @@
+id: SOUP-004
+type: SOUP
+name: '@cornerstonejs/codec-charls'
+version: 1.2.3
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/chafey/charls-js#readme

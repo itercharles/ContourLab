@@ -1,0 +1,10 @@
+id: SOUP-027
+type: SOUP
+name: autoprefixer
+version: 10.4.27
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/postcss/autoprefixer#readme

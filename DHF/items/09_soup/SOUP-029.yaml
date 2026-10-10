@@ -1,0 +1,10 @@
+id: SOUP-029
+type: SOUP
+name: eslint-plugin-react-hooks
+version: 7.1.1
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://react.dev/

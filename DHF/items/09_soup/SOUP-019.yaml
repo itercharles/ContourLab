@@ -1,0 +1,10 @@
+id: SOUP-019
+type: SOUP
+name: '@eslint/js'
+version: 10.0.1
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://eslint.org

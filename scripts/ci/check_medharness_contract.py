@@ -188,6 +188,12 @@ def main() -> int:
             match = re.search(pattern, text)
             require(match is None, f"{filename} uses retired form `{match.group(0) if match else ''}`", errors)
 
+    # package.json records the range floor, not the installed version; the SOUP register
+    # and its OSV scan must read the lockfile.
+    for filename, text in texts.items():
+        match = re.search(r"--manifest\s+\S*package\.json\b", text)
+        require(match is None, f"{filename} gives `{match.group(0) if match else ''}` to a SOUP command; use pnpm-lock.yaml", errors)
+
     # An event field pasted into a run script is shell source: a title or branch name with a
     # quote or $(...) breaks the step, or runs as a command on a runner that holds secrets.
     # Pass it through env: and use "$VAR".

@@ -1,0 +1,10 @@
+id: SOUP-011
+type: SOUP
+name: dcmjs
+version: 0.50.1
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/dcmjs-org/dcmjs#readme

@@ -1,0 +1,10 @@
+id: SOUP-002
+type: SOUP
+name: medharness
+version: 0.58.22
+ecosystem: PyPI
+manufacturer: ''
+purpose: ''
+license: MIT
+source: requirements.txt
+homepage: https://github.com/itercharles/MedHarness

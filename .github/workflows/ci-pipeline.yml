@@ -216,9 +216,7 @@ jobs:
         run: |
           medharness --dhf DHF verify soup \
             --manifest requirements.txt \
-            --manifest package.json \
-            --manifest apps/client/package.json \
-            --manifest packages/shared-types/package.json
+            --manifest pnpm-lock.yaml
 
   # ── CR BRANCH VALIDATION ─────────────────────────────────────────────────
   # Phase 2b: For feat/CR-* implementation branches, verifies the branch
@@ -615,9 +613,7 @@ jobs:
             --out-dir dhf-artifacts \
             --doc-format pdf \
             --manifest requirements.txt \
-            --manifest package.json \
-            --manifest apps/client/package.json \
-            --manifest packages/shared-types/package.json \
+            --manifest pnpm-lock.yaml \
             --junit test-results/srs \
             --junit test-results/srs-api \
             --junit test-results/sys \

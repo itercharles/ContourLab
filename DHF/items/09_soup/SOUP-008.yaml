@@ -1,0 +1,10 @@
+id: SOUP-008
+type: SOUP
+name: '@cornerstonejs/core'
+version: 4.21.0
+ecosystem: npm
+manufacturer: ''
+purpose: ''
+license: MIT
+source: pnpm-lock.yaml
+homepage: https://github.com/cornerstonejs/cornerstone3D#readme

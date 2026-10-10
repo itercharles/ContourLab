@@ -49,7 +49,9 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 - `medharness --dhf DHF build release --version ... --out-dir ...` — dry run on
   every main push (evidence bundle); with `--write` in `release-baseline.yml` to
   record a REL item
-- `medharness --dhf DHF build soup --manifest ...` — SOUP register sync (always writes the working tree)
+- `medharness --dhf DHF build soup --manifest ...` — SOUP register sync (always writes the working tree).
+  Pass `pnpm-lock.yaml`, not `package.json`: a `package.json` records the version-range floor
+  (`^1.2.0` becomes `1.2.0`), not the installed version, so the vulnerability scan checks the wrong release.
 
 ## Usage Notes
 
