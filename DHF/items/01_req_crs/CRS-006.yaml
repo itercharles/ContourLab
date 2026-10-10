@@ -10,3 +10,5 @@ derives_from:
 testing: |
   T1: Given an RTSTRUCT dataset, the import produces a structure set with correct structure names, types, colors, and contour point data.
 priority: Critical
+verification_method:
+- Test

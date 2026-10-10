@@ -12,3 +12,5 @@ testing: |
   T2: Given a search query entered, the search input reflects the value.
   T3: Given the patient browser is open, the clinician can close it with the close button.
 priority: Critical
+verification_method:
+- Test

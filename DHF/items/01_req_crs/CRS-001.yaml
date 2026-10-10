@@ -12,3 +12,5 @@ testing: |
   T2: Given a search term matching a patient MRN, the browser filters to show only that patient.
   T3: Given no active patient, the workspace shows the empty-state placeholders.
 priority: Critical
+verification_method:
+- Test
