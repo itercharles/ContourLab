@@ -13,7 +13,7 @@ const volume: Volume = {
   windowWidth: 400,
 };
 
-describe('computeMarginContoursForStructure @links:SRS-026', () => {
+describe('computeMarginContoursForStructure', () => {
   it('expands contours on occupied slices', () => {
     const contours = [
       {

@@ -79,7 +79,7 @@ beforeEach(() => {
   });
 });
 
-describe('WorkspaceContextBar @links:SRS-020', () => {
+describe('WorkspaceContextBar @links:SYS-012', () => {
   it('shows empty active context before a patient and image set are loaded', () => {
     render(<WorkspaceContextBar />);
 
