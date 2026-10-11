@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { WINDOW_LEVEL_PRESETS } from '../../core/rendering/WindowLevelPresets';
 import { useUIStore, type WLPreset } from '../../core/store/uiStore';
 
-const WL_PRESETS: WLPreset[] = ['softTissue', 'lung', 'bone', 'brain', 'mediastinum', 'custom'];
+const WL_PRESETS: WLPreset[] = ['softTissue', 'lung', 'bone', 'brain', 'mediastinum', 'abdomen', 'custom'];
 
 function OptionButton({
   children,

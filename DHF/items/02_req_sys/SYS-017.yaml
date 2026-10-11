@@ -3,14 +3,15 @@ title: System shall render dark theme text at WCAG AA contrast
 category: Usability
 content: In the dark theme the system shall render primary and secondary text at a
   contrast ratio of at least 4.5:1 against the main surface, and muted text at at
-  least 4.5:1 against the alternate surface used by sidebars and panels (WCAG 2.1
+  least 4.5:1 against the alternate surface used by sidebars and panels. Dim text
+  (disabled controls and placeholders) shall meet 4.5:1 on both surfaces (WCAG 2.1
   AA, success criterion 1.4.3).
 verification_method:
 - Test
 testing: 'T1: Given the dark theme, the computed text and surface colour tokens give
-  a contrast ratio of at least 4.5:1 for primary, secondary and muted text.'
+  a contrast ratio of at least 4.5:1 for primary, secondary, muted and dim text.'
 satisfies:
 - CRS-014
 type: SYS
 verification_criteria: In the dark theme the computed text and surface colour tokens
-  give a contrast ratio of at least 4.5:1 for primary, secondary and muted text.
+  give a contrast ratio of at least 4.5:1 for primary, secondary, muted and dim text.

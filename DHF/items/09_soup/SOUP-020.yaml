@@ -3,9 +3,16 @@ type: SOUP
 name: '@playwright/test'
 version: 1.59.1
 ecosystem: npm
-manufacturer: ''
+manufacturer: Microsoft Corporation
 purpose: Browser automation framework for the system (SYS) and clinical-workflow (CRS)
   end-to-end tests run in CI. Development and CI only.
 license: Apache-2.0
 source: pnpm-lock.yaml
 homepage: https://playwright.dev
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: Its results are the SYS and CRS test evidence; a faulty runner
+  would show as a failing or missing test in the coverage gate. Scanned against OSV
+  on every CI run (verify soup --strict); no unresolved vulnerabilities.
+cve_count: '0'

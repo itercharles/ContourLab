@@ -3,10 +3,16 @@ type: SOUP
 name: dicom-parser
 version: 1.8.21
 ecosystem: npm
-manufacturer: ''
+manufacturer: dicomParser contributors (cornerstonejs)
 purpose: Low-level DICOM Part 10 parser used to read tags from DICOM instances, including
   by Cornerstone's loader and the client's DICOM metadata store (DicomMetadataStore,
   cornerstoneInit).
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/cornerstonejs/dicomParser
+risk_rating: High
+safety_class: C (runs in the clinical application; parses DICOM tags that give image
+  geometry, RISK-002)
+verification_method: Geometry tag extraction is covered by unit tests (RCM-002, SRS-001).
+  Scanned against OSV on every CI run (verify soup --strict); no unresolved vulnerabilities.
+cve_count: '0'

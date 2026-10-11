@@ -3,8 +3,16 @@ type: SOUP
 name: '@cornerstonejs/codec-libjpeg-turbo-8bit'
 version: 1.2.2
 ecosystem: npm
-manufacturer: ''
+manufacturer: Cornerstone.js project (wraps the upstream codec library)
 purpose: WebAssembly baseline JPEG (libjpeg-turbo, 8-bit) decoder used by the Cornerstone
   DICOM image loader to decompress JPEG transfer-syntax image data in the browser.
 license: ISC
 source: pnpm-lock.yaml
+risk_rating: High
+safety_class: C (runs in the clinical application; decodes image pixel data; a decoding
+  fault shows wrong pixels, RISK-002 context)
+verification_method: The unit and system tests use mocked DICOMweb responses and injected
+  state, so no automated test decodes real compressed pixel data; the clinician's
+  visual comparison with the source image is the check. Scanned against OSV on every
+  CI run (verify soup --strict); no unresolved vulnerabilities.
+cve_count: '0'

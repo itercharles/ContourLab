@@ -3,9 +3,16 @@ type: SOUP
 name: '@testing-library/jest-dom'
 version: 6.9.1
 ecosystem: npm
-manufacturer: ''
+manufacturer: Testing Library contributors
 purpose: Custom DOM assertions (toBeInTheDocument, etc.) for the client component
   tests. Development and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/testing-library/jest-dom#readme
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: A faulty assertion helper would show as a failing or missing
+  component test. Scanned against OSV on every CI run (verify soup --strict); no unresolved
+  vulnerabilities.
+cve_count: '0'

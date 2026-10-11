@@ -3,8 +3,14 @@ type: SOUP
 name: uuid
 version: 13.0.2
 ecosystem: npm
-manufacturer: ''
+manufacturer: uuid contributors
 purpose: Generates unique identifiers for new structures and structure sets (StructureSetManager).
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/uuidjs/uuid#readme
+risk_rating: Low
+safety_class: C (runs in the clinical application; identifiers for new structures;
+  no clinical data)
+verification_method: Structure creation is covered by structure-management tests.
+  Scanned against OSV on every CI run (verify soup --strict); no unresolved vulnerabilities.
+cve_count: '0'

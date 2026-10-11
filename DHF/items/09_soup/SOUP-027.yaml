@@ -3,8 +3,15 @@ type: SOUP
 name: autoprefixer
 version: 10.4.27
 ecosystem: npm
-manufacturer: ''
+manufacturer: PostCSS contributors
 purpose: Adds CSS vendor prefixes in the build via PostCSS. Build-time only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/postcss/autoprefixer#readme
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: The production build runs in CI; the dark-mode contrast spec
+  reads the built tokens. Scanned against OSV on every CI run (verify soup --strict);
+  no unresolved vulnerabilities.
+cve_count: '0'

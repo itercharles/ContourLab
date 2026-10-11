@@ -1,0 +1,17 @@
+id: SWDD-015
+title: RTSTRUCT version history grouping and presentation
+implements:
+- SRS-033
+module:
+- MODULE-002
+content: dicomWebClient reads each RTSTRUCT's PredecessorStructureSetSequence into
+  predecessorSopInstanceUID. rtstructHistory.buildRtstructHistoryGroups indexes the
+  instances by SOP instance UID, takes the instances no other instance names as predecessor
+  as the latest of a group, and follows the predecessor links back to build the group's
+  versions newest first; a link whose target is not in the query result ends the chain
+  and sets hasMissingPredecessor. A visited set prevents loops. Versions are ordered
+  by structure set date and time, then SOP instance UID (compareRtstructVersions).
+  DicomRepoPanel renders each group under its latest entry and marks the entry that
+  matches the active structure set; StructurePanel shows the active structure set's
+  group or an empty-history message and calls the load handler for a chosen version.
+type: SWDD

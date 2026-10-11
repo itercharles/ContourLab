@@ -3,10 +3,17 @@ type: SOUP
 name: medharness
 version: 0.58.24
 ecosystem: PyPI
-manufacturer: ''
+manufacturer: MedHarness (itercharles)
 purpose: 'Design History File tooling: validates DHF items, links and test coverage,
   scans SOUP for vulnerabilities, and builds the release evidence bundle. Runs in
   CI and on developer machines only; not part of the shipped product.'
 license: MIT
 source: requirements.txt
 homepage: https://github.com/itercharles/MedHarness
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: DHF gates (verify dhf, tests, soup) and the workflow tests run
+  on every CI build; a wrong gate result would be caught at review of the PR. Scanned
+  against OSV on every CI run (verify soup --strict); no unresolved vulnerabilities.
+cve_count: '0'

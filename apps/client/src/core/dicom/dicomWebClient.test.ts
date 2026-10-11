@@ -192,7 +192,7 @@ describe('dicomWebClient summary parsing', () => {
     ]);
   });
 
-  it('extracts the standard RTSTRUCT predecessor reference from metadata @links:SRS-019 @testing:T1', () => {
+  it('extracts the standard RTSTRUCT predecessor reference from metadata @links:SRS-033 @testing:T1', () => {
     const metadata = {
       '30060018': {
         Value: [

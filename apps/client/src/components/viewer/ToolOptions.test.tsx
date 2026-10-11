@@ -22,6 +22,11 @@ describe('ToolOptions', () => {
 
     expect(useUIStore.getState().windowLevelPreset).toBe('lung');
     expect(screen.getByText('W 1500 · L -600')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abdomen' }));
+
+    expect(useUIStore.getState().windowLevelPreset).toBe('abdomen');
+    expect(screen.getByText('W 400 · L 60')).toBeTruthy();
   });
 
   it('shows brush secondary controls and updates brush size @links:SRS-014 @testing:T9', () => {

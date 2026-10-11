@@ -3,7 +3,7 @@ type: SOUP
 name: '@cornerstonejs/codec-charls'
 version: 1.2.3
 ecosystem: npm
-manufacturer: ''
+manufacturer: Cornerstone.js project (wraps the upstream codec library)
 purpose: WebAssembly JPEG-LS (CharLS) decoder used by the Cornerstone DICOM image
   loader to decompress JPEG-LS transfer-syntax CT/MR pixel data in the browser. A
   decoding fault would show wrong pixels, so the clinician must be able to compare
@@ -11,3 +11,11 @@ purpose: WebAssembly JPEG-LS (CharLS) decoder used by the Cornerstone DICOM imag
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/chafey/charls-js#readme
+risk_rating: High
+safety_class: C (runs in the clinical application; decodes image pixel data; a decoding
+  fault shows wrong pixels, RISK-002 context)
+verification_method: The unit and system tests use mocked DICOMweb responses and injected
+  state, so no automated test decodes real compressed pixel data; the clinician's
+  visual comparison with the source image is the check. Scanned against OSV on every
+  CI run (verify soup --strict); no unresolved vulnerabilities.
+cve_count: '0'

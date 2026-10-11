@@ -1,0 +1,41 @@
+id: SRS-033
+title: Software shall group repository RTSTRUCT versions by predecessor chain and
+  load a historical version
+content: 'The client shall read the standard PredecessorStructureSetSequence of each
+  RTSTRUCT returned by the DICOMweb repository and group the instances for the active
+  patient into version histories: each history lists its versions newest first and
+  flags a referenced predecessor that the repository query did not return. The repository
+  panel shall show each history under its latest structure set, load the latest matching
+  RTSTRUCT when a patient is selected, load a structure set from a double-clicked
+  row, and mark the RTSTRUCT that matches the active structure set. The structure
+  panel shall show the recorded predecessor history of the active structure set, or
+  an empty-history message when none is recorded, and shall request loading a historical
+  version on demand.'
+derives_from:
+- SYS-007
+verification_method:
+- Test
+testing: 'T1: Given RTSTRUCT metadata with a PredecessorStructureSetSequence, the
+  predecessor SOP class and instance UIDs are extracted correctly.
+
+  T2: Given RTSTRUCT instances linked by predecessor references, buildRtstructHistoryGroups
+  groups them newest first, keeps unrelated instances separate, and flags a predecessor
+  missing from the query result.
+
+  T3: Given the active structure set, the structure panel shows its predecessor history
+  and requests loading a historical version, or shows the empty-history message when
+  no chain is recorded.
+
+  T4: Given repository RTSTRUCTs with predecessors, the repository panel groups the
+  versions under the latest structure set and marks the one that matches the active
+  structure set.
+
+  T5: Given a patient selection or a double-clicked row, the repository panel loads
+  the latest matching RTSTRUCT or the clicked one.
+
+  '
+verification_criteria: 'T1 to T5 pass: predecessor references are read from the metadata,
+  versions are grouped newest first with missing predecessors flagged, the structure
+  panel shows the history or the empty message and requests a historical version,
+  and the repository panel groups, marks and loads RTSTRUCTs as described.'
+type: SRS

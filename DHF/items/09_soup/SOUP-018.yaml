@@ -3,9 +3,15 @@ type: SOUP
 name: zustand
 version: 5.0.12
 ecosystem: npm
-manufacturer: ''
+manufacturer: Poimandres (zustand)
 purpose: 'Client state management: the volume, structure, UI and RTSTRUCT-history
   stores that hold the loaded series and the structure sets being edited.'
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/pmndrs/zustand
+risk_rating: Medium
+safety_class: C (runs in the clinical application; holds the loaded series and the
+  structure data being edited)
+verification_method: Store behaviour is covered by unit tests (SRS-007, SRS-009, SRS-019).
+  Scanned against OSV on every CI run (verify soup --strict); no unresolved vulnerabilities.
+cve_count: '0'

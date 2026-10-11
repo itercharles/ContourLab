@@ -3,9 +3,14 @@ type: SOUP
 name: react-router-dom
 version: 7.14.0
 ecosystem: npm
-manufacturer: ''
+manufacturer: Remix Software, Inc. (React Router)
 purpose: Client-side routing between the clinical workspace and the informational
   pages (About, Settings, Issues, Release Notes).
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/remix-run/react-router#readme
+risk_rating: Low
+safety_class: C (runs in the clinical application; page routing only)
+verification_method: Navigation is covered by the release-notes and workspace tests.
+  Scanned against OSV on every CI run (verify soup --strict); no unresolved vulnerabilities.
+cve_count: '0'

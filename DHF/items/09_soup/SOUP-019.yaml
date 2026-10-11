@@ -3,9 +3,16 @@ type: SOUP
 name: '@eslint/js'
 version: 10.0.1
 ecosystem: npm
-manufacturer: ''
+manufacturer: ESLint contributors (OpenJS Foundation)
 purpose: ESLint JavaScript rule set for the client lint check run in CI. Development
   and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://eslint.org
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: 'Its output is checked by CI: lint, typecheck, build and the
+  client test suites must pass. Scanned against OSV on every CI run (verify soup --strict);
+  no unresolved vulnerabilities.'
+cve_count: '0'

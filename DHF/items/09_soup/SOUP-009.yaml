@@ -3,10 +3,18 @@ type: SOUP
 name: '@cornerstonejs/dicom-image-loader'
 version: 4.21.0
 ecosystem: npm
-manufacturer: ''
+manufacturer: Cornerstone.js project
 purpose: Loads DICOM pixel data over WADO-RS / WADO-URI and from local files for Cornerstone3D,
   and registers the codecs for compressed transfer syntaxes (DicomLoader, dicomWebClient,
   cornerstoneInit).
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/cornerstonejs/cornerstone3D
+risk_rating: High
+safety_class: C (runs in the clinical application; loads image pixel data and registers
+  the codecs)
+verification_method: The unit and system tests use mocked DICOMweb responses and injected
+  state, so no automated test decodes real compressed pixel data; the clinician's
+  visual comparison with the source image is the check. Scanned against OSV on every
+  CI run (verify soup --strict); no unresolved vulnerabilities.
+cve_count: '0'
