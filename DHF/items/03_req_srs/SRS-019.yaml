@@ -4,10 +4,11 @@ derives_from:
 title: Software shall toggle viewport fullscreen layout state and restore normal layout
   on user action or patient change
 content: Clicking "Maximize View" in the context menu shall set the maximized viewport
-  state, causing that viewport to occupy the full image area while other viewports
-  are hidden. Clicking "Restore View" or pressing Escape shall clear the maximized
-  state and restore the three-pane layout. Changing the active patient shall automatically
-  restore normal layout. Layout state shall not persist across workspace reloads.
+  state, causing that viewport to occupy the full image area, with image data displayed,
+  while other viewports are hidden. Clicking "Restore View" or pressing Escape shall
+  clear the maximized state and restore the three-pane layout, with image data displayed
+  in all three planar views. Changing the active patient shall automatically restore
+  normal layout. Layout state shall not persist across workspace reloads.
 verification_method:
 - Test
 - Demonstration
@@ -16,10 +17,15 @@ testing: 'T1: Given no maximized viewport, toggling a viewport maximizes it; tog
 
   T2: Given a maximized viewport, resetMaximizeViewport clears the maximized state.
 
+  T3: Given a loaded series and a maximized viewport, the maximized viewport panel
+  is wider than 300 px and shows image data, and after Restore View or Escape all
+  three planar views show image data again.
+
   '
 type: SRS
 verification_criteria: 'T1 and T2: the maximized-viewport state is set, switched and
-  cleared as described, and the reset action clears it. Demonstration: Maximize View
-  makes that viewport fill the image area; Restore View or Escape restores the three-pane
-  layout; changing the active patient restores it; a workspace reload starts in the
-  normal layout.'
+  cleared as described, and the reset action clears it. T3: after Maximize View the
+  viewport panel is wider than 300 px and shows non-empty image data within 10 s;
+  after Restore View or Escape each of the axial, sagittal and coronal views shows
+  image data within 10 s. Demonstration: Escape and patient change restore the three-pane
+  layout; a workspace reload starts in the normal layout.'
