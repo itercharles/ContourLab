@@ -840,7 +840,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(container.textContent).toContain('PTV − Cord');
   });
 
-  it('applies boolean subtract to the active structure', async () => {
+  it('applies boolean subtract to the active structure @links:SRS-014 @testing:T7', async () => {
     const loadedSeries = makeLoadedSeries();
     loadedSeries.volume.dimensions = [32, 32, 2];
     loadedSeries.volume.pixelData = new Float32Array(32 * 32 * 2);
@@ -952,7 +952,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByText('Interpolated 2 contour slices.')).toBeTruthy();
   });
 
-  it('applies a positive margin to the active structure', async () => {
+  it('applies a positive margin to the active structure @links:SRS-014 @testing:T8', async () => {
     const loadedSeries = makeLoadedSeries();
     loadedSeries.volume.dimensions = [32, 32, 2];
     loadedSeries.volume.pixelData = new Float32Array(32 * 32 * 2);

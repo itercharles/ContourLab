@@ -1,0 +1,13 @@
+id: SRS-032
+title: Software shall define dark theme colour tokens that meet WCAG AA contrast
+content: The client stylesheet shall define the dark theme text tokens (--color-text,
+  --color-text-sec, --color-text-muted) and surface tokens (--color-surface, --color-surface-alt)
+  so that text over its surface meets a 4.5:1 contrast ratio, and the dark theme shall
+  be the default when no theme is selected.
+derives_from:
+- SYS-017
+verification_method:
+- Test
+testing: 'T1: Given the dark theme is active, the contrast ratio computed from the
+  resolved colour tokens is at least 4.5:1 for each text and surface pair.'
+type: SRS

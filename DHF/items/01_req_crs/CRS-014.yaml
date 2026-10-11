@@ -1,0 +1,14 @@
+id: CRS-014
+title: Clinicians shall read all interface text in the dark theme without strain
+content: As a radiation therapist, physician, or dosimetrist working in a dimly lit
+  planning room, I need the dark theme text to have enough contrast against its background
+  so that I can read patient details, structure names and panel labels reliably.
+user_group: Radiation Therapist / Physician / Dosimetrist
+derives_from:
+- UC-001
+testing: 'T1: Given the dark theme, primary, secondary and muted text each meet a
+  4.5:1 contrast ratio against the surface they are drawn on.'
+priority: Medium
+verification_method:
+- Test
+type: CRS
