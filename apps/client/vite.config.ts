@@ -79,8 +79,8 @@ export default defineConfig({
     proxy: {
       '/api': `http://localhost:${process.env.CONTOURLAB_API_PORT ?? 4000}`,
       '/debug/client-log': `http://localhost:${process.env.CONTOURLAB_API_PORT ?? 4000}`,
-      '/dicom-web': 'http://localhost:8042',
-      '/orthanc': 'http://localhost:8042',
+      '/dicom-web': `http://localhost:${process.env.CONTOURLAB_ORTHANC_PORT ?? 8042}`,
+      '/orthanc': `http://localhost:${process.env.CONTOURLAB_ORTHANC_PORT ?? 8042}`,
       '/ws': {
         target: `ws://localhost:${process.env.CONTOURLAB_API_PORT ?? 4000}`,
         ws: true,

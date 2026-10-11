@@ -33,6 +33,8 @@ test-results/
 
 # DICOM data (large binary files)
 *.dcm
+# Synthetic phantom series for the real-DICOM e2e tests (generated, no patient data)
+!apps/client/e2e/fixtures/dicom/**/*.dcm
 *.nii
 *.nii.gz
 deploy-data/

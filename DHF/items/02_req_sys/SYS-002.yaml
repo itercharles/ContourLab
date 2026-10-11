@@ -25,10 +25,14 @@ testing: 'T1: Given a loaded series, three viewport panels labelled axial, sagit
   presets and selecting one makes it the active preset and shows its window width
   and level.
 
+  T4: Given a CT series loaded from the repository, each of the axial, sagittal and
+  coronal viewports shows image data (not an empty view).
+
   '
 satisfies:
   - CRS-001
 verification_criteria: With a series loaded, three viewport panels labelled axial,
   sagittal and coronal are visible; with a structure set active, contours appear in
   the correct plane in each; the window-level tool offers its presets, and selecting
-  one makes it active and shows its window width and level.
+  one makes it active and shows its window width and level; with a real CT series
+  loaded, each of the three planar views shows image data.
