@@ -547,7 +547,8 @@ jobs:
 
   # ── ARTIFACTS (main only) ─────────────────────────────────────────────────
   # After acceptance passes on main: generate DHF documents and traceability PDF.
-  # Deployment is manual — trigger the Deploy workflow from the Actions tab.
+  # Deployment is a separate workflow (deploy.yml): it starts when this pipeline succeeds on main,
+  # and can also be run by hand from the Actions tab.
 
   generate-artifacts:
     name: DHF Artifacts (evidence bundle)
