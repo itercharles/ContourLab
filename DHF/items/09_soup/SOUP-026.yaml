@@ -3,9 +3,15 @@ type: SOUP
 name: '@vitejs/plugin-react'
 version: 4.7.0
 ecosystem: npm
-manufacturer: ''
+manufacturer: Vite team and contributors
 purpose: Vite plugin that compiles React JSX and enables fast refresh in the dev server
   and production build. Build-time only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#readme
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: The production build runs in CI and the system tests run against
+  it. Scanned against OSV on every CI run (verify soup --strict); no unresolved vulnerabilities.
+cve_count: '0'

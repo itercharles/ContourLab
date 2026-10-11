@@ -3,8 +3,14 @@ type: SOUP
 name: react
 version: 18.3.1
 ecosystem: npm
-manufacturer: ''
+manufacturer: Meta Platforms, Inc. and contributors
 purpose: UI component framework for the whole client application.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://reactjs.org/
+risk_rating: Medium
+safety_class: C (runs in the clinical application; renders all clinical UI)
+verification_method: Covered indirectly by every component test and the Playwright
+  system and workflow tests. Scanned against OSV on every CI run (verify soup --strict);
+  no unresolved vulnerabilities.
+cve_count: '0'

@@ -6,11 +6,11 @@ content: As a radiation therapist, physician, or dosimetrist working in a dimly 
 user_group: Radiation Therapist / Physician / Dosimetrist
 derives_from:
 - UC-001
-testing: 'T1: Given the dark theme, primary, secondary and muted text each meet a
-  4.5:1 contrast ratio against the surface they are drawn on.'
+testing: 'T1: Given the dark theme, primary, secondary, muted and dim text each meet
+  a 4.5:1 contrast ratio against the surface they are drawn on.'
 priority: Medium
 verification_method:
 - Test
 type: CRS
-verification_criteria: In the dark theme, primary, secondary and muted text each have
-  a contrast ratio of at least 4.5:1 against the surface they are drawn on.
+verification_criteria: In the dark theme, primary, secondary, muted and dim text each
+  have a contrast ratio of at least 4.5:1 against the surface they are drawn on.

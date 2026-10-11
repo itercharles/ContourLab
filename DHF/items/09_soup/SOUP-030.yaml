@@ -3,9 +3,16 @@ type: SOUP
 name: eslint-plugin-react-refresh
 version: 0.5.2
 ecosystem: npm
-manufacturer: ''
+manufacturer: Arnaud Barré and contributors
 purpose: ESLint rule that checks components are safe for fast refresh. Development
   and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/ArnaudBarre/eslint-plugin-react-refresh#readme
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: 'Its output is checked by CI: lint, typecheck, build and the
+  client test suites must pass. Scanned against OSV on every CI run (verify soup --strict);
+  no unresolved vulnerabilities.'
+cve_count: '0'

@@ -3,10 +3,17 @@ type: SOUP
 name: '@cornerstonejs/core'
 version: 4.21.0
 ecosystem: npm
-manufacturer: ''
+manufacturer: Cornerstone.js project
 purpose: 'Cornerstone3D rendering core: GPU (WebGL) volume and stack rendering for
   the axial, sagittal and coronal viewports, viewport and camera management, and image-to-world
   coordinate handling (ViewportManager, VolumeBuilder, cornerstoneInit).'
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/cornerstonejs/cornerstone3D#readme
+risk_rating: High
+safety_class: C (runs in the clinical application; renders the viewports and maps
+  image to patient coordinates; geometry faults are RISK-002)
+verification_method: Geometry and metadata handling are covered by unit tests (RCM-002);
+  rendering is checked by the system tests under mocked data. Scanned against OSV
+  on every CI run (verify soup --strict); no unresolved vulnerabilities.
+cve_count: '0'

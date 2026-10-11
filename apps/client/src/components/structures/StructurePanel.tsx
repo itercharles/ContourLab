@@ -662,7 +662,7 @@ export default function StructurePanel() {
     if (!autoContourModelsLoaded || !activeLoadedSeries) return;
     const inferred = inferAutoContourProfile(activeLoadedSeries.series, autoContourModels);
     if (inferred) setSelectedAutoContourModelId(inferred);
-  }, [activeLoadedSeries?.seriesUID, autoContourModelsLoaded]);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeLoadedSeries?.seriesUID, autoContourModelsLoaded]);
 
   useEffect(() => {
     let animationFrame: number | null = null;

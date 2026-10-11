@@ -3,9 +3,15 @@ type: SOUP
 name: jsdom
 version: 25.0.1
 ecosystem: npm
-manufacturer: ''
+manufacturer: jsdom contributors
 purpose: Simulated browser DOM in which the Vitest component tests run. Development
   and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/jsdom/jsdom#readme
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: Component tests must pass in CI. Scanned against OSV on every
+  CI run (verify soup --strict); no unresolved vulnerabilities.
+cve_count: '0'

@@ -10,9 +10,16 @@ content: Clicking "Maximize View" in the context menu shall set the maximized vi
   restore normal layout. Layout state shall not persist across workspace reloads.
 verification_method:
 - Test
-testing: |
-  T1: Given RTSTRUCT metadata with a PredecessorStructureSetSequence, the predecessor SOP class and instance UIDs are extracted correctly.
+- Demonstration
+testing: 'T1: Given no maximized viewport, toggling a viewport maximizes it; toggling
+  a different viewport switches to it; toggling the same viewport again clears it.
+
+  T2: Given a maximized viewport, resetMaximizeViewport clears the maximized state.
+
+  '
 type: SRS
-verification_criteria: Fullscreen layout state toggles and the normal layout is restored
-  on user action or patient change; the one test point recorded checks only that the
-  predecessor SOP class and instance UIDs are extracted from RTSTRUCT metadata.
+verification_criteria: 'T1 and T2: the maximized-viewport state is set, switched and
+  cleared as described, and the reset action clears it. Demonstration: Maximize View
+  makes that viewport fill the image area; Restore View or Escape restores the three-pane
+  layout; changing the active patient restores it; a workspace reload starts in the
+  normal layout.'

@@ -278,7 +278,7 @@ describe('DicomRepoPanel', () => {
     expect(screen.queryByText('Axial')).toBeNull();
   });
 
-  it('loads the latest matching RTSTRUCT when a patient is selected @links:SRS-019', async () => {
+  it('loads the latest matching RTSTRUCT when a patient is selected @links:SRS-033 @testing:T5', async () => {
     const imported = makeStructureSet();
     imported.id = 'ss-auto';
     imported.structures[0].id = 'structure-auto';
@@ -536,7 +536,7 @@ describe('DicomRepoPanel', () => {
     expect(screen.queryByRole('button', { name: 'Push Changes' })).toBeNull();
   });
 
-  it('loads RTSTRUCT structure sets from a double-clicked repository row @links:SRS-019', async () => {
+  it('loads RTSTRUCT structure sets from a double-clicked repository row @links:SRS-033 @testing:T5', async () => {
     const imported = makeStructureSet();
     imported.id = 'ss-imported';
     imported.structures[0].id = 'structure-imported';
@@ -605,7 +605,7 @@ describe('DicomRepoPanel', () => {
     expect(screen.getAllByText('No plans yet').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('groups RTSTRUCT predecessor versions under the latest structure set entry @links:SRS-019', async () => {
+  it('groups RTSTRUCT predecessor versions under the latest structure set entry @links:SRS-033 @testing:T4', async () => {
     mocks.queryRtstructInstancesForStudy.mockResolvedValue([
       {
         studyInstanceUID: 'study-1',
@@ -653,7 +653,7 @@ describe('DicomRepoPanel', () => {
     expect(screen.queryByText('RTSTRUCT Thorax CT')).toBeNull();
   });
 
-  it('marks the repository RTSTRUCT active when the active structure set matches the RTSTRUCT SOP @links:SRS-019', async () => {
+  it('marks the repository RTSTRUCT active when the active structure set matches the RTSTRUCT SOP @links:SRS-033 @testing:T4', async () => {
     useVolumeStore.setState({
       loadedSeries: [makeLoadedSeries()],
       activeSeriesUID: 'series-1',

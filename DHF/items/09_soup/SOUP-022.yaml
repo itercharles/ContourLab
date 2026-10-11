@@ -3,9 +3,16 @@ type: SOUP
 name: '@testing-library/react'
 version: 16.3.2
 ecosystem: npm
-manufacturer: ''
+manufacturer: Testing Library contributors
 purpose: React component rendering and query utilities for the client component tests.
   Development and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/testing-library/react-testing-library#readme
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: A faulty assertion helper would show as a failing or missing
+  component test. Scanned against OSV on every CI run (verify soup --strict); no unresolved
+  vulnerabilities.
+cve_count: '0'

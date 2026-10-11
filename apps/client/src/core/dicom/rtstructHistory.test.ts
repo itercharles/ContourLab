@@ -25,7 +25,7 @@ function rtstruct(
   };
 }
 
-describe('rtstructHistory @links:SRS-019', () => {
+describe('rtstructHistory @links:SRS-033 @testing:T2', () => {
   it('groups RTSTRUCT objects by the standard predecessor chain', () => {
     const groups = buildRtstructHistoryGroups([
       rtstruct('rtss-1'),

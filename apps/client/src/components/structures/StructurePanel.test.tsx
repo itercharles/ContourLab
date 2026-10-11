@@ -1023,7 +1023,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByText('Imported')).toBeTruthy();
   });
 
-  it('shows an empty RTSTRUCT history state when no predecessor chain is recorded @links:SRS-019', () => {
+  it('shows an empty RTSTRUCT history state when no predecessor chain is recorded @links:SRS-033 @testing:T3', () => {
     const structureSet = makeStructureSet();
     structureSet.source = {
       type: 'rtstruct',
@@ -1064,7 +1064,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByText('No recorded predecessor history for this structure set.')).toBeTruthy();
   });
 
-  it('shows predecessor history and requests loading a historical RTSTRUCT version @links:SRS-019', () => {
+  it('shows predecessor history and requests loading a historical RTSTRUCT version @links:SRS-033 @testing:T3', () => {
     const loadRtstructVersion = vi.fn();
     const structureSet = makeStructureSet();
     structureSet.source = {

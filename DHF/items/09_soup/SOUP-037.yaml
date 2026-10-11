@@ -3,9 +3,16 @@ type: SOUP
 name: vitest
 version: 4.1.11
 ecosystem: npm
-manufacturer: ''
+manufacturer: Vitest team and contributors
 purpose: Unit and component test runner for the client; its custom reporter writes
   the JUnit evidence used by the DHF coverage gate. Development and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://vitest.dev
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: The JUnit evidence it writes is checked by the coverage gate;
+  missing or failing tests fail CI. Scanned against OSV on every CI run (verify soup
+  --strict); no unresolved vulnerabilities.
+cve_count: '0'

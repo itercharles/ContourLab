@@ -49,6 +49,7 @@ test.describe('dark mode WCAG AA contrast @links:CRS-014,SYS-017,SRS-032', () =>
           text:       style.getPropertyValue('--color-text').trim(),
           textSec:    style.getPropertyValue('--color-text-sec').trim(),
           textMuted:  style.getPropertyValue('--color-text-muted').trim(),
+          textDim:    style.getPropertyValue('--color-text-dim').trim(),
         };
       });
 
@@ -60,6 +61,10 @@ test.describe('dark mode WCAG AA contrast @links:CRS-014,SYS-017,SRS-032', () =>
 
       // Muted text on surface-alt (sidebar / panel alt backgrounds) — WCAG AA
       expect(wcagContrast(tokens.textMuted, tokens.surfaceAlt)).toBeGreaterThanOrEqual(4.5);
+
+      // Dim text (disabled controls, placeholders) on both surfaces — WCAG AA
+      expect(wcagContrast(tokens.textDim, tokens.surface)).toBeGreaterThanOrEqual(4.5);
+      expect(wcagContrast(tokens.textDim, tokens.surfaceAlt)).toBeGreaterThanOrEqual(4.5);
     }
   );
 });

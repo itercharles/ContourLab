@@ -9,9 +9,9 @@ content: 'Using Cornerstone3D, the system shall render three synchronized orthog
 
   viewports.
 
-  The window-level tool shall offer the presets Soft Tissue, Lung, Bone, Brain, Mediastinum
-  and Custom, apply the selected preset''s window width and level, and show the active
-  values.'
+  The window-level tool shall offer the presets Soft Tissue, Lung, Bone, Brain, Mediastinum,
+  Abdomen and Custom, apply the selected preset''s window width and level, and show
+  the active values.'
 verification_method:
   - Test
   - Demonstration

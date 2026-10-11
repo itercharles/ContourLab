@@ -3,8 +3,15 @@ type: SOUP
 name: eslint-plugin-react-hooks
 version: 7.1.1
 ecosystem: npm
-manufacturer: ''
+manufacturer: Meta Platforms, Inc. and contributors
 purpose: ESLint rules that check the rules of React hooks. Development and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://react.dev/
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: 'Its output is checked by CI: lint, typecheck, build and the
+  client test suites must pass. Scanned against OSV on every CI run (verify soup --strict);
+  no unresolved vulnerabilities.'
+cve_count: '0'

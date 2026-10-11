@@ -9,8 +9,7 @@ describe('uiStore - maximize viewport', () => {
     });
   });
 
-  // @links:SRS-019
-  it('toggleMaximizeViewport sets viewport when null', () => {
+  it('toggleMaximizeViewport sets viewport when null @links:SRS-019 @testing:T1', () => {
     const { toggleMaximizeViewport } = useUIStore.getState();
 
     toggleMaximizeViewport('AXIAL');
@@ -18,8 +17,7 @@ describe('uiStore - maximize viewport', () => {
     expect(useUIStore.getState().maximizedViewport).toBe('AXIAL');
   });
 
-  // @links:SRS-019
-  it('toggleMaximizeViewport clears viewport when same', () => {
+  it('toggleMaximizeViewport clears viewport when same @links:SRS-019 @testing:T1', () => {
     const { toggleMaximizeViewport } = useUIStore.getState();
 
     toggleMaximizeViewport('AXIAL');
@@ -29,8 +27,7 @@ describe('uiStore - maximize viewport', () => {
     expect(useUIStore.getState().maximizedViewport).toBeNull();
   });
 
-  // @links:SRS-019
-  it('toggleMaximizeViewport switches viewport', () => {
+  it('toggleMaximizeViewport switches viewport @links:SRS-019 @testing:T1', () => {
     const { toggleMaximizeViewport } = useUIStore.getState();
 
     toggleMaximizeViewport('AXIAL');
@@ -40,8 +37,7 @@ describe('uiStore - maximize viewport', () => {
     expect(useUIStore.getState().maximizedViewport).toBe('SAGITTAL');
   });
 
-  // @links:SRS-019
-  it('resetMaximizeViewport clears viewport', () => {
+  it('resetMaximizeViewport clears viewport @links:SRS-019 @testing:T2', () => {
     const { toggleMaximizeViewport, resetMaximizeViewport } = useUIStore.getState();
 
     toggleMaximizeViewport('CORONAL');

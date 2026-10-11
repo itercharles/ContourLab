@@ -15,9 +15,9 @@ content: 'The dark theme is the default (:root and [data-theme="dark"]) in apps/
   are at or above the WCAG 2.1 AA minimum of 4.5:1.
 
 
-  --color-text-dim (#6e7681) is below 4.5:1 and is reserved for non-essential decoration
-  such as placeholders and disabled hints; it is not covered by SRS-032 and must not
-  carry information the user needs.
+  --color-text-dim #838e98 (5.2:1 on --color-surface, 5.7:1 on --color-surface-alt,
+  and at least 4.5:1 on the elevated, hover and tooltip surfaces) is used for disabled
+  controls and placeholders. It was raised from #6e7681, which was 3.8:1.
 
 
   Verified by apps/client/e2e/crs/dark-mode-contrast.spec.ts, which reads the resolved

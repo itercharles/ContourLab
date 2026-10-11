@@ -3,8 +3,14 @@ type: SOUP
 name: '@types/react-dom'
 version: 18.3.7
 ecosystem: npm
-manufacturer: ''
+manufacturer: DefinitelyTyped contributors
 purpose: TypeScript type definitions for react-dom. Build-time only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: Typecheck runs in CI. Scanned against OSV on every CI run (verify
+  soup --strict); no unresolved vulnerabilities.
+cve_count: '0'

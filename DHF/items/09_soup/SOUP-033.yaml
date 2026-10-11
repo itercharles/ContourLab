@@ -3,9 +3,16 @@ type: SOUP
 name: postcss
 version: 8.5.29
 ecosystem: npm
-manufacturer: ''
+manufacturer: PostCSS contributors
 purpose: CSS transformation pipeline that runs Tailwind and autoprefixer during the
   build. Build-time only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://postcss.org/
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: The production build runs in CI; the dark-mode contrast spec
+  reads the built tokens. Scanned against OSV on every CI run (verify soup --strict);
+  no unresolved vulnerabilities.
+cve_count: '0'

@@ -3,9 +3,16 @@ type: SOUP
 name: '@cornerstonejs/tools'
 version: 4.21.0
 ecosystem: npm
-manufacturer: ''
+manufacturer: Cornerstone.js project
 purpose: 'Cornerstone3D tools: window/level, zoom, pan, scroll and crosshair interaction
   tools for the multi-planar viewports (MPRController, cornerstoneInit).'
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/cornerstonejs/cornerstone3D#readme
+risk_rating: Medium
+safety_class: C (runs in the clinical application; window/level, zoom, pan and scroll
+  tools; no contour data)
+verification_method: Tool selection and options are covered by component tests (SYS-002
+  T3, SRS-014 T9). Scanned against OSV on every CI run (verify soup --strict); no
+  unresolved vulnerabilities.
+cve_count: '0'
