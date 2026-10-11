@@ -1,0 +1,25 @@
+id: SWDD-014
+title: Dark theme colour tokens
+implements:
+- SRS-032
+module:
+- MODULE-008
+content: 'The dark theme is the default (:root and [data-theme="dark"]) in apps/client/src/index.css.
+  Colours are CSS custom properties that Tailwind classes reference as var(--color-*),
+  so no component hard-codes a text colour.
+
+
+  Text tokens and their measured contrast ratios against the surfaces they are drawn
+  on: --color-text #c9d1d9 (11.2:1 on --color-surface #161b22, 12.3:1 on --color-surface-alt
+  #0d1117); --color-text-sec and --color-text-muted #8b949e (5.6:1 and 6.2:1). All
+  are at or above the WCAG 2.1 AA minimum of 4.5:1.
+
+
+  --color-text-dim (#6e7681) is below 4.5:1 and is reserved for non-essential decoration
+  such as placeholders and disabled hints; it is not covered by SRS-032 and must not
+  carry information the user needs.
+
+
+  Verified by apps/client/e2e/crs/dark-mode-contrast.spec.ts, which reads the resolved
+  tokens in the browser and computes the WCAG contrast ratio.'
+type: SWDD

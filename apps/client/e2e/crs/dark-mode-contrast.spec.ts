@@ -29,9 +29,9 @@ function wcagContrast(hex1: string, hex2: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-test.describe('dark mode WCAG AA contrast', () => {
+test.describe('dark mode WCAG AA contrast @links:CRS-014,SYS-017,SRS-032', () => {
   test(
-    'patient browser and structure panel surfaces meet WCAG AA',
+    'patient browser and structure panel surfaces meet WCAG AA @links:CRS-014,SYS-017,SRS-032 @testing:T1',
     async ({ page }) => {
       await page.goto('/');
       await expect(page.getByText('Load Patient')).toBeVisible();

@@ -21,10 +21,33 @@ content: |-
   state without changing the selected image, structure set, or structure.
 derives_from: [SYS-004]
 verification_method: [Test, Demonstration]
-testing: |
-  T1: Given two bracketing contours around a target slice, findInterpolationBounds identifies the lower and upper bounding contours.
-  T2: Given two bracketing contours and a target slice position, interpolateContourForSlice produces a closed contour at the target z-coordinate.
-  T3: Given contours on two outer slices and intermediate image frames, interpolateMissingContoursForFrames produces interpolated contours for the missing frames.
-  T4: Given a contour gap exceeding the configured maximum, interpolateMissingContoursForFrames returns no interpolated contours.
-  T5: Given multiple interpolated contours, ContourEngine.addContours wraps all in a single undoable command that restores the prior contour state on undo.
-  T6: Given a locked structure, ContourEngine.addContours returns false without mutating data or pushing a command.
+testing: 'T1: Given two bracketing contours around a target slice, findInterpolationBounds
+  identifies the lower and upper bounding contours.
+
+  T2: Given two bracketing contours and a target slice position, interpolateContourForSlice
+  produces a closed contour at the target z-coordinate.
+
+  T3: Given contours on two outer slices and intermediate image frames, interpolateMissingContoursForFrames
+  produces interpolated contours for the missing frames.
+
+  T4: Given a contour gap exceeding the configured maximum, interpolateMissingContoursForFrames
+  returns no interpolated contours.
+
+  T5: Given multiple interpolated contours, ContourEngine.addContours wraps all in
+  a single undoable command that restores the prior contour state on undo.
+
+  T6: Given a locked structure, ContourEngine.addContours returns false without mutating
+  data or pushing a command.
+
+  T7: Given a target structure that overlaps the active structure, computeBooleanContoursForStructure
+  produces the union, the intersection (dropping slices with no overlap) and the subtraction
+  (source area outside the target) of the two structures.
+
+  T8: Given a structure with contours, computeMarginContoursForStructure expands the
+  contour for a positive margin and contracts it for a negative margin, removing slices
+  that vanish.
+
+  T9: Given the active tool, the options bar shows the tool''s secondary controls:
+  brush and eraser size, and freehand and polygon contour mode options.
+
+  '

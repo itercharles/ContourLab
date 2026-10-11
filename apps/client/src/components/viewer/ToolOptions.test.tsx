@@ -12,7 +12,7 @@ beforeEach(() => {
 });
 
 describe('ToolOptions', () => {
-  it('shows window level presets and updates the active preset', () => {
+  it('shows window level presets and updates the active preset @links:SYS-002 @testing:T3', () => {
     render(<ToolOptions />);
 
     expect(screen.getByRole('toolbar', { name: 'Window level options' })).toBeTruthy();
@@ -24,7 +24,7 @@ describe('ToolOptions', () => {
     expect(screen.getByText('W 1500 · L -600')).toBeTruthy();
   });
 
-  it('shows brush secondary controls and updates brush size', () => {
+  it('shows brush secondary controls and updates brush size @links:SRS-014 @testing:T9', () => {
     useUIStore.setState({ activeTool: 'brush', brushRadius: 8 });
 
     render(<ToolOptions />);
@@ -37,7 +37,7 @@ describe('ToolOptions', () => {
     expect(screen.getByText('18px')).toBeTruthy();
   });
 
-  it('shows contour mode options for polygon tools', () => {
+  it('shows contour mode options for polygon tools @links:SRS-014 @testing:T9', () => {
     useUIStore.setState({ activeTool: 'polygon' });
 
     render(<ToolOptions />);

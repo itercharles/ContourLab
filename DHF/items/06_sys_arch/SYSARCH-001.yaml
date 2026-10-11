@@ -14,6 +14,7 @@ design:
 - SYS-014
 - SYS-015
 - SYS-016
+- SYS-017
 title: Browser Client
 status: approved
 content: "The primary software item running in the clinical user's browser. Responsible\
