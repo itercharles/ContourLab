@@ -12,3 +12,6 @@ testing: |
 priority: Critical
 verification_method:
 - Test
+verification_criteria: With unsynchronized changes, Save Changes exports the structure
+  set as RTSTRUCT and uploads it to the DICOM repository, after which the repository
+  dirty state is cleared.

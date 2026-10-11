@@ -15,3 +15,6 @@ testing: |
   T2: Given a slice with an existing contour, addContour calls updateContourSlice (replace, not append).
   T3: Given an undo of an add-new-slice command, the added slice is removed from the structure.
   T4: Given a locked structure, addContour returns false without mutating contour data or pushing a command.
+verification_criteria: Drawing on an empty slice adds a contour, drawing on an occupied
+  slice replaces the existing contour, undoing an add removes the slice, and a locked
+  structure is not changed and records no command.

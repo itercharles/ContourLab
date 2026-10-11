@@ -12,3 +12,5 @@ testing: |
 priority: High
 verification_method:
 - Test
+verification_criteria: GET /api/health can be reached without authentication and returns
+  the service name and a status.

@@ -12,3 +12,6 @@ testing: |
 priority: High
 verification_method:
 - Test
+verification_criteria: For a structure with contours on several slices, the structure
+  panel shows the contour slice count and the clinician can step to the next and previous
+  contour-bearing slice.

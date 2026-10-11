@@ -12,3 +12,5 @@ testing: 'T1: Given the dark theme, the computed text and surface colour tokens 
 satisfies:
 - CRS-014
 type: SYS
+verification_criteria: In the dark theme the computed text and surface colour tokens
+  give a contrast ratio of at least 4.5:1 for primary, secondary and muted text.

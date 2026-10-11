@@ -13,3 +13,6 @@ testing: |
 priority: Critical
 verification_method:
 - Test
+verification_criteria: The workspace always shows the active patient, image set, structure
+  source and sync state; with no active patient it shows the default placeholder,
+  no image set and the Synced indicator.

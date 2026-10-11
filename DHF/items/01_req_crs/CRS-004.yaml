@@ -12,3 +12,5 @@ testing: |
 priority: High
 verification_method:
 - Test
+verification_criteria: For the active structure and structure set the clinician sees
+  contour quality warnings; a structure with no contours is flagged as empty.

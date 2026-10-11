@@ -4,7 +4,8 @@ name: typescript-eslint
 version: 8.59.0
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Connects ESLint to TypeScript so lint rules can understand typed code. Development
+  and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://typescript-eslint.io/packages/typescript-eslint

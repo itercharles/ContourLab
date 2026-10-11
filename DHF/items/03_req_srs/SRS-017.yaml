@@ -11,3 +11,5 @@ verification_method: [Test]
 testing: |
   T1: Given the health endpoint contract, the path is GET /api/health and requires no authentication.
   T2: Given a health response, it contains at minimum a service name and a status indicator field.
+verification_criteria: The path is GET /api/health, it requires no authentication,
+  and the response contains at least a service name and a status field.

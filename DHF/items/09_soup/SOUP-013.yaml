@@ -4,7 +4,8 @@ name: immer
 version: 11.1.4
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Immutable-state helper used through the zustand immer middleware to update
+  the UI store (uiStore) without mutating state in place.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/immerjs/immer#readme

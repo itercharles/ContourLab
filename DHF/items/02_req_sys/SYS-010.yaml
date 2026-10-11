@@ -16,3 +16,5 @@ testing: |
   T1: Given a structure with no contours, the quality analysis reports it as an empty informational item.
 satisfies:
   - CRS-004
+verification_criteria: Contour quality analysis runs for each structure; a structure
+  with no contours is reported as an informational empty item.

@@ -4,6 +4,7 @@ name: '@cornerstonejs/codec-libjpeg-turbo-8bit'
 version: 1.2.2
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: WebAssembly baseline JPEG (libjpeg-turbo, 8-bit) decoder used by the Cornerstone
+  DICOM image loader to decompress JPEG transfer-syntax image data in the browser.
 license: ISC
 source: pnpm-lock.yaml

@@ -4,7 +4,8 @@ name: eslint
 version: 10.2.1
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: JavaScript/TypeScript linter run in CI to enforce code rules. Development
+  and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://eslint.org

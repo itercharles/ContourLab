@@ -4,6 +4,7 @@ name: '@types/uuid'
 version: 11.0.0
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Deprecated stub type definitions for uuid, which ships its own types. Build-time
+  only; can be removed.
 license: MIT
 source: pnpm-lock.yaml

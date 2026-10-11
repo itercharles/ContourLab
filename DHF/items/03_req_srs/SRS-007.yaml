@@ -17,3 +17,7 @@ testing: |
   T5: Given a new command pushed after an undo, the redo stack is cleared.
   T6: Given undo or redo on an empty stack, no error is thrown.
   T7: Given subscribers registered, they are notified on push, undo, and redo; and not notified after unsubscribe.
+verification_criteria: A pushed command runs at once; undo and redo move it between
+  the stacks; only the 50 most recent commands are kept; a new command after an undo
+  clears the redo stack; undo or redo on an empty stack does nothing; subscribers
+  are notified on push, undo and redo until they unsubscribe.

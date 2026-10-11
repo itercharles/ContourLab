@@ -4,7 +4,8 @@ name: globals
 version: 17.5.0
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Provides the global-identifier lists used by the ESLint configuration. Development
+  and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/sindresorhus/globals#readme

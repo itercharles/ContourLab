@@ -12,3 +12,5 @@ priority: Medium
 verification_method:
 - Test
 type: CRS
+verification_criteria: In the dark theme, primary, secondary and muted text each have
+  a contrast ratio of at least 4.5:1 against the surface they are drawn on.

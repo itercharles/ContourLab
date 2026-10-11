@@ -4,7 +4,7 @@ name: '@types/react-dom'
 version: 18.3.7
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: TypeScript type definitions for react-dom. Build-time only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom

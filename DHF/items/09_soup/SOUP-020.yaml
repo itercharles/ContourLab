@@ -4,7 +4,8 @@ name: '@playwright/test'
 version: 1.59.1
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Browser automation framework for the system (SYS) and clinical-workflow (CRS)
+  end-to-end tests run in CI. Development and CI only.
 license: Apache-2.0
 source: pnpm-lock.yaml
 homepage: https://playwright.dev

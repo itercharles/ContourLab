@@ -28,3 +28,7 @@ testing: 'T1: Given a loaded series, three viewport panels labelled axial, sagit
   '
 satisfies:
   - CRS-001
+verification_criteria: With a series loaded, three viewport panels labelled axial,
+  sagittal and coronal are visible; with a structure set active, contours appear in
+  the correct plane in each; the window-level tool offers its presets, and selecting
+  one makes it active and shows its window width and level.

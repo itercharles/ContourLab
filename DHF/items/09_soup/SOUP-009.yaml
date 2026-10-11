@@ -4,7 +4,9 @@ name: '@cornerstonejs/dicom-image-loader'
 version: 4.21.0
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Loads DICOM pixel data over WADO-RS / WADO-URI and from local files for Cornerstone3D,
+  and registers the codecs for compressed transfer syntaxes (DicomLoader, dicomWebClient,
+  cornerstoneInit).
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/cornerstonejs/cornerstone3D

@@ -4,7 +4,8 @@ name: '@vitejs/plugin-react'
 version: 4.7.0
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Vite plugin that compiles React JSX and enables fast refresh in the dev server
+  and production build. Build-time only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#readme

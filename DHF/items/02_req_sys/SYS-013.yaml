@@ -14,3 +14,5 @@ testing: |
   T2: Given a health response, it contains at minimum a service name and a status indicator field.
 satisfies:
   - CRS-010
+verification_criteria: GET /api/health requires no authentication and its response
+  contains at least a service name and a status.

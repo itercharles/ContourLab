@@ -4,7 +4,7 @@ name: uuid
 version: 13.0.2
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Generates unique identifiers for new structures and structure sets (StructureSetManager).
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/uuidjs/uuid#readme

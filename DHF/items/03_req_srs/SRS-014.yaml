@@ -51,3 +51,8 @@ testing: 'T1: Given two bracketing contours around a target slice, findInterpola
   brush and eraser size, and freehand and polygon contour mode options.
 
   '
+verification_criteria: Interpolation finds the bounding contours, produces a closed
+  contour at the target slice, fills missing slices only within the configured maximum
+  gap, and is one undoable step; a locked structure is not changed; boolean union,
+  intersect and subtract, margin expansion and contraction, and the tool option bars
+  behave as stated in T7 to T9.

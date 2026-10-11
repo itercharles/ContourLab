@@ -13,3 +13,6 @@ verification_method:
 testing: |
   T1: Given RTSTRUCT metadata with a PredecessorStructureSetSequence, the predecessor SOP class and instance UIDs are extracted correctly.
 type: SRS
+verification_criteria: Fullscreen layout state toggles and the normal layout is restored
+  on user action or patient change; the one test point recorded checks only that the
+  predecessor SOP class and instance UIDs are extracted from RTSTRUCT metadata.

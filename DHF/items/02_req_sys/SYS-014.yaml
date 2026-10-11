@@ -17,3 +17,7 @@ testing: |
   T3: Given rotation controls, the camera is rotated by the expected azimuth and elevation amounts.
 satisfies:
   - CRS-012
+verification_criteria: With a series and structures active, the fourth quadrant shows
+  a 3D viewport with the CT context and the structure count; the camera reset control
+  resets the camera and the rotation controls rotate it by the expected azimuth and
+  elevation.

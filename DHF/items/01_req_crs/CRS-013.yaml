@@ -22,3 +22,5 @@ testing: 'T1: Given the application is running, a release notes page is accessib
 type: CRS
 verification_method:
 - Test
+verification_criteria: A release notes page is reachable from within the application
+  and shows at least one release entry with a version number and a change summary.

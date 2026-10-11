@@ -4,7 +4,8 @@ name: '@cornerstonejs/tools'
 version: 4.21.0
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: 'Cornerstone3D tools: window/level, zoom, pan, scroll and crosshair interaction
+  tools for the multi-planar viewports (MPRController, cornerstoneInit).'
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/cornerstonejs/cornerstone3D#readme

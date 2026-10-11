@@ -12,3 +12,6 @@ testing: |
 priority: Critical
 verification_method:
 - Test
+verification_criteria: With an active structure set, the structure panel lists every
+  structure and the clinician can draw, edit and remove contours on a slice with the
+  contouring tools.

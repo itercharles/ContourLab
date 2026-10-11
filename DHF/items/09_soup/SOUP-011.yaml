@@ -4,7 +4,9 @@ name: dcmjs
 version: 0.50.1
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: 'DICOM manipulation library used to read and write RTSTRUCT objects: it builds
+  the RTSTRUCT dataset for export to the DICOM repository and parses imported structure
+  sets (rtstructExport, rtstructImport).'
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/dcmjs-org/dcmjs#readme

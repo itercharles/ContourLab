@@ -14,3 +14,7 @@ testing: |
   T3: Given clockwise and counter-clockwise polygons of the same shape, computeVolume produces identical results.
   T4: Given contours on multiple slices, volumes from all slices are summed correctly.
   T5: Given a 360-point circle polygon approximating a cylinder, computeVolume agrees with the analytic result within 1%.
+verification_criteria: computeVolume returns zero for no contours or a polygon with
+  fewer than 3 points, the expected cm³ for a known square and slice thickness, the
+  same value for clockwise and counter-clockwise polygons, the sum over slices, and
+  within 1% of the analytic volume for a 360-point cylinder.

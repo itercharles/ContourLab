@@ -4,7 +4,8 @@ name: '@cornerstonejs/codec-openjph'
 version: 2.4.7
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: WebAssembly High-Throughput JPEG 2000 (OpenJPH) decoder used by the Cornerstone
+  DICOM image loader to decompress HTJ2K transfer-syntax image data in the browser.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/chafey/openjphjs#readme

@@ -16,3 +16,6 @@ testing: |
   T4: Given a click on "Restore View", onMaximize is called with null and the menu closes.
   T5: Given a mousedown outside the menu, the menu closes.
 type: SRS
+verification_criteria: The context menu shows Maximize View, or Restore View when
+  already maximized; clicking either calls onMaximize with the viewport orientation
+  or null and closes the menu; a mousedown outside closes it.

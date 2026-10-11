@@ -4,7 +4,8 @@ name: tailwindcss
 version: 3.4.19
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Utility-first CSS framework that provides all styling and the dark clinical
+  theme. Build-time only; the output is static CSS.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://tailwindcss.com

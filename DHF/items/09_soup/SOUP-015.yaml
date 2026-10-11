@@ -4,7 +4,7 @@ name: react-dom
 version: 18.3.1
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: React renderer for the browser DOM; mounts the client application.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://reactjs.org/

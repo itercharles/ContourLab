@@ -4,7 +4,10 @@ name: '@cornerstonejs/codec-charls'
 version: 1.2.3
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: WebAssembly JPEG-LS (CharLS) decoder used by the Cornerstone DICOM image
+  loader to decompress JPEG-LS transfer-syntax CT/MR pixel data in the browser. A
+  decoding fault would show wrong pixels, so the clinician must be able to compare
+  against the source image.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/chafey/charls-js#readme
