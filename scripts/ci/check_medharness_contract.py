@@ -16,7 +16,6 @@ CI_PIPELINE = REPO_ROOT / ".github" / "workflows" / "ci-pipeline.yml"
 CR_LIFECYCLE = REPO_ROOT / ".github" / "workflows" / "cr-lifecycle.yml"
 ISSUE_TO_CR = REPO_ROOT / ".github" / "workflows" / "issue-to-cr.yml"
 CR_COMPLETE = REPO_ROOT / ".github" / "workflows" / "cr-complete.yml"
-SOUP_SYNC = REPO_ROOT / ".github" / "workflows" / "soup-sync.yml"
 RELEASE_BASELINE = REPO_ROOT / ".github" / "workflows" / "release-baseline.yml"
 MEDHARNESS_ACTION = REPO_ROOT / ".github" / "actions" / "medharness-setup" / "action.yml"
 REQUIREMENTS_TXT = REPO_ROOT / "requirements.txt"
@@ -132,7 +131,6 @@ def main() -> int:
         "cr-lifecycle.yml": CR_LIFECYCLE.read_text(encoding="utf-8"),
         "issue-to-cr.yml": ISSUE_TO_CR.read_text(encoding="utf-8"),
         "cr-complete.yml": CR_COMPLETE.read_text(encoding="utf-8"),
-        "soup-sync.yml": SOUP_SYNC.read_text(encoding="utf-8"),
         "release-baseline.yml": RELEASE_BASELINE.read_text(encoding="utf-8"),
     }
 
@@ -160,7 +158,6 @@ def main() -> int:
             "medharness --dhf DHF item transition",
             "gh pr create",
         ],
-        "soup-sync.yml": ["medharness --dhf DHF build soup"],
         "release-baseline.yml": ["medharness --dhf DHF build release", "gh pr create"],
     }
     for filename, needles in required.items():
@@ -214,7 +211,7 @@ def main() -> int:
                 )
 
     # These check out main; a push straight to it fails on a protected branch (GH006).
-    for filename in ("cr-complete.yml", "soup-sync.yml", "release-baseline.yml"):
+    for filename in ("cr-complete.yml", "release-baseline.yml"):
         text = texts[filename]
         require(
             re.search(r"^\s*git push\s*$", text, flags=re.MULTILINE) is None,
@@ -222,11 +219,6 @@ def main() -> int:
             errors,
         )
 
-    require(
-        "--write" not in texts["soup-sync.yml"],
-        "soup-sync.yml passes --write — build soup always writes the working tree (0.46+) and rejects the flag",
-        errors,
-    )
     gen_code = yaml.safe_load(texts["cr-lifecycle.yml"])["jobs"]["gen-code"]["steps"]
     for step in gen_code:
         run_text = "\n".join(

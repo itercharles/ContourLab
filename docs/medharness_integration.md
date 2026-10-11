@@ -50,6 +50,8 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
   every main push (evidence bundle); with `--write` in `release-baseline.yml` to
   record a REL item
 - `medharness --dhf DHF build soup --manifest ...` — SOUP register sync (always writes the working tree).
+  Run by hand after a dependency change; CI only checks the register (`verify soup --strict`) and reports,
+  it does not change it.
   Pass `pnpm-lock.yaml`, not `package.json`: a `package.json` records the version-range floor
   (`^1.2.0` becomes `1.2.0`), not the installed version, so the vulnerability scan checks the wrong release.
 
