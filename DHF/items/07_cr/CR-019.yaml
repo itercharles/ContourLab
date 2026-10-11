@@ -1,0 +1,33 @@
+id: CR-019
+title: the view become grey when I click "maximize the view"
+description: '### Requested change
+
+
+  the view becomes grey (doesn''t display anything) when I right click on the view
+  and then click "maximize the view".
+
+
+  ### User value / justification
+
+
+  defect.
+
+
+  ### Acceptance criteria
+
+
+  _No response_
+
+
+  ### Change category
+
+
+  Bug
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/164'
+requested_by: itercharles
+priority: Medium
+status: new
+target_version: 2026-W41
+type: CR
