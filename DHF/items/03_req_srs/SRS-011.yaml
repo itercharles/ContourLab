@@ -26,3 +26,6 @@ testing: |
   T3: Given a current slice position, findAdjacentReviewSlice returns the previous contour-bearing slice and wraps from first to last.
   T4: Given a next-slice navigation request, resolveContourReviewScrollDelta returns the target slice and the scroll delta to the closest image frame.
   T5: Given a direct scroll-to-slice request, resolveScrollDeltaToSlice returns the frame delta to the closest matching image frame.
+verification_criteria: getReviewSlices returns de-duplicated slices in order, next
+  and previous review slice wrap around at the ends, and the scroll deltas to the
+  target slice match the closest image frame.

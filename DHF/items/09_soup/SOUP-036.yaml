@@ -4,7 +4,8 @@ name: vite
 version: 6.4.4
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: 'Build tool and dev server for the client: bundles the application and proxies
+  /api, /ws and /dicom-web in development.'
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://vite.dev

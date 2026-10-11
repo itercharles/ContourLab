@@ -4,7 +4,7 @@ name: react
 version: 18.3.1
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: UI component framework for the whole client application.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://reactjs.org/

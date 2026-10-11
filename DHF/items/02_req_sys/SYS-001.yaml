@@ -18,3 +18,6 @@ testing: |
   T3: Given a search term, the patient browser filters the list to show only matching patients.
 satisfies:
   - CRS-001
+verification_criteria: The patient browser lists the patients returned by the DICOMweb
+  repository with name and MRN, shows each study's description, and filters the list
+  by a search term to the matching patients only.

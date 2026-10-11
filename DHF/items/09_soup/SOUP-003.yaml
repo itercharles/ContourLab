@@ -4,7 +4,8 @@ name: typescript
 version: 5.9.3
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Compiler and type checker for the client and shared-types packages (strict
+  mode). Build-time only; it emits the JavaScript that ships.
 license: Apache-2.0
 source: pnpm-lock.yaml
 homepage: https://www.typescriptlang.org/

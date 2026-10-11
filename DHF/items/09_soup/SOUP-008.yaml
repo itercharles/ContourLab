@@ -4,7 +4,9 @@ name: '@cornerstonejs/core'
 version: 4.21.0
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: 'Cornerstone3D rendering core: GPU (WebGL) volume and stack rendering for
+  the axial, sagittal and coronal viewports, viewport and camera management, and image-to-world
+  coordinate handling (ViewportManager, VolumeBuilder, cornerstoneInit).'
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/cornerstonejs/cornerstone3D#readme

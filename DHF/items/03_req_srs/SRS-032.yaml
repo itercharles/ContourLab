@@ -11,3 +11,5 @@ verification_method:
 testing: 'T1: Given the dark theme is active, the contrast ratio computed from the
   resolved colour tokens is at least 4.5:1 for each text and surface pair.'
 type: SRS
+verification_criteria: In the dark theme the contrast ratio computed from the resolved
+  colour tokens is at least 4.5:1 for each text and surface pair.

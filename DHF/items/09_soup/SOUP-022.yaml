@@ -4,7 +4,8 @@ name: '@testing-library/react'
 version: 16.3.2
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: React component rendering and query utilities for the client component tests.
+  Development and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/testing-library/react-testing-library#readme

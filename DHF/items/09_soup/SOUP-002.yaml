@@ -4,7 +4,9 @@ name: medharness
 version: 0.58.22
 ecosystem: PyPI
 manufacturer: ''
-purpose: ''
+purpose: 'Design History File tooling: validates DHF items, links and test coverage,
+  scans SOUP for vulnerabilities, and builds the release evidence bundle. Runs in
+  CI and on developer machines only; not part of the shipped product.'
 license: MIT
 source: requirements.txt
 homepage: https://github.com/itercharles/MedHarness

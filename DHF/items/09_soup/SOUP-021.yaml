@@ -4,7 +4,8 @@ name: '@testing-library/jest-dom'
 version: 6.9.1
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Custom DOM assertions (toBeInTheDocument, etc.) for the client component
+  tests. Development and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/testing-library/jest-dom#readme

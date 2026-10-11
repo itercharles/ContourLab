@@ -4,6 +4,7 @@ name: '@cornerstonejs/codec-openjpeg'
 version: 1.3.0
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: WebAssembly JPEG 2000 (OpenJPEG) decoder used by the Cornerstone DICOM image
+  loader to decompress JPEG 2000 transfer-syntax image data in the browser.
 license: MIT
 source: pnpm-lock.yaml

@@ -17,3 +17,5 @@ testing: |
   T3: Given a search term entered in the patient browser, the search input reflects the entered value.
 satisfies:
   - CRS-008
+verification_criteria: The patient browser opens from the workspace with a search
+  input that reflects what is typed, and closes with the Escape key.

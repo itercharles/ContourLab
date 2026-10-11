@@ -4,7 +4,8 @@ name: eslint-plugin-react-refresh
 version: 0.5.2
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: ESLint rule that checks components are safe for fast refresh. Development
+  and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/ArnaudBarre/eslint-plugin-react-refresh#readme

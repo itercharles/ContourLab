@@ -14,3 +14,6 @@ testing: |
 priority: Critical
 verification_method:
 - Test
+verification_criteria: With a DICOMweb repository available, the clinician can find
+  a patient by name or MRN, load the series, and see axial, sagittal and coronal views;
+  with no active patient the workspace shows empty-state placeholders instead of images.

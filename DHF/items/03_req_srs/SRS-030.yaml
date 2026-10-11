@@ -20,3 +20,5 @@ testing: |
   T1: Given an active DICOM series, the toolbar brand section displays the formatted patient name (given followed by family).
   T2: Given no active series, the toolbar brand section displays the "No active patient" placeholder.
 type: SRS
+verification_criteria: The toolbar brand section shows the formatted patient name
+  (given then family) for an active series and the No active patient placeholder otherwise.

@@ -14,3 +14,5 @@ testing: |
 priority: Critical
 verification_method:
 - Test
+verification_criteria: The clinician can open the patient browser from the workspace,
+  search and filter patients and studies, and close it again.

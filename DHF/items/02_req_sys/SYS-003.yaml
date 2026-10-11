@@ -13,3 +13,6 @@ testing: |
   T3: Given an active structure set, the active structure is highlighted in the structure panel.
 satisfies:
   - CRS-002
+verification_criteria: With a structure set active, the structure panel lists every
+  structure by name with its type and highlights the active one; structures can be
+  created, edited and deleted.

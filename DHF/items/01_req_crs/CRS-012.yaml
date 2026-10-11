@@ -13,3 +13,5 @@ testing: |
 priority: High
 verification_method:
 - Test
+verification_criteria: With an active series and structures, the workspace shows a
+  3D viewport containing the CT context and the count of visible structures.

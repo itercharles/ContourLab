@@ -14,3 +14,5 @@ testing: |
   T1: Given a manual Refresh 3D click, the 3D scene rerenders and displays updated structure count and CT status.
 satisfies:
   - CRS-012
+verification_criteria: Clicking Refresh 3D re-renders the 3D scene and shows the updated
+  structure count and CT status.

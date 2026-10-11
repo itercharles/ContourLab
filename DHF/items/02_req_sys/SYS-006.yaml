@@ -18,3 +18,6 @@ testing: |
   T2: Given a successful upload, the structure set source is updated with the new SOP instance UID and the repository dirty state is cleared.
 satisfies:
   - CRS-005
+verification_criteria: With unsynchronized changes, Save Changes is enabled and exports
+  and uploads the RTSTRUCT; after a successful upload the structure set source holds
+  the new SOP instance UID and the repository dirty state is cleared.

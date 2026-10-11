@@ -4,7 +4,7 @@ name: eslint-plugin-react-hooks
 version: 7.1.1
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: ESLint rules that check the rules of React hooks. Development and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://react.dev/

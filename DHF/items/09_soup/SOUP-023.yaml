@@ -4,7 +4,7 @@ name: '@types/react'
 version: 18.3.28
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: TypeScript type definitions for React. Build-time only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react

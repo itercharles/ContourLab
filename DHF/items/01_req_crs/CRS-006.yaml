@@ -12,3 +12,5 @@ testing: |
 priority: Critical
 verification_method:
 - Test
+verification_criteria: Loading an RTSTRUCT from the repository gives a structure set
+  whose structure names, types, colours and contour points match the dataset.

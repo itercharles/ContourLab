@@ -12,3 +12,5 @@ testing: |
 priority: Medium
 verification_method:
 - Test
+verification_criteria: Comparing a repository RTSTRUCT with the active workspace reports
+  the added, removed and changed structures with their volume and slice-count differences.

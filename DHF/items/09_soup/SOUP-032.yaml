@@ -4,7 +4,8 @@ name: jsdom
 version: 25.0.1
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Simulated browser DOM in which the Vitest component tests run. Development
+  and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/jsdom/jsdom#readme

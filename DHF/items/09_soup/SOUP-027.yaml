@@ -4,7 +4,7 @@ name: autoprefixer
 version: 10.4.27
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Adds CSS vendor prefixes in the build via PostCSS. Build-time only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://github.com/postcss/autoprefixer#readme

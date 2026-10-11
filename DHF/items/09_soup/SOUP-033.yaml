@@ -4,7 +4,8 @@ name: postcss
 version: 8.5.29
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: CSS transformation pipeline that runs Tailwind and autoprefixer during the
+  build. Build-time only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://postcss.org/

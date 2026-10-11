@@ -18,3 +18,6 @@ testing: |
   T4: Given multiple ROIs, importRtstructDataset computes volume_cc independently for each structure.
 satisfies:
   - CRS-006
+verification_criteria: Importing an RTSTRUCT gives a structure set with the right
+  names, types, colours and contour points, and a per-structure volume that is zero
+  without slice thickness and computed from the contour geometry with it.

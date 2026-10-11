@@ -18,3 +18,6 @@ testing: |
   T5: Given multiple interpolated slices, ContourEngine.addContours wraps all in one undoable command.
 satisfies:
   - CRS-002
+verification_criteria: Adding a contour goes through the undo stack and replaces any
+  existing contour on that slice; a locked structure rejects the edit; deleting a
+  contour can be undone; interpolating several slices is one undoable step.

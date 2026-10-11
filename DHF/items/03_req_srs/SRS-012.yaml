@@ -17,3 +17,6 @@ testing: |
   T2: Given axial contour polygons and a sagittal plane value, intersectContourWithPlane returns the correct intersection points.
   T3: Given axial contour polygons and a coronal plane value, intersectContourWithPlane returns the correct intersection points.
   T4: Given cross-plane contour slices, buildCrossPlaneBoundaryPath produces the correct SVG boundary path string.
+verification_criteria: Each distinct camera, zoom or canvas change gives a different
+  transform signature, and the sagittal and coronal intersections and the cross-plane
+  boundary path of axial contours are correct.

@@ -18,3 +18,8 @@ testing: |
   T5: Given an HFP-style volume with flipped direction cosines, direction-signed spacing is passed to vtk.js to keep geometry aligned.
   T6: Given a manual Refresh 3D button click, renderSnapshot is called again.
   T7: Given an unmount while a renderSnapshot is in-flight, the AbortSignal is triggered.
+verification_criteria: A downsampled volume has scaled dimensions and spacing with
+  the same scalar type, an unchanged snapshot reuses the vtk pipelines, a changed
+  snapshot disposes the old objects first, the camera resets only on the first render,
+  flipped direction cosines are handled with signed spacing, Refresh 3D re-renders,
+  and an unmount aborts an in-flight render.

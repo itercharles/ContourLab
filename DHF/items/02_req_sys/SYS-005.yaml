@@ -15,3 +15,5 @@ testing: |
   T2: Given a clean series state, the workspace context bar shows the "Synced" indicator.
 satisfies:
   - CRS-002
+verification_criteria: The workspace context bar shows the unsaved indicator when
+  the series has unsaved changes and Synced when it is clean.

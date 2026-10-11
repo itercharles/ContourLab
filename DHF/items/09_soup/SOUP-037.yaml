@@ -4,7 +4,8 @@ name: vitest
 version: 4.1.11
 ecosystem: npm
 manufacturer: ''
-purpose: ''
+purpose: Unit and component test runner for the client; its custom reporter writes
+  the JUnit evidence used by the DHF coverage gate. Development and CI only.
 license: MIT
 source: pnpm-lock.yaml
 homepage: https://vitest.dev
