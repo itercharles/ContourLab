@@ -444,7 +444,12 @@ jobs:
           urls: |
             http://127.0.0.1:4000/api/health
             http://127.0.0.1:3000/
+            http://127.0.0.1:8042/system
           timeout-seconds: '90'
+
+      # The real-DICOM spec (e2e/crs/real-dicom.spec.ts) loads these from the repository.
+      - name: Seed the synthetic phantom series
+        run: pnpm repo:seed
 
       - name: Run CRS validation tests
         run: |

@@ -34,6 +34,7 @@ pnpm dev                                  # frontend dev server (port 3000)
 pnpm api                                  # API dev server (port 4000)
 pnpm repo:up                              # start local Orthanc (port 8042)
 pnpm repo:down                            # stop local Orthanc
+pnpm repo:seed                            # upload the synthetic phantom series to Orthanc (needed by e2e/crs/real-dicom.spec.ts)
 pnpm local:doctor                         # health check all local services
 pnpm workflow:test                        # CR workflow tests (no model, no GitHub; needs medharness installed)
 pnpm --filter @contourlab/client test         # frontend tests

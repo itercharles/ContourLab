@@ -1,23 +1,45 @@
 id: SYS-001
 title: System shall load DICOM CT series from a DICOMweb repository
 category: Functional
-content: |-
-  The system shall query a DICOMweb-compatible repository for available
+content: 'The system shall query a DICOMweb-compatible repository for available
+
   planning CT image series, excluding non-planning modalities and CBCT-like
+
   acquisition series from the primary worklist, retrieve series instance
+
   metadata, and assemble the selected series into a 3D volume with correct
+
   slice ordering, pixel spacing, and image position patient metadata. The
+
   viewer shall use DICOMweb as the primary image acquisition mechanism rather
+
   than directly opening local image files in the browser.
+
+  The series shall decode and display whether the repository stores its pixels uncompressed
+  or compressed with JPEG baseline, JPEG 2000 or JPEG-LS.'
 verification_method:
   - Test
   - Demonstration
-testing: |
-  T1: Given a mocked DICOMweb repository, the patient browser lists all patients with name and MRN from the response.
+testing: 'T1: Given a mocked DICOMweb repository, the patient browser lists all patients
+  with name and MRN from the response.
+
   T2: Given a patient browser, study description metadata is visible for each patient.
-  T3: Given a search term, the patient browser filters the list to show only matching patients.
+
+  T3: Given a search term, the patient browser filters the list to show only matching
+  patients.
+
+  T4: Given a real CT series stored in the repository uncompressed, as JPEG 2000 lossless,
+  as JPEG-LS lossless and as JPEG baseline, loading it decodes the pixel data and
+  each planar view shows the image.
+
+  T5: Given the same image stored uncompressed, as JPEG 2000 lossless and as JPEG-LS
+  lossless, the displayed axial image is the same for all three.
+
+  '
 satisfies:
   - CRS-001
 verification_criteria: The patient browser lists the patients returned by the DICOMweb
   repository with name and MRN, shows each study's description, and filters the list
-  by a search term to the matching patients only.
+  by a search term to the matching patients only. A real series in each of the four
+  storage formats loads and displays in the planar views, and the three lossless formats
+  display the same axial image.
