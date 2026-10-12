@@ -61,6 +61,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           REVIEW_STATE: ${{ github.event.review.state }}
+          REVIEW_ASSOCIATION: ${{ github.event.review.author_association }}
           REVIEW_COMMIT: ${{ github.event.review.commit_id }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           MERGED: ${{ github.event.pull_request.merged }}
@@ -77,6 +78,18 @@ jobs:
           else
             CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+' || true)
             STAGE=$(jq -r '[.pull_request.labels[].name | select(startswith("cr:stage/")) | ltrimstr("cr:stage/")][0] // ""' "$GITHUB_EVENT_PATH")
+          fi
+
+          # A review starts code generation and feeds its text to the agent, in a job that holds the
+          # repository PAT and the model key. Only the owner or an organisation member may drive that;
+          # a review from anyone else (an outside collaborator, a contributor, a stranger on a public
+          # repo) is ignored. The owner can still start a stage with workflow_dispatch.
+          if [ "$EVENT_NAME" = "pull_request_review" ]; then
+            case "$REVIEW_ASSOCIATION" in
+              OWNER|MEMBER) ;;
+              *) echo "review by author_association=$REVIEW_ASSOCIATION is not allowed to drive the pipeline, ignoring"
+                 REVIEW_STATE="untrusted" ;;
+            esac
           fi
 
           # An approval of an earlier commit approved work that has since changed.
