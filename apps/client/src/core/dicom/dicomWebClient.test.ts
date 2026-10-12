@@ -210,3 +210,39 @@ describe('dicomWebClient summary parsing', () => {
     });
   });
 });
+
+describe('geometry tags of a DICOMweb instance @links:SRS-001', () => {
+  const summary = {
+    seriesInstanceUID: 'series-1',
+    studyInstanceUID: 'study-1',
+    patientName: 'Test',
+    patientId: 'p',
+    studyDate: '',
+    studyDescription: '',
+    seriesDescription: 'CT',
+    modality: 'CT',
+  } as unknown as Parameters<typeof __testables__.parseNormalizedMetadata>[1];
+
+  it('reads position, orientation and pixel spacing as given and reports nothing missing @testing:T4', () => {
+    const metadata = __testables__.parseNormalizedMetadata(
+      {
+        '00200032': { Value: [-90, -90, 12.5] },
+        '00200037': { Value: [-1, 0, 0, 0, -1, 0] },
+        '00280030': { Value: [0.9, 0.8] },
+      },
+      summary
+    );
+
+    expect(metadata.imagePositionPatient).toEqual([-90, -90, 12.5]);
+    expect(metadata.imageOrientationPatient).toEqual([-1, 0, 0, 0, -1, 0]);
+    expect(metadata.pixelSpacing).toEqual([0.9, 0.8]);
+    expect(metadata.missingGeometryTags).toEqual([]);
+  });
+
+  it('records which geometry tags the instance did not carry, instead of hiding the defaults @testing:T4', () => {
+    const metadata = __testables__.parseNormalizedMetadata({ '00200037': { Value: [1, 0, 0, 0, 1, 0] } }, summary);
+
+    expect(metadata.missingGeometryTags).toEqual(['ImagePositionPatient', 'PixelSpacing']);
+  });
+});
+
