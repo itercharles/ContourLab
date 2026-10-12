@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { cornerstoneInit } from '../core/rendering/cornerstoneInit';
-import { installUndoRedoKeyHandler } from '../core/contouring/UndoRedoManager';
+import { installUndoHistoryReset, installUndoRedoKeyHandler } from '../core/contouring/UndoRedoManager';
 import { installViewerShortcutHandler } from '../core/input/viewerShortcuts';
 import WorkspaceLayout from '../components/layout/WorkspaceLayout';
 
@@ -15,6 +15,8 @@ export default function MainWorkspace() {
     const cleanup = installUndoRedoKeyHandler();
     return cleanup;
   }, []);
+
+  useEffect(() => installUndoHistoryReset(), []);
 
   useEffect(() => {
     const cleanup = installViewerShortcutHandler();

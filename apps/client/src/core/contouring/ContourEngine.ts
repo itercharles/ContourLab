@@ -1,5 +1,6 @@
 import type { ContourSlice } from '@contourlab/shared-types';
 import { UndoRedoManager } from './UndoRedoManager';
+import { structureEditBlock } from './structureGuard';
 import { useStructureStore } from '../store/structureStore';
 
 export interface FreehandContourData {
@@ -35,6 +36,7 @@ export const ContourEngine = {
       // Replace — wrap in undo/redo command
       const oldSlice = { ...existing, points: new Float32Array(existing.points) };
       UndoRedoManager.push({
+        canApply: () => structureEditBlock(structureSetId, structureId),
         description: `Edit contour at z=${data.slicePosition.toFixed(1)}`,
         execute: () =>
           store.updateContourSlice(structureSetId, structureId, data.slicePosition, newSlice),
@@ -43,6 +45,7 @@ export const ContourEngine = {
       });
     } else {
       UndoRedoManager.push({
+        canApply: () => structureEditBlock(structureSetId, structureId),
         description: `Add contour at z=${data.slicePosition.toFixed(1)}`,
         execute: () =>
           store.addContourSlice(structureSetId, structureId, newSlice),
@@ -83,6 +86,7 @@ export const ContourEngine = {
     ].sort((a, b) => a.slicePosition - b.slicePosition);
 
     UndoRedoManager.push({
+      canApply: () => structureEditBlock(structureSetId, structureId),
       description,
       execute: () =>
         store.updateStructure(structureSetId, structureId, {
@@ -117,6 +121,7 @@ export const ContourEngine = {
       .sort((a, b) => a.slicePosition - b.slicePosition);
 
     UndoRedoManager.push({
+      canApply: () => structureEditBlock(structureSetId, structureId),
       description,
       execute: () =>
         store.updateStructure(structureSetId, structureId, {
@@ -148,6 +153,7 @@ export const ContourEngine = {
     if (removed.length === 0) return false;
 
     UndoRedoManager.push({
+      canApply: () => structureEditBlock(structureSetId, structureId),
       description: `Delete contour at z=${slicePosition.toFixed(1)}`,
       execute: () =>
         store.updateStructure(structureSetId, structureId, {
