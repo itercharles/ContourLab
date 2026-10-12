@@ -1,0 +1,201 @@
+id: CR-019
+title: the view become grey when I click "maximize the view"
+description: '### Requested change
+
+
+  the view becomes grey (doesn''t display anything) when I right click on the view
+  and then click "maximize the view".
+
+
+  ### User value / justification
+
+
+  defect.
+
+
+  ### Acceptance criteria
+
+
+  _No response_
+
+
+  ### Change category
+
+
+  Bug
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/164'
+requested_by: itercharles
+priority: Medium
+status: design
+target_version: 2026-W41
+type: CR
+triage_result:
+  verdict: approved
+  complexity: small
+  affected_subsystems:
+  - ViewportUI
+  related_crs: []
+  notes: 'Defect: maximize renders a zero-width panel; behaviour already specified
+    by SRS-019/SWDD-010, so the fix is to meet them and add a test point that the
+    maximized view shows image data.'
+affected_items:
+- SRS-019
+- SWDD-010
+- SYS-002
+reviewed_items:
+- CRS-001
+- SRS-018
+- MODULE-008
+- SYSARCH-001
+- SRS-012
+affected_risk_items: []
+impact_analysis:
+  assumptions:
+  - 'A: Maximize View renders a zero-width ViewportPanel (flex child with no sizing)
+    and unmounts/remounts panels, so the view is grey and restore leaves views detached.
+    B: the maximized view fills the image area with image data and restore shows all
+    three views with image data, as SRS-019 already states. Reading: defect, not a
+    new capability; no new requirement beyond a test point.'
+  anchors:
+  - id: SRS-019
+    evidence: 'uiStore.test.ts @links:SRS-019; e2e/crs/real-dicom.spec.ts markers
+      for issue #164; ImageViewer.tsx maximized branch'
+  - id: SWDD-010
+    evidence: Text says siblings are hidden with the hidden class, but ImageViewer
+      unmounts them and renders a flex row with an unsized panel
+  - id: SYS-002
+    evidence: T4 already requires image data in each planar view; the maximized case
+      is not covered
+  unchanged:
+  - id: CRS-001
+    reason: Need to view images in three planes stays true.
+  - id: SRS-018
+    reason: Context menu behaviour is unaffected; its tests pass.
+  - id: MODULE-008
+    reason: Responsibility unchanged.
+  - id: SYSARCH-001
+    reason: No boundary or data flow change.
+  - id: SRS-012
+    reason: Overlay registration requirement is unchanged; overlays stay mounted with
+      their panels.
+  created: []
+  dimensions:
+  - dimension: product
+    verdict: not_required
+    reason: Defect fix; workflows and needs unchanged.
+    items: []
+  - dimension: requirements
+    verdict: required
+    reason: SRS-019 made explicit that the maximized and restored views show image
+      data; SYS-002 gets T5.
+    items:
+    - SRS-019
+    - SYS-002
+  - dimension: architecture
+    verdict: not_required
+    reason: Local to the viewer module.
+    items: []
+  - dimension: risk
+    verdict: not_required
+    reason: 'Assessed RISK-001 to RISK-003 and RCM-001 to RCM-005: none cover viewport
+      layout; no hazard or control is changed.'
+    items: []
+  - dimension: soup
+    verdict: not_required
+    reason: No dependency change.
+    items: []
+  - dimension: test
+    verdict: required
+    reason: 'Add SRS-019 T3 and SYS-002 T5; link the two e2e markers for #164 and
+      remove test.fail(); add a unit test for the layout.'
+    items:
+    - SRS-019
+    - SYS-002
+  - dimension: regulatory
+    verdict: not_required
+    reason: No intended use or labelling change.
+    items: []
+  - dimension: security
+    verdict: not_required
+    reason: No API, data or input change.
+    items: []
+  - dimension: usability
+    verdict: required
+    reason: The maximized view is currently blank; the fix restores the intended display.
+    items:
+    - SRS-019
+    - SWDD-010
+implementation_notes: '## Overview
+
+  Fix defect #164: right-click > Maximize View leaves a grey, empty view. Restore
+  also leaves views grey. Make the code match SRS-019 and SWDD-010: keep all panels
+  mounted and change only layout.
+
+
+  ## Current State
+
+  apps/client/src/components/viewer/ImageViewer.tsx: ImageViewer renders `maximizedViewport
+  ? <div className="flex h-full gap-[1px]">{only chosen ViewportPanel}</div> : <div
+  className="grid h-full grid-cols-2 grid-rows-2">{3 panels + ThreeDViewport}</div>`.
+  ViewportPanel root div has no flex-1/w-full, so in the flex row it has zero width.
+  Switching branches unmounts the panels; Cornerstone viewports (ViewportManager.enableElement)
+  stay bound to the old detached elements, so the new elements show nothing after
+  maximize or restore. readyViewportIds is not reset, so onReady does not re-enable.
+  uiStore holds maximizedViewport, toggleMaximizeViewport, resetMaximizeViewport (unchanged).
+
+
+  ## Changes Required
+
+  - modify apps/client/src/components/viewer/ImageViewer.tsx: render a single grid
+  container with the 3 ViewportPanels and ThreeDViewport always mounted. Pass a className
+  or `hidden`/`col-span-2 row-span-2` via a prop on ViewportPanel (and a wrapper or
+  prop for ThreeDViewport) depending on maximizedViewport. Remove the two-branch conditional.
+  Add an effect on maximizedViewport that calls ViewportManager.resize() (and renders
+  the viewports) after layout.
+
+  - modify apps/client/e2e/crs/real-dicom.spec.ts: remove test.fail() from the two
+  #164 tests, add `@links:SRS-019 @testing:T3` and `@links:SYS-002 @testing:T5` to
+  their names.
+
+  - no change to uiStore, ViewportContextMenu, ContourOverlay.
+
+
+  ## Implementation Steps
+
+  1. Reproduce with `pnpm repo:up && pnpm repo:seed` and the two #164 e2e tests (expected
+  failures today).
+
+  2. Restructure ImageViewer as above; confirm ThreeDViewport does not lose its WebGL
+  context when hidden (hidden uses display:none; check resize guards against zero
+  size).
+
+  3. Add resize call after maximize/restore, guarded for hidden panels (skip zero-size
+  elements).
+
+  4. Remove test.fail() and add tags; run e2e.
+
+  5. Add a vitest component test that all four panels stay mounted and non-selected
+  panels have the hidden class when maximized.
+
+  6. Run client test, lint, typecheck, `medharness --dhf DHF verify dhf`.
+
+
+  ## Edge Cases & Constraints
+
+  Escape handler and patient-change reset must still work. A hidden panel has zero
+  size: Cornerstone resize must not throw. Active viewport ring and ContourOverlay
+  must keep following their panel. No `any`, Tailwind only, no inline styles.
+
+
+  ## Tests
+
+  - SRS-019 T3 (e2e, real DICOM): maximized axial panel width > 300 px with image;
+  after Escape all three planar views show image.
+
+  - SYS-002 T5: same e2e flow.
+
+  - SRS-019 T1/T2: existing uiStore tests remain.
+
+  - Unit: ImageViewer keeps panels mounted across maximize and restore.'

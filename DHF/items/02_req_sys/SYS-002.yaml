@@ -28,6 +28,10 @@ testing: 'T1: Given a loaded series, three viewport panels labelled axial, sagit
   T4: Given a CT series loaded from the repository, each of the axial, sagittal and
   coronal viewports shows image data (not an empty view).
 
+  T5: Given a CT series loaded from the repository, maximizing a planar viewport shows
+  image data in it, and restoring the layout shows image data in all three planar
+  views.
+
   '
 satisfies:
   - CRS-001
@@ -35,4 +39,5 @@ verification_criteria: With a series loaded, three viewport panels labelled axia
   sagittal and coronal are visible; with a structure set active, contours appear in
   the correct plane in each; the window-level tool offers its presets, and selecting
   one makes it active and shows its window width and level; with a real CT series
-  loaded, each of the three planar views shows image data.
+  loaded, each of the three planar views shows image data, including after a viewport
+  is maximized and the layout restored, and the maximized view shows image data.

@@ -10,10 +10,18 @@ content: 'uiStore extends the existing Zustand state with maximizedViewport fiel
   unconditionally clears the maximized state for patient change events.
 
 
-  ImageViewer renders viewports conditionally based on maximizedViewport state: when
-  null, render standard three-pane grid with equal proportions; when set to a viewport
-  ID, render that viewport with flex-1 w-full and hide siblings using Tailwind hidden
-  class. Flex layout transitions are optional for Phase A.
+  ImageViewer keeps all four panels (axial, sagittal, coronal, 3D) mounted in one
+  container at all times; it never unmounts or remounts a viewport panel on maximize
+  or restore, because Cornerstone3D binds a rendering-engine viewport to a specific
+  DOM element and a remounted element is left detached (grey). Maximize and restore
+  change only layout classes: when maximizedViewport is null, the standard 2x2 grid
+  with equal proportions; when set, the chosen panel spans the whole container (full
+  width and height, e.g. col-span-2 row-span-2 in the same grid) and the siblings,
+  including the 3D panel, are hidden with the Tailwind hidden class. A panel must
+  never be a flex child without explicit sizing (a zero-width panel is the cause of
+  defect #164). After every layout change, ViewportManager.resize() is called so the
+  rendering engine resizes the canvases of the newly visible panel and the restored
+  panels, and they re-render. Flex layout transitions are optional for Phase A.
 
 
   Viewport components add onContextMenu handler to the Cornerstone3D canvas. A ContextMenu
