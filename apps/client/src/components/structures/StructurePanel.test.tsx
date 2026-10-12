@@ -895,10 +895,13 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     });
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
+    // Cord sits inside the active structure, so subtracting it leaves an outer outline and a hole.
     await waitFor(() =>
-      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(1)
+      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(2)
     );
-    expect(useStructureStore.getState().structureSets[0].structures[0].contours[0].points.length).toBeGreaterThan(0);
+    expect(
+      useStructureStore.getState().structureSets[0].structures[0].contours.every((contour) => contour.points.length > 0)
+    ).toBe(true);
     expect(screen.getByText('Subtracted Cord.')).toBeTruthy();
   });
 

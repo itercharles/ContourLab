@@ -44,6 +44,7 @@ import { ContourEngine } from '../../core/contouring/ContourEngine';
 import { computeBooleanContoursForStructure, type BooleanOperation } from '../../core/contouring/BooleanContourEngine';
 import { interpolateMissingContoursForFrames } from '../../core/contouring/InterpolationEngine';
 import { computeMarginContoursForStructure } from '../../core/contouring/MarginContourEngine';
+import { slicePositionZ } from '../../core/dicom/slicePosition';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
@@ -1026,7 +1027,7 @@ export default function StructurePanel() {
     const frames = activeLoadedSeries.series.instances
       .map((instance, index) => ({
         index,
-        sliceLocation: instance.sliceLocation,
+        sliceLocation: slicePositionZ(instance),
       }))
       .filter((frame): frame is { index: number; sliceLocation: number } =>
         Number.isFinite(frame.sliceLocation)
@@ -1073,7 +1074,7 @@ export default function StructurePanel() {
     const frames = activeLoadedSeries.series.instances
       .map((instance) => ({
         sopInstanceUID: instance.sopInstanceUID,
-        sliceLocation: instance.sliceLocation,
+        sliceLocation: slicePositionZ(instance),
       }))
       .filter((frame): frame is { sopInstanceUID: string; sliceLocation: number } =>
         Number.isFinite(frame.sliceLocation)
@@ -1130,7 +1131,7 @@ export default function StructurePanel() {
     const frames = activeLoadedSeries.series.instances
       .map((instance) => ({
         sopInstanceUID: instance.sopInstanceUID,
-        sliceLocation: instance.sliceLocation,
+        sliceLocation: slicePositionZ(instance),
       }))
       .filter((frame): frame is { sopInstanceUID: string; sliceLocation: number } =>
         Number.isFinite(frame.sliceLocation)
@@ -1175,7 +1176,7 @@ export default function StructurePanel() {
     const frames = activeLoadedSeries.series.instances
       .map((instance) => ({
         sopInstanceUID: instance.sopInstanceUID,
-        sliceLocation: instance.sliceLocation,
+        sliceLocation: slicePositionZ(instance),
       }))
       .filter((frame): frame is { sopInstanceUID: string; sliceLocation: number } =>
         Number.isFinite(frame.sliceLocation)
@@ -1234,7 +1235,7 @@ export default function StructurePanel() {
     const frames = activeLoadedSeries?.series.instances
       .map((instance, index) => ({
         index,
-        sliceLocation: instance.sliceLocation,
+        sliceLocation: slicePositionZ(instance),
       }))
       .filter((frame): frame is { index: number; sliceLocation: number } =>
         Number.isFinite(frame.sliceLocation)
@@ -1287,7 +1288,7 @@ export default function StructurePanel() {
     const frames = activeLoadedSeries?.series.instances
       .map((instance, index) => ({
         index,
-        sliceLocation: instance.sliceLocation,
+        sliceLocation: slicePositionZ(instance),
       }))
       .filter((frame): frame is { index: number; sliceLocation: number } =>
         Number.isFinite(frame.sliceLocation)
