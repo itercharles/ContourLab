@@ -34,7 +34,7 @@ CASES = [
 
 
 class EventRouting(s.Scratch):
-    def route(self, event, state, labels, review_commit, head_sha, merged, dispatch_cr, dispatch_stage, branch="feat/CR-014"):
+    def route(self, event, state, labels, review_commit, head_sha, merged, dispatch_cr, dispatch_stage, branch="feat/CR-014", association="OWNER"):
         payload = self.tmp / "event.json"
         payload.write_text(json.dumps({"pull_request": {"labels": [{"name": n} for n in labels]}}))
         out = self.tmp / "out"
@@ -42,7 +42,7 @@ class EventRouting(s.Scratch):
         result = s.run(
             ["bash", "-e", "-c", SCRIPT], cwd=self.tmp, check=False,
             env={
-                "EVENT_NAME": event, "REVIEW_STATE": state, "MERGED": merged,
+                "EVENT_NAME": event, "REVIEW_STATE": state, "REVIEW_ASSOCIATION": association, "MERGED": merged,
                 "HEAD_REF": branch if event != "workflow_dispatch" else "",
                 "REVIEW_COMMIT": review_commit, "HEAD_SHA": head_sha,
                 "INPUT_CR": dispatch_cr, "INPUT_STAGE": dispatch_stage,
@@ -56,6 +56,31 @@ class EventRouting(s.Scratch):
         for name, *args, expected in CASES:
             with self.subTest(name):
                 self.assertEqual(self.route(*args)["action"], expected)
+
+    def test_only_the_owner_or_a_member_can_drive_the_pipeline_with_a_review(self):
+        # (association, expected action for an approved design and for changes requested at code)
+        for association, approve, revise in [
+            ("OWNER", "gen-code", "revise-code"),
+            ("MEMBER", "gen-code", "revise-code"),
+            ("COLLABORATOR", "noop", "noop"),
+            ("CONTRIBUTOR", "noop", "noop"),
+            ("FIRST_TIME_CONTRIBUTOR", "noop", "noop"),
+            ("NONE", "noop", "noop"),
+            ("", "noop", "noop"),
+        ]:
+            with self.subTest(association=association):
+                self.assertEqual(
+                    self.route("pull_request_review", "approved", DESIGN, "a1", "a1", "", "", "", association=association)["action"],
+                    approve,
+                )
+                self.assertEqual(
+                    self.route("pull_request_review", "changes_requested", CODE, "a1", "a1", "", "", "", association=association)["action"],
+                    revise,
+                )
+
+    def test_the_owner_can_still_start_a_stage_by_dispatch(self):
+        # A dispatch carries no review association; it is limited to people who can run workflows.
+        self.assertEqual(self.route("workflow_dispatch", "", [], "", "", "", "CR-014", "design", association="")["action"], "gen-code")
 
     def test_cr_id_comes_from_the_branch_or_the_dispatch_input(self):
         self.assertEqual(self.route("pull_request_review", "approved", DESIGN, "a1", "a1", "", "", "")["cr_id"], "CR-014")

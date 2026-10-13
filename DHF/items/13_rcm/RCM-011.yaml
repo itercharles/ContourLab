@@ -1,0 +1,13 @@
+id: RCM-011
+title: Patient orientation markers and patient position in the 2D views
+content: Each 2D view shows R/L/A/P/H/F markers derived from the viewport camera,
+  so feet-first and prone series are labelled correctly, and the patient position
+  (0018,5100) is displayed. To be verified with the phantom's off-centre marker and
+  a feet-first series.
+mitigates:
+- RISK-005
+implements:
+- SYS-002
+control_type: Information for Safety
+implementation_status: Planned
+type: RCM

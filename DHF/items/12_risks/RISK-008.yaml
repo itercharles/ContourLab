@@ -1,0 +1,14 @@
+id: RISK-008
+title: Display fails silently
+hazard: A viewport or the contour overlay shows nothing, and the clinician reads the
+  empty view as a true result.
+cause: A layout defect leaves a grey view; an error in the contour overlay hides all
+  contours with no message; an image view is left without data after a layout change.
+effect: A structure that exists is taken for empty, or the clinician works on a view
+  that is not showing the image.
+severity_pre: S4
+probability_pre: P3
+severity_post: S4
+probability_post: P3
+risk_acceptability: Unacceptable
+type: RISK

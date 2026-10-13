@@ -1,18 +1,33 @@
 id: SYS-003
 title: System shall support creating, editing, and deleting structures in a structure set
 category: Functional
-content: |-
-  The system shall allow users to create structures with TG-263-compliant names,
+content: 'The system shall allow users to create structures with TG-263-compliant
+  names,
+
   assign types (GTV/CTV/PTV/OAR/EXTERNAL/AVOIDANCE/SUPPORT), set RGB colors,
-  and toggle visibility. Volume in cm3 shall be computed from contour data.
+
+  and toggle visibility. Volume in cm3 shall be computed from contour data. A locked
+  structure shall not be deleted, and its type and contours shall not be changed,
+  until it is unlocked; colour, name and visibility stay editable.'
 verification_method:
   - Test
-testing: |
-  T1: Given an injected structure set, the structure panel lists all structure names.
-  T2: Given an injected structure set, the structure panel displays the type for each structure.
-  T3: Given an active structure set, the active structure is highlighted in the structure panel.
+testing: 'T1: Given an injected structure set, the structure panel lists all structure
+  names.
+
+  T2: Given an injected structure set, the structure panel displays the type for each
+  structure.
+
+  T3: Given an active structure set, the active structure is highlighted in the structure
+  panel.
+
+  T4: Given a locked structure, delete and changes of type or contours are refused
+  (in the store, in the structure panel and when undoing or redoing), and are allowed
+  again after it is unlocked.
+
+  '
 satisfies:
   - CRS-002
-verification_criteria: With a structure set active, the structure panel lists every
+verification_criteria: 'With a structure set active, the structure panel lists every
   structure by name with its type and highlights the active one; structures can be
-  created, edited and deleted.
+  created, edited and deleted. T4: a locked structure keeps its type and contours
+  and cannot be deleted until unlocked.'

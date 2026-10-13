@@ -1,0 +1,14 @@
+id: RCM-008
+title: Shared voxel-space slice mask for boolean and margin operations
+content: 'Boolean and margin operations rasterise and trace on the volume grid through
+  the direction cosines, keep every outline and hole as its own contour, keep contours
+  on slices that match no image frame, and match slices by image position. Tests:
+  sliceMask, BooleanContourEngine, MarginContourEngine and slicePosition tests including
+  prone, feet-first, islands, rings and unmatched slices (SRS-014 T7, T8, T10).'
+mitigates:
+- RISK-006
+implements:
+- SYS-004
+control_type: Protective Measure
+implementation_status: Implemented
+type: RCM

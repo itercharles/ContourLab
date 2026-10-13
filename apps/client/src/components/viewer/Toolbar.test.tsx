@@ -357,6 +357,60 @@ describe('Toolbar contour operations', () => {
 
 });
 
+describe('Toolbar push to repository @links:SRS-010', () => {
+  const activityTitles = () => useActivityStore.getState().activities.map((activity) => activity.title);
+  const clickSave = () => fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+  it('tells the user when the upload fails and keeps the series marked as unsaved @testing:T9', async () => {
+    useStructureStore.getState().markSeriesDirty('series-1');
+    mocks.uploadDicomBlobToRepository.mockRejectedValueOnce(new Error('Failed to upload DICOM object (500)'));
+    renderToolbar();
+
+    clickSave();
+
+    await waitFor(() => expect(activityTitles()).toContain('Push failed'));
+    expect(useActivityStore.getState().activities[0].message).toContain('(500)');
+    expect(useActivityStore.getState().activities[0].tone).toBe('error');
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).toContain('series-1');
+    expect(useStructureStore.getState().dirtySeriesUIDs).toContain('series-1');
+  });
+
+  it('keeps edits made during the upload unsaved and says so @testing:T10', async () => {
+    useStructureStore.getState().markSeriesDirty('series-1');
+    let finishUpload: () => void = () => {};
+    mocks.uploadDicomBlobToRepository.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishUpload = resolve;
+      })
+    );
+    renderToolbar();
+
+    clickSave();
+    await waitFor(() => expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledTimes(1));
+    // The clinician carries on editing while the push is in flight.
+    useStructureStore.getState().updateStructure('ss-1', 'structure-1', { name: 'PTV edited meanwhile' });
+    finishUpload();
+
+    await waitFor(() => expect(activityTitles()).toContain('Pushed, with newer edits not saved'));
+    const state = useStructureStore.getState();
+    expect(state.structureSets[0].structures[0].name).toBe('PTV edited meanwhile');
+    expect(state.structureSets[0].source).toEqual(expect.objectContaining({ sopInstanceUID: 'rtss-sop-new' }));
+    expect(state.repositoryDirtySeriesUIDs).toContain('series-1');
+    expect(state.dirtySeriesUIDs).toContain('series-1');
+  });
+
+  it('reports success and marks the series saved when nothing changed during the upload @testing:T10', async () => {
+    useStructureStore.getState().markSeriesDirty('series-1');
+    renderToolbar();
+
+    clickSave();
+
+    await waitFor(() => expect(activityTitles()).toContain('Pushed to repository'));
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
+    expect(useStructureStore.getState().dirtySeriesUIDs).not.toContain('series-1');
+  });
+});
+
 describe('Toolbar patient name display @links:SRS-030', () => {
   it('shows formatted patient name in the toolbar brand section when a series is active @testing:T1', () => {
     renderToolbar();

@@ -1,0 +1,13 @@
+id: RISK-009
+title: Image decoder shows wrong pixels
+hazard: A fault in an image decoder or in transfer-syntax handling makes the displayed
+  pixels differ from the stored ones.
+cause: A bug in a third-party codec or in how a compressed transfer syntax is requested
+  and decoded.
+effect: The clinician contours on anatomy that is not what was scanned.
+severity_pre: S5
+probability_pre: P2
+severity_post: S5
+probability_post: P1
+risk_acceptability: Acceptable
+type: RISK

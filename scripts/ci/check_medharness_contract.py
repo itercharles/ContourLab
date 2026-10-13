@@ -148,6 +148,7 @@ def main() -> int:
             "medharness --dhf DHF build plan",
             "medharness --dhf DHF build code",
             "medharness --dhf DHF item transition",
+            "author_association",
         ],
         "issue-to-cr.yml": [
             "medharness --dhf DHF item create --type CR",

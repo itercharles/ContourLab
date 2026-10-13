@@ -236,6 +236,30 @@ export async function uploadDicomBlobToRepository(blob: Blob): Promise<void> {
   if (!response.ok) {
     throw new Error(`Failed to upload DICOM object (${response.status})`);
   }
+
+  await assertStowAccepted(response);
+}
+
+// STOW-RS can answer 200 or 202 and still report that an instance was rejected, in the Failed SOP
+// Sequence (0008,1198) of the response. Treating any 2xx as success would mark the series as saved
+// when the repository kept nothing.
+async function assertStowAccepted(response: Response): Promise<void> {
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    return; // an empty or non-JSON body carries no failure report
+  }
+  if (typeof body !== 'object' || body === null) return;
+
+  const failed = (body as Record<string, { Value?: Array<Record<string, { Value?: unknown[] }>> }>)['00081198'];
+  const failures = failed?.Value ?? [];
+  if (failures.length === 0) return;
+
+  const reason = failures[0]?.['00081197']?.Value?.[0];
+  throw new Error(
+    `The repository rejected the structure set${reason === undefined ? '' : ` (failure reason ${String(reason)})`}.`
+  );
 }
 
 export async function queryRtstructInstancesForStudy(
@@ -455,6 +479,7 @@ export const __testables__ = {
   getRtstructPredecessorReference,
   getRtstructReferencedSeriesInstanceUIDs,
   isPlanningCtSeries,
+  parseNormalizedMetadata,
 };
 
 function isPlanningCtSeries(series: DicomWebSeriesSummary): boolean {
@@ -575,6 +600,11 @@ function parseNormalizedMetadata(
     pixelRepresentation: getNumberValue(dataset, '00280103', 1),
     transferSyntaxUID: getStringValue(dataset, '00020010', '1.2.840.10008.1.2.1'),
     frameOfReferenceUID: getStringValue(dataset, '00200052'),
+    missingGeometryTags: [
+      getNumberArray(dataset, '00200032', []).length === 0 ? 'ImagePositionPatient' : '',
+      getNumberArray(dataset, '00200037', []).length === 0 ? 'ImageOrientationPatient' : '',
+      getNumberArray(dataset, '00280030', []).length === 0 ? 'PixelSpacing' : '',
+    ].filter(Boolean),
     windowCenter: getNumberValueOrUndefined(dataset, '00281050'),
     windowWidth: getNumberValueOrUndefined(dataset, '00281051'),
   };
