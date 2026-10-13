@@ -6,6 +6,7 @@ import {
   getOrthancUiUrl,
   resetDicomWebBaseUrl,
   setDicomWebBaseUrl,
+  uploadDicomBlobToRepository,
 } from './dicomWebClient';
 
 beforeEach(() => {
@@ -208,5 +209,33 @@ describe('dicomWebClient summary parsing', () => {
       sopClassUID: '1.2.840.10008.5.1.4.1.1.481.3',
       sopInstanceUID: 'rtss-previous',
     });
+  });
+});
+
+describe('uploadDicomBlobToRepository @links:SRS-010', () => {
+  const stow = (status: number, body: unknown) =>
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(body === undefined ? null : JSON.stringify(body), { status })));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('succeeds when the repository accepts the instance @testing:T11', async () => {
+    stow(200, { '00081199': { vr: 'SQ', Value: [{ '00081155': { Value: ['sop-1'] } }] } });
+    await expect(uploadDicomBlobToRepository(new Blob(['x']))).resolves.toBeUndefined();
+  });
+
+  it('succeeds when the response has no body @testing:T11', async () => {
+    stow(200, undefined);
+    await expect(uploadDicomBlobToRepository(new Blob(['x']))).resolves.toBeUndefined();
+  });
+
+  it('fails on an HTTP error status @testing:T11', async () => {
+    stow(500, { message: 'boom' });
+    await expect(uploadDicomBlobToRepository(new Blob(['x']))).rejects.toThrow('(500)');
+  });
+
+  it('fails when a 200 response lists a failed instance in the Failed SOP Sequence @testing:T11', async () => {
+    stow(200, {
+      '00081198': { vr: 'SQ', Value: [{ '00081197': { vr: 'US', Value: [272] } }] },
+    });
+    await expect(uploadDicomBlobToRepository(new Blob(['x']))).rejects.toThrow('rejected the structure set (failure reason 272)');
   });
 });

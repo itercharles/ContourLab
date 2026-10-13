@@ -1,0 +1,32 @@
+id: SWDD-016
+title: Slice mask geometry for boolean and margin operations
+implements:
+- SRS-014
+module:
+- MODULE-004
+content: 'BooleanContourEngine and MarginContourEngine share apps/client/src/core/contouring/sliceMask.ts.
+  For each image frame, the contours at that slice position (within half the slice
+  spacing) are rasterised into a mask on the volume''s voxel grid: each contour''s
+  world points are converted with worldToContinuousVoxel, so the direction cosines
+  are honoured and HFS, HFP, FFS and FFP volumes give the same result. Contours are
+  filled even-odd, so a contour inside another cuts a hole, matching how the 3D mask
+  and volume treat nested contours.
+
+
+  The boolean engine combines the source and target masks (union, intersection, source
+  minus target); the margin engine grows or shrinks the mask by a disc kernel in voxel
+  units that respects the voxel spacing. maskToContourSlices then traces every boundary
+  between filled and empty pixels into directed edges (filled pixel on the right),
+  links them into loops choosing the right turn at a corner where two pieces only
+  touch so they stay separate, drops collinear points and converts each loop back
+  to world coordinates with voxelToWorld; every loop, outer outline or hole, becomes
+  its own closed ContourSlice on that slice. The result for a structure is the computed
+  contours plus the source''s own contours on slices that match no image frame, which
+  are kept rather than deleted.
+
+
+  Frames pass the slice position as ImagePositionPatient z through slicePositionZ
+  (core/dicom/slicePosition.ts), the coordinate contours are stored in, instead of
+  the SliceLocation tag, whose sign is flipped on some feet-first scans. Only axis-aligned
+  (axial) volumes are supported; an oblique series is outside this design.'
+type: SWDD

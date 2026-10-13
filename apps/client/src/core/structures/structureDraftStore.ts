@@ -41,6 +41,13 @@ export async function saveStructureDraftForSeries(
   });
 }
 
+export async function deleteStructureDraftForSeries(seriesUID: string): Promise<void> {
+  const db = await openDraftDb();
+  await runTransaction(db, 'readwrite', (store) => {
+    store.delete(seriesUID);
+  });
+}
+
 export async function loadStructureDraftForSeries(
   seriesUID: string
 ): Promise<ImportedStructurePayload | null> {

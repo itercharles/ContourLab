@@ -1,22 +1,44 @@
 id: SRS-009
 title: Software shall auto-save structure drafts in browser-local storage by series UID
-content: |-
-  When contour or structure edits mark a series dirty, the client software shall
+content: 'When contour or structure edits mark a series dirty, the client software
+  shall
+
   serialize the active series structure data and store it in browser-local
+
   IndexedDB keyed by SeriesInstanceUID. When the same series is loaded again and
+
   no in-memory structure data exists, the software shall attempt to restore the
+
   local draft. When an active series has unpublished repository changes, the
+
   client software shall display that state in the workspace context and require
+
   user confirmation before selecting another patient, activating another image
+
   series, or loading another RT Structure Set that would replace the current
-  structure workspace.
+
+  structure workspace. After a successful push to the repository the local draft of
+  that series shall be deleted, so an older draft cannot be restored over the pushed
+  version.'
 derives_from: [SYS-005]
 verification_method: [Test]
-testing: |
-  T1: Given exported structure sets, a round-trip through JSON serialisation preserves all structure data including Float32Array contour points.
-  T2: Given an import payload with an unsupported version number, the import throws with a descriptive error.
-  T3: Given a multi-series store, exportStructureSetsForSeries exports only the structure sets for the requested series.
-  T4: Given a replace operation targeting a specific series, only that series' structure sets are swapped while others are preserved.
-verification_criteria: Structure drafts survive a JSON round trip including their
+testing: 'T1: Given exported structure sets, a round-trip through JSON serialisation
+  preserves all structure data including Float32Array contour points.
+
+  T2: Given an import payload with an unsupported version number, the import throws
+  with a descriptive error.
+
+  T3: Given a multi-series store, exportStructureSetsForSeries exports only the structure
+  sets for the requested series.
+
+  T4: Given a replace operation targeting a specific series, only that series'' structure
+  sets are swapped while others are preserved.
+
+  T5: Given a saved local draft, deleting the draft of the series removes it, and
+  loading it afterwards finds nothing.
+
+  '
+verification_criteria: 'Structure drafts survive a JSON round trip including their
   Float32Array points, an unsupported version number is rejected with a descriptive
   error, export returns only the requested series, and replace swaps only that series.
+  T5: the draft of a series can be deleted and is then not restored.'

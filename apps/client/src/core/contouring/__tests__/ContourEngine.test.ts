@@ -335,3 +335,24 @@ describe('ContourEngine.deleteContourOnSlice @links:SYS-004', () => {
     expect(mockStore.updateStructure).not.toHaveBeenCalled();
   });
 });
+
+describe('ContourEngine undo guard @links:SYS-003', () => {
+  it('refuses undo or redo of a contour edit once the structure is locked or gone @testing:T4', () => {
+    const structure = makeStructure([]);
+    mockStore.structureSets = [makeStructureSet([structure])];
+    ContourEngine.addContour('ss-1', 'struct-1', {
+      points: new Float32Array([0, 0, 5, 1, 0, 5, 1, 1, 5, 0, 1, 5]),
+      slicePosition: 5,
+      sopInstanceUID: '1.2.3.4',
+    });
+    const command = capturedCommands[0];
+
+    expect(command.canApply?.()).toBeNull();
+
+    mockStore.structureSets = [makeStructureSet([makeStructure([], { isLocked: true })])];
+    expect(command.canApply?.()).toBe('PTV is locked.');
+
+    mockStore.structureSets = [makeStructureSet([])];
+    expect(command.canApply?.()).toBe('The structure no longer exists.');
+  });
+});

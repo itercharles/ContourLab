@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { UndoRedoManager } from '../UndoRedoManager';
+import { UndoRedoManager, installUndoHistoryReset, installUndoRedoKeyHandler } from '../UndoRedoManager';
+import { useVolumeStore } from '../../store/volumeStore';
 import type { ContourCommand } from '../UndoRedoManager';
 
 // ---------------------------------------------------------------------------
@@ -142,5 +143,72 @@ describe('UndoRedoManager @links:SRS-007', () => {
     unsubscribe();
     UndoRedoManager.clear();
     expect(listener).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('UndoRedoManager guards @links:SRS-007', () => {
+  function guardedCommand(counter: { value: number }, block: { reason: string | null }): ContourCommand {
+    return { ...makeCounterCommand(counter), canApply: () => block.reason };
+  }
+
+  it('refuses to undo a command whose structure has since been locked, and keeps it on the stack @testing:T8', () => {
+    const counter = { value: 0 };
+    const block = { reason: null as string | null };
+    UndoRedoManager.push(guardedCommand(counter, block));
+
+    block.reason = 'PTV is locked.';
+    expect(UndoRedoManager.undo()).toEqual({ applied: false, reason: 'PTV is locked.' });
+    expect(counter.value).toBe(1);
+    expect(UndoRedoManager.canUndo()).toBe(true);
+
+    block.reason = null;
+    expect(UndoRedoManager.undo()).toEqual({ applied: true });
+    expect(counter.value).toBe(0);
+  });
+
+  it('refuses to redo a command whose structure has since been locked @testing:T8', () => {
+    const counter = { value: 0 };
+    const block = { reason: null as string | null };
+    UndoRedoManager.push(guardedCommand(counter, block));
+    UndoRedoManager.undo();
+
+    block.reason = 'The structure no longer exists.';
+    expect(UndoRedoManager.redo()).toEqual({ applied: false, reason: 'The structure no longer exists.' });
+    expect(counter.value).toBe(0);
+    expect(UndoRedoManager.canRedo()).toBe(true);
+  });
+
+  it('reports nothing to do, without a reason, when the stack is empty @testing:T8', () => {
+    expect(UndoRedoManager.undo()).toEqual({ applied: false });
+    expect(UndoRedoManager.redo()).toEqual({ applied: false });
+  });
+
+  it('does not undo a contour edit when Ctrl+Z is pressed in a text field @testing:T9', () => {
+    const counter = { value: 0 };
+    UndoRedoManager.push(makeCounterCommand(counter));
+    const uninstall = installUndoRedoKeyHandler();
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true, bubbles: true }));
+    expect(counter.value).toBe(1);
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true, bubbles: true }));
+    expect(counter.value).toBe(0);
+
+    input.remove();
+    uninstall();
+  });
+
+  it('clears the undo history when the active image set changes @testing:T10', () => {
+    useVolumeStore.setState({ activeSeriesUID: 'series-a' });
+    UndoRedoManager.push(makeNoopCommand());
+    const uninstall = installUndoHistoryReset();
+
+    useVolumeStore.setState({ activeSeriesUID: 'series-b' });
+
+    expect(UndoRedoManager.canUndo()).toBe(false);
+    uninstall();
+    useVolumeStore.setState({ activeSeriesUID: null });
   });
 });
