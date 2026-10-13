@@ -1,0 +1,25 @@
+id: SWDD-017
+title: Orientation markers drawn from the viewport camera
+implements:
+- SRS-034
+module:
+- MODULE-008
+content: 'core/rendering/orientationMarkers.ts turns a camera (viewUp, viewPlaneNormal,
+  both in LPS) into the letters for the four edges: right = viewUp x viewPlaneNormal,
+  left, top and bottom are the negations and viewUp itself, and a direction is named
+  by its components of at least a quarter of its length, the larger first (x: R/L,
+  y: A/P, z: I/S). components/viewer/OrientationMarkers.tsx reads the camera from
+  the viewport through ViewportManager, keeps the letters in state, and re-reads them
+  on the element''s CORNERSTONE_IMAGE_RENDERED and CORNERSTONE_CAMERA_MODIFIED events,
+  so a new plane, volume or layout updates them. If the viewport or its camera is
+  unavailable it renders nothing. ViewportPanel in ImageViewer.tsx places it over
+  every 2D view with pointer events off; the axial view also passes the series'' Patient
+  Position, which the parsers read from (0018,5100) into Series.patientPosition.
+
+
+  Cornerstone draws in patient space, so the letters derived from the camera hold
+  for every patient position. This is verified against real DICOM: the phantom stores
+  one anatomy (a marker at the patient''s left and anterior, the spine, a superior
+  disc) in head-first and feet-first, supine and prone orientations, and the end-to-end
+  test checks the letters against where that anatomy is drawn.'
+type: SWDD

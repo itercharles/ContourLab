@@ -1,13 +1,16 @@
 id: RCM-011
 title: Patient orientation markers and patient position in the 2D views
-content: Each 2D view shows R/L/A/P/H/F markers derived from the viewport camera,
-  so feet-first and prone series are labelled correctly, and the patient position
-  (0018,5100) is displayed. To be verified with the phantom's off-centre marker and
-  a feet-first series.
+content: 'Each 2D view shows R/L/A/P/S/I markers derived from the viewport camera,
+  so feet-first and prone series are labelled correctly, and the axial view shows
+  the patient position (0018,5100). If the camera cannot be read, no marker is drawn
+  rather than a guessed one. Verified against real DICOM for head-first and feet-first,
+  supine and prone: the letters are compared with where a marker at the patient''s
+  left and anterior, the spine and the superior end are drawn. Tests: orientationMarkers,
+  OrientationMarkers and e2e/crs/real-dicom.spec.ts (SRS-034 T1, T2; SYS-002 T6).'
 mitigates:
 - RISK-005
 implements:
 - SYS-002
 control_type: Information for Safety
-implementation_status: Planned
+implementation_status: Implemented
 type: RCM

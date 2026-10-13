@@ -1,0 +1,29 @@
+id: SRS-034
+title: Software shall derive the orientation markers of a 2D view from its camera
+  and show the patient position
+content: 'Each axial, sagittal and coronal viewport shall show a letter on each of
+  its four edges, read from the viewport camera in patient (LPS) coordinates: the
+  screen''s right direction is the camera''s up direction crossed with its plane normal,
+  and a direction is named by its dominant axis (x: R/L, y: A/P, z: I/S), with a second
+  letter when it lies between two axes. The markers shall update when the viewport
+  renders or its camera changes. When the camera cannot be read, no marker shall be
+  drawn. The axial view shall show the Patient Position (0018,5100) of the series
+  when it has one.'
+derives_from:
+- SYS-002
+verification_method:
+- Test
+testing: 'T1: Given a camera, orientationLabels names the four edges: anterior up
+  and the patient''s left on the right for the axial view, superior up for the coronal
+  and sagittal views, every letter swapped when the view is turned over, and two letters
+  for a direction between two axes.
+
+  T2: Given a viewport, OrientationMarkers shows the letters from its camera, updates
+  on a render or camera event, draws nothing when the camera is unreadable, shows
+  the patient position only when given, and removes its listeners when unmounted.
+
+  '
+verification_criteria: 'T1 and T2: the letters follow the camera for any plane and
+  orientation, are updated on render, are absent rather than guessed when the camera
+  is unreadable, and the patient position is shown only when the series has one.'
+type: SRS

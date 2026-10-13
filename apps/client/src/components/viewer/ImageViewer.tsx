@@ -6,6 +6,7 @@ import { useVolumeStore } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import ContourOverlay from './ContourOverlay';
+import OrientationMarkers from './OrientationMarkers';
 import ToolOptions from './ToolOptions';
 import ViewportContextMenu from './ViewportContextMenu';
 import ThreeDViewport from './ThreeDViewport';
@@ -46,6 +47,9 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
   const setActiveViewport = useUIStore((s) => s.setActiveViewport);
   const maximizedViewport = useUIStore((s) => s.maximizedViewport);
   const toggleMaximizeViewport = useUIStore((s) => s.toggleMaximizeViewport);
+  const patientPosition = useVolumeStore(
+    (s) => s.loadedSeries.find((series) => series.seriesUID === s.activeSeriesUID)?.series.patientPosition
+  );
 
   const isActive = activeViewport === orientation;
   const isMaximized = maximizedViewport === orientation;
@@ -110,6 +114,11 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
           orientation={orientation}
         />
       </ContourErrorBoundary>
+      <OrientationMarkers
+        viewportId={id}
+        viewportElement={viewportElement}
+        patientPosition={orientation === 'AXIAL' ? patientPosition : undefined}
+      />
       <span className="absolute top-1 left-1 text-[11px] font-mono text-[#f97316] bg-black/50 px-1 py-0.5 pointer-events-none select-none z-10">
         {label}
       </span>
