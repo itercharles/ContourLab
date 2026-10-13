@@ -191,6 +191,24 @@ def main() -> int:
         match = re.search(r"--manifest\s+\S*package\.json\b", text)
         require(match is None, f"{filename} gives `{match.group(0) if match else ''}` to a SOUP command; use pnpm-lock.yaml", errors)
 
+    # The deployed stack has no authentication (API, repository, auto-contour service), so none of it
+    # may be reachable from the network: every published port stays on the loopback interface, and the
+    # web server does not proxy the repository's REST API (which can delete studies).
+    for compose_name in ("docker-compose.deploy.yml", "docker-compose.yml"):
+        compose = yaml.safe_load((REPO_ROOT / compose_name).read_text(encoding="utf-8"))
+        for service, spec in compose["services"].items():
+            for port in spec.get("ports", []):
+                require(
+                    str(port).startswith("127.0.0.1:"),
+                    f"{compose_name} publishes {service} port {port} on all interfaces; bind it to 127.0.0.1",
+                    errors,
+                )
+    require(
+        "location /orthanc" not in (REPO_ROOT / "apps" / "client" / "nginx.conf").read_text(encoding="utf-8"),
+        "apps/client/nginx.conf proxies /orthanc/, which exposes the repository REST API (including delete)",
+        errors,
+    )
+
     # An event field pasted into a run script is shell source: a title or branch name with a
     # quote or $(...) breaks the step, or runs as a command on a runner that holds secrets.
     # Pass it through env: and use "$VAR".
