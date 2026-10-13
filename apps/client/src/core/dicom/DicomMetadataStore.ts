@@ -25,6 +25,8 @@ export interface ImageMetadata {
   sliceThickness: number;
   sliceLocation: number;
   frameOfReferenceUID: string;
+  /** Geometry tags the instance did not carry; the parsers fill in defaults for them. */
+  missingGeometryTags?: string[];
   // generalSeriesModule
   modality: string;
   seriesInstanceUID: string;
@@ -62,6 +64,7 @@ export interface NormalizedDicomMetadata {
   pixelRepresentation: number;
   transferSyntaxUID: string;
   frameOfReferenceUID: string;
+  missingGeometryTags?: string[];
   windowCenter: number | undefined;
   windowWidth: number | undefined;
 }
@@ -212,6 +215,13 @@ export async function parseDicomTags(file: File): Promise<NormalizedDicomMetadat
   const getUint16 = (tag: string, fallback = 0): number =>
     dataSet.uint16(tag) ?? fallback;
 
+  const absent = (tag: string) => !dataSet.string(tag)?.trim();
+  const missingGeometryTags = [
+    absent('x00200032') ? 'ImagePositionPatient' : '',
+    absent('x00200037') ? 'ImageOrientationPatient' : '',
+    absent('x00280030') ? 'PixelSpacing' : '',
+  ].filter(Boolean);
+
   const pixelSpacingStr = dataSet.string('x00280030') ?? '1\\1';
   const [rowSpacing, colSpacing] = pixelSpacingStr.split('\\').map(Number);
 
@@ -263,6 +273,7 @@ export async function parseDicomTags(file: File): Promise<NormalizedDicomMetadat
     pixelRepresentation,
     transferSyntaxUID,
     frameOfReferenceUID: getString('x00200052'),
+    missingGeometryTags,
     windowCenter,
     windowWidth,
   };
@@ -285,6 +296,7 @@ export function buildImageMetadata(tags: NormalizedDicomMetadata): ImageMetadata
     sliceThickness: tags.sliceThickness,
     sliceLocation: tags.sliceLocation,
     frameOfReferenceUID: tags.frameOfReferenceUID,
+    missingGeometryTags: tags.missingGeometryTags,
     modality: tags.modality,
     seriesInstanceUID: tags.seriesInstanceUID,
     transferSyntaxUID: tags.transferSyntaxUID,

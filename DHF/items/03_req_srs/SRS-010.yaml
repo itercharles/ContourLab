@@ -1,71 +1,157 @@
 id: SRS-010
 title: Software shall exchange structure sets with the DICOM repository as RTSTRUCT
-content: |-
-  Push Changes shall be disabled when the active image series has no local
+content: 'Push Changes shall be disabled when the active image series has no local
+
   structure changes that are unsynchronized with the DICOM repository. Local
+
   browser draft auto-save shall not clear the repository synchronization
+
   pending state. When repository-unsynchronized local changes exist, the client
+
   software shall convert the active structure set for the active image series
+
   into a DICOM RT Structure Set object, preserving study, series,
+
   frame-of-reference, and referenced SOP instance metadata, and upload the
+
   object to the connected DICOMweb repository using STOW-RS. The exported RT
+
   Structure Set object shall include RT Referenced Study and RT Referenced
+
   Series metadata for the active image series so repository reload can
+
   associate the structure set with the correct image set. After successful
+
   upload, the client software shall associate the active in-memory structure
+
   set with the newly generated RT Structure Set SOP Instance UID, clear the
+
   active image series repository synchronization pending state, and show the
+
   new object as the active repository source. The
+
   client software shall also query and retrieve RT Structure Set objects from
+
   the connected DICOMweb repository for the selected patient study, present
+
   available RT Structure Set candidates only under an active or user-expanded
+
   image-set context when the RT Structure Set metadata references that image
-  set's SeriesInstanceUID, in newest-first order, identify the latest and active RT Structure Set rows,
+
+  set''s SeriesInstanceUID, in newest-first order, identify the latest and active
+  RT Structure Set rows,
+
   display compact review metadata including timestamp, SOP identifier, and ROI
+
   count when available,
+
   reserve plan rows under each RT Structure Set candidate, load a user-selected
-  RT Structure Set by activating the corresponding patient and planning CT image series, replace the
+
+  RT Structure Set by activating the corresponding patient and planning CT image series,
+  replace the
+
   active-series in-memory structures with the selected object, display the
+
   active repository source in the RT Structure Set candidate row and right-side
+
   structure information panel, display persistent workspace context in the top
+
   operation bar for the active patient, active image series, active RT
+
   Structure Set or structure set, and repository synchronization state, convert
+
   the selected object into editable ContourLab structures, and preserve referenced
+
   SOP instance and contour point metadata for slice matching. The repository
+
   navigation panel shall visually separate repository actions, patient context,
+
   image sets, and RT Structure Sets so the patient/image/structure selection
+
   workflow is clear. Patient selection shall be presented as a focused patient
+
   browser with search, patient identity, MRN, study/image context, active
+
   patient indication, filter tabs, treatment-site/study/status/assignee/last
+
   activity columns, and explicit close/Escape dismissal. Selecting a patient
+
   shall automatically activate the newest planning CT image series and retrieve
+
   the newest matching RT Structure Set when one is available; manual image and
+
   RT Structure Set switching shall be available only from the patient-context
+
   selector for non-default workflows. RT Structure Sets shall not be displayed
+
   as a patient-level list before the user chooses or expands an image set. The client
+
   software shall provide a settings page for configuring the active DICOMweb
+
   repository endpoint and a control that opens the configured DICOMweb
-  repository's native upload UI in a new tab for importing local DICOM files
+
+  repository''s native upload UI in a new tab for importing local DICOM files
+
   into that repository. The same control shall be available from the patient
+
   browser. Repository refresh shall remain available from the patient context
+
   area of the main workspace and shall visually indicate when background
+
   polling detects repository worklist changes. Push Changes shall remain
+
   available from the central top operation bar. Repository endpoint selection
+
   and the local DICOM import control shall be handled outside the main
-  clinical workspace.
+
+  clinical workspace. If the upload fails, or the repository answers 2xx but lists
+  the instance in the Failed SOP Sequence (0008,1198), the user shall be told and
+  the series shall stay marked as having unsynchronized changes. Edits made while
+  the upload is in flight shall not be treated as saved: the series stays unsynchronized,
+  the structure set records the pushed version as its source, and the user is told
+  to push again.'
 derives_from: [SYS-006, SYS-007, SYS-011, SYS-012]
 verification_method: [Test, Demonstration]
-testing: |
-  T1: Given a manual structure set with no repository source, the exported RTSTRUCT omits a PredecessorStructureSetSequence.
-  T2: Given a structure set with a repository RTSTRUCT source, the exported RTSTRUCT includes the predecessor SOP reference.
-  T3: Given a valid structure set and loaded series, exportRtstructBlob resolves to a Blob instance.
-  T4: Given a successful export, the returned identifiers include studyInstanceUID, seriesInstanceUID, sopInstanceUID, and seriesDescription.
-  T5: Given a series dirty flag set, the structureStore marks both draft and repository dirty for that series.
-  T6: Given markSeriesClean called for a series, only the draft dirty flag is cleared; repository dirty state is preserved.
-  T7: Given markSeriesRepositoryClean called, the repository dirty state is cleared independently.
-  T8: Given a structure set added to the store, the referenced series is marked as both draft and repository dirty.
-verification_criteria: An exported RTSTRUCT omits PredecessorStructureSetSequence
+testing: 'T1: Given a manual structure set with no repository source, the exported
+  RTSTRUCT omits a PredecessorStructureSetSequence.
+
+  T2: Given a structure set with a repository RTSTRUCT source, the exported RTSTRUCT
+  includes the predecessor SOP reference.
+
+  T3: Given a valid structure set and loaded series, exportRtstructBlob resolves to
+  a Blob instance.
+
+  T4: Given a successful export, the returned identifiers include studyInstanceUID,
+  seriesInstanceUID, sopInstanceUID, and seriesDescription.
+
+  T5: Given a series dirty flag set, the structureStore marks both draft and repository
+  dirty for that series.
+
+  T6: Given markSeriesClean called for a series, only the draft dirty flag is cleared;
+  repository dirty state is preserved.
+
+  T7: Given markSeriesRepositoryClean called, the repository dirty state is cleared
+  independently.
+
+  T8: Given a structure set added to the store, the referenced series is marked as
+  both draft and repository dirty.
+
+  T9: Given an upload that fails, the user is shown the failure and the series stays
+  marked as unsynchronized.
+
+  T10: Given a successful upload, the series is marked saved and the user is told;
+  given edits made while the upload was in flight, the edits are kept, the series
+  stays unsynchronized and the user is told to push again.
+
+  T11: Given the repository response, a 2xx without failures is accepted, an HTTP
+  error is a failure, and a 2xx that lists a failed instance in the Failed SOP Sequence
+  is a failure.
+
+  '
+verification_criteria: 'An exported RTSTRUCT omits PredecessorStructureSetSequence
   for a manual structure set and includes the predecessor SOP reference for one loaded
   from the repository; export yields a Blob and the study, series and SOP instance
   UIDs and series description; the draft and repository dirty flags are set and cleared
-  independently as specified.
+  independently as specified. T9 to T11: a failed or rejected upload is shown to the
+  user and leaves the series unsynchronized; edits made during an upload are not marked
+  saved.'

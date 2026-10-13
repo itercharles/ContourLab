@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadStructureDraftForSeries, saveStructureDraftForSeries } from './structureDraftStore';
+import {
+  deleteStructureDraftForSeries,
+  loadStructureDraftForSeries,
+  saveStructureDraftForSeries,
+} from './structureDraftStore';
 import type { StructureSet } from '@contourlab/shared-types';
 
 const records = new Map<string, unknown>();
@@ -14,6 +18,10 @@ class FakeRequest {
 class FakeObjectStore {
   put(record: { seriesUID: string }) {
     records.set(record.seriesUID, record);
+  }
+
+  delete(seriesUID: string) {
+    records.delete(seriesUID);
   }
 
   get(seriesUID: string) {
@@ -81,5 +89,16 @@ describe('structureDraftStore @links:SRS-009', () => {
 
     expect(loaded?.activeStructureSetId).toBe('ss-1');
     expect(loaded?.structureSets).toHaveLength(1);
+  });
+});
+
+describe('deleteStructureDraftForSeries @links:SRS-009', () => {
+  it('removes the local draft of a series, so an older draft cannot come back after a push @testing:T5', async () => {
+    await saveStructureDraftForSeries('series-1', [makeStructureSet()], 'ss-1', null);
+    expect(await loadStructureDraftForSeries('series-1')).not.toBeNull();
+
+    await deleteStructureDraftForSeries('series-1');
+
+    expect(await loadStructureDraftForSeries('series-1')).toBeNull();
   });
 });

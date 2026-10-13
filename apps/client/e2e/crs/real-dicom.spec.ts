@@ -96,13 +96,8 @@ test.describe('Real DICOM series render in the planar views', () => {
   });
 });
 
-// Regression markers for issue #164. They are not linked to any requirement, so they give no
-// coverage credit while the defect is open. test.fail() makes the run report "expected to fail":
-// once the defect is fixed they pass, which Playwright reports as a failure, and whoever fixes it
-// removes test.fail() and links the tests to SRS-019.
 test.describe('Maximize and restore a viewport (issue #164)', () => {
-  test('maximizing the axial view fills the image area with the image', async ({ page }) => {
-    test.fail(true, 'Open defect #164: the maximized panel has zero width, so the view is grey');
+  test('@links:SRS-019 @testing:T3 maximizing the axial view fills the image area with the image', async ({ page }) => {
     await loadPhantom(page, 'uncompressed');
     await expectImage(page, 'viewport-axial');
 
@@ -118,8 +113,7 @@ test.describe('Maximize and restore a viewport (issue #164)', () => {
     await expectImage(page, 'viewport-axial', 10_000);
   });
 
-  test('restoring the layout shows the image in all three planar views again', async ({ page }) => {
-    test.fail(true, 'Open defect #164: after restore, remounted views are not re-attached');
+  test('@links:SYS-002 @testing:T5 restoring the layout shows the image in all three planar views again', async ({ page }) => {
     await loadPhantom(page, 'uncompressed');
     await expectImage(page, 'viewport-axial');
 

@@ -1,9 +1,25 @@
+import { isEditableTarget } from '../input/isEditableTarget';
+import { addUserActivity } from '../store/activityStore';
+import { useVolumeStore } from '../store/volumeStore';
+
 const MAX_DEPTH = 50;
 
 export interface ContourCommand {
   execute(): void;
   undo(): void;
   description: string;
+  /**
+   * Checked before a command is undone or redone (not when it is first pushed). Returns why it
+   * cannot run now, for example because its structure has since been locked or deleted, or null.
+   * A refused command stays where it is on its stack.
+   */
+  canApply?(): string | null;
+}
+
+export interface UndoRedoResult {
+  applied: boolean;
+  /** Why nothing happened, when a command was refused; undefined when the stack was empty. */
+  reason?: string;
 }
 
 class UndoRedoManagerClass {
@@ -25,22 +41,30 @@ class UndoRedoManagerClass {
     this.emit();
   }
 
-  undo(): void {
-    const cmd = this.undoStack.pop();
-    if (cmd) {
-      cmd.undo();
-      this.redoStack.push(cmd);
-      this.emit();
-    }
+  undo(): UndoRedoResult {
+    const cmd = this.undoStack.at(-1);
+    if (!cmd) return { applied: false };
+    const reason = cmd.canApply?.() ?? null;
+    if (reason) return { applied: false, reason };
+
+    this.undoStack.pop();
+    cmd.undo();
+    this.redoStack.push(cmd);
+    this.emit();
+    return { applied: true };
   }
 
-  redo(): void {
-    const cmd = this.redoStack.pop();
-    if (cmd) {
-      cmd.execute();
-      this.undoStack.push(cmd);
-      this.emit();
-    }
+  redo(): UndoRedoResult {
+    const cmd = this.redoStack.at(-1);
+    if (!cmd) return { applied: false };
+    const reason = cmd.canApply?.() ?? null;
+    if (reason) return { applied: false, reason };
+
+    this.redoStack.pop();
+    cmd.execute();
+    this.undoStack.push(cmd);
+    this.emit();
+    return { applied: true };
   }
 
   canUndo(): boolean {
@@ -81,15 +105,31 @@ export function installUndoRedoKeyHandler(): () => void {
     const isMac = navigator.platform.toUpperCase().includes('MAC');
     const ctrl = isMac ? e.metaKey : e.ctrlKey;
     if (!ctrl || e.key !== 'z') return;
+    // In a text field Ctrl+Z belongs to the field, not to a contour edit the user cannot see.
+    if (isEditableTarget(e.target)) return;
 
     e.preventDefault();
-    if (e.shiftKey) {
-      UndoRedoManager.redo();
-    } else {
-      UndoRedoManager.undo();
+    const result = e.shiftKey ? UndoRedoManager.redo() : UndoRedoManager.undo();
+    if (result.reason) {
+      addUserActivity({
+        title: e.shiftKey ? 'Redo not applied' : 'Undo not applied',
+        message: result.reason,
+        tone: 'warning',
+      });
     }
   };
 
   window.addEventListener('keydown', handler);
   return () => window.removeEventListener('keydown', handler);
+}
+
+/**
+ * The undo history belongs to the image set being edited. Keeping it across a patient or image-set
+ * switch would let Ctrl+Z change the previous patient's structures, out of sight. Call once at
+ * startup; returns the unsubscribe function.
+ */
+export function installUndoHistoryReset(): () => void {
+  return useVolumeStore.subscribe((state, previous) => {
+    if (state.activeSeriesUID !== previous.activeSeriesUID) UndoRedoManager.clear();
+  });
 }
