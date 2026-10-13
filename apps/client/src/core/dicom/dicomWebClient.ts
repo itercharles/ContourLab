@@ -479,6 +479,7 @@ export const __testables__ = {
   getRtstructPredecessorReference,
   getRtstructReferencedSeriesInstanceUIDs,
   isPlanningCtSeries,
+  parseNormalizedMetadata,
 };
 
 function isPlanningCtSeries(series: DicomWebSeriesSummary): boolean {
@@ -599,6 +600,11 @@ function parseNormalizedMetadata(
     pixelRepresentation: getNumberValue(dataset, '00280103', 1),
     transferSyntaxUID: getStringValue(dataset, '00020010', '1.2.840.10008.1.2.1'),
     frameOfReferenceUID: getStringValue(dataset, '00200052'),
+    missingGeometryTags: [
+      getNumberArray(dataset, '00200032', []).length === 0 ? 'ImagePositionPatient' : '',
+      getNumberArray(dataset, '00200037', []).length === 0 ? 'ImageOrientationPatient' : '',
+      getNumberArray(dataset, '00280030', []).length === 0 ? 'PixelSpacing' : '',
+    ].filter(Boolean),
     windowCenter: getNumberValueOrUndefined(dataset, '00281050'),
     windowWidth: getNumberValueOrUndefined(dataset, '00281051'),
   };

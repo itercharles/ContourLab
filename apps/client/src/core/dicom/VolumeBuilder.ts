@@ -3,6 +3,9 @@ import type { ParsedSeries } from './DicomLoader';
 import type { LoadedSeries } from '../store/volumeStore';
 import { cornerstoneInit } from '../rendering/cornerstoneInit';
 import { logClientDebug } from '../debug/clientDebugLog';
+import { addUserActivity } from '../store/activityStore';
+import { DicomMetadataStore } from './DicomMetadataStore';
+import { SeriesGeometryError, validateSeriesGeometry } from './seriesGeometry';
 
 /**
  * Build a Cornerstone3D streaming volume from a parsed DICOM series.
@@ -19,6 +22,25 @@ export async function buildVolume(parsedSeries: ParsedSeries): Promise<LoadedSer
   const { volumeLoader } = await import('@cornerstonejs/core');
 
   const { seriesUID, instances, metadata } = parsedSeries;
+
+  // Refuse a series whose slices cannot be stacked faithfully, rather than load it with defaults.
+  const geometry = validateSeriesGeometry(
+    instances.flatMap((instance) => {
+      const slice = DicomMetadataStore.getImageMetadata(instance.imageId);
+      return slice ? [slice] : [];
+    })
+  );
+  if (geometry.errors.length > 0) {
+    throw new SeriesGeometryError(metadata.series.seriesDescription ?? '', geometry.errors);
+  }
+  for (const warning of geometry.warnings) {
+    addUserActivity({
+      title: 'Check the slice geometry',
+      message: `${metadata.series.seriesDescription || 'This series'}: ${warning}`,
+      tone: 'warning',
+    });
+  }
+
   const volumeId = `cornerstoneStreamingImageVolume:${seriesUID}`;
   const imageIds = instances.map((i) => i.imageId);
 
