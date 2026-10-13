@@ -23,6 +23,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: read
 
     steps:
       - uses: actions/checkout@v5
@@ -31,16 +32,46 @@ jobs:
 
       - uses: ./.github/actions/medharness-setup
 
+      # build release judges every requirement against test results (--junit), whether or not a CR in
+      # the release touched it. The evidence is the JUnit output of the CI run for this exact commit:
+      # a release is only as good as the tests that ran on what is being released.
+      - name: Download the test evidence of this commit's CI run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID=$(gh run list --workflow "ContourLab Product CI/CD" --commit "$GITHUB_SHA" \
+            --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::No successful 'ContourLab Product CI/CD' run for $GITHUB_SHA. Run the release from a commit whose CI has passed (a push to main)."
+            exit 1
+          fi
+          echo "Using the test evidence of CI run $RUN_ID"
+          mkdir -p test-results
+          for pair in verify-srs-junit:srs verify-srs-api-junit:srs-api verify-sys-junit:sys validate-crs-junit:crs; do
+            if ! gh run download "$RUN_ID" --name "${pair%%:*}" --dir "test-results/${pair##*:}"; then
+              echo "::warning::CI run $RUN_ID has no '${pair%%:*}' artifact; requirements it verifies will show as unverified."
+            fi
+          done
+
       - name: Build release baseline
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           mkdir -p artifacts
+          JUNIT=()
+          for dir in test-results/*/; do
+            [ -d "$dir" ] && JUNIT+=(--junit "${dir%/}")
+          done
+          if [ "${#JUNIT[@]}" -eq 0 ]; then
+            echo "::error::No test results were downloaded, and build release requires --junit."
+            exit 1
+          fi
           WRITE_FLAG=${{ inputs.write == true && '--write' || '' }}
           medharness --dhf DHF build release \
             --version "$RELEASE_VERSION" \
             --manifest requirements.txt \
             --manifest pnpm-lock.yaml \
+            "${JUNIT[@]}" \
             --out-dir artifacts \
             $WRITE_FLAG \
             | tee /tmp/release-baseline-out.json

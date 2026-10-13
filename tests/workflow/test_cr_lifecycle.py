@@ -16,8 +16,13 @@ import _support as s
 class Lifecycle(s.Scratch):
     def legacy_cr(self, root) -> str:
         """CR-013 lives in a legacy directory (09_cr/). Put it in a known state: the real record
-        moves on (it is `completed` now), and these cases must not depend on that."""
-        s.medharness(root, "item", "update", "CR-013", "--data", json.dumps({"status": "new"}))
+        moves on (it is `completed` now), and these cases must not depend on that.
+
+        The status is written into the scratch copy's file: since medharness 0.59 `item update` cannot
+        change the status of an item with a lifecycle (only `item transition` can, and that does not
+        go from `completed` back to `new`), and this is test setup on a throwaway copy, not a move of a CR."""
+        path = root / "DHF" / "items" / "09_cr" / "CR-013.yaml"
+        path.write_text(re.sub(r"(?m)^status: .*$", "status: new", path.read_text(encoding="utf-8")), encoding="utf-8")
         return "CR-013"
 
     def test_a_cr_moves_new_design_develop_completed_and_closes(self):
