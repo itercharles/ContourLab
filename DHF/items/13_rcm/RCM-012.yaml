@@ -1,0 +1,12 @@
+id: RCM-012
+title: Visible error state for an empty or failed view
+content: If the contour overlay fails, the view shows a message with a retry instead
+  of hiding the contours; a view that has no image data says so instead of showing
+  grey.
+mitigates:
+- RISK-008
+implements:
+- SYS-002
+control_type: Information for Safety
+implementation_status: Planned
+type: RCM

@@ -1,0 +1,15 @@
+id: RISK-007
+title: Edits lost or overwritten without notice
+hazard: Contouring work disappears, or an older version replaces a newer one, without
+  the clinician knowing.
+cause: A failed push not shown to the user; edits made during an upload reverted;
+  an older local draft restored over a newer repository version; a push counted as
+  successful when the repository rejected it.
+effect: Contours the clinician believes are saved are not, or an outdated structure
+  set is used.
+severity_pre: S3
+probability_pre: P4
+severity_post: S3
+probability_post: P2
+risk_acceptability: Acceptable
+type: RISK

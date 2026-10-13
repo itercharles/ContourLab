@@ -4,3 +4,13 @@ hazard: |-
   Incorrect parsing of ImagePositionPatient, PixelSpacing, or slice ordering
   tags produces a volume with incorrect geometric registration, causing contours
   drawn in image space to be mislocated in patient space.
+cause: Missing position, orientation or pixel-spacing tags replaced by silent defaults;
+  slices that disagree with each other; uneven slice spacing shown on a uniform grid;
+  oblique or tilted acquisitions.
+effect: The image volume is distorted or misregistered, so contours drawn on it sit
+  in the wrong place in the patient and may reach treatment planning.
+severity_pre: S5
+probability_pre: P3
+severity_post: S5
+probability_post: P2
+risk_acceptability: ALARP
