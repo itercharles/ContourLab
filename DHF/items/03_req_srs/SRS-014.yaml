@@ -41,18 +41,29 @@ testing: 'T1: Given two bracketing contours around a target slice, findInterpola
 
   T7: Given a target structure that overlaps the active structure, computeBooleanContoursForStructure
   produces the union, the intersection (dropping slices with no overlap) and the subtraction
-  (source area outside the target) of the two structures.
+  (source area outside the target) of the two structures, keeps every separate piece
+  and every hole as its own contour on the slice (a target inside the source leaves
+  a ring, two apart pieces stay two), gives the same result on volumes whose columns
+  or rows run the other way (HFP) and whose slices run feet-first (FFS), and leaves
+  the source''s contours on slices that match no image frame untouched.
 
   T8: Given a structure with contours, computeMarginContoursForStructure expands the
   contour for a positive margin and contracts it for a negative margin, removing slices
-  that vanish.
+  that vanish, keeps every separate piece and every hole (a hole shrinks as the ring
+  grows), gives the same result on a volume whose columns run the other way, and leaves
+  the contours on slices that match no image frame untouched.
 
   T9: Given the active tool, the options bar shows the tool''s secondary controls:
   brush and eraser size, and freehand and polygon contour mode options.
+
+  T10: Given an image instance, slicePositionZ returns its ImagePositionPatient z,
+  which is the coordinate contours are stored in, and uses SliceLocation only when
+  the instance has no position, so frames for boolean, margin, interpolation and review
+  navigation line up with the contours on feet-first scans.
 
   '
 verification_criteria: Interpolation finds the bounding contours, produces a closed
   contour at the target slice, fills missing slices only within the configured maximum
   gap, and is one undoable step; a locked structure is not changed; boolean union,
-  intersect and subtract, margin expansion and contraction, and the tool option bars
-  behave as stated in T7 to T9.
+  intersect and subtract, margin expansion and contraction, the slice positions they
+  use, and the tool option bars behave as stated in T7 to T10.
