@@ -79,6 +79,17 @@ if [ "$running_state" = "true" ] && [ -z "$desired_image_id" ] \
   orthanc_ok=true
 fi
 
+# A running container keeps the port bindings it was created with. If it is still published on all
+# interfaces, recreate it so the loopback-only bindings in the compose file take effect. Its data
+# lives in the host directory above, so recreating does not lose studies.
+if [ "$orthanc_ok" = "true" ]; then
+  published="$(docker inspect -f '{{range $p, $b := .HostConfig.PortBindings}}{{range $b}}[{{.HostIp}}]{{end}}{{end}}' "$container_name" 2>/dev/null || true)"
+  if echo "$published" | grep -qE '\[\]|\[0\.0\.0\.0\]|\[::\]'; then
+    echo "DICOM repository is published on all interfaces; recreating it on 127.0.0.1 only."
+    orthanc_ok=false
+  fi
+fi
+
 if [ "$orthanc_ok" = "true" ]; then
   echo "DICOM repository already running with $desired_image; leaving it unchanged."
 else

@@ -1,3 +1,7 @@
+# Every published port is bound to 127.0.0.1: the system is used from the workstation it runs on.
+# The API, the repository and the auto-contour service have no authentication, so none of them may
+# be reachable from the network. To open the client to other computers, put an authenticating
+# reverse proxy in front of it rather than changing these bindings.
 services:
   client:
     build:
@@ -6,7 +10,7 @@ services:
     image: webtps-client:latest
     container_name: webtps-client
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     restart: unless-stopped
 
   api:
@@ -21,7 +25,7 @@ services:
       GITHUB_TOKEN: ${ISSUES_TOKEN}
       CONTOURLAB_AUTOCONTOUR_SERVICE_BASE_URL: http://autocontour-service:4010
     ports:
-      - "4001:4000"
+      - "127.0.0.1:4001:4000"
     restart: unless-stopped
     depends_on:
       - autocontour-service
@@ -35,7 +39,7 @@ services:
     environment:
       PORT: "4010"
     ports:
-      - "4010:4010"
+      - "127.0.0.1:4010:4010"
     volumes:
       - totalseg-models:/root/.totalsegmentator
     restart: unless-stopped
@@ -44,8 +48,8 @@ services:
     image: orthancteam/orthanc:latest
     container_name: webtps-orthanc
     ports:
-      - "8042:8042"
-      - "4242:4242"
+      - "127.0.0.1:8042:8042"
+      - "127.0.0.1:4242:4242"
     volumes:
       - ./docker/orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
       - ${CONTOURLAB_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}:/var/lib/orthanc/db
