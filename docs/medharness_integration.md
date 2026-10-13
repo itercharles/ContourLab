@@ -8,7 +8,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ## Current Pin
 
-- `medharness[docs]==0.58.24`
+- `medharness[docs]==0.61.0`
 - One CLI, `medharness`; `dhfkit` is a library inside it with no command of its own
 
 ## Sources Of Truth
@@ -50,6 +50,7 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 - `medharness --dhf DHF build release --version ... --out-dir ...` — dry run on
   every main push (evidence bundle); with `--write` in `release-baseline.yml` to
   record a REL item
+  `build release` requires `--junit` and judges every requirement against it, as `verify tests --strict` does, whether or not a CR in the release touched it. `ci-pipeline.yml` passes the JUnit of the run it is in; `release-baseline.yml` downloads the JUnit artifacts of the successful CI run for the commit being released and fails if there is none.
 - `medharness --dhf DHF build soup --manifest ...` — SOUP register sync (always writes the working tree).
   Run by hand after a dependency change; CI only checks the register (`verify soup --strict`) and reports,
   it does not change it.

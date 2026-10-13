@@ -159,7 +159,7 @@ def main() -> int:
             "medharness --dhf DHF item transition",
             "gh pr create",
         ],
-        "release-baseline.yml": ["medharness --dhf DHF build release", "gh pr create"],
+        "release-baseline.yml": ["medharness --dhf DHF build release", "--junit", "gh pr create"],
     }
     for filename, needles in required.items():
         for needle in needles:
