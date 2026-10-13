@@ -774,8 +774,13 @@ export default function DicomRepoPanel({ refreshRequestToken = 0, onRefreshState
             importedAt: new Date().toISOString(),
           },
         };
+        // Read the store now: `structureSets` is from before the download.
         replaceStructureSets(
-          replaceStructureSetsForSeries(structureSets, [sourcedStructureSet], targetSeriesUID)
+          replaceStructureSetsForSeries(
+            useStructureStore.getState().structureSets,
+            [sourcedStructureSet],
+            targetSeriesUID
+          )
         );
         setActiveStructureSet(sourcedStructureSet.id);
         setActiveStructure(sourcedStructureSet.structures[0]?.id ?? null);

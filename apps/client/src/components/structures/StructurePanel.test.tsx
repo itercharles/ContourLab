@@ -245,6 +245,22 @@ describe('StructurePanel local draft and structure editing interactions', () => 
   afterEach(() => {
     vi.restoreAllMocks();
   });
+
+  it('does not delete a locked structure, and deletes it once unlocked @links:SYS-003 @testing:T4', () => {
+    const lockedSet = makeStructureSet();
+    lockedSet.structures[0].isLocked = true;
+    useStructureStore.setState({ structureSets: [lockedSet] });
+
+    render(<StructurePanel />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete PTV' }));
+    expect(useStructureStore.getState().structureSets[0].structures).toHaveLength(1);
+    expect(screen.getByText('PTV is locked. Unlock it to delete it.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock PTV' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete PTV' }));
+    expect(useStructureStore.getState().structureSets[0].structures).toHaveLength(0);
+  });
   it('auto-saves dirty structures to the local browser draft store @links:SRS-009', async () => {
     render(<StructurePanel />);
 
@@ -895,10 +911,13 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     });
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
+    // Cord sits inside the active structure, so subtracting it leaves an outer outline and a hole.
     await waitFor(() =>
-      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(1)
+      expect(useStructureStore.getState().structureSets[0].structures[0].contours).toHaveLength(2)
     );
-    expect(useStructureStore.getState().structureSets[0].structures[0].contours[0].points.length).toBeGreaterThan(0);
+    expect(
+      useStructureStore.getState().structureSets[0].structures[0].contours.every((contour) => contour.points.length > 0)
+    ).toBe(true);
     expect(screen.getByText('Subtracted Cord.')).toBeTruthy();
   });
 

@@ -30,6 +30,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 - `medharness --dhf DHF build code --cr CR-NNN [--pr N]` (implementation and revision)
 - Event routing (event → CR, stage, action) is plain shell in `cr-lifecycle.yml`'s `detect` job: the stage comes from the PR's `cr:stage/<stage>` label or the dispatch input
 - Design approval → code stage: the `detect` job acts on an `approved` review only when its `commit_id` is the PR's current head; a stale approval is ignored. The server-side enforcement is branch protection on `main` (Require approvals; Dismiss stale approvals when new commits are pushed)
+- Who can drive the stages: the `detect` job acts on a review only when its `author_association` is `OWNER` or `MEMBER`. Code generation and design revision run with the repository PAT and the model key, and a revision feeds the review text to the agent, so a review from an outside collaborator, a contributor or a stranger is ignored. The owner can always start a stage with `workflow_dispatch`
 - `medharness --dhf DHF item get CR-NNN` (implementation plan for the PR comment)
 - `medharness --dhf DHF item transition CR-NNN <state>` (cancel, complete)
 

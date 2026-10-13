@@ -1,23 +1,56 @@
 id: SRS-007
 title: Software shall maintain a 50-level undo/redo stack for all contour edits
-content: |-
-  All contour add, edit, and delete operations shall be wrapped in command objects
+content: 'All contour add, edit, and delete operations shall be wrapped in command
+  objects
+
   implementing execute() and undo() methods. Commands shall be pushed to an undo
+
   stack (max 50 entries; oldest entries discarded when full). Undo shall pop from
+
   the undo stack and push to the redo stack. Redo shall pop from the redo stack
+
   and push to the undo stack. Any new command shall clear the redo stack.
-  Keyboard shortcut Cmd/Ctrl+Z shall trigger undo; Cmd/Ctrl+Shift+Z shall trigger redo.
+
+  Keyboard shortcut Cmd/Ctrl+Z shall trigger undo; Cmd/Ctrl+Shift+Z shall trigger
+  redo. Undo and redo shall be refused, with the reason shown to the user, when the
+  structure a command acts on has since been locked or deleted; the command stays
+  on its stack. The history shall be cleared when the active image set changes, so
+  Cmd/Ctrl+Z never changes a previous patient''s structures. Cmd/Ctrl+Z pressed in
+  a text field shall not undo a contour edit.'
 derives_from: [SYS-004]
 verification_method: [Test]
-testing: |
-  T1: Given a pushed command, it is executed immediately and canUndo becomes true.
-  T2: Given an undo call, the last command's undo() is invoked and the command moves to the redo stack.
-  T3: Given a redo call after undo, the command is re-executed and canRedo returns false.
-  T4: Given more than 50 pushed commands, only the 50 most recent are retained on the undo stack.
+testing: 'T1: Given a pushed command, it is executed immediately and canUndo becomes
+  true.
+
+  T2: Given an undo call, the last command''s undo() is invoked and the command moves
+  to the redo stack.
+
+  T3: Given a redo call after undo, the command is re-executed and canRedo returns
+  false.
+
+  T4: Given more than 50 pushed commands, only the 50 most recent are retained on
+  the undo stack.
+
   T5: Given a new command pushed after an undo, the redo stack is cleared.
+
   T6: Given undo or redo on an empty stack, no error is thrown.
-  T7: Given subscribers registered, they are notified on push, undo, and redo; and not notified after unsubscribe.
-verification_criteria: A pushed command runs at once; undo and redo move it between
+
+  T7: Given subscribers registered, they are notified on push, undo, and redo; and
+  not notified after unsubscribe.
+
+  T8: Given a command whose structure has since been locked or deleted, undo and redo
+  are refused with the reason and the command stays on its stack; an empty stack reports
+  nothing to do.
+
+  T9: Given Cmd/Ctrl+Z pressed inside a text field, the shortcut handler does not
+  undo a contour edit.
+
+  T10: Given the active image set changes, the undo history is cleared.
+
+  '
+verification_criteria: 'A pushed command runs at once; undo and redo move it between
   the stacks; only the 50 most recent commands are kept; a new command after an undo
   clears the redo stack; undo or redo on an empty stack does nothing; subscribers
-  are notified on push, undo and redo until they unsubscribe.
+  are notified on push, undo and redo until they unsubscribe. T8 to T10: a command
+  is refused with a reason once its structure is locked or gone, the shortcut ignores
+  text fields, and the history is cleared when the image set changes.'

@@ -24,6 +24,13 @@ interface ViewportPanelProps {
   onReady: (id: string, el: HTMLDivElement) => void;
 }
 
+const MAXIMIZED_CLASS = 'col-span-2 row-span-2';
+
+function layoutClass(maximized: string | null, orientation: string): string {
+  if (!maximized) return '';
+  return maximized === orientation ? MAXIMIZED_CLASS : 'hidden';
+}
+
 interface InteractiveViewportLike {
   getZoom?: () => number;
   setZoom?: (value: number) => void;
@@ -87,7 +94,7 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
 
   return (
     <div
-      className={`relative bg-black overflow-hidden ${isActive ? 'ring-1 ring-blue-500' : ''}`}
+      className={`relative bg-black overflow-hidden ${layoutClass(maximizedViewport, orientation)} ${isActive ? 'ring-1 ring-blue-500' : ''}`}
       onClick={() => setActiveViewport(orientation)}
       onContextMenu={handleContextMenu}
     >
@@ -279,6 +286,13 @@ export default function ImageViewer() {
     return () => observer.disconnect();
   }, []);
 
+  // Panels stay mounted across maximize/restore; only their layout changes, so re-fit the
+  // Cornerstone viewports once the new layout has been applied.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => ViewportManager.resize());
+    return () => cancelAnimationFrame(frame);
+  }, [maximizedViewport]);
+
   // Reset maximize state when active series changes (patient changes)
   useEffect(() => {
     if (activeSeriesUID && activeSeriesUID !== prevActiveSeriesUID.current) {
@@ -315,56 +329,29 @@ export default function ImageViewer() {
       tabIndex={0}
     >
       <ToolOptions />
-      {maximizedViewport ? (
-        <div className="flex h-full gap-[1px]">
-          {maximizedViewport === 'AXIAL' && (
-            <ViewportPanel
-              id={VIEWPORT_IDS.AXIAL}
-              label="AXIAL"
-              orientation="AXIAL"
-              onReady={onReady}
-            />
-          )}
-          {maximizedViewport === 'SAGITTAL' && (
-            <ViewportPanel
-              id={VIEWPORT_IDS.SAGITTAL}
-              label="SAGITTAL"
-              orientation="SAGITTAL"
-              onReady={onReady}
-            />
-          )}
-          {maximizedViewport === 'CORONAL' && (
-            <ViewportPanel
-              id={VIEWPORT_IDS.CORONAL}
-              label="CORONAL"
-              orientation="CORONAL"
-              onReady={onReady}
-            />
-          )}
-        </div>
-      ) : (
-        <div className="grid h-full grid-cols-2 grid-rows-2 gap-[1px]">
-          <ViewportPanel
-            id={VIEWPORT_IDS.AXIAL}
-            label="AXIAL"
-            orientation="AXIAL"
-            onReady={onReady}
-          />
-          <ViewportPanel
-            id={VIEWPORT_IDS.SAGITTAL}
-            label="SAGITTAL"
-            orientation="SAGITTAL"
-            onReady={onReady}
-          />
-          <ViewportPanel
-            id={VIEWPORT_IDS.CORONAL}
-            label="CORONAL"
-            orientation="CORONAL"
-            onReady={onReady}
-          />
+      <div className="grid h-full grid-cols-2 grid-rows-2 gap-[1px]">
+        <ViewportPanel
+          id={VIEWPORT_IDS.AXIAL}
+          label="AXIAL"
+          orientation="AXIAL"
+          onReady={onReady}
+        />
+        <ViewportPanel
+          id={VIEWPORT_IDS.SAGITTAL}
+          label="SAGITTAL"
+          orientation="SAGITTAL"
+          onReady={onReady}
+        />
+        <ViewportPanel
+          id={VIEWPORT_IDS.CORONAL}
+          label="CORONAL"
+          orientation="CORONAL"
+          onReady={onReady}
+        />
+        <div className={maximizedViewport ? 'hidden' : 'contents'}>
           <ThreeDViewport />
         </div>
-      )}
+      </div>
     </div>
   );
 }

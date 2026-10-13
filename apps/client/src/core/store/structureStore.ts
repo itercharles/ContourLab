@@ -127,7 +127,16 @@ export const useStructureStore = create<StructureState>()(
         if (!ss) return;
         const idx = ss.structures.findIndex((s) => s.id === structureId);
         if (idx !== -1) {
-          Object.assign(ss.structures[idx], patch);
+          // A locked structure keeps its type and contours; the lock can still be released, and
+          // colour, name and visibility stay editable.
+          const releasesLock = patch.isLocked === false;
+          const locked = (ss.structures[idx].isLocked ?? false) && !releasesLock;
+          const applied = { ...patch };
+          if (locked) {
+            delete applied.type;
+            delete applied.contours;
+          }
+          Object.assign(ss.structures[idx], applied);
           markSeriesDirty(state, ss.referencedSeriesUID);
         }
       }),
@@ -136,6 +145,8 @@ export const useStructureStore = create<StructureState>()(
       set((state) => {
         const ss = state.structureSets.find((x) => x.id === setId);
         if (!ss) return;
+        // A locked structure cannot be deleted; unlock it first.
+        if (ss.structures.find((s) => s.id === structureId)?.isLocked) return;
         ss.structures = ss.structures.filter((s) => s.id !== structureId);
         if (state.activeStructureId === structureId) state.activeStructureId = null;
         markSeriesDirty(state, ss.referencedSeriesUID);
