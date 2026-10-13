@@ -1,0 +1,14 @@
+id: RCM-007
+title: Series geometry gate in front of volume creation
+content: 'A series is refused, with the reason shown, when a slice lacks position,
+  orientation or pixel spacing, when slices disagree on orientation, size, pixel spacing
+  or frame of reference, when two share a position, or when the series is oblique
+  or gantry-tilted; uneven spacing loads with a warning giving the range. Tests: seriesGeometry
+  and VolumeBuilder tests (SRS-001 T3, T4).'
+mitigates:
+- RISK-002
+implements:
+- SYS-001
+control_type: Protective Measure
+implementation_status: Implemented
+type: RCM

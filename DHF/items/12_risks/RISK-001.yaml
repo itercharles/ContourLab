@@ -4,3 +4,13 @@ hazard: |-
   A software defect in the undo/redo stack causes a contour edit to be applied
   incorrectly or not at all, resulting in a saved contour that does not reflect
   the clinician's intent.
+cause: 'A defect in the command stack, or an undo or redo applied long after the edit:
+  to a structure that has since been locked or deleted, or to a previous patient''s
+  structures after a patient switch.'
+effect: A contour is saved that does not reflect the clinician's intent, or a structure
+  the clinician is not looking at is changed.
+severity_pre: S4
+probability_pre: P3
+severity_post: S4
+probability_post: P1
+risk_acceptability: Acceptable

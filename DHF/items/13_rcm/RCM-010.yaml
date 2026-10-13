@@ -1,0 +1,15 @@
+id: RCM-010
+title: Real DICOM series decoded and displayed in CI
+content: 'End-to-end tests load a synthetic CT phantom stored uncompressed, as JPEG
+  2000, as JPEG-LS and as JPEG baseline from a real Orthanc and check that the axial,
+  sagittal and coronal views show an image, and that the lossless syntaxes display
+  the same axial image as the uncompressed one. Not covered: HTJ2K. Tests: e2e/crs/real-dicom.spec.ts
+  (SYS-001 T4, T5; SYS-002 T4).'
+mitigates:
+- RISK-009
+- RISK-008
+implements:
+- SYS-001
+control_type: Protective Measure
+implementation_status: Implemented
+type: RCM

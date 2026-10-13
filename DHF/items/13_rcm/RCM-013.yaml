@@ -1,0 +1,13 @@
+id: RCM-013
+title: Identity checks on export
+content: Export fails instead of inventing a frame-of-reference UID; the patient is
+  identified by the patient ID, not by the study UID; the structure types AVOIDANCE
+  and SUPPORT round-trip; the repository push shows the patient and series it will
+  be filed under before it is sent.
+mitigates:
+- RISK-004
+implements:
+- SYS-006
+control_type: Protective Measure
+implementation_status: Planned
+type: RCM

@@ -1,0 +1,13 @@
+id: RISK-006
+title: Boolean or margin operation gives a wrong contour
+hazard: A boolean or margin operation returns a contour that differs from what the
+  clinician asked for.
+cause: Separate pieces or holes dropped; orientation of the volume ignored; slices
+  matched by a tag with the wrong sign; contours on unmatched slices deleted.
+effect: A target or organ at risk has the wrong volume or shape and may be accepted.
+severity_pre: S4
+probability_pre: P3
+severity_post: S4
+probability_post: P1
+risk_acceptability: Acceptable
+type: RISK

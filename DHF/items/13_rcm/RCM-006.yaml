@@ -1,0 +1,15 @@
+id: RCM-006
+title: Undo and redo refuse stale commands; the history ends with the image set; locks
+  are enforced in the store
+content: 'A command is refused, with the reason shown, when its structure has since
+  been locked or deleted. The undo history is cleared when the active image set changes.
+  Ctrl/Cmd+Z in a text field is left to the field. The store refuses to delete a locked
+  structure or change its type or contours. Tests: UndoRedoManager, structureStore,
+  ContourEngine and structure panel tests (SRS-007 T8-T10, SYS-003 T4).'
+mitigates:
+- RISK-001
+implements:
+- SYS-003
+control_type: Protective Measure
+implementation_status: Implemented
+type: RCM

@@ -1,0 +1,15 @@
+id: RISK-004
+title: Structure set pushed under the wrong patient or series
+hazard: A structure set is stored in the repository under a different patient, study
+  or frame of reference than the images it was drawn on.
+cause: The patient identifier falls back to the study UID when missing; a missing
+  frame-of-reference UID is replaced by a freshly made one at export; the wrong image
+  set is active at the time of the push.
+effect: The RT Structure Set is filed against the wrong patient or cannot be matched
+  to its images, and a later user plans from it.
+severity_pre: S5
+probability_pre: P2
+severity_post: S5
+probability_post: P2
+risk_acceptability: ALARP
+type: RISK

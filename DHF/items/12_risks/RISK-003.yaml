@@ -4,3 +4,13 @@ hazard: |-
   The shoelace formula implementation contains an error (e.g. incorrect polygon
   winding, off-by-one in point indexing) that produces an incorrect structure
   volume, which could influence clinical decisions about plan acceptability.
+cause: 'An error in the volume formula or its inputs: polygon winding, hole areas
+  added instead of subtracted, average instead of per-slab slice spacing, or a volume
+  not recomputed after boolean, margin or interpolation edits.'
+effect: The displayed structure volume is wrong and may influence a decision about
+  plan acceptability.
+severity_pre: S3
+probability_pre: P3
+severity_post: S3
+probability_post: P2
+risk_acceptability: Acceptable
