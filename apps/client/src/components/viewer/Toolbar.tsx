@@ -1,12 +1,13 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
-import { useActivityStore, type ActivityItem } from '../../core/store/activityStore';
+import { addUserActivity, useActivityStore, type ActivityItem } from '../../core/store/activityStore';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useUIStore, type WorkflowStage } from '../../core/store/uiStore';
 import { exportRtstructObject } from '../../core/structures/rtstructExport';
 import { uploadDicomBlobToRepository } from '../../core/dicom/dicomWebClient';
+import { deleteStructureDraftForSeries } from '../../core/structures/structureDraftStore';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import { formatPatientName } from '../../core/dicom/patientUtils';
 import WorkspaceContextBar from '../layout/WorkspaceContextBar';
@@ -52,11 +53,6 @@ export default function Toolbar() {
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
   const structureSets = useStructureStore((s) => s.structureSets);
   const activeStructureSetId = useStructureStore((s) => s.activeStructureSetId);
-  const replaceStructureSets = useStructureStore((s) => s.replaceStructureSets);
-  const setActiveStructureSet = useStructureStore((s) => s.setActiveStructureSet);
-  const setActiveStructure = useStructureStore((s) => s.setActiveStructure);
-  const markSeriesClean = useStructureStore((s) => s.markSeriesClean);
-  const markSeriesRepositoryClean = useStructureStore((s) => s.markSeriesRepositoryClean);
   const repositoryDirtySeriesUIDs = useStructureStore((s) => s.repositoryDirtySeriesUIDs);
   const activeStructureSetById = structureSets.find(
     (structureSet) => structureSet.id === activeStructureSetId
@@ -85,11 +81,17 @@ export default function Toolbar() {
   const canRedo = UndoRedoManager.canRedo();
 
   const handleUndo = () => {
-    if (UndoRedoManager.canUndo()) UndoRedoManager.undo();
+    const result = UndoRedoManager.undo();
+    if (result.reason) {
+      addUserActivity({ title: 'Undo not applied', message: result.reason, tone: 'warning' });
+    }
   };
 
   const handleRedo = () => {
-    if (UndoRedoManager.canRedo()) UndoRedoManager.redo();
+    const result = UndoRedoManager.redo();
+    if (result.reason) {
+      addUserActivity({ title: 'Redo not applied', message: result.reason, tone: 'warning' });
+    }
   };
 
   const toggleActivityPanel = () => {
@@ -103,37 +105,75 @@ export default function Toolbar() {
   const handlePushChanges = async () => {
     if (!activeLoadedSeries || !activeStructureSet || !activeSeriesUID || !isActiveSeriesRepositoryDirty) return;
 
+    const seriesUID = activeLoadedSeries.seriesUID;
+    const setId = activeStructureSet.id;
+    // The structure set exactly as it is exported. Anything that changes it while the upload is in
+    // flight gives it a new identity (the store never mutates in place), which is how an edit made
+    // meanwhile is told apart from the pushed version.
+    const exportedSet = useStructureStore.getState().structureSets.find((set) => set.id === setId);
+    if (!exportedSet) return;
+
     try {
       setIsPushingChanges(true);
-      const exported = await exportRtstructObject(activeLoadedSeries, activeStructureSet);
+      const exported = await exportRtstructObject(activeLoadedSeries, exportedSet);
       await uploadDicomBlobToRepository(exported.blob);
-      const pushedStructureSet = {
-        ...activeStructureSet,
-        source: {
-          type: 'rtstruct' as const,
-          label: exported.identifiers.seriesDescription,
-          sopInstanceUID: exported.identifiers.sopInstanceUID,
-          studyInstanceUID: exported.identifiers.studyInstanceUID,
-          seriesInstanceUID: exported.identifiers.seriesInstanceUID,
-          importedAt: new Date().toISOString(),
-        },
+
+      const source = {
+        type: 'rtstruct' as const,
+        label: exported.identifiers.seriesDescription,
+        sopInstanceUID: exported.identifiers.sopInstanceUID,
+        studyInstanceUID: exported.identifiers.studyInstanceUID,
+        seriesInstanceUID: exported.identifiers.seriesInstanceUID,
+        importedAt: new Date().toISOString(),
       };
-      replaceStructureSets(
-        structureSets.map((structureSet) =>
-          structureSet.id === activeStructureSet.id ? pushedStructureSet : structureSet
-        )
+
+      // Read the store again: the render-time copy is from before the export and the upload.
+      const store = useStructureStore.getState();
+      const currentSet = store.structureSets.find((set) => set.id === setId);
+      if (!currentSet) {
+        addUserActivity({
+          title: 'Pushed, but the structure set is gone',
+          message: 'The repository accepted the structure set, but it was removed here before the upload finished.',
+          tone: 'warning',
+        });
+        return;
+      }
+
+      const editedDuringUpload = currentSet !== exportedSet;
+      store.replaceStructureSets(
+        store.structureSets.map((set) => (set.id === setId ? { ...currentSet, source } : set))
       );
-      setActiveStructureSet(pushedStructureSet.id);
-      setActiveStructure(pushedStructureSet.structures[0]?.id ?? null);
-      markSeriesClean(activeLoadedSeries.seriesUID);
-      markSeriesRepositoryClean(activeLoadedSeries.seriesUID);
       logClientDebug(
         'Toolbar',
-        `upload:rtstruct series=${activeLoadedSeries.seriesUID} set=${activeStructureSet.id} sop=${exported.identifiers.sopInstanceUID}`
+        `upload:rtstruct series=${seriesUID} set=${setId} sop=${exported.identifiers.sopInstanceUID} edited-during-upload=${editedDuringUpload}`
       );
+
+      if (editedDuringUpload) {
+        // What was saved is the earlier version; the later edits are still only local.
+        addUserActivity({
+          title: 'Pushed, with newer edits not saved',
+          message: 'You edited the structure set while it was uploading. Those edits are not in the repository yet; push again.',
+          tone: 'warning',
+        });
+        return;
+      }
+
+      store.markSeriesClean(seriesUID);
+      store.markSeriesRepositoryClean(seriesUID);
+      // The pushed version is now the saved one; a leftover local draft would only be older.
+      void deleteStructureDraftForSeries(seriesUID).catch((error: unknown) => {
+        logClientDebug('Toolbar', `draft:delete:error ${error instanceof Error ? error.message : String(error)}`);
+      });
+      addUserActivity({
+        title: 'Pushed to repository',
+        message: `Saved ${exported.identifiers.seriesDescription} to the DICOM repository.`,
+        tone: 'success',
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to push structure changes.';
       logClientDebug('Toolbar', `upload:rtstruct:error ${message}`);
+      // The series stays marked as having unsaved changes.
+      addUserActivity({ title: 'Push failed', message, tone: 'error' });
     } finally {
       setIsPushingChanges(false);
     }

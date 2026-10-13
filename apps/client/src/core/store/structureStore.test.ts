@@ -63,3 +63,56 @@ describe('structureStore dirty tracking @links:SRS-010', () => {
     expect(useStructureStore.getState().repositoryDirtySeriesUIDs).toEqual([]);
   });
 });
+
+describe('structureStore locked structures @links:SYS-003', () => {
+  function setWithStructure(isLocked: boolean): StructureSet {
+    return {
+      ...makeStructureSet(),
+      structures: [
+        {
+          id: 'structure-1',
+          name: 'PTV',
+          type: 'PTV',
+          color: [0, 0, 255],
+          contours: [],
+          isVisible: true,
+          isLocked,
+          volume_cc: 0,
+        },
+      ],
+    };
+  }
+  const structureOf = () => useStructureStore.getState().structureSets[0].structures[0];
+
+  it('does not delete a locked structure @testing:T4', () => {
+    useStructureStore.getState().addStructureSet(setWithStructure(true));
+    useStructureStore.getState().deleteStructure('ss-series-1', 'structure-1');
+    expect(useStructureStore.getState().structureSets[0].structures).toHaveLength(1);
+  });
+
+  it('does not change the type or contours of a locked structure, but still changes colour and name @testing:T4', () => {
+    useStructureStore.getState().addStructureSet(setWithStructure(true));
+    const slice = { referencedSOPInstanceUID: 'sop', slicePosition: 1, points: new Float32Array(9), isClosed: true };
+    useStructureStore.getState().updateStructure('ss-series-1', 'structure-1', {
+      type: 'OAR',
+      contours: [slice],
+      color: [1, 2, 3],
+      name: 'Renamed',
+    });
+
+    expect(structureOf().type).toBe('PTV');
+    expect(structureOf().contours).toHaveLength(0);
+    expect(structureOf().color).toEqual([1, 2, 3]);
+    expect(structureOf().name).toBe('Renamed');
+  });
+
+  it('allows the lock to be released, after which the structure can be edited and deleted @testing:T4', () => {
+    useStructureStore.getState().addStructureSet(setWithStructure(true));
+    useStructureStore.getState().updateStructure('ss-series-1', 'structure-1', { isLocked: false });
+    useStructureStore.getState().updateStructure('ss-series-1', 'structure-1', { type: 'OAR' });
+    expect(structureOf().type).toBe('OAR');
+
+    useStructureStore.getState().deleteStructure('ss-series-1', 'structure-1');
+    expect(useStructureStore.getState().structureSets[0].structures).toHaveLength(0);
+  });
+});

@@ -23,6 +23,7 @@ import {
   submitAutoContourJob,
 } from '../../core/autocontour/autocontourClient';
 import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
+import { structureEditBlock, structureExists } from '../../core/contouring/structureGuard';
 import { replaceStructureSetsForSeries } from '../../core/structures/structurePersistence';
 import {
   getReviewSlices,
@@ -49,6 +50,7 @@ import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import { QA_RULE_DEFINITIONS, getQaRuleConfig } from '../../core/qa/qaRuleConfig';
+import { isEditableTarget } from '../../core/input/isEditableTarget';
 
 const STRUCTURE_TYPES: StructureType[] = [
   'GTV',
@@ -109,8 +111,17 @@ function pushStructurePatchCommand(
   ) as Partial<Structure>;
   const store = useStructureStore.getState();
 
+  // A type or contour change must not run on a structure that has since been locked; toggling the
+  // lock itself, the colour, the name and visibility are always allowed.
+  const lockSensitive = 'type' in patch || 'contours' in patch;
   UndoRedoManager.push({
     description,
+    canApply: () =>
+      lockSensitive
+        ? structureEditBlock(setId, structure.id)
+        : structureExists(setId, structure.id)
+          ? null
+          : 'The structure no longer exists.',
     execute: () => store.updateStructure(setId, structure.id, patch),
     undo: () => store.updateStructure(setId, structure.id, previousPatch),
   });
@@ -122,24 +133,14 @@ function pushStructureDeleteCommand(setId: string, structure: Structure): void {
 
   UndoRedoManager.push({
     description: `Delete structure ${structure.name}`,
+    // Redoing a delete follows the lock; undoing it (putting the structure back) is always allowed.
+    canApply: () => (structureExists(setId, structure.id) ? structureEditBlock(setId, structure.id) : null),
     execute: () => store.deleteStructure(setId, structure.id),
     undo: () => {
       store.addStructure(setId, cloneStructure(snapshot));
       store.setActiveStructure(snapshot.id);
     },
   });
-}
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-
-  const tagName = target.tagName.toLowerCase();
-  return (
-    target.isContentEditable ||
-    tagName === 'input' ||
-    tagName === 'textarea' ||
-    tagName === 'select'
-  );
 }
 
 function formatSourceLabel(structureSet: StructureSet): string {
@@ -268,6 +269,10 @@ function StructureRow({
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (structure.isLocked ?? false) {
+      onStatus(`${structure.name} is locked. Unlock it to delete it.`);
+      return;
+    }
     pushStructureDeleteCommand(setId, structure);
     onStatus(`Deleted structure ${structure.name}.`);
   };
@@ -411,7 +416,8 @@ function StructureRow({
       <button
         onClick={handleDelete}
         aria-label={`Delete ${structure.name}`}
-        title="Delete structure"
+        aria-disabled={structure.isLocked ?? false}
+        title={structure.isLocked ?? false ? 'Locked: unlock to delete' : 'Delete structure'}
         className="flex-none flex h-4 w-4 items-center justify-center text-[var(--color-text-dim)] opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
       >
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -762,7 +768,11 @@ export default function StructurePanel() {
         }
 
         replaceStructureSets(
-          replaceStructureSetsForSeries(structureSets, imported.structureSets, activeSeriesUID)
+          replaceStructureSetsForSeries(
+            useStructureStore.getState().structureSets,
+            imported.structureSets,
+            activeSeriesUID
+          )
         );
         setActiveStructureSet(imported.activeStructureSetId);
         setActiveStructure(imported.activeStructureId);
@@ -998,6 +1008,11 @@ export default function StructurePanel() {
   const handleActiveStructureTypeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     if (!activeSeriesStructureSet || !activeStructure) return;
 
+    if (activeStructure.isLocked ?? false) {
+      setIsEditingActiveType(false);
+      setStatusMessage(`${activeStructure.name} is locked. Unlock it to change its type.`);
+      return;
+    }
     const nextType = event.target.value as StructureType;
     pushStructurePatchCommand(
       activeSeriesStructureSet.id,

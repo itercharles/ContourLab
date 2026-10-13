@@ -21,6 +21,7 @@ import {
   sampleNearestVoxelValue,
   type WorldPoint as MeasurementWorldPoint,
 } from '../../core/measurement/measurementUtils';
+import { isEditableTarget } from '../../core/input/isEditableTarget';
 
 interface VolumeViewportLike {
   canvasToWorld: (canvasPoint: [number, number]) => [number, number, number];
@@ -86,18 +87,6 @@ function formatMeasurementKindLabel(kind: MeasurementKind): string {
     case 'area':
       return 'area measurement';
   }
-}
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-
-  const tagName = target.tagName.toLowerCase();
-  return (
-    target.isContentEditable ||
-    tagName === 'input' ||
-    tagName === 'textarea' ||
-    tagName === 'select'
-  );
 }
 
 export default function ContourOverlay({

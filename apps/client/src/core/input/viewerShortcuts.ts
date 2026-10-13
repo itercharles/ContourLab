@@ -2,6 +2,7 @@ import { MPRController } from '../rendering/MPRController';
 import { useUIStore, type ViewerTool } from '../store/uiStore';
 import { useStructureStore } from '../store/structureStore';
 import { useVolumeStore } from '../store/volumeStore';
+import { isEditableTarget } from './isEditableTarget';
 
 const TOOL_NAME_MAP: Partial<Record<ViewerTool, string>> = {
   windowLevel: 'WindowLevel',
@@ -17,18 +18,6 @@ const MEASUREMENT_TOOLS = new Set<ViewerTool>([
   'measureArea',
   'huProbe',
 ]);
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-
-  const tagName = target.tagName.toLowerCase();
-  return (
-    target.isContentEditable ||
-    tagName === 'input' ||
-    tagName === 'textarea' ||
-    tagName === 'select'
-  );
-}
 
 async function activateTool(tool: ViewerTool): Promise<void> {
   const uiStore = useUIStore.getState();
