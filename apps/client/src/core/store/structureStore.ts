@@ -20,6 +20,8 @@ interface StructureState {
   addStructure: (setId: string, s: Structure) => void;
   updateStructure: (setId: string, structureId: string, patch: Partial<Structure>) => void;
   deleteStructure: (setId: string, structureId: string) => void;
+  /** Records a volume derived from the contours. It is not an edit, so it does not mark the series unsaved. */
+  setStructureVolume: (setId: string, structureId: string, volume_cc: number) => void;
   addContourSlice: (setId: string, structureId: string, slice: ContourSlice) => void;
   updateContourSlice: (
     setId: string,
@@ -139,6 +141,14 @@ export const useStructureStore = create<StructureState>()(
           Object.assign(ss.structures[idx], applied);
           markSeriesDirty(state, ss.referencedSeriesUID);
         }
+      }),
+
+    setStructureVolume: (setId, structureId, volume_cc) =>
+      set((state) => {
+        const structure = state.structureSets
+          .find((x) => x.id === setId)
+          ?.structures.find((s) => s.id === structureId);
+        if (structure) structure.volume_cc = volume_cc;
       }),
 
     deleteStructure: (setId, structureId) =>

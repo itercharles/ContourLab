@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { cornerstoneInit } from '../core/rendering/cornerstoneInit';
 import { installUndoHistoryReset, installUndoRedoKeyHandler } from '../core/contouring/UndoRedoManager';
 import { installViewerShortcutHandler } from '../core/input/viewerShortcuts';
+import { installVolumeRefresh } from '../core/structures/volumeRefresh';
 import WorkspaceLayout from '../components/layout/WorkspaceLayout';
 
 export default function MainWorkspace() {
@@ -17,6 +18,8 @@ export default function MainWorkspace() {
   }, []);
 
   useEffect(() => installUndoHistoryReset(), []);
+
+  useEffect(() => installVolumeRefresh(), []);
 
   useEffect(() => {
     const cleanup = installViewerShortcutHandler();

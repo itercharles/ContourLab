@@ -1,20 +1,53 @@
 id: SRS-006
 title: Software shall compute structure volume using the shoelace formula
-content: |-
-  Volume in cm³ shall be computed from contour data by applying the shoelace
+content: 'Volume in cm³ shall be computed from contour data by applying the shoelace
+
   formula to each ContourSlice polygon to obtain area in mm², multiplying by
+
   the slice thickness in mm to obtain volume per slice in mm³, summing across
+
   all slices, and dividing by 1000 to convert to cm³. Polygons with fewer
-  than 3 points shall be skipped.
+
+  than 3 points shall be skipped. Contours nested inside one another on the same slice
+  shall alternate between filled and hole, so a ring counts as its outer area minus
+  the hole. When the positions of the image slices are known, each slice shall count
+  for the slab it stands for (half the distance to each neighbour, an end slice its
+  one gap) instead of the average spacing. A structure''s volume shall be recomputed
+  whenever its contours change, by any route (drawing, boolean, margin and interpolation
+  operations, undo and redo, import, auto-contouring), without marking the series
+  as having unsaved changes.'
 derives_from: [SYS-003]
 verification_method: [Test]
-testing: |
-  T1: Given a structure with no contours or a single polygon with fewer than 3 points, computeVolume returns zero.
-  T2: Given a square polygon with known side length and slice thickness, computeVolume returns the expected cm³ value.
-  T3: Given clockwise and counter-clockwise polygons of the same shape, computeVolume produces identical results.
+testing: 'T1: Given a structure with no contours or a single polygon with fewer than
+  3 points, computeVolume returns zero.
+
+  T2: Given a square polygon with known side length and slice thickness, computeVolume
+  returns the expected cm³ value.
+
+  T3: Given clockwise and counter-clockwise polygons of the same shape, computeVolume
+  produces identical results.
+
   T4: Given contours on multiple slices, volumes from all slices are summed correctly.
-  T5: Given a 360-point circle polygon approximating a cylinder, computeVolume agrees with the analytic result within 1%.
-verification_criteria: computeVolume returns zero for no contours or a polygon with
+
+  T5: Given a 360-point circle polygon approximating a cylinder, computeVolume agrees
+  with the analytic result within 1%.
+
+  T6: Given contours nested on one slice, the volume subtracts the hole (a ring is
+  outer minus hole; apart contours add; two levels of nesting alternate).
+
+  T7: Given the slice positions of a series whose spacing changes, each slice counts
+  for its own slab; without positions the average thickness is used; a contour on
+  no image slice falls back to the average.
+
+  T8: Given a change to a structure''s contours by any route, its volume is recomputed
+  from the image set''s slice positions; other structures and non-contour changes
+  are left alone, the series is not marked unsaved, and a structure set whose image
+  set is not loaded is skipped.
+
+  '
+verification_criteria: 'computeVolume returns zero for no contours or a polygon with
   fewer than 3 points, the expected cm³ for a known square and slice thickness, the
   same value for clockwise and counter-clockwise polygons, the sum over slices, and
-  within 1% of the analytic volume for a 360-point cylinder.
+  within 1% of the analytic volume for a 360-point cylinder. T6 to T8: holes are subtracted,
+  each slice counts for its own slab, and the volume follows the contours after every
+  kind of change without marking the series unsaved.'

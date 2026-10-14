@@ -12,5 +12,5 @@ effect: The displayed structure volume is wrong and may influence a decision abo
 severity_pre: S3
 probability_pre: P3
 severity_post: S3
-probability_post: P2
+probability_post: P1
 risk_acceptability: Acceptable
