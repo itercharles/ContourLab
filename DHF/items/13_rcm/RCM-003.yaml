@@ -1,9 +1,15 @@
 id: RCM-003
 title: Unit tests for shoelace volume calculation
-content: |-
-  Automated unit tests shall verify the shoelace formula against known geometric
+content: 'Automated unit tests shall verify the shoelace formula against known geometric
+
   primitives: a unit square (1 mm² × 1 mm slice → 0.001 cm³), a circle approximation
+
   compared to πr², a clockwise vs counter-clockwise polygon (same absolute area),
-  and a degenerate polygon with fewer than 3 points (returns 0).
+
+  and a degenerate polygon with fewer than 3 points (returns 0). The same tests cover
+  holes (a ring is outer minus hole), per-slice thickness for a series whose spacing
+  changes, and the automatic recomputation of a structure''s volume after any change
+  to its contours (SRS-006 T6 to T8); the margin preview no longer shows an invented
+  volume.'
 mitigates: [RISK-003]
 implements: [SYS-010]

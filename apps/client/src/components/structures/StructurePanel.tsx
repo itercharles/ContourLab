@@ -1664,7 +1664,6 @@ export default function StructurePanel() {
                       </div>
                       <div className="mb-2.5 flex justify-between font-mono text-[12px] text-[var(--color-text-muted)]">
                         <span>{'→ '}{activeStructure.name}{marginValue !== 0 ? ` ${marginValue > 0 ? '+' : ''}${marginValue}mm` : ''}</span>
-                        <span>{((activeStructure.volume_cc ?? 0) * Math.pow(1 + marginValue / 30, 3)).toFixed(1)} cm³</span>
                       </div>
                     </>
                   )}

@@ -7,6 +7,8 @@ import {
 } from './NamingConventions';
 import { computeVolume } from './VolumeCalculator';
 import { useStructureStore } from '../store/structureStore';
+import { useVolumeStore } from '../store/volumeStore';
+import { structureVolumeOn } from './volumeRefresh';
 
 export const StructureSetManager = {
   createStructureSet(referencedSeriesUID: string): StructureSet {
@@ -123,8 +125,13 @@ export const StructureSetManager = {
     const structure = ss?.structures.find((s) => s.id === structureId);
     if (!structure) return;
 
-    const volume_cc = computeVolume(structure, sliceThickness_mm);
-    store.updateStructure(setId, structureId, { volume_cc });
+    // Use the image set's own slice positions when it is loaded, so this agrees with the automatic
+    // refresh (installVolumeRefresh); the thickness is only the fallback.
+    const series = useVolumeStore.getState().loadedSeries.find((s) => s.seriesUID === ss?.referencedSeriesUID);
+    const volume_cc = series
+      ? structureVolumeOn(structure, series, sliceThickness_mm)
+      : computeVolume(structure, sliceThickness_mm);
+    store.setStructureVolume(setId, structureId, volume_cc);
   },
 };
 
