@@ -10,6 +10,7 @@ export interface Patient {
   mrn: string;
   name: { given: string; family: string };
   dateOfBirth: string;
+  sex?: string;                               // DICOM (0010,0040): M, F, O
   studies: Study[];
 }
 

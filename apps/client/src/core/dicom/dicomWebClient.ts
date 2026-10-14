@@ -577,6 +577,8 @@ function parseNormalizedMetadata(
     sliceLocation: getNumberValue(dataset, '00201041', imagePositionPatient[2] ?? 0),
     patientName: summary.patientName,
     patientID: summary.patientId,
+    patientBirthDate: getOptionalStringValue(dataset, '00100030'),
+    patientSex: getOptionalStringValue(dataset, '00100040'),
     studyDate: summary.studyDate,
     studyDescription: summary.studyDescription,
     seriesDescription: summary.seriesDescription,

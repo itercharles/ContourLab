@@ -45,6 +45,8 @@ export interface NormalizedDicomMetadata {
   sliceLocation: number;
   patientName: string;
   patientID: string;
+  patientBirthDate?: string;
+  patientSex?: string;
   studyDate: string;
   studyDescription: string;
   seriesDescription: string;
@@ -255,6 +257,8 @@ export async function parseDicomTags(file: File): Promise<NormalizedDicomMetadat
     sliceLocation: getFloat('x00201041', ippZ),
     patientName: getString('x00100010', 'Anonymous'),
     patientID: getString('x00100020'),
+    patientBirthDate: getString('x00100030') || undefined,
+    patientSex: getString('x00100040') || undefined,
     studyDate: getString('x00080020'),
     studyDescription: getString('x00081030'),
     seriesDescription: getString('x0008103e'),
@@ -340,7 +344,8 @@ export function buildMetadata(
     id: tags.patientID || tags.studyInstanceUID,
     mrn: tags.patientID,
     name: { given: '', family: tags.patientName },
-    dateOfBirth: '',
+    dateOfBirth: tags.patientBirthDate ?? '',
+    sex: tags.patientSex,
     studies: [study],
   };
 

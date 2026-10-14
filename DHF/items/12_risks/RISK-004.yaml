@@ -13,3 +13,6 @@ severity_post: S5
 probability_post: P2
 risk_acceptability: ALARP
 type: RISK
+risk_benefit: 'Residual: the application does not yet show the patient and series
+  a push will be filed under before it is sent, so pushing from the wrong active image
+  set remains possible; planned.'

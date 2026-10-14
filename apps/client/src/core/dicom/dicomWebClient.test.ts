@@ -240,6 +240,19 @@ describe('geometry tags of a DICOMweb instance @links:SRS-001', () => {
     expect(metadata.missingGeometryTags).toEqual([]);
   });
 
+  it('reads the patient birth date and sex, and leaves them out when the instance has none @testing:T4', () => {
+    const present = __testables__.parseNormalizedMetadata(
+      { '00100030': { Value: ['19601231'] }, '00100040': { Value: ['F'] } },
+      summary
+    );
+    expect(present.patientBirthDate).toBe('19601231');
+    expect(present.patientSex).toBe('F');
+
+    const absent = __testables__.parseNormalizedMetadata({}, summary);
+    expect(absent.patientBirthDate).toBeUndefined();
+    expect(absent.patientSex).toBeUndefined();
+  });
+
   it('records which geometry tags the instance did not carry, instead of hiding the defaults @testing:T4', () => {
     const metadata = __testables__.parseNormalizedMetadata({ '00200037': { Value: [1, 0, 0, 0, 1, 0] } }, summary);
 
