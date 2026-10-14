@@ -4,7 +4,10 @@ content: 'A failed push, or an instance the repository lists in the Failed SOP S
   is shown to the user and leaves the series unsynchronized. The store is read again
   after the upload; edits made during the upload keep the series unsynchronized and
   the user is told. A successful push deletes the older local draft. Tests: Toolbar,
-  dicomWebClient and structureDraftStore tests (SRS-010 T9-T11, SRS-009 T5).'
+  dicomWebClient and structureDraftStore tests (SRS-010 T9-T11, SRS-009 T5). Before
+  a local draft is restored, the repository is checked for a newer structure set of
+  the same image series and the user is asked, so an older draft cannot be pushed
+  over a colleague''s newer work unnoticed (SRS-009 T6, T7).'
 mitigates:
 - RISK-007
 implements:
