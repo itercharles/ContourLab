@@ -126,3 +126,103 @@ test.describe('Maximize and restore a viewport (issue #164)', () => {
     }
   });
 });
+
+// The phantom's anatomy is fixed in patient coordinates: a marker at the patient's left and
+// anterior, the spine at the posterior, a dense disc at the superior end. Each patient position
+// stores it with its own orientation. The R/L/A/P/S/I markers are read from the DOM and compared
+// with where that anatomy is actually drawn, so a wrong letter fails the test.
+interface ViewReading {
+  labels: Record<string, string | null>;
+  /** Share of the view's width/height, 0 to 1, for the saturated (bone-like) pixels. */
+  upperMeanX: number;
+  lowerMeanX: number;
+  meanY: number;
+  upperCount: number;
+  lowerCount: number;
+}
+
+async function readView(page: Page, viewportId: string): Promise<ViewReading> {
+  const view = page.locator(`[data-viewport-id="${viewportId}"]`);
+  const png = await view.screenshot();
+  const labels = await view
+    .locator('xpath=..')
+    .locator('[data-orientation]')
+    .evaluateAll((els) =>
+      Object.fromEntries(els.map((el) => [(el as HTMLElement).dataset['orientation'] ?? '', el.textContent]))
+    );
+  const points = await page.evaluate(async (base64) => {
+    const bitmap = await createImageBitmap(await (await fetch(`data:image/png;base64,${base64}`)).blob());
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('no 2d context');
+    ctx.drawImage(bitmap, 0, 0);
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const found: Array<[number, number]> = [];
+    // Saturated grey only: the marker letters are amber, so they are not counted.
+    for (let y = 0; y < canvas.height; y += 1) {
+      for (let x = 0; x < canvas.width; x += 1) {
+        const k = (y * canvas.width + x) * 4;
+        if (data[k] > 235 && Math.abs(data[k] - data[k + 1]) < 8 && Math.abs(data[k] - data[k + 2]) < 8) {
+          found.push([x, y]);
+        }
+      }
+    }
+    return { width: canvas.width, height: canvas.height, found };
+  }, png.toString('base64'));
+
+  const mean = (values: number[]) => values.reduce((sum, v) => sum + v, 0) / values.length;
+  const upper = points.found.filter(([, y]) => y < points.height * 0.45);
+  const lower = points.found.filter(([, y]) => y >= points.height * 0.5);
+  return {
+    labels,
+    upperMeanX: mean(upper.map(([x]) => x)) / points.width,
+    lowerMeanX: mean(lower.map(([x]) => x)) / points.width,
+    meanY: mean(points.found.map(([, y]) => y)) / points.height,
+    upperCount: upper.length,
+    lowerCount: lower.length,
+  };
+}
+
+test.describe('Orientation markers agree with the image for every patient position', () => {
+  const POSITIONS = [
+    { variant: 'uncompressed', position: 'HFS', name: 'head-first supine' },
+    { variant: 'hfp', position: 'HFP', name: 'head-first prone' },
+    { variant: 'ffs', position: 'FFS', name: 'feet-first supine' },
+    { variant: 'ffp', position: 'FFP', name: 'feet-first prone' },
+  ] as const;
+
+  for (const { variant, position, name } of POSITIONS) {
+    test(`${name} (${position}): markers and patient position match what is drawn @links:SYS-002 @testing:T6`, async ({
+      page,
+    }) => {
+      await loadPhantom(page, variant);
+      for (const id of VIEWPORTS) {
+        await expectImage(page, id);
+      }
+      // The markers are drawn from the camera on the render after the volume arrives.
+      await expect(page.locator('[data-orientation="position"]').first()).toHaveText(position);
+
+      // Axial: the marker at the patient's left and anterior is in the upper half and on the
+      // right of the picture, so the top edge is anterior and the right edge is the patient's left.
+      const axial = await readView(page, 'viewport-axial');
+      expect(axial.labels).toMatchObject({ top: 'A', bottom: 'P', left: 'R', right: 'L', position });
+      expect(axial.upperCount).toBeGreaterThan(20);
+      expect(axial.upperMeanX).toBeGreaterThan(0.55);
+
+      // Coronal: the dense disc at the superior end is in the upper half, and nothing else is bright.
+      const coronal = await readView(page, 'viewport-coronal');
+      expect(coronal.labels).toMatchObject({ top: 'S', bottom: 'I', left: 'R', right: 'L' });
+      expect(coronal.meanY).toBeLessThan(0.5);
+
+      // Sagittal: the spine (posterior) is on the right half of the lower picture, so the right
+      // edge is posterior and the top edge is superior.
+      const sagittal = await readView(page, 'viewport-sagittal');
+      expect(sagittal.labels).toMatchObject({ top: 'S', bottom: 'I', left: 'A', right: 'P' });
+      expect(sagittal.lowerCount).toBeGreaterThan(20);
+      expect(sagittal.lowerMeanX).toBeGreaterThan(0.55);
+    });
+  }
+});
+

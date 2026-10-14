@@ -581,6 +581,7 @@ function parseNormalizedMetadata(
     studyDescription: summary.studyDescription,
     seriesDescription: summary.seriesDescription,
     bodyPartExamined: summary.bodyPartExamined,
+    patientPosition: getOptionalStringValue(dataset, '00185100'),
     modality: summary.modality,
     rows: getNumberValue(dataset, '00280010', 512),
     columns: getNumberValue(dataset, '00280011', 512),

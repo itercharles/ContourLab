@@ -11,6 +11,16 @@ One series per transfer syntax, so each browser decoder is exercised by its own 
   jpegls         JPEG-LS lossless, 16-bit           (CharLS decoder)
   jpeg-baseline  JPEG baseline, 8-bit lossy         (libjpeg-turbo decoder)
 
+and one uncompressed series per patient position, so the orientation markers can be checked
+against what is actually drawn:
+  hfp, ffs, ffp  head-first prone, feet-first supine, feet-first prone (the default is head-first supine)
+
+The anatomy is defined in patient coordinates (x to the patient's left, y to posterior, z to
+superior), not in pixels: the body, two lungs, the spine, a marker at the patient's left and
+anterior, and a dense disc at the superior (head) end. Each position then stores the same anatomy
+with its own ImageOrientationPatient, so a viewer that draws in patient space shows it the same
+way up in every series.
+
 Not covered: HTJ2K (OpenJPH) - no encoder was available when this was written.
 
 Needs (development only, deliberately not in requirements.txt, which is the SOUP manifest):
@@ -47,11 +57,20 @@ SLICES = 12
 SPACING_MM = 3.0
 THICKNESS_MM = 3.0
 
+# ImageOrientationPatient for each patient position: the row and column direction cosines.
+HFS = [1, 0, 0, 0, 1, 0]
+HFP = [-1, 0, 0, 0, -1, 0]
+FFS = [-1, 0, 0, 0, 1, 0]
+FFP = [1, 0, 0, 0, -1, 0]
+
 VARIANTS = {
-    "uncompressed": dict(syntax=ExplicitVRLittleEndian, bits=16),
-    "jpeg2000": dict(syntax=JPEG2000Lossless, bits=16),
-    "jpegls": dict(syntax=JPEGLSLossless, bits=16),
-    "jpeg-baseline": dict(syntax=JPEGBaseline8Bit, bits=8),
+    "uncompressed": dict(syntax=ExplicitVRLittleEndian, bits=16, position="HFS", iop=HFS),
+    "jpeg2000": dict(syntax=JPEG2000Lossless, bits=16, position="HFS", iop=HFS),
+    "jpegls": dict(syntax=JPEGLSLossless, bits=16, position="HFS", iop=HFS),
+    "jpeg-baseline": dict(syntax=JPEGBaseline8Bit, bits=8, position="HFS", iop=HFS),
+    "hfp": dict(syntax=ExplicitVRLittleEndian, bits=16, position="HFP", iop=HFP),
+    "ffs": dict(syntax=ExplicitVRLittleEndian, bits=16, position="FFS", iop=FFS),
+    "ffp": dict(syntax=ExplicitVRLittleEndian, bits=16, position="FFP", iop=FFP),
 }
 
 
@@ -59,27 +78,45 @@ def uid(*parts: str) -> UID:
     return UID("2.25." + str(uuid.uuid5(NAMESPACE, "/".join(parts)).int))
 
 
-def hounsfield_slice(z: int) -> np.ndarray:
-    """One axial slice in Hounsfield units. The body spans slices 1..SLICES-2."""
+def image_position(iop: list[int]) -> tuple[float, float]:
+    """x, y of pixel (0, 0) so that the field of view is centred on the origin for this orientation."""
+    row, col = np.array(iop[:3][:2], dtype=float), np.array(iop[3:][:2], dtype=float)
+    centre = -(COLS * SPACING_MM / 2) * row - (ROWS * SPACING_MM / 2) * col
+    return float(centre[0]), float(centre[1])
+
+
+def hounsfield_slice(z: int, iop: list[int]) -> np.ndarray:
+    """One axial slice in Hounsfield units. The body spans slices 1..SLICES-2.
+
+    Each pixel is placed in patient coordinates through the slice's own orientation, then the
+    anatomy is evaluated there, so every orientation stores the same patient.
+    """
     hu = np.full((ROWS, COLS), -1000.0)
     if not 1 <= z <= SLICES - 2:
         return hu
-    yy, xx = np.mgrid[0:ROWS, 0:COLS]
-    cy, cx = ROWS / 2, COLS / 2
+    ipp_x, ipp_y = image_position(iop)
+    row = np.array(iop[:2], dtype=float)
+    col = np.array(iop[3:5], dtype=float)
+    jj, ii = np.mgrid[0:ROWS, 0:COLS]
+    x = ipp_x + ii * SPACING_MM * row[0] + jj * SPACING_MM * col[0]
+    y = ipp_y + ii * SPACING_MM * row[1] + jj * SPACING_MM * col[1]
 
-    def ellipse(y0: float, x0: float, ry: float, rx: float) -> np.ndarray:
-        return ((yy - y0) / ry) ** 2 + ((xx - x0) / rx) ** 2 <= 1
+    def ellipse(cx: float, cy: float, rx: float, ry: float) -> np.ndarray:
+        return ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1
 
-    hu[ellipse(cy, cx, 22, 27)] = 40  # soft tissue
-    hu[ellipse(cy - 2, cx - 11, 12, 9)] = -750  # right lung (image left)
-    hu[ellipse(cy - 2, cx + 11, 12, 9)] = -750  # left lung
-    hu[ellipse(cy + 12, cx, 4, 4)] = 700  # spine
-    hu[ellipse(cy - 14, cx + 15, 3, 3)] = 400  # off-centre marker: shows left/right and up/down
+    s = SPACING_MM
+    hu[ellipse(0, 0, 27 * s, 22 * s)] = 40  # soft tissue
+    hu[ellipse(-11 * s, -2 * s, 9 * s, 12 * s)] = -750  # right lung (patient's right is -x)
+    hu[ellipse(11 * s, -2 * s, 9 * s, 12 * s)] = -750  # left lung
+    hu[ellipse(0, 12 * s, 4 * s, 4 * s)] = 700  # spine, posterior
+    hu[ellipse(15 * s, -14 * s, 3 * s, 3 * s)] = 400  # marker at the patient's left and anterior
+    if z == SLICES - 2:
+        hu[ellipse(0, 0, 8 * s, 8 * s)] = 700  # dense disc at the superior end
     return hu
 
 
-def pixel_array(z: int, bits: int) -> np.ndarray:
-    hu = hounsfield_slice(z)
+def pixel_array(z: int, bits: int, iop: list[int]) -> np.ndarray:
+    hu = hounsfield_slice(z, iop)
     if bits == 16:
         return np.clip(hu + 1024, 0, 65535).astype(np.uint16)
     return np.clip((hu + 1024) / 16, 0, 255).astype(np.uint8)  # slope 16, intercept -1024
@@ -87,7 +124,9 @@ def pixel_array(z: int, bits: int) -> np.ndarray:
 
 def build(name: str, z: int, cfg: dict) -> FileDataset:
     bits = cfg["bits"]
-    pixels = pixel_array(z, bits)
+    iop = cfg["iop"]
+    pixels = pixel_array(z, bits, iop)
+    ipp_x, ipp_y = image_position(iop)
 
     meta = FileMetaDataset()
     meta.MediaStorageSOPClassUID = CT_IMAGE_STORAGE
@@ -119,10 +158,10 @@ def build(name: str, z: int, cfg: dict) -> FileDataset:
     ds.ImageType = ["DERIVED", "SECONDARY"]
     ds.PixelSpacing = [SPACING_MM, SPACING_MM]
     ds.SliceThickness = THICKNESS_MM
-    ds.ImagePositionPatient = [-COLS * SPACING_MM / 2, -ROWS * SPACING_MM / 2, z * THICKNESS_MM]
-    ds.ImageOrientationPatient = [1, 0, 0, 0, 1, 0]
+    ds.ImagePositionPatient = [ipp_x, ipp_y, z * THICKNESS_MM]
+    ds.ImageOrientationPatient = iop
     ds.SliceLocation = z * THICKNESS_MM
-    ds.PatientPosition = "HFS"
+    ds.PatientPosition = cfg["position"]
     ds.RescaleIntercept = -1024
     ds.RescaleSlope = 1 if bits == 16 else 16
     ds.RescaleType = "HU"
