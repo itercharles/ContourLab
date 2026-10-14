@@ -923,6 +923,9 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 
   it('interpolates missing contour slices for the active structure @links:SRS-014', async () => {
     const loadedSeries = makeLoadedSeries();
+    // Interpolation works on the image grid, as the boolean and margin operations do.
+    loadedSeries.volume.dimensions = [32, 32, 4];
+    loadedSeries.volume.pixelData = new Float32Array(32 * 32 * 4);
     loadedSeries.series.instances = [
       { sopInstanceUID: 'sop-0', instanceNumber: 1, sliceLocation: 0 },
       { sopInstanceUID: 'sop-10', instanceNumber: 2, sliceLocation: 10 },

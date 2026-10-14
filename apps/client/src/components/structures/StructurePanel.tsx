@@ -1104,9 +1104,11 @@ export default function StructurePanel() {
     const interpolatedContours = interpolateMissingContoursForFrames(
       activeStructure.contours,
       frames,
-      64,
+      activeLoadedSeries.volume,
       interpGaps
     );
+    // A slice can get several contours (separate pieces and holes), so count slices, not contours.
+    const interpolatedSliceCount = new Set(interpolatedContours.map((contour) => contour.slicePosition)).size;
 
     if (interpolatedContours.length === 0) {
       setStatusMessage('No missing contour slices were eligible for interpolation.');
@@ -1118,12 +1120,12 @@ export default function StructurePanel() {
       activeSeriesStructureSet.id,
       activeStructure.id,
       interpolatedContours,
-      `Interpolate ${interpolatedContours.length} contour${interpolatedContours.length === 1 ? '' : 's'}`
+      `Interpolate ${interpolatedSliceCount} slice${interpolatedSliceCount === 1 ? '' : 's'}`
     );
 
     setStatusMessage(
       applied
-        ? `Interpolated ${interpolatedContours.length} contour slice${interpolatedContours.length === 1 ? '' : 's'}.`
+        ? `Interpolated ${interpolatedSliceCount} contour slice${interpolatedSliceCount === 1 ? '' : 's'}.`
         : 'Unable to interpolate the selected structure.'
     );
     setActiveStructureOperationPanel(null);

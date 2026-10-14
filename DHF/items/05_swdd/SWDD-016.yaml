@@ -28,5 +28,13 @@ content: 'BooleanContourEngine and MarginContourEngine share apps/client/src/cor
   Frames pass the slice position as ImagePositionPatient z through slicePositionZ
   (core/dicom/slicePosition.ts), the coordinate contours are stored in, instead of
   the SliceLocation tag, whose sign is flipped on some feet-first scans. Only axis-aligned
-  (axial) volumes are supported; an oblique series is outside this design.'
+  (axial) volumes are supported; an oblique series is outside this design.
+
+
+  Interpolation (InterpolationEngine.ts) reuses the same module: the contours of each
+  of the two bracketing drawn slices are rasterised, each mask becomes a signed distance
+  field (exact Euclidean transform, in mm, negative inside), the field of a missing
+  slice is their linear blend by position, and its zero line is traced back into contours,
+  one per outline or hole. A frame within half a slice thickness of a drawn slice
+  counts as that slice. The result is at the resolution of the image grid.'
 type: SWDD

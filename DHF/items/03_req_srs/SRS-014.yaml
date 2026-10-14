@@ -1,28 +1,49 @@
 id: SRS-014
 title: Software shall provide contour review micro-editing and interpolation
-content: |-
-  The client software shall provide contour review correction tools for the
+content: 'The client software shall provide contour review correction tools for the
+
   active axial image set and active unlocked structure. At minimum, the software
+
   shall support freehand drawing, polygon vertex-click drawing, polygon point
+
   editing for existing current-slice contours, brush-style per-slice contour
+
   creation, eraser-style current-slice contour removal, visible toolbar controls
+
   with shortcuts, single-slice interpolation between adjacent closed contours
+
   when the current slice has no contour, and batch interpolation that fills
+
   missing image slices between adjacent contour-bearing slices, and slice-level
+
   boolean structure operations (union, intersection, subtract) against another
+
   structure on the same image set, and slice-level margin
+
   expansion/contraction on the active image grid. Corrections shall use the
+
   shared contour command path so contour changes remain undoable and update
+
   derived structure volume. Active contour tools
+
   shall expose contextual secondary controls where relevant, including brush or
+
   eraser size and shape options and freehand or polygon contour mode options.
+
   Active viewport tools with contextual secondary controls shall be dismissible
+
   by activating the same tool again, returning the workspace to a no-active-tool
-  state without changing the selected image, structure set, or structure.
+
+  state without changing the selected image, structure set, or structure. Interpolation
+  shall blend the shapes drawn on the slices on either side of a missing slice on
+  the image grid (a signed-distance blend), not their outlines point by point, so
+  the result does not depend on where an outline starts or which way it is drawn,
+  and it shall keep separate pieces and holes and cope with a piece that splits, merges,
+  appears or vanishes.'
 derives_from: [SYS-004]
 verification_method: [Test, Demonstration]
-testing: 'T1: Given two bracketing contours around a target slice, findInterpolationBounds
-  identifies the lower and upper bounding contours.
+testing: 'T1: Given contours drawn on several slices, findInterpolationBounds identifies
+  the drawn slice (all of its contours) on either side of a target slice.
 
   T2: Given two bracketing contours and a target slice position, interpolateContourForSlice
   produces a closed contour at the target z-coordinate.
@@ -61,9 +82,17 @@ testing: 'T1: Given two bracketing contours around a target slice, findInterpola
   the instance has no position, so frames for boolean, margin, interpolation and review
   navigation line up with the contours on feet-first scans.
 
+  T11: Given slices with separate pieces, holes, a piece that splits, and volumes
+  whose columns run the other way, interpolation keeps every piece and hole, returns
+  the same shape when both slices are the same whatever the outline''s start point
+  or direction, gives a shape between the two drawn ones in proportion to the distance,
+  and does not interpolate within half a slice thickness of a drawn slice.
+
   '
-verification_criteria: Interpolation finds the bounding contours, produces a closed
+verification_criteria: 'Interpolation finds the bounding contours, produces a closed
   contour at the target slice, fills missing slices only within the configured maximum
   gap, and is one undoable step; a locked structure is not changed; boolean union,
   intersect and subtract, margin expansion and contraction, the slice positions they
-  use, and the tool option bars behave as stated in T7 to T10.
+  use, and the tool option bars behave as stated in T7 to T10. T11: interpolation
+  keeps separate pieces and holes and does not depend on where an outline starts or
+  which way it winds.'

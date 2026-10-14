@@ -4,7 +4,10 @@ content: 'Boolean and margin operations rasterise and trace on the volume grid t
   the direction cosines, keep every outline and hole as its own contour, keep contours
   on slices that match no image frame, and match slices by image position. Tests:
   sliceMask, BooleanContourEngine, MarginContourEngine and slicePosition tests including
-  prone, feet-first, islands, rings and unmatched slices (SRS-014 T7, T8, T10).'
+  prone, feet-first, islands, rings and unmatched slices (SRS-014 T7, T8, T10). Interpolation
+  between drawn slices uses the same grid and tracing, blending signed-distance fields
+  of the slices on either side, so it keeps pieces and holes and cannot twist an outline
+  (SRS-014 T11).'
 mitigates:
 - RISK-006
 implements:
