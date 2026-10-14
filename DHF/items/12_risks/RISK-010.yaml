@@ -1,0 +1,20 @@
+id: RISK-010
+title: Unauthorised access to patient data or functions
+hazard: Someone without a role in the clinic reads, changes or deletes patient images
+  and structure sets, or triggers the automated change pipeline.
+cause: The API, the DICOM repository and the auto-contour service have no authentication.
+  They were published on all network interfaces, the web server forwarded the repository
+  REST interface (including delete) to the network, and anonymous requests could create
+  issues that feed the change pipeline.
+effect: Patient data is exposed or altered, with no record of who did it.
+severity_pre: S4
+probability_pre: P4
+severity_post: S4
+probability_post: P2
+risk_acceptability: ALARP
+risk_benefit: 'Residual: any other account or process on the workstation can still
+  reach the services, and there is no authentication or audit trail of who edited
+  or pushed a structure set. Acceptable only while the system is used from this one
+  workstation; use from other computers needs authentication, roles and an audit trail
+  first.'
+type: RISK

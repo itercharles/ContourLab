@@ -1,0 +1,22 @@
+id: SRS-035
+title: Software deployment shall publish every port on the loopback interface and
+  not proxy the repository REST API
+content: Every port published by docker-compose.deploy.yml and docker-compose.yml
+  shall be bound to 127.0.0.1. apps/client/nginx.conf shall not proxy /orthanc/ to
+  the DICOM repository. The deploy script shall recreate a running repository container
+  that is still published on all interfaces, because a running container keeps the
+  port bindings it was created with. The contract check in continuous integration
+  shall fail the build when a compose file publishes a port on all interfaces or when
+  nginx proxies /orthanc/.
+derives_from:
+- SYS-018
+verification_method:
+- Inspection
+testing: 'T1: Given the compose files and the nginx configuration, scripts/ci/check_medharness_contract.py
+  fails if a port is published on all interfaces or /orthanc/ is proxied, and passes
+  on the repository.
+
+  '
+verification_criteria: The contract check passes on the compose files and nginx configuration
+  and fails when either rule is broken.
+type: SRS

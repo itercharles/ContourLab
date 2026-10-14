@@ -1,0 +1,20 @@
+id: CRS-015
+title: Clinicians shall be assured that patient images and structure sets can be reached
+  only from the workstation they use
+content: As a radiation therapist, physician or dosimetrist, I need the patient images
+  and structure sets held by the system to be reachable only from the workstation
+  I work at, so that no one else on the network can read, change or delete them.
+user_group: Radiation Therapist / Physician / Dosimetrist
+derives_from:
+- UC-005
+priority: High
+verification_method:
+- Inspection
+testing: 'T1: Given the deployed system, none of its services answers on any address
+  other than the workstation''s own.
+
+  '
+verification_criteria: No service of the deployed system (web client, API, DICOM repository,
+  auto-contour service) is published on a network interface; the DICOM repository's
+  REST interface is not reachable through the web client.
+type: CRS
