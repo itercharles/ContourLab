@@ -119,3 +119,62 @@ describe('computeVolume @links:SRS-006', () => {
     expect(Math.abs(result - expected) / expected).toBeLessThan(0.01);
   });
 });
+
+describe('computeVolume with holes and per-slice thickness @links:SRS-006', () => {
+  function slice(position: number, ...polygons: Float32Array[]) {
+    return polygons.map((points, i) => ({
+      referencedSOPInstanceUID: `sop-${position}-${i}`,
+      slicePosition: position,
+      points,
+      isClosed: true,
+    }));
+  }
+  const structure = (contours: ReturnType<typeof slice>): Structure => ({
+    id: 's', name: 'S', type: 'OAR', color: [0, 0, 0], contours, isVisible: true, isLocked: false, volume_cc: 0,
+  });
+
+  it('subtracts a contour nested inside another, so a ring is outer minus hole @testing:T6', () => {
+    // 10 x 10 outer with a 4 x 4 hole, 3 mm thick: (100 - 16) * 3 mm³.
+    const ring = structure(slice(0, makeSquare(0, 0, 10, 0), makeSquare(3, 3, 4, 0)));
+    expect(computeVolume(ring, 3)).toBeCloseTo((84 * 3) / 1000, 10);
+  });
+
+  it('adds contours that are apart on the same slice, and alternates through two levels of nesting @testing:T6', () => {
+    const islands = structure(slice(0, makeSquare(0, 0, 10, 0), makeSquare(20, 0, 10, 0)));
+    expect(computeVolume(islands, 3)).toBeCloseTo((200 * 3) / 1000, 10);
+
+    // outer 100, hole 36, island inside the hole 4: 100 - 36 + 4.
+    const target = structure(slice(0, makeSquare(0, 0, 10, 0), makeSquare(2, 2, 6, 0), makeSquare(4, 4, 2, 0)));
+    expect(computeVolume(target, 3)).toBeCloseTo((68 * 3) / 1000, 10);
+  });
+
+  it('counts each slice for its own slab when the slice spacing changes @testing:T7', () => {
+    // Slices at 0, 2.5, 5, 10, 15 mm. Interior slices stand for half the distance to each neighbour
+    // (2.5, 3.75, 5) and an end slice for its one gap (2.5, 5), 18.75 mm in all; the 3.75 mm average
+    // would give 100 * 5 * 3.75 = the same total only by luck, so the slabs are checked one by one.
+    const square = makeSquare(0, 0, 10, 0);
+    const wholeSeries = structure([0, 2.5, 5, 10, 15].flatMap((z) => slice(z, square)));
+    const positions = [0, 2.5, 5, 10, 15];
+
+    const exact = computeVolume(wholeSeries, 3.75, positions);
+
+    expect(exact).toBeCloseTo((100 * (2.5 + 2.5 + 3.75 + 5 + 5)) / 1000, 10);
+
+    // Drop the slice at 5 mm: the slabs of its neighbours stay, and its own 3.75 mm goes.
+    const without = structure([0, 2.5, 10, 15].flatMap((z) => slice(z, square)));
+    expect(computeVolume(without, 3.75, positions)).toBeCloseTo((100 * (2.5 + 2.5 + 5 + 5)) / 1000, 10);
+  });
+
+  it('gives a single slice the same thickness as its neighbour gap, and uses the average without positions @testing:T7', () => {
+    const one = structure(slice(0, makeSquare(0, 0, 10, 0)));
+    expect(computeVolume(one, 3)).toBeCloseTo(0.3, 10);
+    expect(computeVolume(one, 3, [0])).toBeCloseTo(0.3, 10);
+    expect(computeVolume(one, 3, [0, 5])).toBeCloseTo(0.5, 10);
+  });
+
+  it('falls back to the average thickness for a contour that is not on any image slice @testing:T7', () => {
+    const stray = structure(slice(100, makeSquare(0, 0, 10, 0)));
+    expect(computeVolume(stray, 3, [0, 3, 6])).toBeCloseTo(0.3, 10);
+  });
+});
+
