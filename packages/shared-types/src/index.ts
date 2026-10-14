@@ -23,6 +23,7 @@ export interface Study {
 export interface Series {
   seriesInstanceUID: string;
   seriesDescription?: string;
+  patientPosition?: string;                   // DICOM (0018,5100): HFS, HFP, FFS, FFP, ...
   bodyPartExamined?: string;
   modality: 'CT' | 'MR' | 'PT' | 'RTSS' | 'RTPLAN' | 'RTDOSE';
   instances: Instance[];

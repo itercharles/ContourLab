@@ -11,7 +11,10 @@ content: 'Using Cornerstone3D, the system shall render three synchronized orthog
 
   The window-level tool shall offer the presets Soft Tissue, Lung, Bone, Brain, Mediastinum,
   Abdomen and Custom, apply the selected preset''s window width and level, and show
-  the active values.'
+  the active values. Each axial, sagittal and coronal view shall show R/L/A/P/S/I
+  markers on its four edges that are correct for the patient position of the series,
+  so that left and right and head and foot can be told apart on a head-first or feet-first,
+  supine or prone scan, and shall show the patient position (HFS, HFP, FFS, FFP).'
 verification_method:
   - Test
   - Demonstration
@@ -32,12 +35,20 @@ testing: 'T1: Given a loaded series, three viewport panels labelled axial, sagit
   image data in it, and restoring the layout shows image data in all three planar
   views.
 
+  T6: Given a CT series stored head-first supine, head-first prone, feet-first supine
+  and feet-first prone, each 2D view shows the R/L/A/P/S/I markers and the patient
+  position, and the markers agree with where known anatomy is drawn: the marker at
+  the patient''s left and anterior, the spine at the posterior and the superior end.
+
   '
 satisfies:
   - CRS-001
-verification_criteria: With a series loaded, three viewport panels labelled axial,
+verification_criteria: 'With a series loaded, three viewport panels labelled axial,
   sagittal and coronal are visible; with a structure set active, contours appear in
   the correct plane in each; the window-level tool offers its presets, and selecting
   one makes it active and shows its window width and level; with a real CT series
   loaded, each of the three planar views shows image data, including after a viewport
-  is maximized and the layout restored, and the maximized view shows image data.
+  is maximized and the layout restored, and the maximized view shows image data. T6:
+  for each of the four patient positions the markers read A/P/R/L (axial), S/I/R/L
+  (coronal) and S/I/A/P (sagittal), the patient position is shown, and the left-anterior
+  marker, the spine and the superior end are drawn where the letters say.'

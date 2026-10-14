@@ -9,6 +9,6 @@ effect: A structure is drawn or reviewed on the wrong side or end of the patient
 severity_pre: S5
 probability_pre: P3
 severity_post: S5
-probability_post: P3
-risk_acceptability: Unacceptable
+probability_post: P2
+risk_acceptability: ALARP
 type: RISK

@@ -1,0 +1,18 @@
+id: SWDD-018
+title: Loopback-only deployment and the check that keeps it so
+implements:
+- SRS-035
+module:
+- MODULE-009
+content: docker-compose.deploy.yml and docker-compose.yml list every port as 127.0.0.1:<host>:<container>.
+  apps/client/nginx.conf proxies /api/, /debug/client-log and /dicom-web/ only; the
+  repository's own REST interface has no route (a request to /orthanc/ falls through
+  to the single-page application, and a DELETE gets 405). scripts/deploy/deploy.sh
+  leaves a running repository container alone when its image matches, which would
+  keep its old bindings, so it now also reads the container's published host addresses
+  and recreates it when any is empty, 0.0.0.0 or ::; the studies live in a host directory
+  and survive. docker/orthanc/orthanc.json states ExecuteLuaEnabled and RestApiWriteToFileSystemEnabled
+  as false. scripts/ci/check_medharness_contract.py parses both compose files and
+  nginx.conf and fails the MedHarness Contract job on a port that is not on 127.0.0.1
+  or on a /orthanc/ location.
+type: SWDD

@@ -1,0 +1,16 @@
+id: RCM-014
+title: Loopback-only deployment
+content: 'Every published port is bound to 127.0.0.1 in both compose files, the web
+  server does not proxy the repository REST interface, a running repository published
+  on all interfaces is recreated by the deploy script, and the CI contract check fails
+  the build if either rule is broken. Verified on the deployed stack after the change:
+  no service answers on the workstation''s network address, /orthanc/ returns the
+  web client page and a DELETE through it gets 405, and the 10 studies were intact
+  after the repository was recreated.'
+mitigates:
+- RISK-010
+implements:
+- SYS-018
+control_type: Protective Measure
+implementation_status: Implemented
+type: RCM
