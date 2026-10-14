@@ -1,13 +1,18 @@
 id: RCM-013
 title: Identity checks on export
-content: Export fails instead of inventing a frame-of-reference UID; the patient is
-  identified by the patient ID, not by the study UID; the structure types AVOIDANCE
-  and SUPPORT round-trip; the repository push shows the patient and series it will
-  be filed under before it is sent.
+content: 'The RT Structure Set export fails, with the reason shown and nothing written,
+  instead of inventing a frame-of-reference UID or using the study UID as the Patient
+  ID; the patient''s birth date and sex are carried from the images; each contour
+  references the image it lies on or none; the structure types avoidance and support
+  round-trip. Tests: rtstructExport, buildMetadata and dicomWebClient tests (SRS-010
+  T12 to T15). Checked against a real Orthanc: the stored RT Structure Set carries
+  the images'' patient ID and frame of reference and is filed under the existing patient.
+  Not yet done: showing the patient and series a push will be filed under before it
+  is sent.'
 mitigates:
 - RISK-004
 implements:
 - SYS-006
 control_type: Protective Measure
-implementation_status: Planned
+implementation_status: Implemented
 type: RCM

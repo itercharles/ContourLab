@@ -109,7 +109,14 @@ content: 'Push Changes shall be disabled when the active image series has no loc
   the series shall stay marked as having unsynchronized changes. Edits made while
   the upload is in flight shall not be treated as saved: the series stays unsynchronized,
   the structure set records the pushed version as its source, and the user is told
-  to push again.'
+  to push again. The export shall be refused, with the reason shown and nothing written,
+  when the image series carries no Frame of Reference UID (0020,0052) or the images
+  carry no Patient ID (0010,0020): neither shall be invented, and the study UID shall
+  not stand in for the Patient ID. The patient''s birth date and sex shall be written
+  as read from the images. Each contour shall reference the image it lies on: its
+  own reference, else the image at its position, else none, never an empty reference.
+  The structure types avoidance and support shall be exported as such and read back
+  as such.'
 derives_from: [SYS-006, SYS-007, SYS-011, SYS-012]
 verification_method: [Test, Demonstration]
 testing: 'T1: Given a manual structure set with no repository source, the exported
@@ -147,6 +154,22 @@ testing: 'T1: Given a manual structure set with no repository source, the export
   error is a failure, and a 2xx that lists a failed instance in the Failed SOP Sequence
   is a failure.
 
+  T12: Given an image series with no Frame of Reference UID (missing, empty or blank),
+  the export is refused with a reason and nothing is written; otherwise the images''
+  Frame of Reference UID is written.
+
+  T13: Given images with no Patient ID, the export is refused and the study UID is
+  not used instead; otherwise the patient ID, birth date and sex of the images are
+  written, and the metadata builder carries them and leaves the MRN empty when there
+  is no Patient ID.
+
+  T14: Given contours with an image reference, with none but lying on an image, and
+  lying on no image, the exported references are the contour''s own, the image at
+  its position, and none; an empty reference is never written.
+
+  T15: Given structures of every type, the types are exported and read back unchanged,
+  including avoidance and support.
+
   '
 verification_criteria: 'An exported RTSTRUCT omits PredecessorStructureSetSequence
   for a manual structure set and includes the predecessor SOP reference for one loaded
@@ -154,4 +177,7 @@ verification_criteria: 'An exported RTSTRUCT omits PredecessorStructureSetSequen
   UIDs and series description; the draft and repository dirty flags are set and cleared
   independently as specified. T9 to T11: a failed or rejected upload is shown to the
   user and leaves the series unsynchronized; edits made during an upload are not marked
-  saved.'
+  saved. T12 to T15: an export that cannot name the images'' frame of reference or
+  patient is refused rather than made up, the patient''s birth date and sex are carried,
+  every contour references the image it lies on or none, and avoidance and support
+  survive a round trip.'

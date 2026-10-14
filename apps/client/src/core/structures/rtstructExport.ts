@@ -1,6 +1,7 @@
 import type { StructureSet } from '@contourlab/shared-types';
 import type { LoadedSeries } from '../store/volumeStore';
 import { DicomMetadataStore } from '../dicom/DicomMetadataStore';
+import { slicePositionZ } from '../dicom/slicePosition';
 
 const RT_STRUCTURE_SET_STORAGE_UID = '1.2.840.10008.5.1.4.1.1.481.3';
 const EXPLICIT_VR_LITTLE_ENDIAN_UID = '1.2.840.10008.1.2.1';
@@ -28,17 +29,45 @@ function formatTime(date = new Date()): string {
   return date.toISOString().slice(11, 19).replaceAll(':', '');
 }
 
+// RTROIInterpretedType values; the importer maps each of these back to the same structure type.
 function mapRoiType(type: string): string {
   switch (type) {
     case 'GTV':
     case 'CTV':
     case 'PTV':
-      return type;
     case 'EXTERNAL':
-      return 'EXTERNAL';
+    case 'AVOIDANCE':
+    case 'SUPPORT':
+      return type;
     default:
       return 'ORGAN';
   }
+}
+
+/** The structure set cannot be exported faithfully; nothing is written. */
+export class RtstructExportError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RtstructExportError';
+  }
+}
+
+/**
+ * The image each contour lies on. A contour that carries no reference (one imported without a
+ * ContourImageSequence) is matched to the image at its position; a contour that matches none gets no
+ * reference at all, never an empty one.
+ */
+function referencedImageUID(
+  contour: { referencedSOPInstanceUID: string; slicePosition: number },
+  instances: LoadedSeries['series']['instances'],
+  tolerance_mm: number
+): string | undefined {
+  if (contour.referencedSOPInstanceUID) return contour.referencedSOPInstanceUID;
+  const match = instances.find((instance) => {
+    const z = slicePositionZ(instance);
+    return z !== undefined && Math.abs(z - contour.slicePosition) <= tolerance_mm;
+  });
+  return match?.sopInstanceUID;
 }
 
 export async function exportRtstructBlob(
@@ -74,7 +103,22 @@ export async function exportRtstructObject(
   const seriesDate = formatDate(now);
   const seriesTime = formatTime(now);
   const imageMetadata = DicomMetadataStore.getFirstImageMetadataForSeries(loadedSeries.seriesUID);
-  const referencedFrameOfReferenceUID = imageMetadata?.frameOfReferenceUID ?? DicomMetaDictionary.uid();
+  // The structure set is tied to the images by the frame of reference and the patient. If either is
+  // missing it is refused rather than made up: a random frame of reference matches no image, and a
+  // study UID used as the patient ID files the structure set under a different patient.
+  const referencedFrameOfReferenceUID = imageMetadata?.frameOfReferenceUID?.trim();
+  if (!referencedFrameOfReferenceUID) {
+    throw new RtstructExportError(
+      'The image series has no Frame of Reference UID (0020,0052), so the structure set cannot be tied to it. Nothing was exported.'
+    );
+  }
+  const patientId = loadedSeries.patient.mrn?.trim();
+  if (!patientId) {
+    throw new RtstructExportError(
+      'The images carry no Patient ID (0010,0020), so the repository would file the structure set under another patient. Nothing was exported.'
+    );
+  }
+  const contourTolerance_mm = Math.max((loadedSeries.volume.spacing[2] || 1) / 2, 0.01);
   const referencedSOPClassUID = getImageStorageSOPClassUID(loadedSeries.series.modality);
   const referencedImages = loadedSeries.series.instances.map((instance) => ({
     ReferencedSOPClassUID: referencedSOPClassUID,
@@ -91,17 +135,17 @@ export async function exportRtstructObject(
   const roiContourSequence = structureSet.structures.map((structure, index) => ({
     ReferencedROINumber: index + 1,
     ROIDisplayColor: structure.color,
-    ContourSequence: structure.contours.map((contour) => ({
-      ContourGeometricType: 'CLOSED_PLANAR',
-      NumberOfContourPoints: contour.points.length / 3,
-      ContourData: Array.from(contour.points),
-      ContourImageSequence: [
-        {
-          ReferencedSOPClassUID: referencedSOPClassUID,
-          ReferencedSOPInstanceUID: contour.referencedSOPInstanceUID,
-        },
-      ],
-    })),
+    ContourSequence: structure.contours.map((contour) => {
+      const imageUID = referencedImageUID(contour, loadedSeries.series.instances, contourTolerance_mm);
+      return {
+        ContourGeometricType: 'CLOSED_PLANAR',
+        NumberOfContourPoints: contour.points.length / 3,
+        ContourData: Array.from(contour.points),
+        ...(imageUID
+          ? { ContourImageSequence: [{ ReferencedSOPClassUID: referencedSOPClassUID, ReferencedSOPInstanceUID: imageUID }] }
+          : {}),
+      };
+    }),
   }));
 
   const rtRoiObservationsSequence = structureSet.structures.map((structure, index) => ({
@@ -137,8 +181,9 @@ export async function exportRtstructObject(
     InstanceCreationDate: seriesDate,
     InstanceCreationTime: seriesTime,
     PatientName: formatPatientName(loadedSeries.patient.name),
-    PatientID: loadedSeries.patient.mrn || loadedSeries.patient.id,
+    PatientID: patientId,
     PatientBirthDate: loadedSeries.patient.dateOfBirth?.replaceAll('-', '') || '',
+    PatientSex: loadedSeries.patient.sex ?? '',
     StudyDate: loadedSeries.study.studyDate?.replaceAll('-', '') || formatDate(now),
     StudyDescription: loadedSeries.study.studyDescription ?? '',
     SeriesNumber: 500,
