@@ -35,7 +35,7 @@ A failure shows as a red step in the checklist, with what failed and a link to t
 | `feat/CR-NNN · merged, opening the close-out PR` | Step 5 done; step 6's PR is being opened. |
 | `feat/CR-NNN · close-out merged, CR finished` | The last step. |
 | `PR #N · not a CR, ignored` | Any other PR closing or being reviewed: the lifecycle and completion workflows start on every PR and skip the ones that are not CRs. These rows are expected noise. |
-| `CI · PR #N · title`, `CI · push to <branch>` | The product CI/CD pipeline. |
+| `CI · PR #N · title`, `CI · push to main` | The product CI/CD pipeline. A branch with a PR is built once, by the PR; only `main` is also built on push. |
 
 ## Sources of Truth
 
