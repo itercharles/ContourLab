@@ -10,7 +10,7 @@ as the reviewer reported them on 2026-10-12; **where each one stands now is in t
 
 ## Where things stand (2026-10-15)
 
-Of the 24 reported findings, 14 are fixed, 4 are partly done and 6 are not started (details below).
+Of the 24 reported findings, 15 are fixed, 3 are partly done and 6 are not started (details below).
 All the fixes are merged, `main` is green and deployed, and no pull request is open. The reviewer's
 suspected findings (S1 to S5) were not separately verified.
 
@@ -35,7 +35,7 @@ suspected findings (S1 to S5) were not separately verified.
 | 6 | AI contours can be pushed unreviewed, recorded as manual | **not started** | |
 | 7 | Push failures invisible; edits during upload overwritten | fixed | #170 |
 | 8 | Undo global, never cleared, ignores locks, fires while typing | fixed | #170 |
-| 9 | Locked structures can be deleted, retyped | partly | #170: delete and type are blocked; no delete confirmation |
+| 9 | Locked structures can be deleted, retyped | fixed | #170 blocks delete and type change on a locked structure; deleting a structure that has contours now asks first (SYS-003 T5, RCM-015) |
 | 10 | Volumes stale; holes added; average thickness; invented margin preview | fixed | #178 |
 | 11 | Slices load with no geometry checks | fixed | #172: a gate; the local-file tag parser still has no test of its own |
 | 12 | API has no authentication | partly | #174 closes the network to this workstation; no authentication or audit trail; `POST /api/issues` still accepts anything |

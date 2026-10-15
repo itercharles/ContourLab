@@ -274,6 +274,18 @@ function StructureRow({
       onStatus(`${structure.name} is locked. Unlock it to delete it.`);
       return;
     }
+    // A structure with contours is work: one click on a small icon should not discard it. An empty one
+    // costs nothing to lose, and either can be undone.
+    const contourCount = structure.contours.length;
+    if (
+      contourCount > 0 &&
+      !window.confirm(
+        `Delete ${structure.name} and its ${contourCount} contour${contourCount === 1 ? '' : 's'}? You can undo this with Ctrl/Cmd+Z.`
+      )
+    ) {
+      onStatus(`${structure.name} was not deleted.`);
+      return;
+    }
     pushStructureDeleteCommand(setId, structure);
     onStatus(`Deleted structure ${structure.name}.`);
   };

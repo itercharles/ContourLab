@@ -8,7 +8,9 @@ content: 'The system shall allow users to create structures with TG-263-complian
 
   and toggle visibility. Volume in cm3 shall be computed from contour data. A locked
   structure shall not be deleted, and its type and contours shall not be changed,
-  until it is unlocked; colour, name and visibility stay editable.'
+  until it is unlocked; colour, name and visibility stay editable. Deleting a structure
+  that has contours asks for confirmation first, naming the structure and how many
+  contours would be lost; declining keeps it, and a confirmed delete can be undone.'
 verification_method:
   - Test
 testing: 'T1: Given an injected structure set, the structure panel lists all structure
@@ -23,6 +25,11 @@ testing: 'T1: Given an injected structure set, the structure panel lists all str
   T4: Given a locked structure, delete and changes of type or contours are refused
   (in the store, in the structure panel and when undoing or redoing), and are allowed
   again after it is unlocked.
+
+  T5: Given a structure with contours, deleting it asks for confirmation that names
+  the structure and its contour count, declining keeps the structure and records no
+  undo step, and confirming deletes it and the delete can be undone; a structure with
+  no contours is deleted without asking.
 
   '
 satisfies:
