@@ -1,0 +1,33 @@
+id: CR-021
+title: the "DVH artifacts" button doesn't work
+description: '### Requested change
+
+
+  the DHF can''t be downloaded when I click the "DHV artifacts" button on the home
+  page.
+
+
+  ### User value / justification
+
+
+  this is a bug.
+
+
+  ### Acceptance criteria
+
+
+  the dhf can be downloaded.
+
+
+  ### Change category
+
+
+  Bug
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/194'
+requested_by: itercharles
+priority: Medium
+status: new
+target_version: 2026-W41
+type: CR
