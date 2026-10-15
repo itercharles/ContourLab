@@ -30,35 +30,35 @@ public sealed class GitHubService
     {
         EnsureToken();
         var client = _httpClientFactory.CreateClient("github");
-        var workflowRuns = await ListSuccessfulMainWorkflowRunsAsync(client, cancellationToken);
+        var workflowRuns = await ListMainWorkflowRunsAsync(client, cancellationToken);
 
         foreach (var run in workflowRuns)
         {
             var artifact = await FindDhfArtifactForRunAsync(client, run.Id, cancellationToken);
             if (artifact is null) continue;
 
-            var bytes = await DownloadArtifactArchiveAsync(client, artifact.ArchiveDownloadUrl, cancellationToken);
+            var content = await DownloadArtifactArchiveAsync(client, artifact.ArchiveDownloadUrl, cancellationToken);
             return new GitHubArtifactDownload(
                 $"{DhfArtifactName}-run-{run.Id}.zip",
                 "application/zip",
-                bytes
+                content
             );
         }
 
-        throw new GitHubArtifactNotFoundException("No downloadable DHF artifact was found for the latest successful main CI runs.");
+        throw new GitHubArtifactNotFoundException("No unexpired DHF artifact exists on the latest main CI runs.");
     }
 
-    private async Task<IReadOnlyList<GitHubWorkflowRunJson>> ListSuccessfulMainWorkflowRunsAsync(
+    private async Task<IReadOnlyList<GitHubWorkflowRunJson>> ListMainWorkflowRunsAsync(
         HttpClient client,
         CancellationToken cancellationToken)
     {
         var request = new HttpRequestMessage(
             HttpMethod.Get,
             $"/repos/{_owner}/{_repoName}/actions/workflows/{CiWorkflowId}/runs" +
-            "?branch=main&event=push&status=success&exclude_pull_requests=true&per_page=20");
+            "?branch=main&event=push&status=completed&exclude_pull_requests=true&per_page=20");
         AddAuthHeaders(request);
 
-        var response = await client.SendAsync(request, cancellationToken);
+        using var response = await client.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
             throw new HttpRequestException($"GitHub API returned {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync(cancellationToken)}");
 
@@ -77,7 +77,7 @@ public sealed class GitHubService
             $"/repos/{_owner}/{_repoName}/actions/runs/{runId}/artifacts?name={DhfArtifactName}&per_page=20");
         AddAuthHeaders(request);
 
-        var response = await client.SendAsync(request, cancellationToken);
+        using var response = await client.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
             throw new HttpRequestException($"GitHub API returned {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync(cancellationToken)}");
 
@@ -88,19 +88,23 @@ public sealed class GitHubService
             !artifact.Expired);
     }
 
-    private async Task<byte[]> DownloadArtifactArchiveAsync(
+    private async Task<Stream> DownloadArtifactArchiveAsync(
         HttpClient client,
         string archiveDownloadUrl,
         CancellationToken cancellationToken)
     {
+        // HttpClient drops the Authorization header when GitHub redirects to the signed blob URL.
         var request = new HttpRequestMessage(HttpMethod.Get, archiveDownloadUrl);
         AddAuthHeaders(request);
 
         var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         if (!response.IsSuccessStatusCode)
+        {
+            response.Dispose();
             throw new HttpRequestException($"GitHub API returned {(int)response.StatusCode}: artifact download failed.");
+        }
 
-        return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        return await response.Content.ReadAsStreamAsync(cancellationToken);
     }
 
     private void EnsureToken()
@@ -123,7 +127,7 @@ public sealed class GitHubService
     };
 }
 
-public sealed record GitHubArtifactDownload(string FileName, string ContentType, byte[] Content);
+public sealed record GitHubArtifactDownload(string FileName, string ContentType, Stream Content);
 
 internal sealed record GitHubWorkflowRunsResponse(IReadOnlyList<GitHubWorkflowRunJson> WorkflowRuns);
 internal sealed record GitHubWorkflowRunJson(long Id);

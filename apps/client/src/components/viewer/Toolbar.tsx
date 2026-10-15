@@ -23,6 +23,29 @@ const ACTIVITY_TONE_CLASS: Record<ActivityItem['tone'], string> = {
 };
 
 const DHF_ARTIFACTS_URL = '/api/dhf-artifacts/latest';
+const DHF_FALLBACK_FILENAME = 'dhf-artifacts.zip';
+
+function parseDispositionFilename(disposition: string): string | null {
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded);
+    } catch {
+      // fall through to the plain filename
+    }
+  }
+  return /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? null;
+}
+
+async function readProblemDetail(response: Response): Promise<string> {
+  try {
+    const problem = (await response.json()) as { detail?: string };
+    if (problem.detail) return problem.detail;
+  } catch {
+    // body was not ProblemDetails JSON
+  }
+  return `DHF download failed (HTTP ${response.status}).`;
+}
 
 const WORKFLOW_STAGES: { id: WorkflowStage; num: string; label: string }[] = [
   { id: 'auto',    num: '01', label: 'Auto-segment' },
@@ -45,6 +68,8 @@ export default function Toolbar() {
     rows: PushDestinationRow[];
     answer: (confirmed: boolean) => void;
   } | null>(null);
+  const [isDownloadingDhf, setIsDownloadingDhf] = useState(false);
+  const [dhfError, setDhfError] = useState<string | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
   const [prototypeInfoOpen, setPrototypeInfoOpen] = useState(false);
   const workflowStage = useUIStore((s) => s.workflowStage);
@@ -54,6 +79,33 @@ export default function Toolbar() {
   const activities = useActivityStore((s) => s.activities);
   const markAllRead = useActivityStore((s) => s.markAllRead);
   const clearActivities = useActivityStore((s) => s.clearActivities);
+  const downloadDhfArtifacts = async () => {
+    if (isDownloadingDhf) return;
+    setIsDownloadingDhf(true);
+    setDhfError(null);
+    try {
+      const response = await fetch(DHF_ARTIFACTS_URL);
+      if (!response.ok) {
+        setDhfError(await readProblemDetail(response));
+        return;
+      }
+      const disposition = response.headers.get('Content-Disposition') ?? '';
+      const filename = parseDispositionFilename(disposition) ?? DHF_FALLBACK_FILENAME;
+      const url = URL.createObjectURL(await response.blob());
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setDhfError(error instanceof Error ? error.message : 'DHF download failed.');
+    } finally {
+      setIsDownloadingDhf(false);
+    }
+  };
+
   const unreadActivityCount = activities.filter((activity) => !activity.read).length;
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
   const loadedSeries = useVolumeStore((s) => s.loadedSeries);
@@ -478,19 +530,28 @@ export default function Toolbar() {
           </svg>
         </a>
         {/* DHF Artifacts download — prototype highlight */}
-        <a
-          href={DHF_ARTIFACTS_URL}
-          download
-          title="Download the latest DHF artifacts from the most recent successful main CI run"
-          className="flex h-7 items-center gap-1.5 rounded border border-emerald-500/40 bg-emerald-950/20 px-2.5 text-[11px] font-medium text-emerald-400 transition-colors hover:bg-emerald-900/30 hover:text-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        >
-          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          DHF Artifacts
-        </a>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => void downloadDhfArtifacts()}
+            disabled={isDownloadingDhf}
+            title="Download the latest DHF artifacts from the latest main CI run"
+            className="flex h-7 items-center gap-1.5 rounded border border-emerald-500/40 bg-emerald-950/20 px-2.5 text-[11px] font-medium text-emerald-400 transition-colors hover:bg-emerald-900/30 hover:text-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-wait disabled:opacity-60"
+          >
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            {isDownloadingDhf ? 'Downloading…' : 'DHF Artifacts'}
+          </button>
+          {dhfError && (
+            <div role="alert" className="absolute right-0 top-8 z-50 flex w-72 items-start gap-2 rounded border border-red-500/40 bg-red-950 px-2.5 py-2 text-xs text-red-200">
+              <span className="flex-1">{dhfError}</span>
+              <button type="button" aria-label="Dismiss DHF download error" onClick={() => setDhfError(null)} className="text-red-300 hover:text-red-100">×</button>
+            </div>
+          )}
+        </div>
         <div className="h-4 w-px bg-[var(--color-border)]" />
         <Link
           to="/settings"

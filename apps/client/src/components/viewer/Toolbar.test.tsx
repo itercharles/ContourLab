@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Toolbar from './Toolbar';
@@ -325,12 +325,100 @@ describe('Toolbar contour operations', () => {
     expect(screen.queryByRole('link', { name: /Submit or track an issue/i })).toBeNull();
   });
 
-  it('links DHF artifacts to the direct API download route', () => {
-    renderToolbar();
+  describe('DHF artifacts download', () => {
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
 
-    const link = screen.getByRole('link', { name: 'DHF Artifacts' });
-    expect(link.getAttribute('href')).toBe('/api/dhf-artifacts/latest');
-    expect(link.getAttribute('download')).toBe('');
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+      URL.createObjectURL = originalCreateObjectURL;
+      URL.revokeObjectURL = originalRevokeObjectURL;
+    });
+
+    const stubDownload = (headers: Record<string, string>) => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('zip', { status: 200, headers })));
+      Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:x'), revokeObjectURL: vi.fn() });
+      let saved = '';
+      const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+        saved = this.download;
+      });
+      return { click, saved: () => saved };
+    };
+
+    it('fetches the download route and saves the file with the header filename', async () => {
+      const { click, saved } = stubDownload({ 'Content-Disposition': 'attachment; filename=dhf-artifacts-run-7.zip' });
+      renderToolbar();
+
+      fireEvent.click(screen.getByRole('button', { name: 'DHF Artifacts' }));
+
+      await waitFor(() => expect(click).toHaveBeenCalled());
+      expect(fetch).toHaveBeenCalledWith('/api/dhf-artifacts/latest');
+      expect(saved()).toBe('dhf-artifacts-run-7.zip');
+    });
+
+    it('falls back to dhf-artifacts.zip when the header has no filename', async () => {
+      const { click, saved } = stubDownload({});
+      renderToolbar();
+
+      fireEvent.click(screen.getByRole('button', { name: 'DHF Artifacts' }));
+
+      await waitFor(() => expect(click).toHaveBeenCalled());
+      expect(saved()).toBe('dhf-artifacts.zip');
+    });
+
+    it('does not fail on a malformed encoded filename', async () => {
+      const { click, saved } = stubDownload({ 'Content-Disposition': "attachment; filename*=UTF-8''%E0%A4%A; filename=ok.zip" });
+      renderToolbar();
+
+      fireEvent.click(screen.getByRole('button', { name: 'DHF Artifacts' }));
+
+      await waitFor(() => expect(click).toHaveBeenCalled());
+      expect(saved()).toBe('ok.zip');
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('shows an alert when the request rejects', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+      renderToolbar();
+
+      fireEvent.click(screen.getByRole('button', { name: 'DHF Artifacts' }));
+
+      expect((await screen.findByRole('alert')).textContent).toContain('network down');
+    });
+
+    it('falls back to the HTTP status when the error body is not JSON', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('<html>bad</html>', { status: 502 })));
+      renderToolbar();
+
+      fireEvent.click(screen.getByRole('button', { name: 'DHF Artifacts' }));
+
+      expect((await screen.findByRole('alert')).textContent).toContain('HTTP 502');
+    });
+
+    it('shows the ProblemDetails detail when the download fails', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(
+        JSON.stringify({ detail: 'GITHUB_TOKEN environment variable is not configured.' }),
+        { status: 503 },
+      )));
+      renderToolbar();
+
+      fireEvent.click(screen.getByRole('button', { name: 'DHF Artifacts' }));
+
+      expect((await screen.findByRole('alert')).textContent).toContain('GITHUB_TOKEN');
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss DHF download error' }));
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('disables the button while downloading', async () => {
+      vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})));
+      renderToolbar();
+
+      fireEvent.click(screen.getByRole('button', { name: 'DHF Artifacts' }));
+
+      const busy = await screen.findByRole('button', { name: 'Downloading…' }) as HTMLButtonElement;
+      expect(busy.disabled).toBe(true);
+    });
   });
 
   it('saves active structure changes from the global title bar @links:SRS-018', async () => {

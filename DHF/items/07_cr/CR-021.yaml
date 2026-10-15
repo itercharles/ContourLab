@@ -1,0 +1,296 @@
+id: CR-021
+title: the "DVH artifacts" button doesn't work
+description: '### Requested change
+
+
+  the DHF can''t be downloaded when I click the "DHV artifacts" button on the home
+  page.
+
+
+  ### User value / justification
+
+
+  this is a bug.
+
+
+  ### Acceptance criteria
+
+
+  the dhf can be downloaded.
+
+
+  ### Change category
+
+
+  Bug
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/194'
+requested_by: itercharles
+priority: Medium
+status: develop
+target_version: 2026-W41
+type: CR
+triage_result:
+  verdict: approved
+  complexity: small
+  affected_subsystems:
+  - ApiBackend
+  - ViewportUI
+  related_crs:
+  - CR-020
+  notes: Bug fix to existing toolbar DHF download; no requirement covers it, so it
+    is fixed in code without DHF item changes.
+affected_items: []
+reviewed_items:
+- MODULE-006
+- MODULE-008
+- MODULE-009
+- SWDD-005
+- SYS-018
+- SWDD-007
+affected_risk_items:
+- RISK-008
+- RISK-010
+- RCM-012
+- RCM-014
+impact_analysis:
+  assumptions:
+  - 'Behaviour delta: clicking toolbar ''DHF Artifacts'' (A) yields no downloadable
+    DHF; (B) it downloads the latest DHF artifact zip. The CR text says ''DVH''/''DHV''
+    - read as ''DHF'', the button label.'
+  - 'Category: defect. The failing link in the chain (token, artifact lookup, or browser
+    handling of an error response) cannot be established from static code; the plan
+    starts with reproduction.'
+  - 'The DHF download is a maintainer/compliance convenience, not clinical use, patient
+    data, safety, intended use or labelling, so no requirement is added. Criterion
+    failed: affects clinical use/patient data/safety. Reviewer may overrule and add
+    a SYS/SRS.'
+  - 'Not a duplicate: the button exists but does not deliver the file.'
+  anchors:
+  - id: MODULE-006
+    evidence: apps/api/Controllers/DhfArtifactsController.cs and Services/GitHubService.cs
+      implement the endpoint (ApiBackend).
+  - id: MODULE-008
+    evidence: apps/client/src/components/viewer/Toolbar.tsx hosts the button; Toolbar.test.tsx
+      'links DHF artifacts...' has no @links tag.
+  unchanged:
+  - id: MODULE-006
+    reason: Responsibility unchanged; fix is inside existing endpoint code.
+  - id: MODULE-008
+    reason: Toolbar remains in ViewportUI; responsibility unchanged.
+  - id: MODULE-009
+    reason: 'Module responsibility is unchanged: CI uploads the `dhf-artifacts` artifact
+      as before and is consulted only as a possible cause (b). SWDD-007 (CI design)
+      was also read and needs no change.'
+  - id: SWDD-005
+    reason: Describes the health controller only; the DHF endpoint is not part of
+      any SRS, so no design decision recorded there moves.
+  - id: SYS-018
+    reason: Loopback-only publishing is unaffected; only outbound GitHub calls are
+      involved.
+  - id: SWDD-007
+    reason: Describes the smoke-test phases of the CI pipeline, not the artifact upload;
+      no design decision there moves.
+  created: []
+  dimensions:
+  - dimension: product
+    verdict: not_required
+    reason: No user workflow or need changes; the existing button should work.
+    items: []
+  - dimension: requirements
+    verdict: not_required
+    reason: 'No requirement covers the DHF download and it fails the clinical/safety/intended-use
+      scope criterion; no requirement meaning moves. Borderline: the CR''s acceptance
+      criterion is testable and CI publishes this artifact, so a maintainer wanting
+      requirement-level regression testing could instead add CRS/SYS/SRS; that is
+      noted in implementation_notes.'
+    items: []
+  - dimension: architecture
+    verdict: not_required
+    reason: Same client->API->GitHub data flow; local fix.
+    items:
+    - MODULE-006
+  - dimension: risk
+    verdict: not_required
+    reason: 'RISK-008 (silent failure) and its control RCM-012 are about image views;
+      the download error display follows the same principle but changes no hazard
+      or control. RISK-010/RCM-014 unaffected: no new inbound surface.'
+    items:
+    - RISK-008
+    - RCM-012
+    - RISK-010
+    - RCM-014
+  - dimension: soup
+    verdict: not_required
+    reason: No dependency added or changed; .NET tests go into the existing apps/api.tests
+      project with its current packages.
+    items: []
+  - dimension: test
+    verdict: not_required
+    reason: No requirement test point changes. Regression unit tests (Vitest and apps/api.tests)
+      are added without `@links` tags, intentionally outside requirement coverage.
+    items: []
+  - dimension: regulatory
+    verdict: not_required
+    reason: No intended use, labelling or UDI change.
+    items: []
+  - dimension: security
+    verdict: not_required
+    reason: No new endpoint, auth or data handling; token stays server-side. If the
+      fix is a token scope change it is a deployment configuration matter, kept out
+      of the repo.
+    items: []
+  - dimension: usability
+    verdict: required
+    reason: Download failure must be visible to the user instead of silent; adds busy
+      and error states to the toolbar button. Visual-only, no DHF item.
+    items:
+    - MODULE-008
+implementation_notes: '## Overview
+
+  The toolbar "DHF Artifacts" link (a plain `<a href="/api/dhf-artifacts/latest" download>`)
+  does not deliver the DHF: the user clicks it and gets no file. The API proxies the
+  `dhf-artifacts` zip of the latest successful push-to-main CI run from GitHub. This
+  CR makes the download work and makes any failure visible. The exact failing link
+  in the chain is not established from the code alone, so the plan has an unconditional
+  baseline (client button with visible errors, hardened artifact lookup) that needs
+  no reproduction, plus a manual maintainer diagnosis (step 1) that decides whether
+  a deployment config change is also needed.
+
+
+  ## Current State
+
+  - `apps/client/src/components/viewer/Toolbar.tsx` (~L480): `<a href={DHF_ARTIFACTS_URL}
+  download>` with const `DHF_ARTIFACTS_URL = ''/api/dhf-artifacts/latest''`. Test:
+  `Toolbar.test.tsx` ''links DHF artifacts to the direct API download route''.
+
+  - `apps/api/Controllers/DhfArtifactsController.cs`: `GET api/dhf-artifacts/latest`
+  calls `GitHubService.DownloadLatestDhfArtifactAsync`; maps GitHubArtifactNotFoundException
+  -> 404, InvalidOperationException (missing token) -> 503, HttpRequestException ->
+  502, all as ProblemDetails JSON.
+
+  - `apps/api/Services/GitHubService.cs`: needs `GITHUB_TOKEN` (deployed via `docker-compose.deploy.yml`
+  `GITHUB_TOKEN: ${ISSUES_TOKEN}`, from `scripts/deploy/deploy.sh` SECRETS_FILE);
+  lists runs of `ci-pipeline.yml` with `branch=main&event=push&status=success&exclude_pull_requests=true&per_page=20`,
+  finds a non-expired artifact named `dhf-artifacts` per run, then downloads `archive_download_url`
+  (GitHub answers 302 to a signed blob URL) into memory.
+
+  - `.github/workflows/ci-pipeline.yml` job `generate-artifacts` (main only, `needs:
+  [compliance]`) uploads `dhf-artifacts/` with name `dhf-artifacts`. The release build
+  step is `continue-on-error`, upload is `if: always()`.
+
+  - Because the link uses `download`, an error response (503/502/404 ProblemDetails)
+  is saved or discarded by the browser with no message in the app: the user only sees
+  "nothing happens".
+
+
+  ## Changes Required
+
+  - Unconditional baseline (needs no reproduction): the fetch-based button with visible
+  error/busy state in Toolbar.tsx, and server hardening in GitHubService that is correct
+  whichever cause applies (accept the newest unexpired `dhf-artifacts` artifact even
+  if the run''s overall conclusion is not `success`, specific 404/503 messages). Manual
+  diagnosis (no file change, maintainer): call the endpoint on the deployed API (127.0.0.1:4001)
+  and read the status/body. Likely causes to rule out in order: (a) `GITHUB_TOKEN`/`ISSUES_TOKEN`
+  unset or lacking `actions:read` scope (503/502); (b) no successful push-to-main
+  run in the last 20 that contains a non-expired `dhf-artifacts` (404) - e.g. `status=success`
+  filter excludes runs where any job failed, or the generate-artifacts job was skipped/failed;
+  (c) artifact empty or download redirect failing; (d) browser handling of `download`
+  on the response.
+
+  - `apps/api/Services/GitHubService.cs` (unconditional): do not require whole-run
+  `status=success`; take the newest push-to-main run of `ci-pipeline.yml` (up to 20)
+  that has an unexpired `dhf-artifacts` artifact; keep the 404 message saying no unexpired
+  artifact exists and the 503 message saying the token is not configured; make redirect/auth
+  handling correct (the Authorization header must not be forwarded to the blob URL);
+  stream rather than buffer. Modify existing.
+
+  - `apps/client/src/components/viewer/Toolbar.tsx`: replace the bare download anchor
+  with a button that `fetch`es `/api/dhf-artifacts/latest`, on `response.ok` saves
+  the blob via a temporary object URL using the filename from `Content-Disposition`
+  (fallback `dhf-artifacts.zip`), and on failure shows a visible, dismissible error
+  with the ProblemDetails `detail` (RISK-008 pattern: no silent failure). Show a busy
+  state while downloading. Tailwind only, `text-xs`, no `rounded-xl`; invoke /ux-design
+  first. Modify existing.
+
+  - Deployment/config: if cause (a), document the required token scope (`actions:
+  read` on the repo) next to `ISSUES_TOKEN` in `scripts/deploy/deploy.sh` header /
+  README. Config change only, no secret in the repo.
+
+  - No shared-types change, no new dependency, no new endpoint, no DHF item change.
+
+
+  ## Implementation Steps
+
+  Steps 2-6 are unconditional and need no token, network or deployed API; a CI `build
+  code` session can complete them all. Step 1 is a maintainer/manual diagnosis that
+  decides only whether a config change is also needed.
+
+  1. Diagnose (manual, by a maintainer with the deployed API and token; skip in CI):
+  hit `/api/dhf-artifacts/latest` against 127.0.0.1:4001 with curl; record status
+  and body; identify the cause among (a)-(d). If the cause cannot be reproduced in
+  the implementing session, do not guess: ship steps 2-6, and list in the PR "manual
+  testing remaining" that the maintainer must confirm the token scope (`actions: read`)
+  and that an unexpired `dhf-artifacts` artifact exists on a recent push-to-main run.
+  The visible error from step 4 will then name the remaining cause.
+
+  2. Add tests to the existing project `apps/api.tests/ContourLab.Api.Tests.csproj`
+  (alongside `HealthEndpointTests.cs`; reuse its existing test dependencies, add no
+  new package) for `GitHubService`/`DhfArtifactsController` with a fake `IHttpClientFactory`/`HttpMessageHandler`:
+  success path returns zip bytes; no run / expired artifact -> GitHubArtifactNotFoundException;
+  non-2xx -> HttpRequestException.
+
+  3. Apply the `GitHubService` change described under Changes Required (newest unexpired
+  `dhf-artifacts` artifact regardless of the run''s overall conclusion, distinct 404/503
+  messages, correct redirect handling). A workflow or deployment config change (e.g.
+  token scope documentation) is made only if the maintainer''s step 1 diagnosis finds
+  that cause; otherwise leave `.github/workflows/ci-pipeline.yml` and deploy config
+  untouched.
+
+  4. Replace the anchor in Toolbar.tsx with the fetch-based button and error display;
+  update `Toolbar.test.tsx` (the old ''download'' attribute assertion is replaced).
+
+  5. Run `pnpm --filter @contourlab/client test`, lint, typecheck, `dotnet build apps/api/api.csproj
+  --configuration Release`, `medharness --dhf DHF verify dhf`.
+
+  6. Manually click the button on the deployed build and confirm a zip is saved; unset
+  the token in a dev run and confirm the visible error.
+
+
+  ## Edge Cases & Constraints
+
+  - The DHF zip is a large artifact: avoid freezing the UI; show busy state, prevent
+  double clicks.
+
+  - Error text must come from ProblemDetails `detail`; never echo the token. GitHub
+  response bodies are already passed to `detail` (502) - keep them free of credentials.
+
+  - Loopback-only deployment (RCM-014/SYS-018) must stay untouched; the API only makes
+  outbound calls to api.github.com.
+
+  - GitHub artifacts expire (default 90 days); 404 message must tell the user no unexpired
+  artifact exists.
+
+  - Scope decision: the DHF download is a maintainer/compliance convenience, not clinical
+  use, patient data or safety, so it is deliberately not given a requirement (see
+  impact_analysis); reviewer may overrule. Alternative if the maintainer wants the
+  download regression-tested as a requirement: add CRS -> SYS -> SRS (-> SWDD on MODULE-006/MODULE-008)
+  with `@links` tags on the tests below; that would be a re-plan at design stage,
+  not part of this CR as written.
+
+
+  ## Tests
+
+  - Unit (Vitest, Toolbar.test.tsx): click calls fetch on `/api/dhf-artifacts/latest`;
+  ok response triggers a save with the header filename; non-ok response renders the
+  ProblemDetails detail; busy state disables the button. No requirement IDs (none
+  cover this).
+
+  - Unit (.NET, `apps/api.tests`): GitHubService and DhfArtifactsController with fake
+  handler as in step 2. These carry no `@links` tag by design (no requirement covers
+  the download), so they do not enter requirement coverage.
+
+  - Manual: deployed download of the real artifact; missing-token error visible.
+
+  '
