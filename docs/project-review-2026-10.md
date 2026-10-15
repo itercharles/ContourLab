@@ -65,9 +65,9 @@ suspected findings (S1 to S5) were not separately verified.
 
 ## What needs a human
 
-1. **`ACTIONS_PAT` has most likely expired** (last updated 2026-09-13). Until it is renewed the change-request
-   automation (`cr-complete`, `cr-lifecycle`, `issue-to-cr`) fails, and CR-019 stays in `develop` instead of
-   `completed`. After renewal, re-run the failed "CR completion" run for #167.
+1. **`ACTIONS_PAT` was renewed on 2026-10-15** (the old one had expired, which stopped `cr-complete`,
+   `cr-lifecycle` and `issue-to-cr`). The failed CR completion run for #167 was re-run and opened #183, which moves
+   CR-019 to `completed` once merged. The new token expires in time: set a reminder to renew it.
 2. **SOUP assessments are my drafts** (#162): manufacturer, risk rating, safety class and verification method of
    35 items, written from how each package is used. The manufacturer names come from package ownership and were
    not checked against vendors.
