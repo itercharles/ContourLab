@@ -1,22 +1,15 @@
-import { Component, useCallback, useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { MPRController, VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useUIStore } from '../../core/store/uiStore';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
+import ContourErrorBoundary from './ContourErrorBoundary';
 import ContourOverlay from './ContourOverlay';
 import OrientationMarkers from './OrientationMarkers';
 import ToolOptions from './ToolOptions';
 import ViewportContextMenu from './ViewportContextMenu';
 import ThreeDViewport from './ThreeDViewport';
-
-class ContourErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
-  componentDidCatch(err: unknown) { console.error('ContourOverlay error:', err); }
-  render() { return this.state.failed ? null : this.props.children; }
-}
 
 interface ViewportPanelProps {
   id: string;
@@ -107,7 +100,7 @@ function ViewportPanel({ id, label, orientation, onReady }: ViewportPanelProps) 
         data-viewport-id={id}
         className="w-full h-full"
       />
-      <ContourErrorBoundary>
+      <ContourErrorBoundary label={label}>
         <ContourOverlay
           viewportId={id}
           viewportElement={viewportElement}

@@ -1,12 +1,14 @@
 id: RCM-012
 title: Visible error state for an empty or failed view
-content: If the contour overlay fails, the view shows a message with a retry instead
-  of hiding the contours; a view that has no image data says so instead of showing
-  grey.
+content: If the contour overlay of a planar view fails, the view shows a message saying
+  that contours cannot be shown and that structures that exist are hidden, with a
+  Retry control, instead of showing nothing. A view without image data after a layout
+  change is covered by the end-to-end tests of SYS-002 (T4, T5) that run against real
+  DICOM in CI.
 mitigates:
 - RISK-008
 implements:
 - SYS-002
 control_type: Information for Safety
-implementation_status: Planned
+implementation_status: Implemented
 type: RCM

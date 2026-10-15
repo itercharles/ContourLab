@@ -10,7 +10,7 @@ as the reviewer reported them on 2026-10-12; **where each one stands now is in t
 
 ## Where things stand (2026-10-15)
 
-Of the 24 reported findings, 13 are fixed, 4 are partly done and 7 are not started (details below).
+Of the 24 reported findings, 14 are fixed, 4 are partly done and 6 are not started (details below).
 All the fixes are merged, `main` is green and deployed, and no pull request is open. The reviewer's
 suspected findings (S1 to S5) were not separately verified.
 
@@ -43,7 +43,7 @@ suspected findings (S1 to S5) were not separately verified.
 | 14 | Any reviewer can trigger code generation | fixed | #171 (Claude Code CLI is still installed unpinned in `cr-agent-setup`) |
 | 15 | SOUP register covers only client npm packages | partly | #155, #162 (purposes and ratings for 35 npm and Python items); Orthanc, nginx, .NET and the Python service stack are missing, and the build patches installed codec files |
 | 16 | Risk file too thin | fixed | #173, then #176 to #179; 10 risks with controls (AI error is not among them, see 4) |
-| 17 | A crashed contour overlay hides contours with no warning | **not started** | RCM-012 is planned |
+| 17 | A crashed contour overlay hides contours with no warning | fixed | the view shows a message and a Retry control (RCM-012, SYS-002 T7); a view without image data is covered by the real-DICOM tests |
 | 18 | No orientation markers or patient position | fixed | #176 (the 3D view has no markers) |
 | 19 | Interpolation twists outlines, ignores extra contours | fixed | #180 |
 | 20 | RTSTRUCT export writes made-up identifiers | fixed | #179 (showing the destination before a push is not done) |
@@ -75,8 +75,9 @@ suspected findings (S1 to S5) were not separately verified.
    estimates; acceptability follows one rule, applied to the residual rating: S4 or S5 with P3 or worse is
    Unacceptable; S4 or S5 with P2, or S3 with P3 or worse, is ALARP; otherwise Acceptable. Two were re-rated after
    their controls were built and need confirming: **RISK-003** (volume error, ALARP to Acceptable) and
-   **RISK-005** (left/right confusion, Unacceptable to ALARP). Today: Unacceptable: RISK-008 (display fails
-   silently; its visible-error-state control is only planned). ALARP: RISK-002, RISK-004, RISK-005, RISK-010.
+   **RISK-005** (left/right confusion, Unacceptable to ALARP). **RISK-008** (display fails silently) was re-rated
+   Unacceptable to ALARP when its visible-error-state control was built; confirm that too. Today nothing is rated
+   Unacceptable. ALARP: RISK-002, RISK-004, RISK-005, RISK-008, RISK-010.
 4. **Three requirements verified by inspection need a human sign-off record** (CRS-015, SYS-018, SRS-035,
    from #177): MedHarness 0.61 warns about each. The evidence is the configuration plus the CI check that
    enforces it; the record is a person's signature.
@@ -100,12 +101,11 @@ suspected findings (S1 to S5) were not separately verified.
 1. **AI auto-contour under design control** (findings 4, 5, 6, 15): requirements, a risk and its controls, SOUP for
    TotalSegmentator and the Python stack, pinned Python dependencies, tests run in CI, AI origin recorded in the
    exported structure set and a review step before a push. It is the largest remaining gap and should go through the
-   change-request pipeline, which needs the renewed token.
-2. **A visible error state for a blank or failed view** (finding 17, RCM-012): the only risk still rated Unacceptable.
-3. **Show the patient and series a push will be filed under, before it is sent** (finding 20): the remaining part of RISK-004.
-4. **Authentication, roles and an audit trail** (findings 12 and 13): only needed if the system is ever used from more
+   change-request pipeline.
+2. **Show the patient and series a push will be filed under, before it is sent** (finding 20): the remaining part of RISK-004.
+3. **Authentication, roles and an audit trail** (findings 12 and 13): only needed if the system is ever used from more
    than one computer; until then loopback-only is the control.
-5. Split SRS-010 and annotate the unlinked tests (23); limits for the auto-contour service (22); a decoder test for
+4. Split SRS-010 and annotate the unlinked tests (23); limits for the auto-contour service (22); a decoder test for
    HTJ2K; `chmod 777`, the `latest` Orthanc image and backups (13); pin the Claude Code CLI; break up
    `StructurePanel.tsx` (24).
 

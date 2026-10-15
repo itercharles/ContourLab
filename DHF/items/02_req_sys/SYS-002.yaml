@@ -40,6 +40,12 @@ testing: 'T1: Given a loaded series, three viewport panels labelled axial, sagit
   position, and the markers agree with where known anatomy is drawn: the marker at
   the patient''s left and anterior, the spine at the posterior and the superior end.
 
+
+  T7: Given the contour overlay of a planar view fails while it draws, that view shows
+  a message that contours cannot be shown and that structures that exist are hidden,
+  with a Retry control; pressing Retry draws the overlay again, and the message stays
+  if it fails again.
+
   '
 satisfies:
   - CRS-001
@@ -51,4 +57,6 @@ verification_criteria: 'With a series loaded, three viewport panels labelled axi
   is maximized and the layout restored, and the maximized view shows image data. T6:
   for each of the four patient positions the markers read A/P/R/L (axial), S/I/R/L
   (coronal) and S/I/A/P (sagittal), the patient position is shown, and the left-anterior
-  marker, the spine and the superior end are drawn where the letters say.'
+  marker, the spine and the superior end are drawn where the letters say. T7: when
+  the contour overlay of a view fails, the view says that contours cannot be shown,
+  and Retry draws them again.'
