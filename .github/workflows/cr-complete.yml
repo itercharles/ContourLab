@@ -1,6 +1,11 @@
 name: Complete CR In DHF
 
-run-name: "CR completion | #${{ github.event.pull_request.number }}"
+run-name: >-
+  ${{ startsWith(github.event.pull_request.head.ref, 'feat/CR-') && github.event.pull_request.merged == true
+    && format('{0} · merged, opening the close-out PR', github.event.pull_request.head.ref)
+    || startsWith(github.event.pull_request.head.ref, 'chore/complete-CR-') && github.event.pull_request.merged == true
+    && format('{0} · close-out merged, CR finished', github.event.pull_request.head.ref)
+    || format('PR #{0} · not a CR, ignored', github.event.pull_request.number) }}
 
 on:
   pull_request:
@@ -17,6 +22,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: read
     steps:
       - name: Check out repo
         uses: actions/checkout@v5
@@ -47,7 +53,100 @@ jobs:
             git checkout -b "$BRANCH_NAME"
             git commit -m "chore: complete $CR_ID"
             git push origin "$BRANCH_NAME"
-            gh pr create --base main --head "$BRANCH_NAME" \
+            CLOSEOUT_URL=$(gh pr create --base main --head "$BRANCH_NAME" \
               --title "chore: complete $CR_ID" \
-              --body "Lifecycle transition to completed for $CR_ID, merged via PR #${{ github.event.pull_request.number }}."
+              --body "Lifecycle transition to completed for $CR_ID, merged via PR #${{ github.event.pull_request.number }}. **Merge this PR to finish the CR.**")
+            echo "closeout_url=$CLOSEOUT_URL" >> "$GITHUB_OUTPUT"
           fi
+          echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
+      - name: "Show progress: the close-out PR is being checked"
+        if: steps.complete.outputs.closeout_url != ''
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ github.event.pull_request.number }}
+          cr: ${{ steps.complete.outputs.cr_id }}
+          stage: closeout-checking
+
+      # The merge itself stays with the maintainer. This only waits for the close-out PR's checks, so the
+      # notification says "merge it" when it can be merged, not before.
+      - name: Wait for the close-out PR's checks
+        id: checks
+        if: steps.complete.outputs.closeout_url != ''
+        timeout-minutes: 45
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          CR_ID: ${{ steps.complete.outputs.cr_id }}
+        run: |
+          set -uo pipefail
+          BRANCH="chore/complete-$CR_ID"
+          RUN_ID=""
+          for _ in $(seq 1 18); do
+            RUN_ID=$(gh run list --repo "$REPO" --workflow ci-pipeline.yml --branch "$BRANCH" --event pull_request \
+              --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)
+            [ -n "$RUN_ID" ] && break
+            sleep 10
+          done
+          if [ -z "$RUN_ID" ]; then
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+            echo "reason=no CI run started on the close-out PR" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if gh run watch "$RUN_ID" --repo "$REPO" --exit-status > /dev/null; then
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+            echo "reason=CI failed on the close-out PR (run $RUN_ID)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "Show progress: the close-out PR is ready to merge"
+        if: steps.checks.outputs.passed == 'true'
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ github.event.pull_request.number }}
+          cr: ${{ steps.complete.outputs.cr_id }}
+          stage: closeout
+          detail: "The close-out PR: ${{ steps.complete.outputs.closeout_url }}"
+
+      - name: "Show progress: the close-out PR's checks did not pass"
+        if: steps.checks.outputs.passed == 'false'
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ github.event.pull_request.number }}
+          cr: ${{ steps.complete.outputs.cr_id }}
+          stage: failed
+          failed-at: '6'
+          detail: "${{ steps.checks.outputs.reason }}. The close-out PR: ${{ steps.complete.outputs.closeout_url }}"
+
+  # The close-out PR is the last step of a CR; when it merges, say so on the CR's own PR.
+  close-out-merged:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'chore/complete-CR-')
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Find the CR's own PR
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+' || true)
+          PR=$(gh pr list --repo "${{ github.repository }}" --head "feat/$CR_ID" --state merged --json number --jq '.[0].number // empty' 2>/dev/null || true)
+          echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
+          echo "pr=$PR" >> "$GITHUB_OUTPUT"
+
+      - name: "Show progress: the CR is complete"
+        if: steps.find.outputs.pr != ''
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ steps.find.outputs.pr }}
+          cr: ${{ steps.find.outputs.cr_id }}
+          stage: done

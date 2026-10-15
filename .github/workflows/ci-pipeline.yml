@@ -1,6 +1,10 @@
 name: ContourLab Product CI/CD
 
-run-name: Product CI/CD | ${{ github.event_name }} | ${{ github.event.pull_request.title || github.event.head_commit.message || github.ref_name }}
+# A push shows its branch, not its commit message: the message is several lines and fills the list.
+run-name: >-
+  ${{ github.event_name == 'pull_request' && format('CI · PR #{0} · {1}', github.event.pull_request.number, github.event.pull_request.title)
+    || github.event_name == 'push' && format('CI · push to {0}', github.ref_name)
+    || format('CI · manual run on {0}', github.ref_name) }}
 
 on:
   push:
@@ -37,6 +41,12 @@ jobs:
       # commit step, against a scratch copy of the DHF and a local git remote.
       - name: Run CR workflow tests
         run: python -m unittest discover -s tests/workflow -v
+
+      # Syntax and expression errors in the workflow files themselves (a misspelled context, a bad
+      # run-name, a step that references a missing id), and shellcheck on their scripts. SC2129 is a
+      # style note about grouped redirects, not a defect.
+      - name: Lint workflows (actionlint)
+        run: docker run --rm -v "$PWD":/repo --workdir /repo rhysd/actionlint:1.7.12 -color -ignore 'SC2129'
 
   # ── CHANGE DETECTION ─────────────────────────────────────────────────────────
   # Detects which workspaces changed so downstream jobs can skip irrelevant work.

@@ -6,6 +6,37 @@ This document defines the CR-driven workflow for ContourLab. All DHF content —
 CR items, requirements, risks, specs — lives in this repository under `DHF/`
 and `docs/cr-specs/`.
 
+## What you do, and when
+
+A CR has six steps. You act at four of them; the rest is automatic. The **progress checklist** comment
+on the CR's PR shows the current step and, when it is your turn, says what to do. It is edited in
+place; when it becomes your turn a short new comment is added as well, because only a new comment
+sends a notification.
+
+| # | Step | Who | What happens | What you do |
+|---|------|-----|--------------|-------------|
+| 1 | Intake and design | automatic | You set a milestone on the issue. `CR Issue Intake` makes the CR, the `feat/CR-NNN` branch and a draft PR, then generates the design and posts its summary and the implementation plan. | Nothing. |
+| 2 | Design review | **you** | The PR is at `cr:stage/design`. | Read the DHF changes and the plan. **Approve** to continue, or **Request changes** with comments to have the design revised. |
+| 3 | Code and CI | automatic | `CR lifecycle` generates the code, pushes it and CI runs the full test set. | Nothing; wait for CI to be green. |
+| 4 | Code review | **you** | The PR is at `cr:stage/code`. | Read the code. **Approve**, or **Request changes** with comments. A new commit dismisses an earlier approval, so approve the latest one. |
+| 5 | Merge | **you** | `ready to merge` is shown. | **Squash-merge** the PR. |
+| 6 | Close-out | **you** | `CR completion` opens a second PR, `chore: complete CR-NNN`, that moves the CR to `completed` (it changes one line of the CR file), waits for its checks, then tells you it is ready. | **Merge that PR** when the checklist says so: one click, no review needed. The CR is finished when you do. |
+
+A failure shows as a red step in the checklist, with what failed and a link to the run.
+
+### What the run titles in the Actions list mean
+
+| Title | Meaning |
+|-------|---------|
+| `CR Issue Intake \| #N \| issue title` | Step 1 for issue #N. |
+| `feat/CR-NNN · design approved` / `code approved` | Your approval was received; code generation or "ready to merge" follows. |
+| `feat/CR-NNN · design changes requested` / `code changes requested` | The design or code is being revised from your comments. |
+| `feat/CR-NNN · comment, nothing to do` | A plain review comment: nothing starts. |
+| `feat/CR-NNN · merged, opening the close-out PR` | Step 5 done; step 6's PR is being opened. |
+| `feat/CR-NNN · close-out merged, CR finished` | The last step. |
+| `PR #N · not a CR, ignored` | Any other PR closing or being reviewed: the lifecycle and completion workflows start on every PR and skip the ones that are not CRs. These rows are expected noise. |
+| `CI · PR #N · title`, `CI · push to <branch>` | The product CI/CD pipeline. |
+
 ## Sources of Truth
 
 - `DHF/items/` — CR lifecycle, requirement/risk/design items
@@ -61,7 +92,7 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
 
 - Trigger: reviewer **approves** PR at `cr:stage/code`
 - Workflow: `cr-lifecycle.yml` (`code-approved` job)
-- Output: "All stages complete — ready to merge" comment posted; human merges the PR
+- Output: the progress checklist moves to step 5 ("Merge this PR") and a notification comment is added; human merges the PR
 - If `changes_requested`: `revise-code` re-runs `develop-cr` and pushes; re-approve to continue
 
 ### Post-Merge
@@ -71,6 +102,10 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
   1. CR transitioned to `completed` in `DHF/items/09_cr/`
   2. Closure gate checks DHF traceability completeness and test evidence
   3. CI pipeline triggered on main (squash merges can inherit `[skip ci]` from lifecycle commits)
+  4. The CR's progress checklist moves to step 6 and links the close-out PR; once the close-out PR's
+     checks have passed it says so and notifies you (or shows what failed). The pipeline never merges
+     anything itself. When you merge the close-out PR (`close-out-merged` job) the checklist shows the
+     CR as complete
 
 ### Cancel
 
