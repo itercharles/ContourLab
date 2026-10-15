@@ -200,6 +200,12 @@ jobs:
             exit 1
           fi
           git checkout "origin/$BRANCH" -- "$CR_FILE"
+          # A CR approved at the code stage is already recorded as completed on its branch, and completed
+          # has no way out. Closing that PR unmerged leaves nothing on main, so there is nothing to cancel.
+          if [ "$(medharness --dhf DHF item get "$CR_ID" | jq -r '.status // ""')" = "completed" ]; then
+            echo "$CR_ID is already recorded as completed on $BRANCH and was never merged: nothing to cancel on main."
+            exit 0
+          fi
           medharness --dhf DHF item transition \
             "$CR_ID" cancelled
           git add DHF/
@@ -684,16 +690,96 @@ jobs:
   code-approved:
     needs: [detect]
     if: always() && needs.detect.result == 'success' && needs.detect.outputs.action == 'code-approved'
-    name: Code approved, ready to merge
+    name: Code approved, record the CR as completed
     runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
+      contents: write
       pull-requests: write
+      actions: read
     steps:
+      # The PAT, not the workflow token: a commit pushed with the workflow token starts no CI run.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ACTIONS_PAT }}
+          ref: ${{ needs.detect.outputs.branch }}
+      - uses: ./.github/actions/medharness-setup
+
+      - name: "Show progress: completing the CR"
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ needs.detect.outputs.pr_number }}
+          cr: ${{ needs.detect.outputs.cr_id }}
+          stage: completing
+
+      # Approval is the point at which the maintainer says the code is done, so the CR is recorded as
+      # completed here, on the branch, and merges with the code. `completed` is reached only through the
+      # lifecycle (`item transition` refuses it when the CR record is incomplete), and CI's closure gate
+      # (verify completion) has already passed on this code.
+      - name: Record the CR as completed on the branch
+        id: complete
+        env:
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ "$(medharness --dhf DHF item get "$CR_ID" | jq -r '.status // ""')" = "completed" ]; then
+            echo "$CR_ID is already completed on this branch."
+          else
+            medharness --dhf DHF item transition "$CR_ID" completed
+            git add DHF/
+            git commit -m "chore: complete $CR_ID" -m "Recorded on the branch when the code was approved, so it merges with the code and needs no PR of its own."
+            git push
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for CI on the completion commit
+        id: ci
+        timeout-minutes: 45
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ needs.detect.outputs.branch }}
+          HEAD_SHA: ${{ steps.complete.outputs.sha }}
+        run: |
+          set -uo pipefail
+          RUN_ID=""
+          for _ in $(seq 1 18); do
+            RUN_ID=$(gh run list --repo "$REPO" --workflow ci-pipeline.yml --branch "$BRANCH" --event pull_request \
+              --limit 10 --json databaseId,headSha --jq ".[] | select(.headSha == \"$HEAD_SHA\") | .databaseId" 2>/dev/null | head -n 1 || true)
+            [ -n "$RUN_ID" ] && break
+            sleep 10
+          done
+          if [ -z "$RUN_ID" ]; then
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+            echo "reason=no CI run started on the completion commit" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if gh run watch "$RUN_ID" --repo "$REPO" --exit-status > /dev/null; then
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+            echo "reason=CI failed on the completion commit (run $RUN_ID)" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: "Show progress: ready to merge"
+        if: steps.ci.outputs.passed == 'true'
         continue-on-error: true
         uses: ./.github/actions/cr-progress
         with:
           pr: ${{ needs.detect.outputs.pr_number }}
           cr: ${{ needs.detect.outputs.cr_id }}
           stage: merge
+
+      - name: "Show progress: completing the CR failed"
+        if: failure() || steps.ci.outputs.passed == 'false'
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ needs.detect.outputs.pr_number }}
+          cr: ${{ needs.detect.outputs.cr_id }}
+          stage: failed
+          failed-at: '5'
+          detail: ${{ steps.ci.outputs.reason || 'Recording the CR as completed failed. See the run link below; nothing was merged.' }}

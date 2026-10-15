@@ -17,7 +17,7 @@ sys.path.insert(0, str(ACTION))
 import render  # noqa: E402
 
 USER_STAGES = ["design-review", "code-review", "merge", "closeout"]
-AUTOMATIC_STAGES = ["design-generating", "design-revising", "code-generating", "code-revising", "closeout-checking"]
+AUTOMATIC_STAGES = ["design-generating", "design-revising", "code-generating", "code-revising", "completing", "closeout-checking"]
 
 
 class Rendering(unittest.TestCase):

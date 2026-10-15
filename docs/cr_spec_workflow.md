@@ -8,7 +8,7 @@ and `docs/cr-specs/`.
 
 ## What you do, and when
 
-A CR has six steps. You act at four of them; the rest is automatic. The **progress checklist** comment
+A CR has six steps. You act at three of them; the rest is automatic. The **progress checklist** comment
 on the CR's PR shows the current step and, when it is your turn, says what to do. It is edited in
 place; when it becomes your turn a short new comment is added as well, because only a new comment
 sends a notification.
@@ -18,11 +18,18 @@ sends a notification.
 | 1 | Intake and design | automatic | You set a milestone on the issue. `CR Issue Intake` makes the CR, the `feat/CR-NNN` branch and a draft PR, then generates the design and posts its summary and the implementation plan. | Nothing. |
 | 2 | Design review | **you** | The PR is at `cr:stage/design`. | Read the DHF changes and the plan. **Approve** to continue, or **Request changes** with comments to have the design revised. |
 | 3 | Code and CI | automatic | `CR lifecycle` generates the code, pushes it and CI runs the full test set. | Nothing; wait for CI to be green. |
-| 4 | Code review | **you** | The PR is at `cr:stage/code`. | Read the code. **Approve**, or **Request changes** with comments. A new commit dismisses an earlier approval, so approve the latest one. |
-| 5 | Merge | **you** | `ready to merge` is shown. | **Squash-merge** the PR. |
-| 6 | Close-out | **you** | `CR completion` opens a second PR, `chore: complete CR-NNN`, that moves the CR to `completed` (it changes one line of the CR file), waits for its checks, then tells you it is ready. | **Merge that PR** when the checklist says so: one click, no review needed. The CR is finished when you do. |
+| 4 | Code review | **you** | The PR is at `cr:stage/code`. | Read the code. **Approve**, or **Request changes** with comments. Approving is the last point at which changes can be requested. |
+| 5 | Complete the CR | automatic | Your approval records the CR as `completed` in a commit on the branch (one line of the CR file changes) and CI runs again. | Nothing; wait for the checklist to say it is ready. |
+| 6 | Merge | **you** | `CR lifecycle` says the CR is completed and CI passed. | **Squash-merge** the PR. The completion commit merges with the code, so there is no second PR. |
+
+You act at three points: approve the design, approve the code, merge. Step 5 pushes a commit, which makes
+GitHub dismiss your approval; the PR may show as not approved, and you merge it with your admin bypass.
 
 A failure shows as a red step in the checklist, with what failed and a link to the run.
+
+**If a CR PR is merged without the code approval** (the checklist's step 5 never ran), the CR is still
+`develop` on `main`. `CR completion` then falls back to the old path: it opens `chore: complete CR-NNN`,
+waits for its checks and notifies you to merge it. That is the only case in which a second PR appears.
 
 ### What the run titles in the Actions list mean
 
@@ -32,8 +39,8 @@ A failure shows as a red step in the checklist, with what failed and a link to t
 | `feat/CR-NNN · design approved` / `code approved` | Your approval was received; code generation or "ready to merge" follows. |
 | `feat/CR-NNN · design changes requested` / `code changes requested` | The design or code is being revised from your comments. |
 | `feat/CR-NNN · comment, nothing to do` | A plain review comment: nothing starts. |
-| `feat/CR-NNN · merged, opening the close-out PR` | Step 5 done; step 6's PR is being opened. |
-| `feat/CR-NNN · close-out merged, CR finished` | The last step. |
+| `feat/CR-NNN · merged, checking the CR is recorded as completed` | The merge happened; this either marks the CR finished or, if it was merged without the code approval, opens the fallback close-out PR. |
+| `feat/CR-NNN · close-out merged, CR finished` | Only after a fallback close-out PR. |
 | `PR #N · not a CR, ignored` | Any other PR closing or being reviewed: the lifecycle and completion workflows start on every PR and skip the ones that are not CRs. These rows are expected noise. |
 | `CI · PR #N · title`, `CI · push to main` | The product CI/CD pipeline. A branch with a PR is built once, by the PR; only `main` is also built on push. |
 
@@ -92,26 +99,32 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
 
 - Trigger: reviewer **approves** PR at `cr:stage/code`
 - Workflow: `cr-lifecycle.yml` (`code-approved` job)
-- Output: the progress checklist moves to step 5 ("Merge this PR") and a notification comment is added; human merges the PR
-- If `changes_requested`: `revise-code` re-runs `develop-cr` and pushes; re-approve to continue
+- Steps:
+  1. The CR is moved to `completed` with `medharness item transition` (which refuses it when the CR record is
+     incomplete) and committed and pushed to the branch with the PAT, so CI runs on it. CI's closure gate
+     (`verify completion`) has already passed on the code being approved.
+  2. The job waits for the CI run of that commit.
+  3. The progress checklist moves to step 6 ("Merge this PR") and a notification comment is added; human merges the PR
+- If `changes_requested`: `revise-code` re-runs `develop-cr` and pushes; re-approve to continue.
+  After the approval the CR is `completed`, which the AI stages refuse to work on, so a change wanted after
+  approval needs a new CR
 
 ### Post-Merge
 
 - Workflow: `cr-complete.yml`
-- Steps:
-  1. CR transitioned to `completed` in `DHF/items/09_cr/`
-  2. Closure gate checks DHF traceability completeness and test evidence
-  3. CI pipeline triggered on main (squash merges can inherit `[skip ci]` from lifecycle commits)
-  4. The CR's progress checklist moves to step 6 and links the close-out PR; once the close-out PR's
-     checks have passed it says so and notifies you (or shows what failed). The pipeline never merges
-     anything itself. When you merge the close-out PR (`close-out-merged` job) the checklist shows the
-     CR as complete
+- If the CR is already `completed` on the merged branch (the normal case, see Stage 2): the progress checklist
+  is marked complete and nothing else happens.
+- Otherwise (merged without the code approval), the fallback:
+  1. CR transitioned to `completed`, committed to `chore/complete-CR-NNN` and a PR opened with the PAT
+  2. The job waits for that PR's CI; the checklist then says "merge it" with a notification (or shows what failed)
+  3. When you merge it (`close-out-merged` job) the checklist shows the CR as complete
+- The pipeline never merges anything itself.
 
 ### Cancel
 
 - Trigger: PR closed without merging (any stage)
 - Workflow: `cr-lifecycle.yml`
-- Output: CR YAML checked out from main, transitioned to `cancelled`, committed and pushed
+- Output: CR YAML checked out from the branch, transitioned to `cancelled`, committed and pushed to `chore/cancel-CR-NNN`, with a PR. A CR already `completed` on its branch (approved at the code stage, then closed unmerged) is not cancelled: `completed` has no way out, and nothing of it reached `main`
 
 ## State Model
 

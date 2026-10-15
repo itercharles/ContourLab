@@ -114,7 +114,7 @@ jobs:
             echo "Closes #${{ github.event.issue.number }}"
             echo ""
             echo "**How this CR moves.** A progress checklist comment on this PR shows the six steps, which one is current and, when it is your turn, what to do."
-            echo "You act at four points: approve the design, approve the code, merge this PR, merge the close-out PR. Everything else is automatic."
+            echo "You act at three points: approve the design, approve the code, merge this PR. Everything else is automatic, including recording the CR as completed."
           } > /tmp/pr-body.md
           PR_URL=$(gh pr view "$BRANCH" --json url,state -q 'select(.state=="OPEN") | .url' 2>/dev/null || true)
           if [ -z "$PR_URL" ]; then
