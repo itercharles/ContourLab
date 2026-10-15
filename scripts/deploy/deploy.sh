@@ -18,10 +18,11 @@
 #                            docker-compose.deploy.yml.
 #
 # Behaviour:
-#   1. Resolve the persistent DICOM data dir; chmod 777 so the Orthanc
-#      container can write regardless of which UID it runs as.
+#   1. Resolve the persistent DICOM data dir, readable by its owner only (the Orthanc container runs
+#      as root, which can write to it whatever its mode).
 #   2. Keep the running Orthanc container untouched when its image matches
-#      what the compose file requests. Otherwise (re)create it.
+#      what the compose file requests. Otherwise back up its data directory
+#      (scripts/deploy/backup-orthanc.sh) and then (re)create it.
 #   3. Persist ISSUES_TOKEN to SECRETS_FILE if provided.
 #   4. `docker compose up -d --build --no-deps api client` to rebuild the
 #      application containers.
@@ -48,7 +49,7 @@ fi
 
 # 1. Persistent DICOM data dir
 mkdir -p "$CONTOURLAB_ORTHANC_DATA_DIR"
-chmod 777 "$CONTOURLAB_ORTHANC_DATA_DIR"
+chmod 700 "$CONTOURLAB_ORTHANC_DATA_DIR"
 echo "Using CONTOURLAB_ORTHANC_DATA_DIR=$CONTOURLAB_ORTHANC_DATA_DIR"
 export CONTOURLAB_ORTHANC_DATA_DIR
 
@@ -94,6 +95,9 @@ if [ "$orthanc_ok" = "true" ]; then
   echo "DICOM repository already running with $desired_image; leaving it unchanged."
 else
   echo "Starting or updating persistent DICOM repository with $desired_image."
+  # Recreating the container is when a new Orthanc version may migrate the database. Keep a copy first;
+  # if the backup fails the deploy stops here (set -e) rather than risk the only copy of the studies.
+  bash "$(dirname "${BASH_SOURCE[0]}")/backup-orthanc.sh"
   # Remove transitional containers created during the brief contourlab-rename
   # period so their port bindings are released before compose starts webtps-orthanc.
   docker rm -f contourlab-orthanc 2>/dev/null || true

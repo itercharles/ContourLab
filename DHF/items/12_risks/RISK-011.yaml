@@ -1,0 +1,18 @@
+id: RISK-011
+title: Repository data lost or damaged
+hazard: The structure sets in the DICOM repository, and the images they refer to,
+  are lost or damaged.
+cause: A disk failure or accidental deletion on the one workstation that holds the
+  repository; a repository software upgrade that migrates the database; the repository
+  image changing on a redeploy without anyone choosing it.
+effect: Contours that were pushed and reviewed are gone and have to be redrawn, or
+  a study cannot be opened, in the middle of planning.
+severity_pre: S3
+probability_pre: P3
+severity_post: S3
+probability_post: P2
+risk_acceptability: Acceptable
+risk_benefit: 'Residual: the backups are on the same machine unless the maintainer
+  copies them elsewhere, so a failure of the whole machine still loses them; whether
+  to keep a second copy is a maintainer decision.'
+type: RISK
