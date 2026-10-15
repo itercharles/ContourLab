@@ -8,7 +8,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ## Current Pin
 
-- `medharness[docs]==0.61.0`
+- `medharness[docs]==0.61.1`
 - One CLI, `medharness`; `dhfkit` is a library inside it with no command of its own
 
 ## Sources Of Truth
@@ -65,8 +65,9 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 - `--dhf PATH` goes before the command and defaults to `DHF`.
 - `build code` treats the whole repository except `DHF/` as code unless `MEDHARNESS_CODE_PATHS` narrows it; ContourLab's jobs set `apps/,packages/`.
 - Items live in legacy directories (`09_cr/`, `01_req_crs/`, …). Reads find them by
-  prefix and updates rewrite them in place; `item create` writes new items to the
-  package's default directories (a new CR lands in `07_cr/`).
+  prefix and updates rewrite them in place; from 0.61.1 `item create` writes a new
+  item beside the existing items of its type (a new CR lands in `09_cr/`). Before
+  that it used the package's default directories, so new items had to be moved by hand.
 - Workflows that record a DHF change from `main` (complete, cancel, SOUP sync,
   release) push a `chore/*` branch and open a PR; `main` is protected.
 - Who opens a PR decides who can review it. The `chore/*` PRs above are opened with
