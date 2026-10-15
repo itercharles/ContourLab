@@ -28,7 +28,7 @@ description: '### Requested change
   Source issue: https://github.com/itercharles/ContourLab/issues/164'
 requested_by: itercharles
 priority: Medium
-status: develop
+status: completed
 target_version: 2026-W41
 type: CR
 triage_result:
