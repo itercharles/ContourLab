@@ -1,6 +1,11 @@
 name: Complete CR In DHF
 
-run-name: "CR completion | #${{ github.event.pull_request.number }}"
+run-name: >-
+  ${{ startsWith(github.event.pull_request.head.ref, 'feat/CR-') && github.event.pull_request.merged == true
+    && format('{0} · merged, opening the close-out PR', github.event.pull_request.head.ref)
+    || startsWith(github.event.pull_request.head.ref, 'chore/complete-CR-') && github.event.pull_request.merged == true
+    && format('{0} · close-out merged, CR finished', github.event.pull_request.head.ref)
+    || format('PR #{0} · not a CR, ignored', github.event.pull_request.number) }}
 
 on:
   pull_request:
@@ -47,7 +52,48 @@ jobs:
             git checkout -b "$BRANCH_NAME"
             git commit -m "chore: complete $CR_ID"
             git push origin "$BRANCH_NAME"
-            gh pr create --base main --head "$BRANCH_NAME" \
+            CLOSEOUT_URL=$(gh pr create --base main --head "$BRANCH_NAME" \
               --title "chore: complete $CR_ID" \
-              --body "Lifecycle transition to completed for $CR_ID, merged via PR #${{ github.event.pull_request.number }}."
+              --body "Lifecycle transition to completed for $CR_ID, merged via PR #${{ github.event.pull_request.number }}. **Merge this PR to finish the CR.**")
+            echo "closeout_url=$CLOSEOUT_URL" >> "$GITHUB_OUTPUT"
           fi
+          echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
+      - name: "Show progress: the close-out PR needs merging"
+        if: steps.complete.outputs.closeout_url != ''
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ github.event.pull_request.number }}
+          cr: ${{ steps.complete.outputs.cr_id }}
+          stage: closeout
+          detail: "The close-out PR: ${{ steps.complete.outputs.closeout_url }}"
+
+  # The close-out PR is the last step of a CR; when it merges, say so on the CR's own PR.
+  close-out-merged:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'chore/complete-CR-')
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Find the CR's own PR
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+' || true)
+          PR=$(gh pr list --repo "${{ github.repository }}" --head "feat/$CR_ID" --state merged --json number --jq '.[0].number // empty' 2>/dev/null || true)
+          echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
+          echo "pr=$PR" >> "$GITHUB_OUTPUT"
+
+      - name: "Show progress: the CR is complete"
+        if: steps.find.outputs.pr != ''
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ steps.find.outputs.pr }}
+          cr: ${{ steps.find.outputs.cr_id }}
+          stage: done

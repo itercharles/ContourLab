@@ -1,0 +1,44 @@
+name: CR progress
+description: >-
+  Post or update the progress checklist of a CR on its pull request, saying which step is current and,
+  when it is the maintainer's turn, what to do. Informational: a failure here is only a warning.
+
+inputs:
+  pr:
+    description: Pull request number
+    required: true
+  cr:
+    description: CR ID, e.g. CR-020
+    required: true
+  stage:
+    description: design-generating | design-review | design-revising | code-generating | code-review | code-revising | merge | closeout | done | cancelled | failed
+    required: true
+  detail:
+    description: Extra text shown under the checklist (for failed, what failed)
+    required: false
+    default: ''
+  failed-at:
+    description: For stage failed, the step number (1 to 6) that failed
+    required: false
+    default: '0'
+  token:
+    description: Token that may comment on the pull request
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ github.repository }}
+        PR: ${{ inputs.pr }}
+        CR: ${{ inputs.cr }}
+        STAGE: ${{ inputs.stage }}
+        DETAIL: ${{ inputs.detail }}
+        FAILED_AT: ${{ inputs.failed-at }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        python3 "${{ github.action_path }}/render.py" --repo "$REPO" --pr "$PR" --cr "$CR" --stage "$STAGE" \
+          --detail "$DETAIL" --failed-at "$FAILED_AT" --run-url "$RUN_URL" || echo "::warning::could not update the CR progress comment"

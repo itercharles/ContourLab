@@ -1,6 +1,10 @@
 name: ContourLab Product CI/CD
 
-run-name: Product CI/CD | ${{ github.event_name }} | ${{ github.event.pull_request.title || github.event.head_commit.message || github.ref_name }}
+# A push shows its branch, not its commit message: the message is several lines and fills the list.
+run-name: >-
+  ${{ github.event_name == 'pull_request' && format('CI · PR #{0} · {1}', github.event.pull_request.number, github.event.pull_request.title)
+    || github.event_name == 'push' && format('CI · push to {0}', github.ref_name)
+    || format('CI · manual run on {0}', github.ref_name) }}
 
 on:
   push:

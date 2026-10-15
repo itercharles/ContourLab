@@ -68,6 +68,7 @@ jobs:
             exit 1
           fi
           echo "{\"cr_id\": \"$CR_ID\"}" > /tmp/issue-to-cr.json
+          echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
           echo "should_create=true" >> "$GITHUB_OUTPUT"
           cat /tmp/issue-to-cr.json
 
@@ -112,8 +113,8 @@ jobs:
           {
             echo "Closes #${{ github.event.issue.number }}"
             echo ""
-            echo "**Stage 1 of 2 — Design Review**"
-            echo "The AI-generated implementation plan will be posted as a comment below if design generation succeeds. Approve to trigger implementation."
+            echo "**How this CR moves.** A progress checklist comment on this PR shows the six steps, which one is current and, when it is your turn, what to do."
+            echo "You act at four points: approve the design, approve the code, merge this PR, merge the close-out PR. Everything else is automatic."
           } > /tmp/pr-body.md
           PR_URL=$(gh pr view "$BRANCH" --json url,state -q 'select(.state=="OPEN") | .url' 2>/dev/null || true)
           if [ -z "$PR_URL" ]; then
@@ -134,6 +135,15 @@ jobs:
             echo "<!-- contourlab-cr: $CR_ID -->"
             echo "<!-- contourlab-cr-pr: $PR_URL -->"
           } | gh issue comment "${{ github.event.issue.number }}" --body-file -
+
+      - name: "Show progress: generating the design"
+        if: steps.open_pr.outcome == 'success'
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ steps.open_pr.outputs.pr_number }}
+          cr: ${{ steps.prepare.outputs.cr_id }}
+          stage: design-generating
 
       - name: Generate design
         id: generate_design
@@ -165,6 +175,17 @@ jobs:
           fi
           gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "$BODY" || true
           exit 1
+
+      - name: "Show progress: design generation failed"
+        if: always() && steps.open_pr.outcome == 'success' && steps.generate_design.outcome != 'success'
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ steps.open_pr.outputs.pr_number }}
+          cr: ${{ steps.prepare.outputs.cr_id }}
+          stage: failed
+          failed-at: '1'
+          detail: 'Design generation failed. The reason is in the comment above and in the run log behind the link below.'
 
       - name: Upload design payload
         if: always() && steps.prepare.outputs.should_create == 'true'
@@ -238,3 +259,11 @@ jobs:
           gh pr comment "$PR_NUMBER" \
             --repo "${{ github.repository }}" \
             --body "$BODY"
+      - name: "Show progress: design ready for review"
+        if: always() && steps.generate_design.outcome == 'success'
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ steps.open_pr.outputs.pr_number }}
+          cr: ${{ steps.prepare.outputs.cr_id }}
+          stage: design-review
