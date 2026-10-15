@@ -10,7 +10,7 @@ description: "### Requested change\n\nThe Repo is public, there is no need to ma
   \ request creation. \n\n### Change category\n\nFeature\n\nSource issue: https://github.com/itercharles/ContourLab/issues/189"
 requested_by: itercharles
 priority: Medium
-status: develop
+status: completed
 target_version: 2026-W41
 type: CR
 triage_result:
