@@ -4,7 +4,8 @@ hazard: Contouring work disappears, or an older version replaces a newer one, wi
   the clinician knowing.
 cause: A failed push not shown to the user; edits made during an upload reverted;
   an older local draft restored over a newer repository version; a push counted as
-  successful when the repository rejected it.
+  successful when the repository rejected it; a structure with contours deleted by
+  one click.
 effect: Contours the clinician believes are saved are not, or an outdated structure
   set is used.
 severity_pre: S3
