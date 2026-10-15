@@ -82,7 +82,7 @@ jobs:
           set -uo pipefail
           BRANCH="chore/complete-$CR_ID"
           RUN_ID=""
-          for i in $(seq 1 18); do
+          for _ in $(seq 1 18); do
             RUN_ID=$(gh run list --repo "$REPO" --workflow ci-pipeline.yml --branch "$BRANCH" --event pull_request \
               --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)
             [ -n "$RUN_ID" ] && break

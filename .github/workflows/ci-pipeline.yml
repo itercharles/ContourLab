@@ -42,6 +42,12 @@ jobs:
       - name: Run CR workflow tests
         run: python -m unittest discover -s tests/workflow -v
 
+      # Syntax and expression errors in the workflow files themselves (a misspelled context, a bad
+      # run-name, a step that references a missing id), and shellcheck on their scripts. SC2129 is a
+      # style note about grouped redirects, not a defect.
+      - name: Lint workflows (actionlint)
+        run: docker run --rm -v "$PWD":/repo --workdir /repo rhysd/actionlint:1.7.12 -color -ignore 'SC2129'
+
   # ── CHANGE DETECTION ─────────────────────────────────────────────────────────
   # Detects which workspaces changed so downstream jobs can skip irrelevant work.
   # On main and workflow_dispatch all flags are forced true — full suite always runs.
