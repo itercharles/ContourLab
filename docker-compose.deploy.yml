@@ -45,7 +45,10 @@ services:
     restart: unless-stopped
 
   dicom-repo:
-    image: orthancteam/orthanc:latest
+    # Pinned by tag and digest: a moving tag would change the repository software on a redeploy without anyone
+    # deciding it. To upgrade, change both files together, back up first (scripts/deploy/backup-orthanc.sh),
+    # and record the new version in the SOUP register.
+    image: orthancteam/orthanc:26.1.0@sha256:a055ccd31f7cd1e45ce98912e1c6e8e83b6a8f262f5b8fe6c88e2b6cd060fc57
     container_name: webtps-orthanc
     ports:
       - "127.0.0.1:8042:8042"

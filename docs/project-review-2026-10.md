@@ -39,9 +39,9 @@ suspected findings (S1 to S5) were not separately verified.
 | 10 | Volumes stale; holes added; average thickness; invented margin preview | fixed | #178 |
 | 11 | Slices load with no geometry checks | fixed | #172: a gate; the local-file tag parser still has no test of its own |
 | 12 | API has no authentication | partly | #174 closes the network to this workstation; no authentication or audit trail; `POST /api/issues` still accepts anything |
-| 13 | Deployed Orthanc unauthenticated and reachable | partly | #174: loopback only, REST proxy removed; `chmod 777` on the data directory, the `latest` image tag and backups remain |
+| 13 | Deployed Orthanc unauthenticated and reachable | fixed | #174: loopback only, REST proxy removed; then the image pinned by tag and digest, the data directory no longer world-writable, and a backup taken before a redeploy recreates the repository, with a restore tested (RISK-011, RCM-016) |
 | 14 | Any reviewer can trigger code generation | fixed | #171 (Claude Code CLI is still installed unpinned in `cr-agent-setup`) |
-| 15 | SOUP register covers only client npm packages | partly | #155, #162 (purposes and ratings for 35 npm and Python items); Orthanc, nginx, .NET and the Python service stack are missing, and the build patches installed codec files |
+| 15 | SOUP register covers only client npm packages | partly | #155, #162 (purposes and ratings for 35 npm and Python items); Orthanc, nginx, .NET and the Python service stack are missing (an Orthanc entry was tried: `verify soup --strict` refuses an ecosystem OSV does not name, such as Docker, so it needs MedHarness support first), and the build patches installed codec files |
 | 16 | Risk file too thin | fixed | #173, then #176 to #179; 10 risks with controls (AI error is not among them, see 4) |
 | 17 | A crashed contour overlay hides contours with no warning | fixed | the view shows a message and a Retry control (RCM-012, SYS-002 T7); a view without image data is covered by the real-DICOM tests |
 | 18 | No orientation markers or patient position | fixed | #176 (the 3D view has no markers) |
@@ -105,7 +105,7 @@ suspected findings (S1 to S5) were not separately verified.
 2. **Authentication, roles and an audit trail** (findings 12 and 13): only needed if the system is ever used from more
    than one computer; until then loopback-only is the control.
 3. Split SRS-010 and annotate the unlinked tests (23); limits for the auto-contour service (22); a decoder test for
-   HTJ2K; `chmod 777`, the `latest` Orthanc image and backups (13); pin the Claude Code CLI; break up
+   HTJ2K; pin the Claude Code CLI; break up
    `StructurePanel.tsx` (24).
 
 How each fix was checked is in its pull request. The pattern, which is worth keeping: a test that fails on the old
