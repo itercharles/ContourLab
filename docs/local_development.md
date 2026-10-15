@@ -117,23 +117,57 @@ Current v1 constraints:
 
 ## Maintainer Deployment Notes
 
-The repository includes a self-hosted deployment path for teams that want a
-shared demo or review environment. The default deploy stack publishes the app
-on ports `3001` (frontend), `4001` (API), `4010` (auto-contour service), and
-`8042` (Orthanc) on the target host.
+The repository includes a self-hosted deployment path. The deploy stack publishes the app on ports `3001`
+(frontend), `4001` (API), `4010` (auto-contour service) and `8042` (Orthanc), **all bound to `127.0.0.1`**:
+the API, the repository and the auto-contour service have no authentication, so the system is used from the
+workstation it runs on. To open it to other computers, put an authenticating reverse proxy in front of the
+frontend rather than changing the bindings.
 
-Example external endpoints:
-
-| Service | Example URL |
+| Service | URL on the workstation |
 | --- | --- |
-| Frontend | `http://<host>:3001` |
-| API | `http://<host>:4001` |
-| Auto-contour service | `http://<host>:4010/health` |
-| Orthanc | `http://<host>:8042` |
+| Frontend | `http://127.0.0.1:3001` |
+| API | `http://127.0.0.1:4001` |
+| Auto-contour service | `http://127.0.0.1:4010/health` |
+| Orthanc | `http://127.0.0.1:8042` |
 
 The deploy stack is defined in
 [`../docker-compose.deploy.yml`](../docker-compose.deploy.yml). DICOM data is
-persisted under `${CONTOURLAB_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}`.
+persisted under `${CONTOURLAB_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}`
+(`$HOME/contourlab-orthanc-db` when deployed by `scripts/deploy/deploy.sh`).
+
+### Orthanc version
+
+The repository image is pinned by version tag and digest in both compose files
+(`orthancteam/orthanc:26.1.0@sha256:…`, Orthanc 1.12.10), so a redeploy never changes the repository software
+unasked. To upgrade: back up (below), change the tag and digest in **both** compose files, deploy, check that
+the studies are all there, and update the SOUP entry. CI fails if the image is a moving tag.
+
+### Backup and restore of the deployed repository
+
+The repository holds the structure sets that were pushed, so it is backed up.
+
+- **Automatically**, before `scripts/deploy/deploy.sh` recreates the Orthanc container (an image change is when
+  a new Orthanc version may migrate the database). If the backup fails, the deploy stops.
+- **By hand**, any time: `bash scripts/deploy/backup-orthanc.sh`. It stops the Orthanc container for a few
+  seconds (a copy taken while it writes can capture the index and the files at different moments), writes
+  `$HOME/contourlab-backups/orthanc-<date>-<time>.tar` and starts the container again, even if the copy fails.
+  Only the newest 7 archives are kept (`CONTOURLAB_BACKUP_KEEP`); the directory is `CONTOURLAB_BACKUP_DIR`.
+- The archives contain patient data: they are readable by their owner only and stay on this machine. Whether
+  and where to keep a second copy (another disk, an encrypted drive) is for the maintainer to decide; nothing
+  here sends them anywhere.
+
+To restore, with the stack stopped or Orthanc stopped (`docker stop webtps-orthanc`):
+
+```bash
+mv "$HOME/contourlab-orthanc-db" "$HOME/contourlab-orthanc-db.before-restore"
+mkdir "$HOME/contourlab-orthanc-db" && chmod 700 "$HOME/contourlab-orthanc-db"
+tar -xf "$HOME/contourlab-backups/orthanc-<date>-<time>.tar" -C "$HOME/contourlab-orthanc-db"
+docker start webtps-orthanc
+```
+
+Then check `http://127.0.0.1:8042/studies` lists the studies you expect and delete the
+`.before-restore` directory once you are sure. The script was checked by restoring an archive into a second
+Orthanc: same number of studies and instances, and a stored file could be fetched.
 
 ### Runner Routing
 

@@ -1,0 +1,20 @@
+id: RCM-016
+title: Pinned repository version and backup before change
+content: 'The repository image is pinned by version tag and digest in both compose
+  files, and CI fails if it is a moving tag, so a redeploy never changes the software
+  unasked. A redeploy that recreates the repository container first runs scripts/deploy/backup-orthanc.sh,
+  which stops the container for the copy, writes an archive readable by its owner
+  only, verifies that it reads back, keeps the newest seven and always starts the
+  container again; if the backup fails the deploy stops. The data directory is no
+  longer world-writable. The same script can be run by hand; restore steps are in
+  docs/local_development.md. Tests: tests/workflow/test_backup_orthanc.py (8 cases,
+  run in CI). Checked by backing up a scratch Orthanc with 84 instances and restoring
+  the archive into a second one: the same 7 studies and 84 instances, and a stored
+  file could be fetched.'
+mitigates:
+- RISK-011
+implements:
+- SYS-006
+control_type: Protective Measure
+implementation_status: Implemented
+type: RCM

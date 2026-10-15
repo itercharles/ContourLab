@@ -205,6 +205,24 @@ def main() -> int:
                     f"{compose_name} publishes {service} port {port} on all interfaces; bind it to 127.0.0.1",
                     errors,
                 )
+    # The repository holds the only copy of the structure sets that were pushed: its image is pinned by
+    # tag and digest (a moving tag changes the software on a redeploy), its data directory is not
+    # world-writable, and a redeploy that recreates it takes a backup first.
+    for compose_name in ("docker-compose.deploy.yml", "docker-compose.yml"):
+        compose = yaml.safe_load((REPO_ROOT / compose_name).read_text(encoding="utf-8"))
+        image = str(compose["services"]["dicom-repo"]["image"])
+        require(
+            re.fullmatch(r"orthancteam/orthanc:[0-9][\w.-]*@sha256:[0-9a-f]{64}", image) is not None,
+            f"{compose_name}: the repository image `{image}` must be pinned to a version tag and a digest, not a moving tag",
+            errors,
+        )
+    deploy_sh = (REPO_ROOT / "scripts" / "deploy" / "deploy.sh").read_text(encoding="utf-8")
+    require("chmod 777" not in deploy_sh, "scripts/deploy/deploy.sh makes the Orthanc data directory world-writable (chmod 777)", errors)
+    require(
+        deploy_sh.find("backup-orthanc.sh") != -1 and deploy_sh.find("backup-orthanc.sh") < deploy_sh.find("up -d dicom-repo"),
+        "scripts/deploy/deploy.sh must run backup-orthanc.sh before it recreates the repository container",
+        errors,
+    )
     require(
         "location /orthanc" not in (REPO_ROOT / "apps" / "client" / "nginx.conf").read_text(encoding="utf-8"),
         "apps/client/nginx.conf proxies /orthanc/, which exposes the repository REST API (including delete)",
