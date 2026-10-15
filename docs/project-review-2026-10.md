@@ -5,8 +5,113 @@ plus the open PR #167. Eight of its most serious claims were checked against the
 before this was written (marked **checked**); the rest are the reviewer's findings as reported.
 Treat unchecked items as leads to confirm before acting on them.
 
-Recorded in the repository so the work can be planned and picked up later. Status of each item
-is tracked in the PRs that fix it, not here.
+Recorded in the repository so the work can be planned and picked up later. The findings below are
+as the reviewer reported them on 2026-10-12; **where each one stands now is in the next section**.
+
+## Where things stand (2026-10-15)
+
+Of the 24 reported findings, 13 are fixed, 4 are partly done and 7 are not started (details below).
+All the fixes are merged, `main` is green and deployed, and no pull request is open. The reviewer's
+suspected findings (S1 to S5) were not separately verified.
+
+| State of `main` | |
+|---|---|
+| CI and deploy | green on `73ccd3f`; the deployed stack answers on the workstation's own address only |
+| Client tests | 425 pass across 54 files |
+| `verify dhf --strict` | 173 items, 0 errors, 0 warnings |
+| `verify tests --strict` | 53 of 53 requirements covered; 3 warnings (see "needs a human", item 4) |
+| `verify soup --strict` | 36 items, no known vulnerabilities, 0 warnings |
+| MedHarness | 0.61.0 |
+
+### Findings
+
+| # | Finding | State | Where |
+|---|---|---|---|
+| 1 | Boolean and margin keep only the largest outline | fixed | #169 |
+| 2 | Slices matched by the SliceLocation tag, not the image position | fixed | #169 |
+| 3 | Boolean and margin ignore the volume's orientation | fixed | #169 |
+| 4 | AI auto-contour has no requirement, risk or SOUP in the DHF | **not started** | needs a CR |
+| 5 | Auto-contour fallback stacks slices by InstanceNumber | **not started** | |
+| 6 | AI contours can be pushed unreviewed, recorded as manual | **not started** | |
+| 7 | Push failures invisible; edits during upload overwritten | fixed | #170 |
+| 8 | Undo global, never cleared, ignores locks, fires while typing | fixed | #170 |
+| 9 | Locked structures can be deleted, retyped | partly | #170: delete and type are blocked; no delete confirmation |
+| 10 | Volumes stale; holes added; average thickness; invented margin preview | fixed | #178 |
+| 11 | Slices load with no geometry checks | fixed | #172: a gate; the local-file tag parser still has no test of its own |
+| 12 | API has no authentication | partly | #174 closes the network to this workstation; no authentication or audit trail; `POST /api/issues` still accepts anything |
+| 13 | Deployed Orthanc unauthenticated and reachable | partly | #174: loopback only, REST proxy removed; `chmod 777` on the data directory, the `latest` image tag and backups remain |
+| 14 | Any reviewer can trigger code generation | fixed | #171 (Claude Code CLI is still installed unpinned in `cr-agent-setup`) |
+| 15 | SOUP register covers only client npm packages | partly | #155, #162 (purposes and ratings for 35 npm and Python items); Orthanc, nginx, .NET and the Python service stack are missing, and the build patches installed codec files |
+| 16 | Risk file too thin | fixed | #173, then #176 to #179; 10 risks with controls (AI error is not among them, see 4) |
+| 17 | A crashed contour overlay hides contours with no warning | **not started** | RCM-012 is planned |
+| 18 | No orientation markers or patient position | fixed | #176 (the 3D view has no markers) |
+| 19 | Interpolation twists outlines, ignores extra contours | fixed | #180 |
+| 20 | RTSTRUCT export writes made-up identifiers | fixed | #179 (showing the destination before a push is not done) |
+| 21 | Draft restored with no check against the repository | fixed | #170 deletes the draft after a push; #181 asks before restoring an older one |
+| 22 | Auto-contour service has no limits | **not started** | only reachable from this workstation now |
+| 23 | Traceability promises more than the tests check | **not started** | SRS-010 is still one very large requirement; several test files carry no `@links` |
+| 24 | Oversized components, duplicated logic | **not started** | `StructurePanel.tsx` is still over 2,200 lines; the three copies of `isEditableTarget` are now one |
+
+### Beyond the review
+
+- Issue #164 (the maximized view goes grey): fixed through the automated change-request pipeline as CR-019
+  (#167), which was the test of that pipeline. It generated the fix and its tests; the design PR was merged
+  before the code existed, which turned `main`'s coverage gate red until the code merged and also cancelled
+  the first code-generation run. That is a gap in the pipeline: nothing stops a design-stage PR being merged.
+- End-to-end tests with real DICOM (#165): a synthetic phantom in four compression formats and four patient
+  positions, loaded through the real pipeline in CI. HTJ2K has no fixture, so that decoder is still untested.
+- `--strict` on `verify tests` and `verify soup` in CI (#157); SOUP purposes, ratings and the four open design
+  decisions (#162); the deployment hardening (#174); MedHarness 0.61.0 (#175).
+
+## What needs a human
+
+1. **`ACTIONS_PAT` has most likely expired** (last updated 2026-09-13). Until it is renewed the change-request
+   automation (`cr-complete`, `cr-lifecycle`, `issue-to-cr`) fails, and CR-019 stays in `develop` instead of
+   `completed`. After renewal, re-run the failed "CR completion" run for #167.
+2. **SOUP assessments are my drafts** (#162): manufacturer, risk rating, safety class and verification method of
+   35 items, written from how each package is used. The manufacturer names come from package ownership and were
+   not checked against vendors.
+3. **Risk ratings are my drafts** (#173, #177 and the re-ratings in #176, #178). Severity and probability are
+   estimates; acceptability follows one rule, applied to the residual rating: S4 or S5 with P3 or worse is
+   Unacceptable; S4 or S5 with P2, or S3 with P3 or worse, is ALARP; otherwise Acceptable. Two were re-rated after
+   their controls were built and need confirming: **RISK-003** (volume error, ALARP to Acceptable) and
+   **RISK-005** (left/right confusion, Unacceptable to ALARP). Today: Unacceptable: RISK-008 (display fails
+   silently; its visible-error-state control is only planned). ALARP: RISK-002, RISK-004, RISK-005, RISK-010.
+4. **Three requirements verified by inspection need a human sign-off record** (CRS-015, SYS-018, SRS-035,
+   from #177): MedHarness 0.61 warns about each. The evidence is the configuration plus the CI check that
+   enforces it; the record is a person's signature.
+5. **Manual checks that no test covers**: SRS-019's Demonstration (Escape and a patient change restore the
+   three-pane layout, and a reload starts in the normal layout) has never been run by a person.
+
+### Behaviour that changed and that you may notice
+
+- A study with no Patient ID, or whose images have no Frame of Reference UID, can no longer be pushed (the
+  export is refused with a reason).
+- An oblique, gantry-tilted or otherwise non-axial series, or one with missing or inconsistent geometry, is refused
+  on loading; unevenly spaced slices load with a warning.
+- The deployed application can only be reached from the workstation it runs on; other computers can no longer
+  open it. To open it up, put an authenticating proxy in front of it.
+- A locked structure cannot be deleted or have its type changed; Ctrl/Cmd+Z in a text field no longer undoes a
+  contour edit; the undo history is cleared when the image set changes.
+- A local draft older than the repository's structure set is no longer restored without asking.
+
+## What is left, in the order I would take it
+
+1. **AI auto-contour under design control** (findings 4, 5, 6, 15): requirements, a risk and its controls, SOUP for
+   TotalSegmentator and the Python stack, pinned Python dependencies, tests run in CI, AI origin recorded in the
+   exported structure set and a review step before a push. It is the largest remaining gap and should go through the
+   change-request pipeline, which needs the renewed token.
+2. **A visible error state for a blank or failed view** (finding 17, RCM-012): the only risk still rated Unacceptable.
+3. **Show the patient and series a push will be filed under, before it is sent** (finding 20): the remaining part of RISK-004.
+4. **Authentication, roles and an audit trail** (findings 12 and 13): only needed if the system is ever used from more
+   than one computer; until then loopback-only is the control.
+5. Split SRS-010 and annotate the unlinked tests (23); limits for the auto-contour service (22); a decoder test for
+   HTJ2K; `chmod 777`, the `latest` Orthanc image and backups (13); pin the Claude Code CLI; break up
+   `StructurePanel.tsx` (24).
+
+How each fix was checked is in its pull request. The pattern, which is worth keeping: a test that fails on the old
+code, a run in the real application or against a real repository, and a deliberate regression to see the new test
+fail.
 
 ## Order of work
 
