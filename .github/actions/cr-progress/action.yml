@@ -11,7 +11,7 @@ inputs:
     description: CR ID, e.g. CR-020
     required: true
   stage:
-    description: design-generating | design-review | design-revising | code-generating | code-review | code-revising | merge | closeout | done | cancelled | failed
+    description: design-generating | design-review | design-revising | code-generating | code-review | code-revising | merge | closeout-checking | closeout | done | cancelled | failed
     required: true
   detail:
     description: Extra text shown under the checklist (for failed, what failed)

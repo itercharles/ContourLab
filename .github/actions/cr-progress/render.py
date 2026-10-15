@@ -41,8 +41,11 @@ STAGES = {
         "or **Request changes** with comments to have the code revised.", True),
     "code-revising": (3, 4, "The code is being revised from your review comments, then CI runs again. Nothing for you to do yet.", False),
     "merge": (4, 5, "Everything is approved. **Squash-merge this PR.**", True),
+    "closeout-checking": (5, 6,
+        "This PR is merged. A second PR records the CR as completed in the DHF; its checks are running. "
+        "Nothing for you to do until this says it is ready.", False),
     "closeout": (5, 6,
-        "This PR is merged. A second PR closes the CR in the DHF: **merge it** and the CR is finished.", True),
+        "The close-out PR's checks have passed. **Merge it** (one click, no review needed) and the CR is finished.", True),
     "done": (6, 7, "The CR is complete.", False),
     "cancelled": (0, 0, "This PR was closed without merging, so the CR was cancelled.", False),
 }

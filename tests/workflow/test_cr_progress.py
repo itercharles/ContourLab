@@ -17,7 +17,7 @@ sys.path.insert(0, str(ACTION))
 import render  # noqa: E402
 
 USER_STAGES = ["design-review", "code-review", "merge", "closeout"]
-AUTOMATIC_STAGES = ["design-generating", "design-revising", "code-generating", "code-revising"]
+AUTOMATIC_STAGES = ["design-generating", "design-revising", "code-generating", "code-revising", "closeout-checking"]
 
 
 class Rendering(unittest.TestCase):
@@ -41,7 +41,7 @@ class Rendering(unittest.TestCase):
         self.assertIn("**Request changes**", render.render("design-review", "CR-020"))
         self.assertIn("**Approve**", render.render("code-review", "CR-020"))
         self.assertIn("Squash-merge", render.render("merge", "CR-020"))
-        self.assertIn("merge it", render.render("closeout", "CR-020"))
+        self.assertIn("**Merge it**", render.render("closeout", "CR-020"))
 
     def test_steps_before_the_current_one_are_ticked_and_the_ones_after_are_not(self):
         lines = render.render("code-review", "CR-020").splitlines()

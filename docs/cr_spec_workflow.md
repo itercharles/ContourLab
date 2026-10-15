@@ -20,7 +20,7 @@ sends a notification.
 | 3 | Code and CI | automatic | `CR lifecycle` generates the code, pushes it and CI runs the full test set. | Nothing; wait for CI to be green. |
 | 4 | Code review | **you** | The PR is at `cr:stage/code`. | Read the code. **Approve**, or **Request changes** with comments. A new commit dismisses an earlier approval, so approve the latest one. |
 | 5 | Merge | **you** | `ready to merge` is shown. | **Squash-merge** the PR. |
-| 6 | Close-out | **you** | `CR completion` opens a second PR, `chore: complete CR-NNN`, that moves the CR to `completed`. | **Merge that PR.** The CR is finished when you do. |
+| 6 | Close-out | **you** | `CR completion` opens a second PR, `chore: complete CR-NNN`, that moves the CR to `completed` (it changes one line of the CR file), waits for its checks, then tells you it is ready. | **Merge that PR** when the checklist says so: one click, no review needed. The CR is finished when you do. |
 
 A failure shows as a red step in the checklist, with what failed and a link to the run.
 
@@ -102,8 +102,10 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
   1. CR transitioned to `completed` in `DHF/items/09_cr/`
   2. Closure gate checks DHF traceability completeness and test evidence
   3. CI pipeline triggered on main (squash merges can inherit `[skip ci]` from lifecycle commits)
-  4. The CR's progress checklist moves to step 6 and links the close-out PR; when that PR is merged
-     (`close-out-merged` job) the checklist shows the CR as complete
+  4. The CR's progress checklist moves to step 6 and links the close-out PR; once the close-out PR's
+     checks have passed it says so and notifies you (or shows what failed). The pipeline never merges
+     anything itself. When you merge the close-out PR (`close-out-merged` job) the checklist shows the
+     CR as complete
 
 ### Cancel
 
