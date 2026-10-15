@@ -12,12 +12,14 @@ vi.mock('../../core/store/uiStore', () => ({
     selector({ setLeftSidebarOpen: vi.fn() }),
 }));
 
-describe('LeftSidebar — Issues nav link', () => {
-  it('renders the Issues nav link with title and aria-label "Change Requests"', () => {
+describe('LeftSidebar — Change Requests link', () => {
+  it('links to the GitHub new-issue page in a new tab', () => {
     render(<MemoryRouter><LeftSidebar /></MemoryRouter>);
 
-    const link = screen.getByRole('link', { name: 'Change Requests' });
-    expect(link).toBeTruthy();
-    expect((link as HTMLAnchorElement).title).toBe('Change Requests');
+    const link = screen.getByRole('link', { name: 'Change Requests (opens GitHub in a new tab)' }) as HTMLAnchorElement;
+    expect(link.href).toBe('https://github.com/itercharles/ContourLab/issues/new/choose');
+    expect(link.target).toBe('_blank');
+    expect(link.rel).toBe('noopener noreferrer');
+    expect(document.querySelector('a[href$="/issues"]')).toBeNull();
   });
 });

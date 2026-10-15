@@ -556,3 +556,15 @@ describe('Toolbar workflow stepper', () => {
     expect(useUIStore.getState().theme).toBe('dark');
   });
 });
+
+describe('Toolbar Change Requests link', () => {
+  it('opens the GitHub new-issue page in a new tab', () => {
+    renderToolbar();
+
+    const link = screen.getByRole('link', { name: /Change Requests/ }) as HTMLAnchorElement;
+    expect(link.href).toBe('https://github.com/itercharles/ContourLab/issues/new/choose');
+    expect(link.target).toBe('_blank');
+    expect(link.rel).toBe('noopener noreferrer');
+    expect(document.querySelector('a[href$="/issues"]')).toBeNull();
+  });
+});

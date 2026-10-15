@@ -11,6 +11,7 @@ import { describePushDestination, type PushDestinationRow } from '../../core/str
 import { deleteStructureDraftForSeries } from '../../core/structures/structureDraftStore';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import { formatPatientName } from '../../core/dicom/patientUtils';
+import { CONTOURLAB_REPO_URL, NEW_ISSUE_URL } from '../../core/externalLinks';
 import WorkspaceContextBar from '../layout/WorkspaceContextBar';
 import PushConfirmDialog from './PushConfirmDialog';
 
@@ -21,7 +22,6 @@ const ACTIVITY_TONE_CLASS: Record<ActivityItem['tone'], string> = {
   error: 'bg-red-500',
 };
 
-const CONTOURLAB_REPO_URL = 'https://github.com/itercharles/ContourLab';
 const DHF_ARTIFACTS_URL = '/api/dhf-artifacts/latest';
 
 const WORKFLOW_STAGES: { id: WorkflowStage; num: string; label: string }[] = [
@@ -459,10 +459,11 @@ export default function Toolbar() {
         </button>
         <div className="h-4 w-px bg-[var(--color-border)]" />
         {/* Change Requests — prototype highlight */}
-        <Link
-          to="/issues"
-          reloadDocument
-          title="Submit or track a Change Request"
+        <a
+          href={NEW_ISSUE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Report a bug or request a change on GitHub (opens in a new tab)"
           className="flex h-7 items-center gap-1.5 rounded border border-blue-500/40 bg-blue-950/20 px-2.5 text-[11px] font-medium text-blue-400 transition-colors hover:bg-blue-900/40 hover:text-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -470,7 +471,12 @@ export default function Toolbar() {
             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
           </svg>
           Change Requests
-        </Link>
+          <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+          </svg>
+        </a>
         {/* DHF Artifacts download — prototype highlight */}
         <a
           href={DHF_ARTIFACTS_URL}
