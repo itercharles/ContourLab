@@ -10,6 +10,7 @@ import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import type { StructureSet } from '@contourlab/shared-types';
 
 const mocks = vi.hoisted(() => ({
+  checkDraftAgainstRepository: vi.fn(),
   loadStructureDraftForSeries: vi.fn(),
   saveStructureDraftForSeries: vi.fn(),
   listAutoContourModels: vi.fn(),
@@ -28,6 +29,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../core/structures/structureDraftStore', () => ({
   loadStructureDraftForSeries: mocks.loadStructureDraftForSeries,
   saveStructureDraftForSeries: mocks.saveStructureDraftForSeries,
+}));
+
+vi.mock('../../core/structures/draftFreshness', () => ({
+  checkDraftAgainstRepository: mocks.checkDraftAgainstRepository,
 }));
 
 vi.mock('../../core/debug/clientDebugLog', () => ({
@@ -163,6 +168,7 @@ beforeEach(() => {
     render: mocks.renderViewport,
   });
   mocks.loadStructureDraftForSeries.mockResolvedValue(null);
+  mocks.checkDraftAgainstRepository.mockResolvedValue({ status: 'current' });
   mocks.saveStructureDraftForSeries.mockResolvedValue(undefined);
   mocks.listAutoContourModels.mockResolvedValue([
     {
@@ -244,6 +250,70 @@ beforeEach(() => {
 describe('StructurePanel local draft and structure editing interactions', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('restoring a local draft against the repository @links:SRS-009', () => {
+    const draft = () => ({
+      version: 1,
+      exportedAt: '2026-10-01T09:00:00.000Z',
+      activeStructureSetId: 'ss-1',
+      activeStructureId: 'structure-1',
+      structureSets: [makeStructureSet()],
+    });
+    const restoredSets = () => useStructureStore.getState().structureSets.filter((set) => set.referencedSeriesUID === 'series-1');
+
+    beforeEach(() => {
+      useStructureStore.setState({ structureSets: [], activeStructureSetId: null, activeStructureId: null });
+      mocks.loadStructureDraftForSeries.mockResolvedValue(draft());
+    });
+
+    it('restores the draft without asking when the repository has nothing newer @testing:T7', async () => {
+      const confirm = vi.spyOn(window, 'confirm');
+      render(<StructurePanel />);
+
+      await waitFor(() => expect(restoredSets()).toHaveLength(1));
+      expect(confirm).not.toHaveBeenCalled();
+      expect(mocks.checkDraftAgainstRepository).toHaveBeenCalledWith('study-1', 'series-1', '2026-10-01T09:00:00.000Z');
+    });
+
+    it('asks first when the repository has a newer structure set, and does not restore if the answer is no @testing:T7', async () => {
+      mocks.checkDraftAgainstRepository.mockResolvedValue({
+        status: 'repository-newer',
+        repositorySavedAt: new Date('2026-10-01T10:00:00.000Z'),
+        label: 'Colleague set',
+      });
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      render(<StructurePanel />);
+
+      await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+      expect(confirm.mock.calls[0][0]).toContain('Colleague set');
+      expect(confirm.mock.calls[0][0]).toContain('would replace the newer work');
+      await waitFor(() =>
+        expect(screen.getByText('Local draft not restored: the repository has a newer structure set. Load it from the repository panel.')).toBeTruthy()
+      );
+      expect(restoredSets()).toHaveLength(0);
+    });
+
+    it('restores the older draft when the user chooses to @testing:T7', async () => {
+      mocks.checkDraftAgainstRepository.mockResolvedValue({
+        status: 'repository-newer',
+        repositorySavedAt: new Date('2026-10-01T10:00:00.000Z'),
+        label: 'Colleague set',
+      });
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      render(<StructurePanel />);
+
+      await waitFor(() => expect(restoredSets()).toHaveLength(1));
+    });
+
+    it('restores the draft without asking when the repository could not be checked @testing:T7', async () => {
+      mocks.checkDraftAgainstRepository.mockResolvedValue({ status: 'unchecked', reason: 'offline' });
+      const confirm = vi.spyOn(window, 'confirm');
+      render(<StructurePanel />);
+
+      await waitFor(() => expect(restoredSets()).toHaveLength(1));
+      expect(confirm).not.toHaveBeenCalled();
+    });
   });
 
   it('does not delete a locked structure, and deletes it once unlocked @links:SYS-003 @testing:T4', () => {

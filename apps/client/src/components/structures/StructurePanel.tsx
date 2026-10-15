@@ -51,6 +51,7 @@ import { VIEWPORT_IDS } from '../../core/rendering/MPRController';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import { QA_RULE_DEFINITIONS, getQaRuleConfig } from '../../core/qa/qaRuleConfig';
 import { isEditableTarget } from '../../core/input/isEditableTarget';
+import { checkDraftAgainstRepository } from '../../core/structures/draftFreshness';
 
 const STRUCTURE_TYPES: StructureType[] = [
   'GTV',
@@ -765,6 +766,28 @@ export default function StructurePanel() {
             logClientDebug('StructurePanel', `draft:empty series=${activeSeriesUID}`);
           }
           return;
+        }
+
+        // A colleague may have pushed a structure set since this draft was saved. Restoring the older
+        // draft and pushing it would replace that work, so ask first when the repository is newer.
+        const loadedSeries = useVolumeStore.getState().loadedSeries.find((series) => series.seriesUID === activeSeriesUID);
+        const freshness = await checkDraftAgainstRepository(
+          loadedSeries?.study.studyInstanceUID,
+          activeSeriesUID,
+          imported.exportedAt
+        );
+        if (cancelled) return;
+        if (freshness.status === 'repository-newer') {
+          const keepDraft = window.confirm(
+            `The repository has the structure set "${freshness.label}" saved ${freshness.repositorySavedAt.toLocaleString()}, ` +
+              `newer than your local draft from ${new Date(imported.exportedAt).toLocaleString()}.\n\n` +
+              'Restoring the older draft and pushing it would replace the newer work. Restore the draft anyway?'
+          );
+          if (!keepDraft) {
+            setStatusMessage('Local draft not restored: the repository has a newer structure set. Load it from the repository panel.');
+            logClientDebug('StructurePanel', `draft:skipped series=${activeSeriesUID} repository-newer`);
+            return;
+          }
         }
 
         replaceStructureSets(
