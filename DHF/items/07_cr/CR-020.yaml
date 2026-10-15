@@ -1,0 +1,202 @@
+id: CR-020
+title: link the change request button to the github issue creation page
+description: "### Requested change\n\nThe Repo is public, there is no need to maintain\
+  \ a page to create issues. It can navigate users to create issues with the Github\
+  \ issue creation page. \nIn this case, it's not necessary a button, it can be a\
+  \ hyperlink to indicate it links to an external website.\n\n### User value / justification\n\
+  \nworkflow: user click the \"change request\" button in the main page, github issue\
+  \ creation page opens in another browser tab. \nwhy need to do it: simplify the\
+  \ product.\n\n### Acceptance criteria\n\n1. no self-maintained page for the change\
+  \ request creation. \n\n### Change category\n\nFeature\n\nSource issue: https://github.com/itercharles/ContourLab/issues/189"
+requested_by: itercharles
+priority: Medium
+status: develop
+target_version: 2026-W41
+type: CR
+triage_result:
+  verdict: approved
+  complexity: small
+  affected_subsystems:
+  - ApplicationPages
+  - ApiBackend
+  related_crs:
+  - CR-004
+  - CR-010
+  notes: Replaces the in-app /issues page and its API with an external link that opens
+    the GitHub issue form in a new tab; no requirement covers the page, so only MODULE-010
+    changes.
+affected_items:
+- MODULE-010
+reviewed_items:
+- RISK-010
+- RCM-014
+- SYS-018
+- SWDD-013
+- SYSARCH-001
+- SYSARCH-003
+affected_risk_items:
+- RISK-010
+- RCM-014
+impact_analysis:
+  assumptions:
+  - 'A: toolbar and sidebar ''Change Requests'' entries open the in-app /issues page
+    (submit form + list of CRs via /api/issues). B: they are external links (target
+    _blank, rel noopener noreferrer) to the GitHub new-issue page of itercharles/ContourLab;
+    /issues route, Issues page and the issues API are removed (acceptance criterion:
+    no self-maintained CR creation page). Monitoring list is removed too, since GitHub
+    itself shows issues.'
+  - The new-issue URL is https://github.com/itercharles/ContourLab/issues/new/choose
+    so the existing change_request.yml template is offered; /issues/new?template=change_request.yml
+    is equivalent.
+  - No requirement covers the Issues page, and it is not clinical function, patient
+    data or intended use, so no new CRS/SYS/SRS is written; this is stated in the
+    requirements dimension for the reviewer to overrule.
+  anchors:
+  - id: MODULE-010
+    evidence: 'Item text lists ''Issues/Change Requests page (/issues): GitHub-backed
+      CR submission and monitoring''; code in apps/client/src/pages/Issues.tsx, App.tsx
+      route, Toolbar.tsx and LeftSidebar.tsx links.'
+  unchanged:
+  - id: RISK-010
+    reason: Its history mentions anonymous issue creation through the API; removing
+      the issues endpoint only shrinks the surface, hazard and severity are unchanged.
+  - id: RCM-014
+    reason: Loopback-only deployment is unaffected.
+  - id: SYS-018
+    reason: 'Still true: services are published only on the workstation interface.'
+  - id: SWDD-013
+    reason: Covers the release notes page only.
+  - id: SYSARCH-001
+    reason: Browser client boundary does not change; the link goes to an external
+      site.
+  - id: SYSARCH-003
+    reason: API architecture text does not mention the issues endpoint.
+  created: []
+  dimensions:
+  - dimension: product
+    verdict: not_required
+    reason: Clinical use cases and needs are unchanged; CR submission is a project
+      process, not a use case.
+    items: []
+  - dimension: requirements
+    verdict: not_required
+    reason: 'No requirement covers the Issues page. It fails the DHF-scope criteria:
+      no clinical, patient-data or safety effect, not intended use or labelling.'
+    items: []
+  - dimension: architecture
+    verdict: not_required
+    reason: Removes a client route and an API controller; no boundary or contract
+      of a documented SYSARCH changes.
+    items:
+    - MODULE-010
+  - dimension: risk
+    verdict: not_required
+    reason: No hazard, control or safety action is affected; RISK-010 / RCM-014 assessed
+      and unchanged (attack surface decreases).
+    items:
+    - RISK-010
+    - RCM-014
+  - dimension: soup
+    verdict: not_required
+    reason: No dependency added; GitHubService uses built-in HttpClient.
+    items: []
+  - dimension: test
+    verdict: not_required
+    reason: 'No requirement test points change. Code tests: delete Issues.test.tsx
+      and IssuesEndpointTests.cs; update Toolbar and LeftSidebar tests for external
+      links.'
+    items: []
+  - dimension: regulatory
+    verdict: not_required
+    reason: Intended use, labelling and UDI unchanged.
+    items: []
+  - dimension: security
+    verdict: not_required
+    reason: Removes the unauthenticated issue-creation API and GitHub token use; external
+      links need rel=noopener noreferrer. No new surface.
+    items: []
+  - dimension: usability
+    verdict: required
+    reason: Users now leave the app for GitHub in a new tab; the link must show it
+      is external.
+    items:
+    - MODULE-010
+implementation_notes: '## Overview
+
+  Replace the in-app Change Requests page with an external hyperlink to the GitHub
+  new-issue page, opened in a new tab, and delete the page and its backend.
+
+
+  ## Current State
+
+  - apps/client/src/components/viewer/Toolbar.tsx (~line 461): react-router `Link
+  to="/issues" reloadDocument` labelled ''Change Requests''. CONTOURLAB_REPO_URL constant
+  already exists (line 24).
+
+  - apps/client/src/components/layout/LeftSidebar.tsx (~line 122): `Link to="/issues"`
+  with title/aria-label ''Change Requests''.
+
+  - apps/client/src/App.tsx: route /issues -> pages/Issues.tsx (submit form + CR list).
+
+  - apps/api/Controllers/IssuesController.cs, Services/GitHubService.cs (+ DI/config
+  in Program.cs), apps/api.tests/IssuesEndpointTests.cs.
+
+  - releaseNotesData.ts lists ''Issues and change request tracking page'' (historical
+  entry, leave).
+
+  - MODULE-010 already updated in DHF by the design step.
+
+
+  ## Changes Required
+
+  - Toolbar.tsx: replace Link with `<a href={`${CONTOURLAB_REPO_URL}/issues/new/choose`}
+  target="_blank" rel="noopener noreferrer">`, keep Tailwind styling, add a small
+  external-link icon, title ''Report a bug or request a change on GitHub (opens in
+  a new tab)''. Modify.
+
+  - LeftSidebar.tsx: same anchor, aria-label ''Change Requests (opens GitHub in a
+  new tab)''. Modify.
+
+  - App.tsx: remove Issues import and /issues route. Modify.
+
+  - Delete apps/client/src/pages/Issues.tsx and Issues.test.tsx.
+
+  - Delete IssuesController.cs, GitHubService.cs (if used only by it), their registration,
+  config keys, and apps/api.tests/IssuesEndpointTests.cs; remove unused client helpers/types
+  for /api/issues and check docs/README for mentions.
+
+  - Share the URL constant (export from one place) rather than duplicating it.
+
+
+  ## Implementation Steps
+
+  1. Add the external anchors in Toolbar and LeftSidebar; update their tests.
+
+  2. Remove route, page and test.
+
+  3. Remove API controller, service, DI, config and tests; `dotnet build apps/api/api.csproj
+  -c Release`.
+
+  4. grep for ''/issues'', ''api/issues'', GitHubService for leftovers.
+
+  5. Run client lint, typecheck, tests; `medharness --dhf DHF verify dhf`.
+
+
+  ## Edge Cases & Constraints
+
+  - Must use rel=noopener noreferrer; no reloadDocument or react-router Link for external
+  URL.
+
+  - Unknown /issues URL falls to existing not-found behaviour; confirm no crash.
+
+  - Do not touch DHF/config. Nothing in the clinical workspace may change.
+
+  - Tailwind only, no inline styles, no rounded-xl.
+
+
+  ## Tests
+
+  No requirement test points change (no @links). Unit: Toolbar and LeftSidebar render
+  an anchor with the expected href, target=_blank and rel; no element links to /issues.
+  Removed: Issues page and endpoint tests. Manual: click each entry and confirm GitHub
+  new-issue page opens in a new tab.'

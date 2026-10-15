@@ -1,5 +1,4 @@
 using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -25,44 +24,6 @@ public sealed class GitHubService
             throw new InvalidOperationException($"GITHUB_REPO must be in owner/repo format. Received '{_repo}'.");
         _owner = parts[0];
         _repoName = parts[1];
-    }
-
-    public async Task<GitHubIssueResult> CreateIssueAsync(string title, string body, string[] labels)
-    {
-        EnsureToken();
-        var client = _httpClientFactory.CreateClient("github");
-        var request = new HttpRequestMessage(HttpMethod.Post, $"/repos/{_repo}/issues");
-        AddAuthHeaders(request);
-        request.Content = new StringContent(
-            JsonSerializer.Serialize(new { title, body, labels }),
-            Encoding.UTF8,
-            "application/json");
-
-        var response = await client.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException($"GitHub API returned {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
-
-        var issue = JsonSerializer.Deserialize<GitHubIssueJson>(
-            await response.Content.ReadAsStringAsync(), JsonOptions)!;
-        return new GitHubIssueResult(issue.Number, issue.HtmlUrl);
-    }
-
-    public async Task<IReadOnlyList<GitHubIssueItem>> ListIssuesAsync()
-    {
-        EnsureToken();
-        var client = _httpClientFactory.CreateClient("github");
-
-        var request = new HttpRequestMessage(HttpMethod.Get,
-            $"/repos/{_repo}/issues?state=all&labels=cr%3Afeedback&per_page=50&sort=created&direction=desc");
-        AddAuthHeaders(request);
-
-        var response = await client.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException($"GitHub API returned {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
-
-        var issues = JsonSerializer.Deserialize<GitHubIssueJson[]>(
-            await response.Content.ReadAsStringAsync(), JsonOptions) ?? [];
-        return issues.Where(i => i.PullRequest is null).Select(MapToItem).ToList();
     }
 
     public async Task<GitHubArtifactDownload> DownloadLatestDhfArtifactAsync(CancellationToken cancellationToken = default)
@@ -156,49 +117,14 @@ public sealed class GitHubService
         request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
     }
 
-    private static GitHubIssueItem MapToItem(GitHubIssueJson issue)
-    {
-        var labelNames = issue.Labels.Select(l => l.Name).ToList();
-        var stage = issue.State == "closed" ? "deployed" : DetermineStage(labelNames);
-        var priority = labelNames
-            .FirstOrDefault(l => l.StartsWith("priority:", StringComparison.Ordinal))
-            ?.Replace("priority:", "", StringComparison.Ordinal) ?? "medium";
-        return new GitHubIssueItem(issue.Number, issue.Title, stage, priority, issue.CreatedAt, issue.HtmlUrl);
-    }
-
-    private static string DetermineStage(IEnumerable<string> labels)
-    {
-        foreach (var label in labels)
-        {
-            if (label == "cr:stage/code") return "implement";
-            if (label == "cr:stage/design") return "design";
-            if (label == "cr:stage/spec") return "analyze";
-            if (label == "cr:stage/cr") return "open";
-        }
-        return "open";
-    }
-
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
     };
 }
 
-public sealed record GitHubIssueResult(int Number, string HtmlUrl);
-public sealed record GitHubIssueItem(int Number, string Title, string Stage, string Priority, DateTimeOffset CreatedAt, string HtmlUrl);
 public sealed record GitHubArtifactDownload(string FileName, string ContentType, byte[] Content);
 
-internal sealed record GitHubIssueJson(
-    int Number,
-    string Title,
-    string HtmlUrl,
-    DateTimeOffset CreatedAt,
-    string State,
-    IReadOnlyList<GitHubLabelJson> Labels,
-    object? PullRequest = null  // present on PRs, null on plain issues
-);
-
-internal sealed record GitHubLabelJson(string Name);
 internal sealed record GitHubWorkflowRunsResponse(IReadOnlyList<GitHubWorkflowRunJson> WorkflowRuns);
 internal sealed record GitHubWorkflowRunJson(long Id);
 internal sealed record GitHubArtifactsResponse(IReadOnlyList<GitHubArtifactJson> Artifacts);

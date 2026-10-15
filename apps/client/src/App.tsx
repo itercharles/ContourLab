@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import About from './pages/About';
-import Issues from './pages/Issues';
 import MainWorkspace from './pages/MainWorkspace';
 import ReleaseNotes from './pages/ReleaseNotes';
 import Settings from './pages/Settings';
@@ -10,7 +9,6 @@ function App() {
     <Routes>
       <Route path="/workspace" element={<MainWorkspace />} />
       <Route path="/settings" element={<Settings />} />
-      <Route path="/issues" element={<Issues />} />
       <Route path="/about" element={<About />} />
       <Route path="/release-notes" element={<ReleaseNotes />} />
       <Route path="*" element={<Navigate to="/workspace" replace />} />

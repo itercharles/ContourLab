@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import DicomRepoPanel from '../dicom/DicomRepoPanel';
+import { NEW_ISSUE_URL } from '../../core/externalLinks';
 import { useUIStore } from '../../core/store/uiStore';
 
 export default function LeftSidebar() {
@@ -118,19 +119,20 @@ export default function LeftSidebar() {
               <line x1="8" y1="9" x2="10" y2="9" />
             </svg>
           </Link>
-          <Link
-            to="/issues"
-            reloadDocument
+          <a
+            href={NEW_ISSUE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex h-6 w-6 items-center justify-center rounded bg-[var(--color-elevated)] text-[var(--color-text-sec)] hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            title="Change Requests"
-            aria-label="Change Requests"
+            title="Change Requests (opens GitHub in a new tab)"
+            aria-label="Change Requests (opens GitHub in a new tab)"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
-          </Link>
+          </a>
           <Link
             to="/settings"
             reloadDocument
