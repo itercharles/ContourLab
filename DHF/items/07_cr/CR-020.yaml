@@ -1,0 +1,15 @@
+id: CR-020
+title: link the change request button to the github issue creation page
+description: "### Requested change\n\nThe Repo is public, there is no need to maintain\
+  \ a page to create issues. It can navigate users to create issues with the Github\
+  \ issue creation page. \nIn this case, it's not necessary a button, it can be a\
+  \ hyperlink to indicate it links to an external website.\n\n### User value / justification\n\
+  \nworkflow: user click the \"change request\" button in the main page, github issue\
+  \ creation page opens in another browser tab. \nwhy need to do it: simplify the\
+  \ product.\n\n### Acceptance criteria\n\n1. no self-maintained page for the change\
+  \ request creation. \n\n### Change category\n\nFeature\n\nSource issue: https://github.com/itercharles/ContourLab/issues/189"
+requested_by: itercharles
+priority: Medium
+status: new
+target_version: 2026-W41
+type: CR
