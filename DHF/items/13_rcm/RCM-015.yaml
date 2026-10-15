@@ -1,0 +1,14 @@
+id: RCM-015
+title: Delete asks before discarding contours
+content: 'Deleting a structure that has contours asks for confirmation that names
+  the structure and how many contours would be lost; declining keeps it and records
+  no undo step. A confirmed delete can still be undone, and an empty structure is
+  deleted without asking. Tests: StructurePanel tests (SYS-003 T5). Checked in the
+  running application on a real study.'
+mitigates:
+- RISK-007
+implements:
+- SYS-003
+control_type: Protective Measure
+implementation_status: Implemented
+type: RCM

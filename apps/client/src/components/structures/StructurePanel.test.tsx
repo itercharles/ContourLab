@@ -331,6 +331,56 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     fireEvent.click(screen.getByRole('button', { name: 'Delete PTV' }));
     expect(useStructureStore.getState().structureSets[0].structures).toHaveLength(0);
   });
+
+  describe('deleting a structure that has contours @links:SYS-003', () => {
+    const withContours = () => {
+      const set = makeStructureSet();
+      set.structures[0].contours = [
+        { referencedSOPInstanceUID: 'sop-1', slicePosition: 0, points: new Float32Array(9), isClosed: true },
+        { referencedSOPInstanceUID: 'sop-2', slicePosition: 3, points: new Float32Array(9), isClosed: true },
+      ];
+      useStructureStore.setState({ structureSets: [set] });
+    };
+    const structures = () => useStructureStore.getState().structureSets[0].structures;
+
+    it('asks first, saying what is lost, and keeps the structure when declined @testing:T5', () => {
+      withContours();
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      render(<StructurePanel />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete PTV' }));
+
+      expect(confirm).toHaveBeenCalledTimes(1);
+      expect(confirm.mock.calls[0][0]).toContain('PTV');
+      expect(confirm.mock.calls[0][0]).toContain('2 contours');
+      expect(structures()).toHaveLength(1);
+      expect(UndoRedoManager.canUndo()).toBe(false);
+      expect(screen.getByText('PTV was not deleted.')).toBeTruthy();
+    });
+
+    it('deletes it when confirmed, and the delete can still be undone @testing:T5', () => {
+      withContours();
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      render(<StructurePanel />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete PTV' }));
+      expect(structures()).toHaveLength(0);
+
+      UndoRedoManager.undo();
+      expect(structures()).toHaveLength(1);
+      expect(structures()[0].contours).toHaveLength(2);
+    });
+
+    it('does not ask for an empty structure, which loses nothing @testing:T5', () => {
+      const confirm = vi.spyOn(window, 'confirm');
+      render(<StructurePanel />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete PTV' }));
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(structures()).toHaveLength(0);
+    });
+  });
   it('auto-saves dirty structures to the local browser draft store @links:SRS-009', async () => {
     render(<StructurePanel />);
 
