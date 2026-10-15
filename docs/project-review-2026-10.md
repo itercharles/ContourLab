@@ -46,7 +46,7 @@ suspected findings (S1 to S5) were not separately verified.
 | 17 | A crashed contour overlay hides contours with no warning | fixed | the view shows a message and a Retry control (RCM-012, SYS-002 T7); a view without image data is covered by the real-DICOM tests |
 | 18 | No orientation markers or patient position | fixed | #176 (the 3D view has no markers) |
 | 19 | Interpolation twists outlines, ignores extra contours | fixed | #180 |
-| 20 | RTSTRUCT export writes made-up identifiers | fixed | #179 (showing the destination before a push is not done) |
+| 20 | RTSTRUCT export writes made-up identifiers | fixed | #179; the push now names the patient, series and repository and waits for a confirmation (SRS-010 T16) |
 | 21 | Draft restored with no check against the repository | fixed | #170 deletes the draft after a push; #181 asks before restoring an older one |
 | 22 | Auto-contour service has no limits | **not started** | only reachable from this workstation now |
 | 23 | Traceability promises more than the tests check | **not started** | SRS-010 is still one very large requirement; several test files carry no `@links` |
@@ -102,10 +102,9 @@ suspected findings (S1 to S5) were not separately verified.
    TotalSegmentator and the Python stack, pinned Python dependencies, tests run in CI, AI origin recorded in the
    exported structure set and a review step before a push. It is the largest remaining gap and should go through the
    change-request pipeline.
-2. **Show the patient and series a push will be filed under, before it is sent** (finding 20): the remaining part of RISK-004.
-3. **Authentication, roles and an audit trail** (findings 12 and 13): only needed if the system is ever used from more
+2. **Authentication, roles and an audit trail** (findings 12 and 13): only needed if the system is ever used from more
    than one computer; until then loopback-only is the control.
-4. Split SRS-010 and annotate the unlinked tests (23); limits for the auto-contour service (22); a decoder test for
+3. Split SRS-010 and annotate the unlinked tests (23); limits for the auto-contour service (22); a decoder test for
    HTJ2K; `chmod 777`, the `latest` Orthanc image and backups (13); pin the Claude Code CLI; break up
    `StructurePanel.tsx` (24).
 

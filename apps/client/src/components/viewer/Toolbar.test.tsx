@@ -60,6 +60,7 @@ vi.mock('../../core/structures/rtstructExport', () => ({
 
 vi.mock('../../core/dicom/dicomWebClient', () => ({
   uploadDicomBlobToRepository: mocks.uploadDicomBlobToRepository,
+  getDicomWebBaseUrl: () => 'http://repo.test/dicom-web',
 }));
 
 function makeLoadedSeries(): LoadedSeries {
@@ -341,8 +342,10 @@ describe('Toolbar contour operations', () => {
     expect(saveButton.disabled).toBe(false);
 
     fireEvent.click(saveButton);
+    fireEvent.click(await screen.findByRole('button', { name: 'Push to repository' }));
 
     await waitFor(() => expect(mocks.exportRtstructObject).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalled());
     expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledWith(expect.any(Blob));
     await waitFor(() => expect(useStructureStore.getState().structureSets[0].source).toEqual(
       expect.objectContaining({
@@ -360,6 +363,8 @@ describe('Toolbar contour operations', () => {
 describe('Toolbar push to repository @links:SRS-010', () => {
   const activityTitles = () => useActivityStore.getState().activities.map((activity) => activity.title);
   const clickSave = () => fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+  const confirmPush = async () =>
+    fireEvent.click(await screen.findByRole('button', { name: 'Push to repository' }));
 
   it('tells the user when the upload fails and keeps the series marked as unsaved @testing:T9', async () => {
     useStructureStore.getState().markSeriesDirty('series-1');
@@ -367,6 +372,7 @@ describe('Toolbar push to repository @links:SRS-010', () => {
     renderToolbar();
 
     clickSave();
+    await confirmPush();
 
     await waitFor(() => expect(activityTitles()).toContain('Push failed'));
     expect(useActivityStore.getState().activities[0].message).toContain('(500)');
@@ -386,6 +392,7 @@ describe('Toolbar push to repository @links:SRS-010', () => {
     renderToolbar();
 
     clickSave();
+    await confirmPush();
     await waitFor(() => expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledTimes(1));
     // The clinician carries on editing while the push is in flight.
     useStructureStore.getState().updateStructure('ss-1', 'structure-1', { name: 'PTV edited meanwhile' });
@@ -404,10 +411,66 @@ describe('Toolbar push to repository @links:SRS-010', () => {
     renderToolbar();
 
     clickSave();
+    await confirmPush();
 
     await waitFor(() => expect(activityTitles()).toContain('Pushed to repository'));
     expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1');
     expect(useStructureStore.getState().dirtySeriesUIDs).not.toContain('series-1');
+  });
+
+  it('names the patient, series and repository and sends nothing until confirmed @testing:T16', async () => {
+    useStructureStore.getState().markSeriesDirty('series-1');
+    renderToolbar();
+
+    clickSave();
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.textContent).toContain('Ada Lovelace');
+    expect(dialog.textContent).toContain('123');
+    expect(dialog.textContent).toContain('Thorax CT');
+    expect(dialog.textContent).toContain('http://repo.test/dicom-web');
+    expect(mocks.uploadDicomBlobToRepository).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Push to repository' }));
+    await waitFor(() => expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('sends nothing when the push is cancelled, and the changes stay unsaved @testing:T16', async () => {
+    useStructureStore.getState().markSeriesDirty('series-1');
+    renderToolbar();
+
+    clickSave();
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(activityTitles()).toContain('Push cancelled'));
+    expect(mocks.uploadDicomBlobToRepository).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).toContain('series-1');
+  });
+
+  it('treats Escape as cancel @testing:T16', async () => {
+    useStructureStore.getState().markSeriesDirty('series-1');
+    renderToolbar();
+
+    clickSave();
+    await screen.findByRole('dialog');
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => expect(activityTitles()).toContain('Push cancelled'));
+    expect(mocks.uploadDicomBlobToRepository).not.toHaveBeenCalled();
+  });
+
+  it('does not ask when the export is refused, and says why @testing:T16', async () => {
+    useStructureStore.getState().markSeriesDirty('series-1');
+    mocks.exportRtstructObject.mockRejectedValueOnce(new Error('The images carry no Patient ID'));
+    renderToolbar();
+
+    clickSave();
+
+    await waitFor(() => expect(activityTitles()).toContain('Push failed'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(mocks.uploadDicomBlobToRepository).not.toHaveBeenCalled();
   });
 });
 

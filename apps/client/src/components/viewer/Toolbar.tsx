@@ -6,11 +6,13 @@ import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { useUIStore, type WorkflowStage } from '../../core/store/uiStore';
 import { exportRtstructObject } from '../../core/structures/rtstructExport';
-import { uploadDicomBlobToRepository } from '../../core/dicom/dicomWebClient';
+import { getDicomWebBaseUrl, uploadDicomBlobToRepository } from '../../core/dicom/dicomWebClient';
+import { describePushDestination, type PushDestinationRow } from '../../core/structures/pushDestination';
 import { deleteStructureDraftForSeries } from '../../core/structures/structureDraftStore';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
 import { formatPatientName } from '../../core/dicom/patientUtils';
 import WorkspaceContextBar from '../layout/WorkspaceContextBar';
+import PushConfirmDialog from './PushConfirmDialog';
 
 const ACTIVITY_TONE_CLASS: Record<ActivityItem['tone'], string> = {
   info: 'bg-blue-500',
@@ -39,6 +41,10 @@ function formatActivityTime(value: string): string {
 export default function Toolbar() {
   const [undoRedoRevision, setUndoRedoRevision] = useState(0);
   const [isPushingChanges, setIsPushingChanges] = useState(false);
+  const [pushConfirmation, setPushConfirmation] = useState<{
+    rows: PushDestinationRow[];
+    answer: (confirmed: boolean) => void;
+  } | null>(null);
   const [activityOpen, setActivityOpen] = useState(false);
   const [prototypeInfoOpen, setPrototypeInfoOpen] = useState(false);
   const workflowStage = useUIStore((s) => s.workflowStage);
@@ -115,7 +121,26 @@ export default function Toolbar() {
 
     try {
       setIsPushingChanges(true);
+      // Exported first, so a series that cannot be exported is refused before anyone is asked.
       const exported = await exportRtstructObject(activeLoadedSeries, exportedSet);
+      const rows = describePushDestination(
+        activeLoadedSeries,
+        exportedSet,
+        // A relative address (the dev and deployed proxy) is shown with the host it is resolved against.
+        new URL(getDicomWebBaseUrl(), window.location.href).href
+      );
+      const confirmed = await new Promise<boolean>((resolve) => {
+        setPushConfirmation({ rows, answer: resolve });
+      });
+      setPushConfirmation(null);
+      if (!confirmed) {
+        addUserActivity({
+          title: 'Push cancelled',
+          message: 'Nothing was sent to the repository. The changes are still only saved locally.',
+          tone: 'info',
+        });
+        return;
+      }
       await uploadDicomBlobToRepository(exported.blob);
 
       const source = {
@@ -180,6 +205,14 @@ export default function Toolbar() {
   };
 
   return (
+    <>
+    {pushConfirmation && (
+      <PushConfirmDialog
+        rows={pushConfirmation.rows}
+        onConfirm={() => pushConfirmation.answer(true)}
+        onCancel={() => pushConfirmation.answer(false)}
+      />
+    )}
     <div className="flex flex-none flex-col border-b border-[var(--color-border)] bg-[var(--color-header)]">
       <div className="relative flex h-9 items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface-alt)] px-2">
         {/* Brand */}
@@ -572,5 +605,6 @@ export default function Toolbar() {
       </div>
       <WorkspaceContextBar />
     </div>
+    </>
   );
 }

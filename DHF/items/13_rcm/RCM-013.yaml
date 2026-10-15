@@ -7,8 +7,10 @@ content: 'The RT Structure Set export fails, with the reason shown and nothing w
   round-trip. Tests: rtstructExport, buildMetadata and dicomWebClient tests (SRS-010
   T12 to T15). Checked against a real Orthanc: the stored RT Structure Set carries
   the images'' patient ID and frame of reference and is filed under the existing patient.
-  Not yet done: showing the patient and series a push will be filed under before it
-  is sent.'
+  Before anything is sent, a confirmation shows the patient name, Patient ID, birth
+  date and sex, study, image series, structure set and repository address, and a push
+  goes ahead only when it is confirmed (SRS-010 T16; checked in the running application
+  against a scratch Orthanc: Cancel sent nothing, confirming filed the structure set).'
 mitigates:
 - RISK-004
 implements:

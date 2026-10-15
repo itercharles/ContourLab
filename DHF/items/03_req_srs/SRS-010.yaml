@@ -170,6 +170,12 @@ testing: 'T1: Given a manual structure set with no repository source, the export
   T15: Given structures of every type, the types are exported and read back unchanged,
   including avoidance and support.
 
+  T16: Given an exported structure set about to be pushed, a confirmation lists the
+  patient name, Patient ID, birth date and sex, study, image series, structure set
+  and repository address, and nothing is sent until it is confirmed; Cancel or Escape
+  sends nothing, leaves the changes unsaved and says so; an export that is refused
+  shows no confirmation and gives its reason.
+
   '
 verification_criteria: 'An exported RTSTRUCT omits PredecessorStructureSetSequence
   for a manual structure set and includes the predecessor SOP reference for one loaded
@@ -180,4 +186,5 @@ verification_criteria: 'An exported RTSTRUCT omits PredecessorStructureSetSequen
   saved. T12 to T15: an export that cannot name the images'' frame of reference or
   patient is refused rather than made up, the patient''s birth date and sex are carried,
   every contour references the image it lies on or none, and avoidance and support
-  survive a round trip.'
+  survive a round trip. T16: the push names the patient, series and repository and
+  sends nothing until the clinician confirms.'
