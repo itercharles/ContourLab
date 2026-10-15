@@ -187,6 +187,15 @@ def main() -> int:
             match = re.search(pattern, text)
             require(match is None, f"{filename} uses retired form `{match.group(0) if match else ''}`", errors)
 
+    # A branch with a pull request is built once. A push trigger on other branches (it was feat/*) runs the
+    # whole pipeline a second time for every commit, and nothing waits for that run.
+    ci_on = yaml.safe_load(texts["ci-pipeline.yml"]).get(True) or {}
+    require(
+        (ci_on.get("push") or {}).get("branches") == ["main"],
+        "ci-pipeline.yml: `push` must trigger on main only; a branch with a pull request is built by the pull_request event",
+        errors,
+    )
+
     # package.json records the range floor, not the installed version; the SOUP register
     # and its OSV scan must read the lockfile.
     for filename, text in texts.items():

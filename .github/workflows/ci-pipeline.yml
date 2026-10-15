@@ -6,9 +6,12 @@ run-name: >-
     || github.event_name == 'push' && format('CI · push to {0}', github.ref_name)
     || format('CI · manual run on {0}', github.ref_name) }}
 
+# A branch with a pull request is built once, by the pull_request event. A push trigger on feat/* ran the
+# whole pipeline a second time for every commit on a CR branch and nothing waited for it (cr-lifecycle
+# watches the pull_request run). Pushes are built on main only, where the artifacts and the deploy hang.
 on:
   push:
-    branches: [ main, feat/* ]
+    branches: [ main ]
   pull_request:
     types: [opened, synchronize]
   workflow_dispatch:
