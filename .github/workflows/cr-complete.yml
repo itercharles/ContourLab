@@ -2,7 +2,7 @@ name: Complete CR In DHF
 
 run-name: >-
   ${{ startsWith(github.event.pull_request.head.ref, 'feat/CR-') && github.event.pull_request.merged == true
-    && format('{0} · merged, opening the close-out PR', github.event.pull_request.head.ref)
+    && format('{0} · merged, checking the CR is recorded as completed', github.event.pull_request.head.ref)
     || startsWith(github.event.pull_request.head.ref, 'chore/complete-CR-') && github.event.pull_request.merged == true
     && format('{0} · close-out merged, CR finished', github.event.pull_request.head.ref)
     || format('PR #{0} · not a CR, ignored', github.event.pull_request.number) }}
@@ -32,8 +32,32 @@ jobs:
 
       - uses: ./.github/actions/medharness-setup
 
+      # When the code was approved, the CR was already recorded as completed on the branch (cr-lifecycle,
+      # code-approved) and arrived on main with the merge. A PR merged without that approval did not, and
+      # gets the fallback below: a separate PR that records it.
+      - name: Is the CR already completed?
+        id: state
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+' || true)
+          STATUS=$(medharness --dhf DHF item get "$CR_ID" | jq -r '.status // ""')
+          echo "cr_id=$CR_ID" >> "$GITHUB_OUTPUT"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          if [ "$STATUS" = "completed" ]; then echo "completed=true" >> "$GITHUB_OUTPUT"; else echo "completed=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: "Show progress: the CR is complete"
+        if: steps.state.outputs.completed == 'true'
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ github.event.pull_request.number }}
+          cr: ${{ steps.state.outputs.cr_id }}
+          stage: done
+
       - name: Complete CR
         id: complete
+        if: steps.state.outputs.completed != 'true'
         env:
           GH_TOKEN: ${{ secrets.ACTIONS_PAT }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
@@ -118,7 +142,7 @@ jobs:
           pr: ${{ github.event.pull_request.number }}
           cr: ${{ steps.complete.outputs.cr_id }}
           stage: failed
-          failed-at: '6'
+          failed-at: '5'
           detail: "${{ steps.checks.outputs.reason }}. The close-out PR: ${{ steps.complete.outputs.closeout_url }}"
 
   # The close-out PR is the last step of a CR; when it merges, say so on the CR's own PR.

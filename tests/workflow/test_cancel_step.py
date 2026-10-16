@@ -73,6 +73,25 @@ class CancelStep(s.Scratch):
         self.assertIn("09_cr", str(self.item_files(work, cr)[0]))
         self.assertEqual(len(self.item_files(work, cr)), 1)
 
+    def test_a_cr_already_completed_on_its_branch_is_not_cancelled(self):
+        """Approving the code records the CR as completed on its branch; `completed` has no way out, so
+        closing that PR unmerged leaves nothing on main and the step has nothing to record."""
+        cr = self.new_cr(self.seed, status="develop")
+        s.medharness(self.seed, "item", "transition", cr, "completed")
+        branch = f"feat/{cr}"
+        s.git(self.seed, "checkout", "-q", "-b", branch)
+        s.git(self.seed, "add", "-A")
+        s.git(self.seed, "commit", "-q", "-m", f"completed {cr}")
+        s.git(self.seed, "push", "-q", "origin", branch)
+        s.git(self.seed, "checkout", "-q", "main")
+
+        work, result = self.cancel(cr)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("nothing to cancel", result.stdout + result.stderr)
+        self.assertFalse(self.gh_log.exists() and "pr create" in self.gh_log.read_text())
+        self.assertEqual(s.git(work, "ls-remote", "--heads", "origin", f"chore/cancel-{cr}").stdout, "")
+
     def test_a_branch_without_the_cr_file_fails_loudly(self):
         cr = self.push_cr_branch()
         work, result = self.cancel("CR-999", branch=f"feat/{cr}")

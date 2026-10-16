@@ -305,6 +305,22 @@ def main() -> int:
             errors,
         )
 
+    # Approving the code records the CR as completed on its branch, so it merges with the code. The push has
+    # to be made with the PAT (a push with the workflow token starts no CI run) and has to be a lifecycle
+    # transition, never an edit of the status.
+    code_approved = yaml.safe_load(texts["cr-lifecycle.yml"])["jobs"]["code-approved"]["steps"]
+    checkout = next((st for st in code_approved if str(st.get("uses", "")).startswith("actions/checkout")), {})
+    require(
+        "ACTIONS_PAT" in str((checkout.get("with") or {}).get("token", "")),
+        "cr-lifecycle.yml code-approved: check out with ACTIONS_PAT, or the completion commit starts no CI run",
+        errors,
+    )
+    require(
+        any("item transition" in str(st.get("run", "")) and "completed" in str(st.get("run", "")) for st in code_approved),
+        "cr-lifecycle.yml code-approved: must record the CR as completed with `medharness item transition`",
+        errors,
+    )
+
     # An unquoted run-name with " #" loses everything from the # on: YAML reads it as a comment, so a
     # title meant to be "CR completion | #146" was shown as "CR completion |".
     for filename, text in texts.items():

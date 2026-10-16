@@ -24,8 +24,8 @@ STEPS = [
     (2, "Design review", "you"),
     (3, "Code and CI", "automatic"),
     (4, "Code review", "you"),
-    (5, "Merge this PR", "you"),
-    (6, "Merge the close-out PR", "you"),
+    (5, "Complete the CR", "automatic"),
+    (6, "Merge this PR", "you"),
 ]
 
 # stage -> (steps already done, current step, text for the current step, is it the maintainer's turn)
@@ -40,12 +40,20 @@ STAGES = {
         "The code is ready. Check that CI is green on this PR, then review it under **Files changed**. **Approve** to mark it ready to merge, "
         "or **Request changes** with comments to have the code revised.", True),
     "code-revising": (3, 4, "The code is being revised from your review comments, then CI runs again. Nothing for you to do yet.", False),
-    "merge": (4, 5, "Everything is approved. **Squash-merge this PR.**", True),
-    "closeout-checking": (5, 6,
-        "This PR is merged. A second PR records the CR as completed in the DHF; its checks are running. "
+    "completing": (4, 5,
+        "Approved. The CR is being recorded as completed on this branch and CI is running again. "
         "Nothing for you to do until this says it is ready.", False),
-    "closeout": (5, 6,
-        "The close-out PR's checks have passed. **Merge it** (one click, no review needed) and the CR is finished.", True),
+    "merge": (5, 6,
+        "The CR is recorded as completed and CI has passed. **Squash-merge this PR.** "
+        "(GitHub dismisses an approval when a commit is pushed after it, so the PR may show as not approved: "
+        "merge it with your admin bypass.)", True),
+    # The PR was merged before the CR was recorded as completed (no code approval): a separate PR does it.
+    "closeout-checking": (4, 5,
+        "This PR was merged before the CR was recorded as completed, so a separate PR records it; its checks are running. "
+        "Nothing for you to do until this says it is ready.", False),
+    "closeout": (4, 5,
+        "This PR was merged before the CR was recorded as completed. A separate PR records it and its checks have passed: "
+        "**Merge it** (one click) and the CR is finished.", True),
     "done": (6, 7, "The CR is complete.", False),
     "cancelled": (0, 0, "This PR was closed without merging, so the CR was cancelled.", False),
 }
