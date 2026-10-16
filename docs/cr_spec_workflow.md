@@ -16,7 +16,7 @@ sends a notification.
 | # | Step | Who | What happens | What you do |
 |---|------|-----|--------------|-------------|
 | 1 | Intake and design | automatic | You set a milestone on the issue. `CR Issue Intake` makes the CR, the `feat/CR-NNN` branch and a draft PR, then generates the design and posts its summary and the implementation plan. | Nothing. |
-| 2 | Design review | **you** | The PR is at `cr:stage/design`. | Read the DHF changes and the plan. **Approve** to continue, or **Request changes** with comments to have the design revised. |
+| 2 | Design review | **you** | The PR is at `cr:stage/design`. | Read the DHF changes and the plan. **Approve** to continue, or **Request changes** with comments to have the design revised. **Wait for the checklist to say it is your turn:** the PR exists for a few minutes before the design does, and a review given then is ignored (a comment says so). |
 | 3 | Code and CI | automatic | `CR lifecycle` generates the code, pushes it and CI runs the full test set. | Nothing; wait for CI to be green. |
 | 4 | Code review | **you** | The PR is at `cr:stage/code`. | Read the code. **Approve**, or **Request changes** with comments. Approving is the last point at which changes can be requested. |
 | 5 | Complete the CR | automatic | Your approval records the CR as `completed` in a commit on the branch (one line of the CR file changes) and CI runs again. | Nothing; wait for the checklist to say it is ready. |
@@ -39,6 +39,7 @@ waits for its checks and notifies you to merge it. That is the only case in whic
 | `feat/CR-NNN · design approved` / `code approved` | Your approval was received; code generation or "ready to merge" follows. |
 | `feat/CR-NNN · design changes requested` / `code changes requested` | The design or code is being revised from your comments. |
 | `feat/CR-NNN · comment, nothing to do` | A plain review comment: nothing starts. |
+| `feat/CR-NNN · review ignored, the design is not ready` | You approved or requested changes before the design was generated; nothing started. Review again when the checklist says it is your turn. |
 | `feat/CR-NNN · merged, checking the CR is recorded as completed` | The merge happened; this either marks the CR finished or, if it was merged without the code approval, opens the fallback close-out PR. |
 | `feat/CR-NNN · close-out merged, CR finished` | Only after a fallback close-out PR. |
 | `PR #N · not a CR, ignored` | Any other PR closing or being reviewed: the lifecycle and completion workflows start on every PR and skip the ones that are not CRs. These rows are expected noise. |

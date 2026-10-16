@@ -13,6 +13,7 @@ import _support as s
 SCRIPT = s.step_script("cr-lifecycle.yml", "detect", step_id="plan")
 
 DESIGN = ["cr:stage/design", "cr-design-approved"]
+DESIGN_PENDING = ["cr:stage/design"]  # intake has opened the PR but the design has not been generated yet
 CODE = ["cr:stage/code"]
 
 # (name, event, review state, labels, review commit, head sha, merged, dispatch cr, dispatch stage, expected action)
@@ -24,6 +25,8 @@ CASES = [
     ("changes requested at design revises the design",   "pull_request_review", "changes_requested", DESIGN, "a1", "a1", "", "", "", "revise-design"),
     ("changes requested at code revises the code",       "pull_request_review", "changes_requested", CODE,   "a1", "a1", "", "", "", "revise-code"),
     ("changes requested on an old commit still revises", "pull_request_review", "changes_requested", CODE,   "a0", "a1", "", "", "", "revise-code"),
+    ("approving before the design exists starts nothing",  "pull_request_review", "approved", DESIGN_PENDING, "a1", "a1", "", "", "", "noop"),
+    ("requesting changes before the design exists starts nothing", "pull_request_review", "changes_requested", DESIGN_PENDING, "a1", "a1", "", "", "", "noop"),
     ("a plain comment starts nothing",                   "pull_request_review", "commented", DESIGN, "a1", "a1", "", "", "", "noop"),
     ("an approval with no stage label starts nothing",   "pull_request_review", "approved", [],     "a1", "a1", "", "", "", "noop"),
     ("a merged PR starts nothing here",                  "pull_request", "", DESIGN, "", "", "true",  "", "", "noop"),
@@ -77,6 +80,25 @@ class EventRouting(s.Scratch):
                     self.route("pull_request_review", "changes_requested", CODE, "a1", "a1", "", "", "", association=association)["action"],
                     revise,
                 )
+
+    def test_a_review_before_the_design_exists_is_ignored_and_says_why(self):
+        for state in ("approved", "changes_requested"):
+            with self.subTest(state):
+                out = self.route("pull_request_review", state, DESIGN_PENDING, "a1", "a1", "", "", "")
+                self.assertEqual(out["action"], "noop")
+                self.assertEqual(out["reason"], "design-not-ready")
+
+    def test_once_the_design_exists_the_same_review_is_acted_on_with_no_reason(self):
+        out = self.route("pull_request_review", "approved", DESIGN, "a1", "a1", "", "", "")
+        self.assertEqual((out["action"], out["reason"]), ("gen-code", ""))
+
+    def test_a_code_stage_review_does_not_need_the_design_label(self):
+        out = self.route("pull_request_review", "approved", CODE, "a1", "a1", "", "", "")
+        self.assertEqual((out["action"], out["reason"]), ("code-approved", ""))
+
+    def test_a_plain_comment_before_the_design_exists_is_not_reported_as_a_missed_review(self):
+        out = self.route("pull_request_review", "commented", DESIGN_PENDING, "a1", "a1", "", "", "")
+        self.assertEqual((out["action"], out["reason"]), ("noop", ""))
 
     def test_the_owner_can_still_start_a_stage_by_dispatch(self):
         # A dispatch carries no review association; it is limited to people who can run workflows.
