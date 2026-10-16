@@ -1,0 +1,43 @@
+id: SRS-036
+title: Software shall not offer contour editing tools in the QA workflow stage
+content: 'While the workflow stage is QA, the software shall make contour editing
+  unavailable: none of the contour edit controls is displayed and none of their keyboard
+  shortcuts acts. The controls are the contour tools (Edit contour, Freehand, Polygon,
+  Brush, Eraser), the structure operations (Interpolate, Margin, Boolean) in the tool
+  rail and the structure panel''s interpolate-apply action, the tool options bar,
+  Fill Gaps, Delete Slice, and Undo/Redo; the shortcuts include F, D, G, B, E and
+  Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z. Image navigation, contour review navigation, measurement
+  tools, and structure-panel actions such as lock, delete and type change are not
+  affected. Details: entering QA sets an active contour tool to none, closes any structure
+  operation panel and leaves no unfinished draft committed; returning to the Edit
+  stage restores the controls and shortcuts.'
+derives_from:
+- SYS-004
+verification_method:
+- Test
+testing: 'T1: Given the QA stage, ToolRail, Toolbar and StructurePanel render none
+  of the contour edit tools, structure operations (including the interpolate-apply
+  action), Delete Slice, Fill Gaps, Undo or Redo, and render the navigation, review
+  navigation and measurement tools.
+
+  T2: Given the QA stage, pressing F, D, G, B or E does not set a contour tool as
+  the active tool.
+
+  T3: Given an active contour tool, switching to QA sets the active tool to none and
+  closes any structure operation panel.
+
+  T4: Given QA, switching to the Edit stage displays the contour tools again.
+
+  T5: Given a command on the undo stack and the QA stage, Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z
+  do not undo or redo it, and they work again in the Edit stage.
+
+  T6: Given an unfinished polygon or freehand draft, switching to QA commits no contour
+  and clears the draft (regression test of the existing clearDraft effect).
+
+  '
+verification_criteria: In QA, zero contour edit controls are rendered (tool rail,
+  toolbar, structure panel), the five contour shortcuts leave activeTool unchanged,
+  Cmd/Ctrl+Z leaves the undo stack unchanged, and an unfinished draft commits no contour;
+  entering QA sets an active contour tool to none; the controls and shortcuts return
+  in the Edit stage.
+type: SRS

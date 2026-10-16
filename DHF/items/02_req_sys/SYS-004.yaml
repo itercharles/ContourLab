@@ -1,23 +1,45 @@
 id: SYS-004
 title: System shall provide freehand, polygon, brush, and eraser contouring tools
 category: Functional
-content: |-
-  The system shall provide contouring tools operating on the active viewport.
+content: 'The system shall provide contouring tools operating on the active viewport.
+
   Freehand and polygon tools produce closed ContourSlice polygons. Brush and
+
   eraser tools provide per-slice contour correction operations compatible with
+
   the stored ContourSlice representation. All edits shall be undoable up to 50
+
   levels via Cmd/Ctrl+Z.
+
+  In the QA workflow stage the contouring tools shall not be offered and undo and
+  redo (Cmd/Ctrl+Z) shall be unavailable: QA is a check-only stage, and the user returns
+  to the Edit stage to modify contours.'
 verification_method:
   - Test
   - Demonstration
-testing: |
-  T1: Given a new contour on a slice, ContourEngine.addContour adds the contour via the undo stack.
-  T2: Given a contour replacement on an occupied slice, ContourEngine.addContour replaces the existing contour.
+testing: 'T1: Given a new contour on a slice, ContourEngine.addContour adds the contour
+  via the undo stack.
+
+  T2: Given a contour replacement on an occupied slice, ContourEngine.addContour replaces
+  the existing contour.
+
   T3: Given a locked structure, ContourEngine.addContour rejects the operation.
-  T4: Given a delete command, ContourEngine.deleteContourOnSlice removes the contour and its undo restores it.
-  T5: Given multiple interpolated slices, ContourEngine.addContours wraps all in one undoable command.
+
+  T4: Given a delete command, ContourEngine.deleteContourOnSlice removes the contour
+  and its undo restores it.
+
+  T5: Given multiple interpolated slices, ContourEngine.addContours wraps all in one
+  undoable command.
+
+  T6: Given the QA workflow stage, no contour edit control is displayed, no contour
+  tool can be activated by shortcut, Cmd/Ctrl+Z does not undo or redo, and all are
+  available again in the Edit stage.
+
+  '
 satisfies:
   - CRS-002
 verification_criteria: Adding a contour goes through the undo stack and replaces any
   existing contour on that slice; a locked structure rejects the edit; deleting a
-  contour can be undone; interpolating several slices is one undoable step.
+  contour can be undone; interpolating several slices is one undoable step. In the
+  QA stage no contour edit tool is displayed or activatable and Cmd/Ctrl+Z does nothing
+  (T6).

@@ -16,7 +16,9 @@ content: 'All contour add, edit, and delete operations shall be wrapped in comma
   structure a command acts on has since been locked or deleted; the command stays
   on its stack. The history shall be cleared when the active image set changes, so
   Cmd/Ctrl+Z never changes a previous patient''s structures. Cmd/Ctrl+Z pressed in
-  a text field shall not undo a contour edit.'
+  a text field shall not undo a contour edit. In the QA workflow stage the Cmd/Ctrl+Z
+  and Cmd/Ctrl+Shift+Z shortcuts shall not undo or redo (SRS-036); the stacks are
+  kept.'
 derives_from: [SYS-004]
 verification_method: [Test]
 testing: 'T1: Given a pushed command, it is executed immediately and canUndo becomes

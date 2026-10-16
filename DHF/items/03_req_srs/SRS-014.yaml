@@ -39,7 +39,10 @@ content: 'The client software shall provide contour review correction tools for 
   the image grid (a signed-distance blend), not their outlines point by point, so
   the result does not depend on where an outline starts or which way it is drawn,
   and it shall keep separate pieces and holes and cope with a piece that splits, merges,
-  appears or vanishes.'
+  appears or vanishes.
+
+  Except in the QA workflow stage, where SRS-036 withholds the contour correction
+  tools, their options bar and their shortcuts.'
 derives_from: [SYS-004]
 verification_method: [Test, Demonstration]
 testing: 'T1: Given contours drawn on several slices, findInterpolationBounds identifies
