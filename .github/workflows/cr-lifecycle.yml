@@ -7,6 +7,10 @@ run-name: >-
       && format('{0} · {1}', github.event.pull_request.head.ref,
           github.event.pull_request.merged == true && 'merged, nothing to do here'
           || github.event_name == 'pull_request' && 'closed unmerged, cancelling the CR'
+          || (github.event.review.state == 'approved' || github.event.review.state == 'changes_requested')
+              && !contains(join(github.event.pull_request.labels.*.name, ','), 'cr-design-approved')
+              && !contains(join(github.event.pull_request.labels.*.name, ','), 'cr:stage/code')
+              && 'review ignored, the design is not ready'
           || github.event.review.state == 'approved' && format('{0} approved', contains(join(github.event.pull_request.labels.*.name, ','), 'cr:stage/code') && 'code' || 'design')
           || github.event.review.state == 'changes_requested' && format('{0} changes requested', contains(join(github.event.pull_request.labels.*.name, ','), 'cr:stage/code') && 'code' || 'design')
           || 'comment, nothing to do')
@@ -58,6 +62,7 @@ jobs:
       pr_number: ${{ steps.enrich.outputs.pr_number }}
       branch: ${{ steps.enrich.outputs.branch }}
       issue_number: ${{ steps.enrich.outputs.issue_number }}
+      reason: ${{ steps.plan.outputs.reason }}
     steps:
       # Stage comes from the PR's cr:stage/<stage> label, or the dispatch input.
       - name: Plan lifecycle action
@@ -105,6 +110,19 @@ jobs:
             REVIEW_STATE="stale"
           fi
 
+          # The PR is open at cr:stage/design from the moment intake creates it, minutes before the design
+          # exists. A review given then would start code generation (or a revision) on a branch with no
+          # design, and the push at the end collides with the design commit arriving meanwhile (CR-022,
+          # 2026-10-16). The label cr-design-approved is put on only once the design has been generated.
+          REASON=""
+          if [ "$EVENT_NAME" = "pull_request_review" ] && [ "$STAGE" = "design" ] \
+             && { [ "$REVIEW_STATE" = "approved" ] || [ "$REVIEW_STATE" = "changes_requested" ]; } \
+             && ! jq -e '[.pull_request.labels[].name] | index("cr-design-approved")' "$GITHUB_EVENT_PATH" > /dev/null; then
+            echo "the design has not been generated yet (no cr-design-approved label): ignoring the $REVIEW_STATE review"
+            REVIEW_STATE="premature"
+            REASON="design-not-ready"
+          fi
+
           case "$EVENT_NAME:$REVIEW_STATE:$STAGE" in
             workflow_dispatch::design)                 ACTION=gen-code ;;
             workflow_dispatch::code)                   ACTION=code-approved ;;
@@ -120,6 +138,7 @@ jobs:
           {
             echo "action=$ACTION"
             echo "cr_id=$CR_ID"
+            echo "reason=$REASON"
           } >> "$GITHUB_OUTPUT"
           jq -n --arg cr_id "$CR_ID" --arg branch_ref "$HEAD_REF" \
             --arg pr_number "${{ github.event.pull_request.number }}" \
@@ -156,6 +175,24 @@ jobs:
           fi
           echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
 
+
+  # ── REVIEW BEFORE THE DESIGN EXISTS ───────────────────────────────────────
+
+  ignored-review:
+    needs: [detect]
+    if: needs.detect.outputs.reason == 'design-not-ready'
+    name: Review ignored, the design is not ready
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Say the review was not acted on
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" \
+            --body "Your review was not acted on: the design is still being generated, so there is nothing to approve yet. Review again when the checklist on this PR says it is your turn (step 2)."
 
   # ── CANCEL ────────────────────────────────────────────────────────────────
 
