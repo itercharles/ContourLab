@@ -18,12 +18,13 @@ sends a notification.
 | 1 | Intake and design | automatic | You set a milestone on the issue. `CR Issue Intake` makes the CR, the `feat/CR-NNN` branch and a draft PR, then generates the design and posts its summary and the implementation plan. | Nothing. |
 | 2 | Design review | **you** | The PR is at `cr:stage/design`. | Read the DHF changes and the plan. **Approve** to continue, or **Request changes** with comments to have the design revised. **Wait for the checklist to say it is your turn:** the PR exists for a few minutes before the design does, and a review given then is ignored (a comment says so). |
 | 3 | Code and CI | automatic | `CR lifecycle` generates the code, pushes it and CI runs the full test set. | Nothing; wait for CI to be green. |
-| 4 | Code review | **you** | The PR is at `cr:stage/code`. | Read the code. **Approve**, or **Request changes** with comments. Approving is the last point at which changes can be requested. |
+| 4 | Code review | **you** | The PR is at `cr:stage/code`. | Read the code. **Approve**, or **Request changes** with comments. You can still **Request changes** after approving: the CR is reopened first (see Stage 2). |
 | 5 | Complete the CR | automatic | Your approval records the CR as `completed` in a commit on the branch (one line of the CR file changes) and CI runs again. | Nothing; wait for the checklist to say it is ready. |
 | 6 | Merge | **you** | `CR lifecycle` says the CR is completed and CI passed. | **Squash-merge** the PR. The completion commit merges with the code, so there is no second PR. |
 
 You act at three points: approve the design, approve the code, merge. Step 5 pushes a commit, which makes
 GitHub dismiss your approval; the PR may show as not approved, and you merge it with your admin bypass.
+If you request changes after approving, the CR is reopened, the code is revised, and you approve again.
 
 A failure shows as a red step in the checklist, with what failed and a link to the run.
 
@@ -107,8 +108,10 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
   2. The job waits for the CI run of that commit.
   3. The progress checklist moves to step 6 ("Merge this PR") and a notification comment is added; human merges the PR
 - If `changes_requested`: `revise-code` re-runs `develop-cr` and pushes; re-approve to continue.
-  After the approval the CR is `completed`, which the AI stages refuse to work on, so a change wanted after
-  approval needs a new CR
+  If the code was already approved, the CR is `completed` on the branch and the AI stages refuse a completed
+  CR, so `revise-code` first reopens it (`item transition CR-NNN develop`, in a commit of its own, `chore: reopen
+  CR-NNN for revision`); the next approval completes it again. A CR that a release lists (`included_items`) cannot
+  be reopened, since it has shipped: the job fails and the checklist says so, and the change needs a new CR
 
 ### Post-Merge
 
