@@ -321,6 +321,16 @@ def main() -> int:
         errors,
     )
 
+    # The CR agent jobs hold the PAT and the model key and run the Claude Code CLI on repository contents:
+    # it is installed at an exact version, never whatever is newest.
+    agent_setup = (REPO_ROOT / ".github" / "actions" / "cr-agent-setup" / "action.yml").read_text(encoding="utf-8")
+    require(
+        re.search(r"claude-code@\$\{CLAUDE_CODE_VERSION\}", agent_setup) is not None
+        and re.search(r"CLAUDE_CODE_VERSION:\s*'\d+\.\d+\.\d+'", agent_setup) is not None,
+        ".github/actions/cr-agent-setup/action.yml must install @anthropic-ai/claude-code at an exact version",
+        errors,
+    )
+
     # An unquoted run-name with " #" loses everything from the # on: YAML reads it as a comment, so a
     # title meant to be "CR completion | #146" was shown as "CR completion |".
     for filename, text in texts.items():
