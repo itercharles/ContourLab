@@ -155,6 +155,12 @@ Workflows use `GITHUB_TOKEN` for read operations and `ACTIONS_PAT` (a PAT with
 `contents:write` and `pull-requests:write`) for commits that need to trigger
 downstream CI.
 
+The Claude Code CLI that the design and code jobs run is installed at an exact version in
+[`.github/actions/cr-agent-setup/action.yml`](../.github/actions/cr-agent-setup/action.yml) (currently `2.1.300`),
+because those jobs hold `ACTIONS_PAT` and the model key. A new release does not arrive by itself: to upgrade,
+change the version there, and take one CR through design and code before relying on it. The contract check
+fails if the install is not at an exact version.
+
 Repository variables:
 - `CR_DESIGN_MODEL` — Claude model for DHF design generation
 - `CR_DEVELOP_MODEL` — Claude model for implementation

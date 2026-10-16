@@ -15,9 +15,21 @@ runs:
       with:
         node-version: '22'
 
+    # Pinned: this job holds ACTIONS_PAT and the model key and runs the CLI on repository contents, so a
+    # new release must not arrive by itself. 2.1.300 is the release that generated CR-020 and CR-021 (the
+    # newest on npm when they ran). To upgrade, change the version below and run a CR through design
+    # and code before relying on it.
     - name: Install Claude Code
       shell: bash
-      run: npm install -g @anthropic-ai/claude-code
+      env:
+        CLAUDE_CODE_VERSION: '2.1.300'
+      run: |
+        npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+        installed="$(claude --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)"
+        if [ "$installed" != "$CLAUDE_CODE_VERSION" ]; then
+          echo "::error::expected Claude Code $CLAUDE_CODE_VERSION, found '$installed'"
+          exit 1
+        fi
 
     # build plan/build code --pr commit and push their own work.
     - name: Configure git identity
