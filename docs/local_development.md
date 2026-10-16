@@ -115,6 +115,20 @@ Current v1 constraints:
 - very large series are rejected before upload
 - generated contours are draft suggestions, not final approved structures
 
+The service protects itself with limits, each set by an environment variable (defaults in brackets):
+
+- `AUTOCONTOUR_MAX_VOXELS` (512 x 512 x 300): a larger series is refused with 413, and so is a request body above
+  `AUTOCONTOUR_MAX_BODY_BYTES` (16 bytes per voxel). Dimensions, spacing, origin and direction cosines that cannot
+  describe a volume, or pixel data that does not match the dimensions, are refused with 400.
+- `AUTOCONTOUR_MAX_ACTIVE_JOBS` (3): jobs queued or running; one more is refused with 429 until one finishes.
+- `AUTOCONTOUR_JOB_TTL_SECONDS` (3600) and `AUTOCONTOUR_MAX_FINISHED_JOBS` (20): finished jobs and their results
+  are dropped after the TTL, and the oldest beyond the cap.
+- `AUTOCONTOUR_JOB_TIMEOUT_SECONDS` (3600): an inference that runs longer is marked failed ("Timed out") and its
+  worker process is replaced, so one stuck run does not block every later job.
+
+The tests for these are in `apps/autocontour-service/test_limits.py` (`pytest test_limits.py`; they need FastAPI,
+httpx and SimpleITK but no model and no running service).
+
 ## Maintainer Deployment Notes
 
 The repository includes a self-hosted deployment path. The deploy stack publishes the app on ports `3001`
