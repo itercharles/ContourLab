@@ -1,4 +1,5 @@
 import asyncio
+import math
 import uuid
 import logging
 import os
@@ -49,7 +50,62 @@ class JobCreateRequest(BaseModel):
     series: SeriesPayload
 
 
+# Limits. The service takes a whole CT volume as JSON and keeps each job's result in memory, so without
+# limits one large or repeated request can exhaust the machine and every finished job stays forever.
+# Each can be set from the environment.
+def _int_env(name: str, default: int) -> int:
+    try:
+        value = int(os.getenv(name, ""))
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
+# Same ceiling as the client (autocontourClient.ts): 512 x 512 x 300 voxels.
+MAX_VOXELS = _int_env("AUTOCONTOUR_MAX_VOXELS", 512 * 512 * 300)
+# A voxel is a float in JSON ("-1024.0," is nine characters); allow a margin and a little for the rest.
+MAX_BODY_BYTES = _int_env("AUTOCONTOUR_MAX_BODY_BYTES", MAX_VOXELS * 16 + 1024 * 1024)
+# Jobs queued or running: one inference runs at a time, the others wait holding their whole payload.
+MAX_ACTIVE_JOBS = _int_env("AUTOCONTOUR_MAX_ACTIVE_JOBS", 3)
+# Finished jobs (and their results) are dropped after this long, and no more than this many are kept.
+JOB_TTL_SECONDS = _int_env("AUTOCONTOUR_JOB_TTL_SECONDS", 3600)
+MAX_FINISHED_JOBS = _int_env("AUTOCONTOUR_MAX_FINISHED_JOBS", 20)
+# An inference that has not finished in this long is abandoned and its worker process replaced.
+JOB_TIMEOUT_SECONDS = _int_env("AUTOCONTOUR_JOB_TIMEOUT_SECONDS", 3600)
+
+ACTIVE_STATES = ("queued", "running")
+
 jobs: dict[str, dict] = {}
+_background_tasks: set[asyncio.Task] = set()
+
+
+def _prune_jobs(now: float | None = None) -> None:
+    """Drop finished jobs that are older than the TTL, then the oldest beyond the cap."""
+    now = time.monotonic() if now is None else now
+    for job_id in [j for j, v in jobs.items() if v.get("_finished") is not None and now - v["_finished"] > JOB_TTL_SECONDS]:
+        del jobs[job_id]
+    finished = sorted((v["_finished"], j) for j, v in jobs.items() if v.get("_finished") is not None)
+    for _, job_id in finished[: max(0, len(finished) - MAX_FINISHED_JOBS)]:
+        del jobs[job_id]
+
+
+def _validate_series(s: "SeriesPayload") -> None:
+    """Refuse a series that is malformed or too large before it takes a place in the queue."""
+    if len(s.dimensions) != 3 or any(d <= 0 for d in s.dimensions):
+        raise HTTPException(400, f"dimensions must be three positive integers, got {s.dimensions}.")
+    voxels = s.dimensions[0] * s.dimensions[1] * s.dimensions[2]
+    if voxels > MAX_VOXELS:
+        raise HTTPException(413, f"Series too large for auto-contouring: {voxels} voxels (limit {MAX_VOXELS}).")
+    if len(s.spacing) != 3 or any(not math.isfinite(x) or x <= 0 for x in s.spacing):
+        raise HTTPException(400, f"spacing must be three positive numbers, got {s.spacing}.")
+    if len(s.origin) != 3 or any(not math.isfinite(x) for x in s.origin):
+        raise HTTPException(400, f"origin must be three finite numbers, got {s.origin}.")
+    if len(s.directionCosines) not in (6, 9) or any(not math.isfinite(x) for x in s.directionCosines):
+        raise HTTPException(400, "directionCosines must be six or nine finite numbers.")
+    if s.pixelData and len(s.pixelData) != voxels:
+        raise HTTPException(400, f"pixelData has {len(s.pixelData)} values but dimensions {s.dimensions} need {voxels}.")
+    if len(s.slices) > s.dimensions[2]:
+        raise HTTPException(400, f"{len(s.slices)} slices listed for a volume that is {s.dimensions[2]} slices deep.")
 
 
 def _make_status(job_id: str, state: str, stage: str,
@@ -70,11 +126,75 @@ def _make_status(job_id: str, state: str, stage: str,
     return status
 
 
+class _BodyLimit:
+    """Refuse a request body above MAX_BODY_BYTES: by Content-Length at once, and by counting a streamed one."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        declared = dict(scope["headers"]).get(b"content-length")
+        too_big = {"type": "http.response.start", "status": 413, "headers": [(b"content-type", b"application/json")]}
+        body = {"type": "http.response.body", "body": b'{"detail":"Request body too large."}'}
+        if declared is not None and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
+            await send(too_big)
+            await send(body)
+            return
+
+        seen = 0
+        refused = False
+
+        async def counting_receive():
+            nonlocal seen, refused
+            message = await receive()
+            if message["type"] == "http.request":
+                seen += len(message.get("body", b""))
+                if seen > MAX_BODY_BYTES:
+                    refused = True
+                    return {"type": "http.disconnect"}
+            return message
+
+        responded = False
+
+        async def guarded_send(message):
+            nonlocal responded
+            if refused and not responded:
+                responded = True
+                await send(too_big)
+                await send(body)
+                return
+            if not refused:
+                await send(message)
+
+        await self.app(scope, counting_receive, guarded_send)
+
+
 app = FastAPI(title="ContourLab.AutoContourService")
+app.add_middleware(_BodyLimit)
 
 # One-worker process pool: each inference gets a fresh subprocess with clean MPS state.
 # MPS context is process-local; reusing a thread after a completed inference causes hangs.
 _inference_pool = ProcessPoolExecutor(max_workers=1)
+
+
+def _reset_inference_pool() -> None:
+    """Replace the worker after a timeout: a stuck inference would otherwise hold the only worker for good."""
+    global _inference_pool
+    old = _inference_pool
+    _inference_pool = ProcessPoolExecutor(max_workers=1)
+    try:
+        for process in list(getattr(old, "_processes", {}).values()):
+            process.terminate()
+        old.shutdown(wait=False, cancel_futures=True)
+    except Exception:
+        logger.warning("could not shut down the timed-out inference worker cleanly", exc_info=True)
+
+
+async def _run_inference(image, profile, series_data):
+    return await asyncio.get_event_loop().run_in_executor(_inference_pool, run_totalseg, image, profile, series_data)
 
 
 @app.get("/health")
@@ -110,17 +230,32 @@ async def create_job(request: JobCreateRequest):
     if not profile:
         raise HTTPException(400, f"Unknown auto-contour model profile: {request.modelProfileId}")
 
+    _validate_series(request.series)
+
+    _prune_jobs()
+    active = sum(1 for j in jobs.values() if j["state"] in ACTIVE_STATES)
+    if active >= MAX_ACTIVE_JOBS:
+        raise HTTPException(
+            429,
+            f"The auto-contour service is busy: {active} job(s) are already queued or running (limit {MAX_ACTIVE_JOBS}). "
+            "Try again when one has finished.",
+        )
+
     job_id = str(uuid.uuid4())
     submitted_at = datetime.utcnow().isoformat() + "Z"
     jobs[job_id] = _make_status(job_id, "queued", "Queued", submitted_at=submitted_at)
     jobs[job_id]["_result"] = None
 
-    asyncio.create_task(_run_job(job_id, request, profile, submitted_at))
+    # Keep a reference: the loop holds tasks only weakly, so one that nobody references can be dropped mid-run.
+    task = asyncio.create_task(_run_job(job_id, request, profile, submitted_at))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
     return {"jobId": job_id}
 
 
 @app.get("/jobs/{job_id}")
 def get_job_status(job_id: str):
+    _prune_jobs()
     job = jobs.get(job_id)
     if not job:
         raise HTTPException(404)
@@ -144,6 +279,8 @@ async def _run_job(job_id: str, request: JobCreateRequest, profile: dict, submit
     def _update(state, stage, **kw):
         kw.setdefault("warnings", warnings_list if warnings_list else None)
         jobs[job_id].update(_make_status(job_id, state, stage, submitted_at=submitted_at, **kw))
+        if state in ("succeeded", "failed"):
+            jobs[job_id]["_finished"] = time.monotonic()
 
     def _report_progress(stage: str):
         elapsed = time.monotonic() - t_start
@@ -181,9 +318,19 @@ async def _run_job(job_id: str, request: JobCreateRequest, profile: dict, submit
         tasks = list(set(s.get("totalsegTask", "total") for s in profile["structures"]))
         _report_progress(f"Running {len(tasks)} model task(s): {', '.join(tasks)} (this may take several minutes)")
 
-        structures, task_warnings = await asyncio.get_event_loop().run_in_executor(
-            _inference_pool, run_totalseg, image, profile, series_data
-        )
+        try:
+            structures, task_warnings = await asyncio.wait_for(
+                _run_inference(image, profile, series_data), timeout=JOB_TIMEOUT_SECONDS
+            )
+        except asyncio.TimeoutError:
+            logger.error("[%s] JOB_TIMEOUT after %ds; replacing the inference worker", job_id[:8], JOB_TIMEOUT_SECONDS)
+            _reset_inference_pool()
+            _update(
+                "failed", "Timed out",
+                error=f"Segmentation did not finish within {JOB_TIMEOUT_SECONDS} seconds and was stopped. "
+                      "Try a smaller series, or raise AUTOCONTOUR_JOB_TIMEOUT_SECONDS.",
+            )
+            return
         warnings_list.extend(task_warnings)
 
         now = datetime.utcnow().isoformat() + "Z"

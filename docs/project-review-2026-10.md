@@ -10,7 +10,7 @@ as the reviewer reported them on 2026-10-12; **where each one stands now is in t
 
 ## Where things stand (2026-10-15)
 
-Of the 24 reported findings, 15 are fixed, 3 are partly done and 6 are not started (details below).
+Of the 24 reported findings, 17 are fixed, 2 are partly done and 5 are not started (details below).
 All the fixes are merged, `main` is green and deployed, and no pull request is open. The reviewer's
 suspected findings (S1 to S5) were not separately verified.
 
@@ -48,7 +48,7 @@ suspected findings (S1 to S5) were not separately verified.
 | 19 | Interpolation twists outlines, ignores extra contours | fixed | #180 |
 | 20 | RTSTRUCT export writes made-up identifiers | fixed | #179; the push now names the patient, series and repository and waits for a confirmation (SRS-010 T16) |
 | 21 | Draft restored with no check against the repository | fixed | #170 deletes the draft after a push; #181 asks before restoring an older one |
-| 22 | Auto-contour service has no limits | **not started** | only reachable from this workstation now |
+| 22 | Auto-contour service has no limits | fixed | the service refuses a malformed or oversize series and body, holds at most 3 queued or running jobs, drops finished jobs after an hour (at most 20 kept), and abandons an inference that runs over an hour; all set by environment variables, tested without a model |
 | 23 | Traceability promises more than the tests check | **not started** | SRS-010 is still one very large requirement; several test files carry no `@links` |
 | 24 | Oversized components, duplicated logic | **not started** | `StructurePanel.tsx` is still over 2,200 lines; the three copies of `isEditableTarget` are now one |
 
