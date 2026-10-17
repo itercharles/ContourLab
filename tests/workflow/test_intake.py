@@ -58,69 +58,6 @@ class IntakeTitle(s.Scratch):
         self.assertIn("https://example.test/issues/129", cr["description"])
 
 
-class IntakeSkipsTakenBranches(s.Scratch):
-    """A cancelled CR is not on main, so its number looks free while its branch may still be on the remote.
-
-    Reusing the number would force-push over that branch; intake takes the next number instead and leaves no
-    file behind for the one it skipped.
-    """
-
-    def run_intake(self, remote_branches: list[str]):
-        root = self.scratch_dhf(self.tmp / f"dhf-{len(remote_branches)}")
-        s.git(root, "init", "-q", "-b", "main")
-        s.git(root, "add", "-A")
-        s.git(root, "commit", "-q", "-m", "base")
-        origin = self.tmp / f"origin-{len(remote_branches)}.git"
-        s.run(["git", "init", "-q", "--bare", "-b", "main", str(origin)], cwd=self.tmp)
-        s.git(root, "remote", "add", "origin", f"file://{origin}")
-        s.git(root, "push", "-q", "origin", "main")
-        for branch in remote_branches:
-            s.git(root, "push", "-q", "origin", f"main:refs/heads/{branch}")
-        bin_dir = self.tmp / "bin"
-        s.stub_bin(bin_dir, "gh", 'echo "The body of the issue."\n')
-        out = self.tmp / "out"
-        out.write_text("")
-        before = {p.name for p in (root / "DHF" / "items").rglob("CR-*.yaml")}
-        result = s.run(
-            ["bash", "-e", "-c", SCRIPT], cwd=root, check=False,
-            env={"PATH": f"{bin_dir}:{s.os.environ['PATH']}", "GH_TOKEN": "unused", "GITHUB_OUTPUT": str(out),
-                 "GHA_EXPR": "130", "ISSUE_TITLE": "t", "ISSUE_URL": "https://example.test/issues/130",
-                 "REQUESTED_BY": "someone", "MILESTONE": "2026-W23"},
-        )
-        after = {p.name for p in (root / "DHF" / "items").rglob("CR-*.yaml")}
-        return result, json.loads(Path("/tmp/issue-to-cr.json").read_text())["cr_id"] if result.returncode == 0 else None, sorted(after - before)
-
-    def test_with_no_stale_branch_the_next_number_is_used(self):
-        result, cr_id, added = self.run_intake([])
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(added, [f"{cr_id}.yaml"])
-
-    def test_a_number_whose_branch_exists_is_skipped_and_leaves_no_file(self):
-        _, first, _ = self.run_intake([])
-        number = int(first.split("-")[1])
-        taken = [f"feat/CR-{number:03d}", f"feat/CR-{number + 1:03d}"]
-        result, cr_id, added = self.run_intake(taken)
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(cr_id, f"CR-{number + 2:03d}", "both taken numbers are skipped")
-        self.assertEqual(added, [f"{cr_id}.yaml"], "no file is left for the skipped numbers")
-        self.assertIn("already exists on the remote", result.stdout + result.stderr)
-
-    def test_without_a_remote_nothing_is_skipped(self):
-        root = self.scratch_dhf()
-        bin_dir = self.tmp / "bin"
-        s.stub_bin(bin_dir, "gh", 'echo "The body of the issue."\n')
-        out = self.tmp / "out"
-        out.write_text("")
-        result = s.run(
-            ["bash", "-e", "-c", SCRIPT], cwd=root, check=False,
-            env={"PATH": f"{bin_dir}:{s.os.environ['PATH']}", "GH_TOKEN": "unused", "GITHUB_OUTPUT": str(out),
-                 "GHA_EXPR": "130", "ISSUE_TITLE": "t", "ISSUE_URL": "https://example.test/issues/130",
-                 "REQUESTED_BY": "someone", "MILESTONE": "2026-W23"},
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-
-
 class OpenDraftPr(s.Scratch):
     """The CR PR is opened by the bot, so its reviewer is not its author.
 

@@ -40,11 +40,10 @@ waits for its checks and notifies you to merge it. That is the only case in whic
 | `feat/CR-NNN · design approved` / `code approved` | Your approval was received; code generation or "ready to merge" follows. |
 | `feat/CR-NNN · design changes requested` / `code changes requested` | The design or code is being revised from your comments. |
 | `feat/CR-NNN · comment, nothing to do` | A plain review comment: nothing starts. |
-| `feat/CR-NNN · closed unmerged, nothing is recorded` | The PR was closed without merging: the issue is told and cleaned, the DHF is not changed. |
 | `feat/CR-NNN · review ignored, the design is not ready` | You approved or requested changes before the design was generated; nothing started. Review again when the checklist says it is your turn. |
 | `feat/CR-NNN · merged, checking the CR is recorded as completed` | The merge happened; this either marks the CR finished or, if it was merged without the code approval, opens the fallback close-out PR. |
 | `feat/CR-NNN · close-out merged, CR finished` | Only after a fallback close-out PR. |
-| `PR #N · not a CR, ignored` | Any other PR closing or being reviewed: the lifecycle and completion workflows start on every PR and skip the ones that are not CRs. These rows are expected noise. |
+| `PR #N · not a CR, ignored` | Any other PR being reviewed (the lifecycle workflow), or any PR closing (the completion workflow): they start and skip what is not a CR. These rows are expected noise. |
 | `CI · PR #N · title`, `CI · push to main` | The product CI/CD pipeline. A branch with a PR is built once, by the PR; only `main` is also built on push. |
 
 ## Sources of Truth
@@ -82,8 +81,7 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
 - Trigger: GitHub issue milestone set (issue owner only)
 - Workflow: `issue-to-cr.yml`
 - Steps:
-  1. CR YAML created (a CR number whose `feat/CR-NNN` branch already exists on the remote is skipped, so a
-     cancelled CR's branch is never overwritten); pushed to `feat/CR-NNN` branch
+  1. CR YAML created in `DHF/items/09_cr/`; pushed to `feat/CR-NNN` branch
   2. Draft PR opened with `cr:stage/design` label
   3. DHF design items generated immediately (no separate design-review step to wait for)
   4. Design committed; design summary and implementation plan posted as PR comments
@@ -126,19 +124,11 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
   3. When you merge it (`close-out-merged` job) the checklist shows the CR as complete
 - The pipeline never merges anything itself.
 
-### PR closed without merging
+### A PR closed without merging
 
-- Trigger: a CR's PR is closed without merging (any stage)
-- Workflow: `cr-lifecycle.yml` (`closed-notice` job)
-- Nothing is recorded in the DHF: the CR exists only on its branch, so `main` is unchanged and there is nothing
-  to cancel. The job marks the checklist as closed, takes the `cr:stage/*` labels off the issue and comments on
-  it: what happened, how to start again (set the milestone again; the new CR takes the next free number) and how
-  to record the CR as cancelled if you want that.
-- **To record a cancellation**: Actions → ContourLab CR Lifecycle → Run workflow, `cr_id` and `stage: cancel`
-  (`cancel-cr` job). It checks the CR file out of its branch, moves it to `cancelled`, and opens
-  `chore/cancel-CR-NNN` with a PR to merge. A CR already `completed` on its branch (approved at the code stage,
-  then closed unmerged) is not cancelled: `completed` has no way out, and nothing of it reached `main`.
-- The old `feat/CR-NNN` branch is left where it is; delete it when you no longer want it.
+Nothing happens and nothing is recorded: a CR exists only on its branch until its PR merges, so `main` is
+unchanged. The old `feat/CR-NNN` branch stays until someone deletes it. To start again from the same issue, set
+its milestone again; the new CR may take the same number and then replaces the old branch.
 
 ## State Model
 
@@ -147,7 +137,6 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
 | `draft` | CR created, not yet submitted |
 | `in_review` | Draft PR open, design/code under review |
 | `completed` | Implementation merged; DHF closed out |
-| `cancelled` | Recorded by hand with `stage: cancel` after the PR was closed without merging |
 
 Normal flow: `draft → in_review → completed`
 
