@@ -5,9 +5,7 @@ run-name: >-
     && format('{0} · re-run {1} stage', inputs.cr_id, inputs.stage)
     || (startsWith(github.event.pull_request.head.ref, 'feat/CR-')
       && format('{0} · {1}', github.event.pull_request.head.ref,
-          github.event.pull_request.merged == true && 'merged, nothing to do here'
-          || github.event_name == 'pull_request' && 'closed unmerged, cancelling the CR'
-          || (github.event.review.state == 'approved' || github.event.review.state == 'changes_requested')
+          (github.event.review.state == 'approved' || github.event.review.state == 'changes_requested')
               && !contains(join(github.event.pull_request.labels.*.name, ','), 'cr-design-approved')
               && !contains(join(github.event.pull_request.labels.*.name, ','), 'cr:stage/code')
               && 'review ignored, the design is not ready'
@@ -19,8 +17,6 @@ run-name: >-
 on:
   pull_request_review:
     types: [submitted]
-  pull_request:
-    types: [closed]
   workflow_dispatch:
     inputs:
       cr_id:
@@ -41,7 +37,7 @@ concurrency:
 # Determines what action to take and passes context to downstream jobs.
 # action values: gen-design | gen-code | code-approved |
 #                revise-design | revise-code |
-#                cancel | noop
+#                noop
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -74,7 +70,6 @@ jobs:
           REVIEW_ASSOCIATION: ${{ github.event.review.author_association }}
           REVIEW_COMMIT: ${{ github.event.review.commit_id }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          MERGED: ${{ github.event.pull_request.merged }}
           INPUT_CR: ${{ inputs.cr_id }}
           INPUT_STAGE: ${{ inputs.stage }}
         run: |
@@ -130,7 +125,6 @@ jobs:
             pull_request_review:approved:code)         ACTION=code-approved ;;
             pull_request_review:changes_requested:design) ACTION=revise-design ;;
             pull_request_review:changes_requested:code)   ACTION=revise-code ;;
-            pull_request::*) [ "$MERGED" = "true" ] && ACTION=noop || ACTION=cancel ;;
             *)                                         ACTION=noop ;;
           esac
 
@@ -193,68 +187,6 @@ jobs:
         run: |
           gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" \
             --body "Your review was not acted on: the design is still being generated, so there is nothing to approve yet. Review again when the checklist on this PR says it is your turn (step 2)."
-
-  # ── CANCEL ────────────────────────────────────────────────────────────────
-
-  cancel-cr:
-    needs: [detect]
-    if: needs.detect.outputs.action == 'cancel'
-    name: Cancel CR
-    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 1
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ref: main
-      - uses: ./.github/actions/medharness-setup
-
-      - name: "Show progress: cancelled"
-        continue-on-error: true
-        uses: ./.github/actions/cr-progress
-        with:
-          pr: ${{ needs.detect.outputs.pr_number }}
-          cr: ${{ needs.detect.outputs.cr_id }}
-          stage: cancelled
-
-      - name: Cancel CR
-        env:
-          GH_TOKEN: ${{ secrets.ACTIONS_PAT }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
-          BRANCH: ${{ needs.detect.outputs.branch }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin "$BRANCH" --depth 1
-          # A CR created by `item create` lands in the default directory (07_cr/), older
-          # ones sit in 09_cr/: find the file wherever the branch has it.
-          CR_FILE=$(git ls-tree -r --name-only "origin/$BRANCH" -- DHF/items | grep -E "/$CR_ID\.yaml$" | head -1)
-          if [ -z "$CR_FILE" ]; then
-            echo "::error::$CR_ID has no item file on $BRANCH"
-            exit 1
-          fi
-          git checkout "origin/$BRANCH" -- "$CR_FILE"
-          # A CR approved at the code stage is already recorded as completed on its branch, and completed
-          # has no way out. Closing that PR unmerged leaves nothing on main, so there is nothing to cancel.
-          if [ "$(medharness --dhf DHF item get "$CR_ID" | jq -r '.status // ""')" = "completed" ]; then
-            echo "$CR_ID is already recorded as completed on $BRANCH and was never merged: nothing to cancel on main."
-            exit 0
-          fi
-          medharness --dhf DHF item transition \
-            "$CR_ID" cancelled
-          git add DHF/
-          if ! git diff --staged --quiet; then
-            CANCEL_BRANCH="chore/cancel-$CR_ID"
-            git checkout -b "$CANCEL_BRANCH"
-            git commit -m "chore: cancel $CR_ID"
-            git push origin "$CANCEL_BRANCH"
-            gh pr create --base main --head "$CANCEL_BRANCH" \
-              --title "chore: cancel $CR_ID" \
-              --body "Lifecycle transition to cancelled for $CR_ID after its PR was closed without merging."
-          fi
 
   # ── DESIGN: GENERATE ──────────────────────────────────────────────────────
 

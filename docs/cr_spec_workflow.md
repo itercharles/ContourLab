@@ -43,7 +43,7 @@ waits for its checks and notifies you to merge it. That is the only case in whic
 | `feat/CR-NNN · review ignored, the design is not ready` | You approved or requested changes before the design was generated; nothing started. Review again when the checklist says it is your turn. |
 | `feat/CR-NNN · merged, checking the CR is recorded as completed` | The merge happened; this either marks the CR finished or, if it was merged without the code approval, opens the fallback close-out PR. |
 | `feat/CR-NNN · close-out merged, CR finished` | Only after a fallback close-out PR. |
-| `PR #N · not a CR, ignored` | Any other PR closing or being reviewed: the lifecycle and completion workflows start on every PR and skip the ones that are not CRs. These rows are expected noise. |
+| `PR #N · not a CR, ignored` | Any other PR being reviewed (the lifecycle workflow), or any PR closing (the completion workflow): they start and skip what is not a CR. These rows are expected noise. |
 | `CI · PR #N · title`, `CI · push to main` | The product CI/CD pipeline. A branch with a PR is built once, by the PR; only `main` is also built on push. |
 
 ## Sources of Truth
@@ -124,11 +124,11 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
   3. When you merge it (`close-out-merged` job) the checklist shows the CR as complete
 - The pipeline never merges anything itself.
 
-### Cancel
+### A PR closed without merging
 
-- Trigger: PR closed without merging (any stage)
-- Workflow: `cr-lifecycle.yml`
-- Output: CR YAML checked out from the branch, transitioned to `cancelled`, committed and pushed to `chore/cancel-CR-NNN`, with a PR. A CR already `completed` on its branch (approved at the code stage, then closed unmerged) is not cancelled: `completed` has no way out, and nothing of it reached `main`
+Nothing happens and nothing is recorded: a CR exists only on its branch until its PR merges, so `main` is
+unchanged. The old `feat/CR-NNN` branch stays until someone deletes it. To start again from the same issue, set
+its milestone again; the new CR may take the same number and then replaces the old branch.
 
 ## State Model
 
@@ -137,7 +137,6 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
 | `draft` | CR created, not yet submitted |
 | `in_review` | Draft PR open, design/code under review |
 | `completed` | Implementation merged; DHF closed out |
-| `cancelled` | PR closed without merging |
 
 Normal flow: `draft → in_review → completed`
 

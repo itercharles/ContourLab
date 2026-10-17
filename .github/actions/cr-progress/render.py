@@ -55,7 +55,6 @@ STAGES = {
         "This PR was merged before the CR was recorded as completed. A separate PR records it and its checks have passed: "
         "**Merge it** (one click) and the CR is finished.", True),
     "done": (6, 7, "The CR is complete.", False),
-    "cancelled": (0, 0, "This PR was closed without merging, so the CR was cancelled.", False),
 }
 
 
@@ -67,9 +66,7 @@ def render(stage: str, cr: str, detail: str = "", failed_at: int = 0, run_url: s
         done, current, text, turn = STAGES[stage]
     lines = [MARKER, f"### {cr} progress", ""]
     for number, label, who in STEPS:
-        if stage == "cancelled":
-            mark = "⬜"
-        elif number <= done:
+        if number <= done:
             mark = "✅"
         elif number == current:
             mark = "❌" if stage == "failed" else ("👉" if turn else "⏳")

@@ -55,11 +55,6 @@ class Rendering(unittest.TestCase):
         self.assertIn("CI failed on the generated code", body)
         self.assertNotIn("your turn", body)
 
-    def test_a_cancelled_cr_has_no_step_ticked(self):
-        body = render.render("cancelled", "CR-020")
-        self.assertNotIn("✅", body)
-        self.assertIn("cancelled", body)
-
     def test_the_comment_carries_the_marker_and_the_cr_id(self):
         body = render.render("design-review", "CR-020")
         self.assertTrue(body.startswith(render.MARKER))

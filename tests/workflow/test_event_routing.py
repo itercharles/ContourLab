@@ -29,8 +29,6 @@ CASES = [
     ("requesting changes before the design exists starts nothing", "pull_request_review", "changes_requested", DESIGN_PENDING, "a1", "a1", "", "", "", "noop"),
     ("a plain comment starts nothing",                   "pull_request_review", "commented", DESIGN, "a1", "a1", "", "", "", "noop"),
     ("an approval with no stage label starts nothing",   "pull_request_review", "approved", [],     "a1", "a1", "", "", "", "noop"),
-    ("a merged PR starts nothing here",                  "pull_request", "", DESIGN, "", "", "true",  "", "", "noop"),
-    ("a PR closed unmerged cancels the CR",              "pull_request", "", DESIGN, "", "", "false", "", "", "cancel"),
     ("dispatching design runs code generation",          "workflow_dispatch", "", [], "", "", "", "CR-014", "design", "gen-code"),
     ("dispatching code marks it ready to merge",         "workflow_dispatch", "", [], "", "", "", "CR-014", "code",   "code-approved"),
 ]
