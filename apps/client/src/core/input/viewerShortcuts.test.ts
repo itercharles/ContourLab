@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
     setActiveTool: vi.fn(),
     setRightSidebarOpen: vi.fn(),
     setActiveViewport: vi.fn(),
+    activeTool: 'none',
+    workflowStage: 'edit',
   },
   volumeStore: {
     activeSeriesUID: null as string | null,
@@ -22,7 +24,8 @@ const mocks = vi.hoisted(() => ({
   logClientDebugSpy: vi.fn(),
 }));
 
-vi.mock('../store/uiStore', () => ({
+vi.mock('../store/uiStore', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../store/uiStore')>()),
   useUIStore: {
     getState: vi.fn(() => mocks.uiStore),
   },
@@ -179,5 +182,21 @@ describe('installViewerShortcutHandler', () => {
     expect(mocks.uiStore.setActiveViewport).toHaveBeenCalledWith('AXIAL');
 
     cleanup();
+  });
+
+  it('@links:SRS-036 @testing:T2 ignores the contour tool shortcuts in the QA stage', () => {
+    mocks.uiStore.workflowStage = 'qa';
+    const cleanup = installViewerShortcutHandler();
+
+    for (const key of ['f', 'd', 'g', 'b', 'e']) {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key }));
+    }
+    expect(mocks.uiStore.setActiveTool).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm' }));
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('measureDistance');
+
+    cleanup();
+    mocks.uiStore.workflowStage = 'edit';
   });
 });

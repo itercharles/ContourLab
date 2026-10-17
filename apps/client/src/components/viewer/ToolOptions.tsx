@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { WINDOW_LEVEL_PRESETS } from '../../core/rendering/WindowLevelPresets';
-import { useUIStore, type WLPreset } from '../../core/store/uiStore';
+import { isContourEditingAllowed, useUIStore, type WLPreset } from '../../core/store/uiStore';
 
 const WL_PRESETS: WLPreset[] = ['softTissue', 'lung', 'bone', 'brain', 'mediastinum', 'abdomen', 'custom'];
 
@@ -46,6 +46,7 @@ function Label({ children }: { children: ReactNode }) {
 
 export default function ToolOptions() {
   const activeTool = useUIStore((s) => s.activeTool);
+  const workflowStage = useUIStore((s) => s.workflowStage);
   const brushRadius = useUIStore((s) => s.brushRadius);
   const setBrushRadius = useUIStore((s) => s.setBrushRadius);
   const windowLevelPreset = useUIStore((s) => s.windowLevelPreset);
@@ -72,6 +73,8 @@ export default function ToolOptions() {
       </div>
     );
   }
+
+  if (!isContourEditingAllowed(workflowStage)) return null;
 
   if (activeTool === 'brush' || activeTool === 'eraser') {
     const label = activeTool === 'brush' ? 'Brush' : 'Eraser';

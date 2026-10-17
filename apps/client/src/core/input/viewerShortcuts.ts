@@ -1,5 +1,5 @@
 import { MPRController } from '../rendering/MPRController';
-import { useUIStore, type ViewerTool } from '../store/uiStore';
+import { CONTOUR_TOOLS, isContourEditingAllowed, useUIStore, type ViewerTool } from '../store/uiStore';
 import { useStructureStore } from '../store/structureStore';
 import { useVolumeStore } from '../store/volumeStore';
 import { isEditableTarget } from './isEditableTarget';
@@ -11,7 +11,6 @@ const TOOL_NAME_MAP: Partial<Record<ViewerTool, string>> = {
   scroll: 'StackScroll',
 };
 
-const CONTOUR_TOOLS = new Set<ViewerTool>(['edit', 'freehand', 'polygon', 'brush', 'eraser']);
 const MEASUREMENT_TOOLS = new Set<ViewerTool>([
   'measureDistance',
   'measureAngle',
@@ -22,6 +21,8 @@ const MEASUREMENT_TOOLS = new Set<ViewerTool>([
 async function activateTool(tool: ViewerTool): Promise<void> {
   const uiStore = useUIStore.getState();
   const cornerstoneTool = TOOL_NAME_MAP[tool];
+
+  if (CONTOUR_TOOLS.has(tool) && !isContourEditingAllowed(uiStore.workflowStage)) return;
 
   if (uiStore.activeTool === tool) {
     uiStore.setActiveTool('none');

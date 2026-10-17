@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import ContourOverlay from './ContourOverlay';
 import { useUIStore } from '../../core/store/uiStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
@@ -204,5 +204,53 @@ describe('ContourOverlay measurements', () => {
 
     expect(screen.queryAllByText('24 HU')).toHaveLength(0);
     expect(screen.getAllByText('80 HU').length).toBeGreaterThan(0);
+  });
+
+  it('@links:SRS-036 @testing:T6 commits nothing and clears the draft when QA is entered mid-polygon', () => {
+    useStructureStore.setState({
+      structureSets: [
+        {
+          id: 'ss-1',
+          label: 'Set',
+          referencedSeriesUID: 'series-1',
+          version: 1,
+          structures: [
+            {
+              id: 'structure-1',
+              name: 'PTV',
+              type: 'PTV',
+              color: [0, 0, 255],
+              contours: [],
+              isVisible: true,
+              isLocked: false,
+              volume_cc: 0,
+            },
+          ],
+        },
+      ],
+      activeStructureSetId: 'ss-1',
+      activeStructureId: 'structure-1',
+    });
+    useUIStore.setState({ activeTool: 'polygon', workflowStage: 'edit' });
+    const { svg } = renderOverlay();
+    const contourCount = () =>
+      useStructureStore.getState().structureSets[0].structures[0].contours.length;
+
+    for (const [x, y] of [[20, 20], [80, 20], [80, 80]]) {
+      fireEvent.pointerDown(svg, { clientX: x, clientY: y, button: 0, buttons: 1 });
+    }
+
+    act(() => {
+      useUIStore.getState().setWorkflowStage('qa');
+    });
+    expect(useUIStore.getState().activeTool).toBe('none');
+    expect(contourCount()).toBe(0);
+
+    act(() => {
+      useUIStore.getState().setWorkflowStage('edit');
+      useUIStore.getState().setActiveTool('polygon');
+    });
+    fireEvent.keyDown(window, { key: 'Enter' });
+    expect(contourCount()).toBe(0);
   });
 });

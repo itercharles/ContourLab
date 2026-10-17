@@ -7,7 +7,7 @@ description: "### Requested change\n\nin the QA phase, the contours should not b
   \ issue: https://github.com/itercharles/ContourLab/issues/202"
 requested_by: itercharles
 priority: Medium
-status: design
+status: develop
 target_version: 2026-W41
 type: CR
 triage_result:
@@ -267,4 +267,21 @@ implementation_notes: '## Overview
 
   - StructurePanel test: interpolate-apply absent in QA (SRS-036 T1).
 
-  Name tests with @links:SRS-036 @testing:Tn and @links:SYS-004 @testing:T6.'
+  Name tests with @links:SRS-036 @testing:Tn and @links:SYS-004 @testing:T6.
+
+
+  ## As built
+
+  - `uiStore.ts` exports `CONTOUR_TOOLS` and `isContourEditingAllowed(stage)`; ToolRail,
+  viewerShortcuts, ToolOptions, Toolbar, StructurePanel and the undo key handler share
+  them.
+
+  - Fill Gaps and Delete Slice have no UI control in the client, so there was nothing
+  to hide.
+
+  - StructurePanel hides the whole operation row (Margin/Interpolate/Boolean) and
+  popover (including Apply) in QA, not only interpolate-apply. The Structures tab
+  is only reachable in QA via the store, since the panel''s Structures button switches
+  to Edit.
+
+  '

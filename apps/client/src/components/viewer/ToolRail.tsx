@@ -3,6 +3,8 @@ import { useStructureStore } from '../../core/store/structureStore';
 import {
   useUIStore,
   type StructureOperationPanel,
+  CONTOUR_TOOLS,
+  isContourEditingAllowed,
   type ViewerTool,
 } from '../../core/store/uiStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
@@ -43,8 +45,6 @@ const CORNERSTONE_TOOL_NAME: Partial<Record<ViewerTool, string>> = {
   pan: 'Pan',
   scroll: 'StackScroll',
 };
-
-const CONTOUR_TOOLS = new Set<ViewerTool>(['edit', 'freehand', 'polygon', 'brush', 'eraser']);
 
 const TOOL_GROUPS: Array<{ id: string; items: ToolRailItem[] }> = [
   {
@@ -143,6 +143,7 @@ function ToolIcon({ name }: { name: ToolIconName }) {
 
 export default function ToolRail() {
   const activeTool = useUIStore((s) => s.activeTool);
+  const workflowStage = useUIStore((s) => s.workflowStage);
   const setActiveTool = useUIStore((s) => s.setActiveTool);
   const activeStructureOperationPanel = useUIStore((s) => s.activeStructureOperationPanel);
   const setActiveStructureOperationPanel = useUIStore((s) => s.setActiveStructureOperationPanel);
@@ -245,7 +246,10 @@ export default function ToolRail() {
 
   return (
     <nav className="flex w-10 flex-none flex-col items-center gap-1 border-r border-[var(--color-border)] bg-[var(--color-surface-alt)] py-1.5" aria-label="Tools">
-      {TOOL_GROUPS.map((group, groupIndex) => (
+      {TOOL_GROUPS.filter(
+        (group) =>
+          isContourEditingAllowed(workflowStage) || (group.id !== 'contour' && group.id !== 'structure')
+      ).map((group, groupIndex) => (
         <div key={group.id} className="flex flex-col items-center gap-0.5">
           {groupIndex > 0 && <div className="my-1 h-px w-5 bg-[var(--color-border)]" />}
           {group.items.map((tool) => {

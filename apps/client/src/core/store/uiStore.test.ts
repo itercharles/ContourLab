@@ -85,3 +85,26 @@ describe('uiStore - workflow stage and side panel tab', () => {
     }
   });
 });
+
+describe('uiStore - QA is check-only', () => {
+  beforeEach(() => {
+    useUIStore.setState({ workflowStage: 'edit', activeTool: 'none', activeStructureOperationPanel: null });
+  });
+
+  it('@links:SRS-036 @testing:T3 entering QA resets a contour tool and closes the operation panel', () => {
+    useUIStore.setState({ activeTool: 'freehand', activeStructureOperationPanel: 'margin' });
+
+    useUIStore.getState().setWorkflowStage('qa');
+
+    expect(useUIStore.getState().activeTool).toBe('none');
+    expect(useUIStore.getState().activeStructureOperationPanel).toBeNull();
+  });
+
+  it('@links:SRS-036 @testing:T3 entering QA keeps a measurement tool', () => {
+    useUIStore.setState({ activeTool: 'measureDistance' });
+
+    useUIStore.getState().setWorkflowStage('qa');
+
+    expect(useUIStore.getState().activeTool).toBe('measureDistance');
+  });
+});

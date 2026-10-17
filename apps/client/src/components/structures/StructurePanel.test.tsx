@@ -1094,6 +1094,27 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     expect(screen.getByText('Interpolated 2 contour slices.')).toBeTruthy();
   });
 
+  it('@links:SRS-036 @testing:T1 offers no structure operation or interpolate-apply action in QA', () => {
+    const structureSet = makeStructureSet();
+    useStructureStore.setState({
+      structureSets: [structureSet],
+      activeStructureSetId: structureSet.id,
+      activeStructureId: structureSet.structures[0].id,
+    });
+    useUIStore.setState({ workflowStage: 'qa', activeStructureOperationPanel: 'interpolate' });
+
+    render(<StructurePanel />);
+    act(() => {
+      useUIStore.getState().setSidePanelTab('structures');
+    });
+
+    expect(screen.getByText('Targets')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Interpolate' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Margin' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Boolean' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Apply' })).toBeNull();
+  });
+
   it('applies a positive margin to the active structure @links:SRS-014 @testing:T8', async () => {
     const loadedSeries = makeLoadedSeries();
     loadedSeries.volume.dimensions = [32, 32, 2];

@@ -645,6 +645,55 @@ describe('Toolbar workflow stepper', () => {
   });
 });
 
+describe('QA stage is check-only', () => {
+  const CONTOUR_CONTROLS = [
+    'Edit contour (D)',
+    'Freehand (F)',
+    'Polygon (G)',
+    'Brush (B)',
+    'Eraser (E)',
+    'Interpolate slices (I)',
+    'Margin (G)',
+    'Boolean ops (O)',
+  ];
+
+  function renderRailAndToolbar() {
+    return render(
+      <MemoryRouter>
+        <ToolRail />
+        <Toolbar />
+      </MemoryRouter>
+    );
+  }
+
+  it('@links:SRS-036 @testing:T1 @links:SYS-004 @testing:T6 renders no contour edit control in QA but keeps navigation and measurement', () => {
+    useUIStore.setState({ workflowStage: 'qa' });
+    renderRailAndToolbar();
+
+    for (const name of CONTOUR_CONTROLS) {
+      expect(screen.queryByRole('button', { name })).toBeNull();
+    }
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Redo' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Pan (P)' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Distance (M)' })).toBeTruthy();
+  });
+
+  it('@links:SRS-036 @testing:T4 @links:SYS-004 @testing:T6 shows the contour controls again in the Edit stage', () => {
+    useUIStore.setState({ workflowStage: 'qa' });
+    renderRailAndToolbar();
+    expect(screen.queryByRole('button', { name: 'Freehand (F)' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('tab', { name: '02 Edit' }));
+
+    for (const name of CONTOUR_CONTROLS) {
+      expect(screen.getByRole('button', { name })).toBeTruthy();
+    }
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Redo' })).toBeTruthy();
+  });
+});
+
 describe('Toolbar Change Requests link', () => {
   it('opens the GitHub new-issue page in a new tab', () => {
     renderToolbar();

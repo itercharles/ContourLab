@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { UndoRedoManager, installUndoHistoryReset, installUndoRedoKeyHandler } from '../UndoRedoManager';
+import { useUIStore } from '../../store/uiStore';
 import { useVolumeStore } from '../../store/volumeStore';
 import type { ContourCommand } from '../UndoRedoManager';
 
@@ -197,6 +198,35 @@ describe('UndoRedoManager guards @links:SRS-007', () => {
     expect(counter.value).toBe(0);
 
     input.remove();
+    uninstall();
+  });
+
+  it('@links:SRS-036 @testing:T5 ignores Ctrl+Z and Ctrl+Shift+Z in the QA stage and works again in Edit', () => {
+    const counter = { value: 0 };
+    UndoRedoManager.push(makeCounterCommand(counter));
+    const uninstall = installUndoRedoKeyHandler();
+    const press = (shiftKey: boolean) =>
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true, shiftKey, bubbles: true })
+      );
+
+    useUIStore.getState().setWorkflowStage('qa');
+    press(false);
+    expect(counter.value).toBe(1);
+    expect(UndoRedoManager.canUndo()).toBe(true);
+
+    useUIStore.getState().setWorkflowStage('edit');
+    press(false);
+    expect(counter.value).toBe(0);
+
+    useUIStore.getState().setWorkflowStage('qa');
+    press(true);
+    expect(counter.value).toBe(0);
+    expect(UndoRedoManager.canRedo()).toBe(true);
+
+    useUIStore.getState().setWorkflowStage('edit');
+    press(true);
+    expect(counter.value).toBe(1);
     uninstall();
   });
 
