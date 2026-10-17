@@ -30,9 +30,10 @@ CASES = [
     ("a plain comment starts nothing",                   "pull_request_review", "commented", DESIGN, "a1", "a1", "", "", "", "noop"),
     ("an approval with no stage label starts nothing",   "pull_request_review", "approved", [],     "a1", "a1", "", "", "", "noop"),
     ("a merged PR starts nothing here",                  "pull_request", "", DESIGN, "", "", "true",  "", "", "noop"),
-    ("a PR closed unmerged cancels the CR",              "pull_request", "", DESIGN, "", "", "false", "", "", "cancel"),
+    ("a PR closed unmerged records nothing, it only says so", "pull_request", "", DESIGN, "", "", "false", "", "", "closed"),
     ("dispatching design runs code generation",          "workflow_dispatch", "", [], "", "", "", "CR-014", "design", "gen-code"),
     ("dispatching code marks it ready to merge",         "workflow_dispatch", "", [], "", "", "", "CR-014", "code",   "code-approved"),
+    ("dispatching cancel records the CR as cancelled",   "workflow_dispatch", "", [], "", "", "", "CR-014", "cancel", "cancel"),
 ]
 
 

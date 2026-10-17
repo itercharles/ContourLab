@@ -59,8 +59,28 @@ jobs:
             '{title: $title, description: $description, requested_by: $requested_by,
               priority: "Medium", status: "new", target_version: $target_version}')
 
-          RESULT=$(medharness --dhf DHF item create --type CR --data "$DATA")
-          CR_ID=$(echo "$RESULT" | jq -r '.id // ""')
+          # A CR that was cancelled (its PR closed unmerged) is not recorded on main, so its number is free
+          # as far as the DHF can tell, while its feat/CR-N branch may still be on the remote. Reusing the
+          # number would force-push over that branch, so such numbers are skipped; the files made for them
+          # are removed again below.
+          branch_taken() {
+            git remote get-url origin > /dev/null 2>&1 && git ls-remote --exit-code --heads origin "feat/$1" > /dev/null 2>&1
+          }
+          SKIPPED_FILES=""
+          CR_ID=""
+          for _ in $(seq 1 25); do
+            RESULT=$(medharness --dhf DHF item create --type CR --data "$DATA")
+            CR_ID=$(echo "$RESULT" | jq -r '.id // ""')
+            if [ -z "$CR_ID" ] || [ "$CR_ID" = "null" ]; then break; fi
+            if branch_taken "$CR_ID"; then
+              echo "::notice::feat/$CR_ID already exists on the remote; using the next CR number"
+              SKIPPED_FILES="$SKIPPED_FILES $(medharness --dhf DHF item get "$CR_ID" | jq -r '.file_path // empty')"
+              CR_ID=""
+              continue
+            fi
+            break
+          done
+          for skipped in $SKIPPED_FILES; do rm -f "$skipped"; done
           if [ -z "$CR_ID" ] || [ "$CR_ID" = "null" ]; then
             echo "::error::Failed to create CR item" >&2
             echo "should_create=false" >> "$GITHUB_OUTPUT"

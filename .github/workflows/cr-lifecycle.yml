@@ -6,7 +6,7 @@ run-name: >-
     || (startsWith(github.event.pull_request.head.ref, 'feat/CR-')
       && format('{0} · {1}', github.event.pull_request.head.ref,
           github.event.pull_request.merged == true && 'merged, nothing to do here'
-          || github.event_name == 'pull_request' && 'closed unmerged, cancelling the CR'
+          || github.event_name == 'pull_request' && 'closed unmerged, nothing is recorded'
           || (github.event.review.state == 'approved' || github.event.review.state == 'changes_requested')
               && !contains(join(github.event.pull_request.labels.*.name, ','), 'cr-design-approved')
               && !contains(join(github.event.pull_request.labels.*.name, ','), 'cr:stage/code')
@@ -31,7 +31,7 @@ on:
         description: 'Stage to re-run'
         required: true
         type: choice
-        options: [design, code]
+        options: [design, code, cancel]
 
 concurrency:
   group: cr-lifecycle-${{ github.event.pull_request.number || inputs.cr_id }}
@@ -41,7 +41,8 @@ concurrency:
 # Determines what action to take and passes context to downstream jobs.
 # action values: gen-design | gen-code | code-approved |
 #                revise-design | revise-code |
-#                cancel | noop
+#                closed (PR closed unmerged: nothing is recorded) |
+#                cancel (manual only: record the CR as cancelled) | noop
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -126,11 +127,12 @@ jobs:
           case "$EVENT_NAME:$REVIEW_STATE:$STAGE" in
             workflow_dispatch::design)                 ACTION=gen-code ;;
             workflow_dispatch::code)                   ACTION=code-approved ;;
+            workflow_dispatch::cancel)                 ACTION=cancel ;;
             pull_request_review:approved:design)       ACTION=gen-code ;;
             pull_request_review:approved:code)         ACTION=code-approved ;;
             pull_request_review:changes_requested:design) ACTION=revise-design ;;
             pull_request_review:changes_requested:code)   ACTION=revise-code ;;
-            pull_request::*) [ "$MERGED" = "true" ] && ACTION=noop || ACTION=cancel ;;
+            pull_request::*) [ "$MERGED" = "true" ] && ACTION=noop || ACTION=closed ;;
             *)                                         ACTION=noop ;;
           esac
 
@@ -148,6 +150,7 @@ jobs:
         id: enrich
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_STAGE: ${{ inputs.stage }}
         run: |
           CR_ID=$(jq -r '.cr_id // ""' /tmp/event-plan.json)
           PR_NUMBER=$(jq -r '.pr_number // ""' /tmp/event-plan.json)
@@ -156,10 +159,13 @@ jobs:
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             BRANCH="feat/$CR_ID"
-            PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" \
+            # Recording a cancellation is done after the PR was closed, so it also looks at closed PRs.
+            PR_STATE=open
+            [ "$INPUT_STAGE" = "cancel" ] && PR_STATE=all
+            PR_NUMBER=$(gh pr list --repo "${{ github.repository }}" --state "$PR_STATE" \
               --head "$BRANCH" --json number --jq '.[0].number' 2>/dev/null || echo "")
             if [ -z "$PR_NUMBER" ]; then
-              echo "ERROR: no open PR found for $BRANCH" >&2
+              echo "ERROR: no PR ($PR_STATE) found for $BRANCH" >&2
               exit 1
             fi
           fi
@@ -194,8 +200,47 @@ jobs:
           gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" \
             --body "Your review was not acted on: the design is still being generated, so there is nothing to approve yet. Review again when the checklist on this PR says it is your turn (step 2)."
 
+  # ── PR CLOSED WITHOUT MERGING ─────────────────────────────────────────────
+  # The CR exists only on its branch, so main is unchanged and there is nothing to cancel. The issue and the
+  # PR are told, and the issue is cleaned of its stage labels so setting the milestone again starts fresh.
+
+  closed-notice:
+    needs: [detect]
+    if: needs.detect.outputs.action == 'closed'
+    name: PR closed unmerged, nothing is recorded
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - name: "Show progress: cancelled"
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ needs.detect.outputs.pr_number }}
+          cr: ${{ needs.detect.outputs.cr_id }}
+          stage: cancelled
+      - name: Tell the issue
+        if: needs.detect.outputs.issue_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ needs.detect.outputs.issue_number }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+        run: |
+          gh issue edit "$ISSUE_NUMBER" --repo "${{ github.repository }}" \
+            --remove-label "cr:stage/design" --remove-label "cr:stage/code" 2>/dev/null || true
+          gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" --body \
+            "PR #$PR_NUMBER was closed without merging, so $CR_ID was not merged and is not recorded in the DHF. To start again, set the milestone on this issue again (remove it and add it back). To record $CR_ID as cancelled in the DHF, run Actions → ContourLab CR Lifecycle → Run workflow with cr_id $CR_ID and stage cancel."
+
   # ── CANCEL ────────────────────────────────────────────────────────────────
 
+  # Run by hand (Actions -> cr-lifecycle -> stage: cancel) to record a CR as cancelled in the DHF through a PR
+  # of its own. Closing a CR's PR no longer does that by itself: see closed-notice.
   cancel-cr:
     needs: [detect]
     if: needs.detect.outputs.action == 'cancel'

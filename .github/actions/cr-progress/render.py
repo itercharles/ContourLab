@@ -55,7 +55,7 @@ STAGES = {
         "This PR was merged before the CR was recorded as completed. A separate PR records it and its checks have passed: "
         "**Merge it** (one click) and the CR is finished.", True),
     "done": (6, 7, "The CR is complete.", False),
-    "cancelled": (0, 0, "This PR was closed without merging, so the CR was cancelled.", False),
+    "cancelled": (0, 0, "This PR was closed without merging, so the CR was not merged and is not recorded in the DHF.", False),
 }
 
 
