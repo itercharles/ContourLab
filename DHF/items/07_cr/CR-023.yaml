@@ -1,0 +1,12 @@
+id: CR-023
+title: the contours should not be allowed edit in QA phase
+description: "### Requested change\n\nin the QA phase, the contours should not be\
+  \ edit. \n\n### User value / justification\n\nQA is for check only, use should switch\
+  \ to edit phase if they want to modify.\n\n### Acceptance criteria\n\ncontour edit\
+  \ tool are not displayed in QA phase\n\n### Change category\n\nFeature\n\nSource\
+  \ issue: https://github.com/itercharles/ContourLab/issues/209"
+requested_by: itercharles
+priority: Medium
+status: new
+target_version: 2026-W41
+type: CR
