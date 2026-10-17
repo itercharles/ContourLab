@@ -81,7 +81,8 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
 - Trigger: GitHub issue milestone set (issue owner only)
 - Workflow: `issue-to-cr.yml`
 - Steps:
-  1. CR YAML created in `DHF/items/09_cr/`; pushed to `feat/CR-NNN` branch
+  1. CR YAML created (a CR number whose `feat/CR-NNN` branch already exists on the remote is skipped, so the
+     branch of a CR whose PR was closed is never overwritten); pushed to `feat/CR-NNN` branch
   2. Draft PR opened with `cr:stage/design` label
   3. DHF design items generated immediately (no separate design-review step to wait for)
   4. Design committed; design summary and implementation plan posted as PR comments
@@ -128,7 +129,8 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
 
 Nothing happens and nothing is recorded: a CR exists only on its branch until its PR merges, so `main` is
 unchanged. The old `feat/CR-NNN` branch stays until someone deletes it. To start again from the same issue, set
-its milestone again; the new CR may take the same number and then replaces the old branch.
+its milestone again; the new CR takes the next free number, because intake skips any number whose `feat/CR-NNN`
+branch is still on the remote.
 
 ## State Model
 
