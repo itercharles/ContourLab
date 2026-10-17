@@ -658,6 +658,29 @@ jobs:
           pr: ${{ needs.detect.outputs.pr_number }}
           cr: ${{ needs.detect.outputs.cr_id }}
           stage: code-revising
+
+      # Approving the code recorded the CR as completed on this branch (code-approved), and the AI stages
+      # refuse a completed CR. A request for changes after that reopens it first, in a commit of its own, so
+      # that the next approval can complete it again. A CR a release lists cannot be reopened: the step then
+      # fails, and the checklist says so.
+      - name: Reopen the CR if it was completed
+        id: reopen
+        env:
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ "$(medharness --dhf DHF item get "$CR_ID" | jq -r '.status // ""')" = "completed" ]; then
+            medharness --dhf DHF item transition "$CR_ID" develop
+            git add DHF/
+            git commit -m "chore: reopen $CR_ID for revision" -m "Changes were requested after the code was approved and the CR recorded as completed."
+            git push
+            echo "reopened=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "reopened=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Revise implementation
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

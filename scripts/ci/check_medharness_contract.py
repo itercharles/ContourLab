@@ -321,6 +321,15 @@ def main() -> int:
         errors,
     )
 
+    # A request for changes after approval finds the CR completed, which the AI stages refuse (0.62.0 can
+    # reopen it): revise-code reopens it with the lifecycle before it revises.
+    revise_code = yaml.safe_load(texts["cr-lifecycle.yml"])["jobs"]["revise-code"]["steps"]
+    require(
+        any("item transition" in str(st.get("run", "")) and "develop" in str(st.get("run", "")) for st in revise_code),
+        "cr-lifecycle.yml revise-code: must reopen a completed CR with `medharness item transition ... develop` before it revises",
+        errors,
+    )
+
     # The CR agent jobs hold the PAT and the model key and run the Claude Code CLI on repository contents:
     # it is installed at an exact version, never whatever is newest.
     agent_setup = (REPO_ROOT / ".github" / "actions" / "cr-agent-setup" / "action.yml").read_text(encoding="utf-8")
