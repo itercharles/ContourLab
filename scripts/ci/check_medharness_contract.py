@@ -321,6 +321,23 @@ def main() -> int:
         errors,
     )
 
+    # Runs for one CR queue in order: letting them cancel each other marked gen-code's run cancelled when the
+    # code was approved while it waited for CI, and its "your turn" notice then came after the approval.
+    lifecycle_doc = yaml.safe_load(texts["cr-lifecycle.yml"])
+    require(
+        lifecycle_doc["concurrency"].get("cancel-in-progress") is False,
+        "cr-lifecycle.yml: concurrency must not cancel in-progress runs (cancel-in-progress: false)",
+        errors,
+    )
+    # The jobs that edit the issue's stage labels need issues: write, or `gh issue edit` fails silently.
+    for filename, job_name in (("cr-lifecycle.yml", "gen-code"), ("cr-complete.yml", "complete-cr"), ("cr-complete.yml", "close-out-merged")):
+        job = yaml.safe_load(texts[filename])["jobs"][job_name]
+        require(
+            (job.get("permissions") or {}).get("issues") == "write",
+            f"{filename} {job_name}: needs `issues: write` to edit the issue's cr:stage labels",
+            errors,
+        )
+
     # A request for changes after approval finds the CR completed, which the AI stages refuse (0.62.0 can
     # reopen it): revise-code reopens it with the lifecycle before it revises.
     revise_code = yaml.safe_load(texts["cr-lifecycle.yml"])["jobs"]["revise-code"]["steps"]

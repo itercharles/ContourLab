@@ -23,6 +23,7 @@ jobs:
       contents: write
       pull-requests: write
       actions: read
+      issues: write
     steps:
       - name: Check out repo
         uses: actions/checkout@v5
@@ -54,6 +55,21 @@ jobs:
           pr: ${{ github.event.pull_request.number }}
           cr: ${{ steps.state.outputs.cr_id }}
           stage: done
+
+      # The stage labels describe where the CR is; once it is complete they are noise on a closed issue.
+      - name: Take the stage labels off the issue
+        if: steps.state.outputs.completed == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          ISSUE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // empty')
+          [ -n "$ISSUE" ] || exit 0
+          for label in cr:stage/design cr:stage/code; do
+            gh issue edit "$ISSUE" --repo "$REPO" --remove-label "$label" 2>/dev/null || true
+          done
 
       - name: Complete CR
         id: complete
@@ -152,6 +168,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@v5
 
@@ -174,3 +191,17 @@ jobs:
           pr: ${{ steps.find.outputs.pr }}
           cr: ${{ steps.find.outputs.cr_id }}
           stage: done
+
+      - name: Take the stage labels off the issue
+        if: steps.find.outputs.pr != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.find.outputs.pr }}
+        run: |
+          ISSUE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // empty')
+          [ -n "$ISSUE" ] || exit 0
+          for label in cr:stage/design cr:stage/code; do
+            gh issue edit "$ISSUE" --repo "$REPO" --remove-label "$label" 2>/dev/null || true
+          done

@@ -28,6 +28,14 @@ If you request changes after approving, the CR is reopened, the code is revised,
 
 A failure shows as a red step in the checklist, with what failed and a link to the run.
 
+Runs for one CR go one after the other, in the order the events came; they do not cancel each other. If you
+approve the code before the "your turn, step 4" notice (that is, while CI is still running on the generated
+code), the approval waits for the generation run to finish, which waits for that CI, and the notice for step 4
+then appears before the checklist moves on to step 5. Approving after the notice avoids the wait.
+
+When the CR is complete (the PR is merged), the `cr:stage/*` labels are taken off its issue, so a closed issue
+does not still say it is at the design stage.
+
 **If a CR PR is merged without the code approval** (the checklist's step 5 never ran), the CR is still
 `develop` on `main`. `CR completion` then falls back to the old path: it opens `chore: complete CR-NNN`,
 waits for its checks and notifies you to merge it. That is the only case in which a second PR appears.
