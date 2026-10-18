@@ -8,7 +8,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ## Current Pin
 
-- `medharness[docs]==0.62.0`
+- `medharness[docs]==0.66.1`
 - One CLI, `medharness`; `dhfkit` is a library inside it with no command of its own
 
 ## Sources Of Truth
@@ -28,6 +28,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 - `medharness --dhf DHF item create --type CR --data ...` (`issue-to-cr.yml`)
 - `medharness --dhf DHF build plan --cr CR-NNN [--pr N]` (design generation and revision)
 - `medharness --dhf DHF build code --cr CR-NNN [--pr N]` (implementation and revision)
+- `build plan` and `build code` neither read nor move a CR's status (0.64 or later; they only need `implementation_notes` on the CR for `build code`): the pipeline moves it with `item transition`
 - `medharness --dhf DHF item transition CR-NNN completed` when the code is approved (`code-approved`), and `... develop` to reopen a completed CR when changes are requested after approval (`revise-code`; 0.62.0 or later; refused for a CR a release lists)
 - Event routing (event → CR, stage, action) is plain shell in `cr-lifecycle.yml`'s `detect` job: the stage comes from the PR's `cr:stage/<stage>` label or the dispatch input
 - Design approval → code stage: the `detect` job acts on an `approved` review only when its `commit_id` is the PR's current head; a stale approval is ignored. The server-side enforcement is branch protection on `main` (Require approvals; Dismiss stale approvals when new commits are pushed)

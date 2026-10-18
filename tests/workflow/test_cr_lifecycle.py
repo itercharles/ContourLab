@@ -46,9 +46,18 @@ class Lifecycle(s.Scratch):
         created = s.medharness(root, "item", "create", "--type", "CR", "--data", json.dumps({
             "title": "t", "description": "d", "requested_by": "t", "priority": "Low", "status": "new"}))
         cr = created["id"]
+        # Everything the move to develop asks for (0.63+: a triage result and implementation notes), but no
+        # affected_items: that is the one thing this test leaves out.
+        s.medharness(root, "item", "update", cr, "--data", json.dumps({
+            "implementation_notes": "notes",
+            "triage_result": {"verdict": "approved", "complexity": "small", "affected_subsystems": [],
+                              "related_crs": [], "notes": "test"},
+        }))
         s.medharness(root, "item", "transition", cr, "design")
         s.medharness(root, "item", "transition", cr, "develop")
-        self.assertNotEqual(s.medharness_code(root, "item", "transition", cr, "completed"), 0)
+        refused = s.run(["medharness", "--dhf", "DHF", "item", "transition", cr, "completed"], cwd=root, check=False)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("affected_items", refused.stdout + refused.stderr, "refused for the reason the test is about")
 
     def test_closure_fails_for_a_cr_that_was_never_planned(self):
         root = self.scratch_dhf()
