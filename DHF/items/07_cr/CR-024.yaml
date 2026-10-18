@@ -1,0 +1,33 @@
+id: CR-024
+title: remove the "approve" stage
+description: '### Requested change
+
+
+  the stage in the home page, we don''t need the approve. As approve is the final
+  step of review stage.
+
+
+  ### User value / justification
+
+
+  approve stage is not needed as it''s part of review
+
+
+  ### Acceptance criteria
+
+
+  no approve stage in the home page.
+
+
+  ### Change category
+
+
+  Feature
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/212'
+requested_by: itercharles
+priority: Medium
+status: new
+target_version: 2026-W41
+type: CR
