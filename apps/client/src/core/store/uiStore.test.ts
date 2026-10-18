@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useUIStore } from './uiStore';
+import { canEditContours, useUIStore } from './uiStore';
 import type { WorkflowStage } from './uiStore';
 
 describe('uiStore - maximize viewport', () => {
@@ -83,5 +83,35 @@ describe('uiStore - workflow stage and side panel tab', () => {
       useUIStore.getState().setSidePanelTab(tab);
       expect(useUIStore.getState().sidePanelTab).toBe(tab);
     }
+  });
+});
+
+describe('uiStore - QA stage contour gating', () => {
+  beforeEach(() => {
+    useUIStore.setState({ workflowStage: 'edit', activeTool: 'none', activeStructureOperationPanel: null });
+  });
+
+  it('@links:SRS-037 canEditContours is false only in the QA stage', () => {
+    expect(canEditContours('qa')).toBe(false);
+    for (const stage of ['auto', 'edit', 'review', 'approve'] as const) {
+      expect(canEditContours(stage)).toBe(true);
+    }
+  });
+
+  it('@links:SRS-037 @testing:T3 entering QA clears a contour tool and closes the operation panel', () => {
+    useUIStore.setState({ activeTool: 'polygon', activeStructureOperationPanel: 'margin' });
+
+    useUIStore.getState().setWorkflowStage('qa');
+
+    expect(useUIStore.getState().activeTool).toBe('none');
+    expect(useUIStore.getState().activeStructureOperationPanel).toBeNull();
+  });
+
+  it('@links:SRS-037 @testing:T4 entering QA keeps a measurement tool active', () => {
+    useUIStore.setState({ activeTool: 'measureDistance' });
+
+    useUIStore.getState().setWorkflowStage('qa');
+
+    expect(useUIStore.getState().activeTool).toBe('measureDistance');
   });
 });

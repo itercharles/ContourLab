@@ -1390,3 +1390,20 @@ describe('StructurePanel tab navigation driven by uiStore', () => {
     expect(screen.queryByText('Targets')).toBeNull();
   });
 });
+
+describe('StructurePanel QA stage gating', () => {
+  it('@links:SRS-037 @testing:T1 omits the margin, interpolate and boolean controls in QA and shows them in Edit', () => {
+    useUIStore.setState({ workflowStage: 'qa', sidePanelTab: 'structures', activeStructureOperationPanel: 'margin' });
+    const { unmount } = render(<StructurePanel />);
+
+    expect(screen.queryByRole('button', { name: 'Margin' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Interpolate' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Boolean' })).toBeNull();
+    expect(screen.queryByText('Expand / contract')).toBeNull();
+    unmount();
+
+    useUIStore.setState({ workflowStage: 'edit', activeStructureOperationPanel: null });
+    render(<StructurePanel />);
+    expect(screen.getByRole('button', { name: 'Margin' })).toBeTruthy();
+  });
+});

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
-import { useUIStore } from '../../core/store/uiStore';
+import { canEditContours, useUIStore } from '../../core/store/uiStore';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
 import type {
   AutoContourJobStatus,
@@ -538,7 +538,8 @@ export default function StructurePanel() {
   const activeStructureReviewSlices = activeStructure
     ? getReviewSlices(activeStructure.contours)
     : [];
-  const activePop = activeStructureOperationPanel;
+  const canEdit = canEditContours(workflowStage);
+  const activePop = canEdit ? activeStructureOperationPanel : null;
   const qaRuleConfig = getQaRuleConfig();
   const activeStructureQa = activeStructure
     ? analyzeContourQuality(activeStructure, activeLoadedSeries
@@ -1637,6 +1638,7 @@ export default function StructurePanel() {
               </div>
 
               {/* c) Operation buttons */}
+              {canEdit && (
               <div className="flex flex-wrap gap-1.5 border-b border-[var(--color-border)] px-3 py-2">
                 {(['margin', 'interpolate', 'boolean'] as const).map((op) => (
                   <button
@@ -1661,6 +1663,7 @@ export default function StructurePanel() {
                   ⋯
                 </button>
               </div>
+              )}
 
               {/* d) Inline operation popover */}
               {activePop && (

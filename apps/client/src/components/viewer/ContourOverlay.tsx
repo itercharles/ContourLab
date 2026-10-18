@@ -10,7 +10,7 @@ import {
 import { buildMprMaskBoundaryPath } from '../../core/contouring/contourMaskReslice';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { useStructureStore } from '../../core/store/structureStore';
-import { useUIStore } from '../../core/store/uiStore';
+import { canEditContours, useUIStore } from '../../core/store/uiStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
 import { StructureSetManager } from '../../core/structures/StructureSetManager';
 import { logClientDebug } from '../../core/debug/clientDebugLog';
@@ -101,6 +101,7 @@ export default function ContourOverlay({
   const activeStructureSetId = useStructureStore((state) => state.activeStructureSetId);
   const activeStructureId = useStructureStore((state) => state.activeStructureId);
   const brushRadius = useUIStore((state) => state.brushRadius);
+  const workflowStage = useUIStore((state) => state.workflowStage);
 
   const [revision, setRevision] = useState(0);
   const [draftPoints, setDraftPoints] = useState<WorldPoint[]>([]);
@@ -273,7 +274,7 @@ export default function ContourOverlay({
       : undefined,
     [activeStructure, currentFrame?.sopInstanceUID, currentSlicePosition, sliceTolerance]
   );
-  const isContourEditTool = ['edit', 'freehand', 'polygon', 'brush', 'eraser'].includes(activeTool);
+  const isContourEditTool = canEditContours(workflowStage) && ['edit', 'freehand', 'polygon', 'brush', 'eraser'].includes(activeTool);
   const canMeasure = isMeasurementTool && !!viewport && !!activeSeries;
   const isInteractiveTool = isContourEditTool || isMeasurementTool;
 

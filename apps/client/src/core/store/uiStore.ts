@@ -21,6 +21,12 @@ export type ViewerTool =
 export type StructureOperationPanel = 'margin' | 'interpolate' | 'boolean' | null;
 export type Theme = 'dark' | 'light';
 export type WorkflowStage = 'auto' | 'edit' | 'qa' | 'review' | 'approve';
+export function canEditContours(stage: WorkflowStage): boolean {
+  return stage !== 'qa';
+}
+
+const CONTOUR_EDIT_TOOLS: ReadonlySet<ViewerTool> = new Set<ViewerTool>(['edit', 'freehand', 'polygon', 'brush', 'eraser']);
+
 export type SidePanelTab = 'structures' | 'ai' | 'qa' | 'review' | 'audit';
 
 export type WLPreset = 'lung' | 'bone' | 'softTissue' | 'brain' | 'mediastinum' | 'abdomen' | 'custom';
@@ -154,6 +160,10 @@ export const useUIStore = create<UIState>()(
     setWorkflowStage: (stage) =>
       set((state) => {
         state.workflowStage = stage;
+        if (!canEditContours(stage)) {
+          if (CONTOUR_EDIT_TOOLS.has(state.activeTool)) state.activeTool = 'none';
+          state.activeStructureOperationPanel = null;
+        }
         state.sidePanelTab =
           stage === 'auto' ? 'ai' :
           stage === 'edit' ? 'structures' :

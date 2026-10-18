@@ -7,7 +7,7 @@ description: "### Requested change\n\nin the QA phase, the contours should not b
   \ issue: https://github.com/itercharles/ContourLab/issues/209"
 requested_by: itercharles
 priority: Medium
-status: design
+status: develop
 target_version: 2026-W41
 type: CR
 triage_result:
@@ -226,5 +226,21 @@ implementation_notes: '## Overview
 
   - apps/client/src/components/structures/StructurePanel.test.tsx: no apply controls
   in QA (SRS-037 T1).
+
+
+
+  ## Implementation deviations
+
+  - Toolbar.tsx has no Interpolate/Fill Gaps/Delete Slice buttons (only the stepper,
+  Undo and Redo), so only Undo/Redo are gated there.
+
+  - ToolOptions.tsx needed no change: entering QA sets activeTool to ''none'', so
+  no contour option bar renders.
+
+  - ContourOverlay.tsx already discards its draft when the active tool is not interactive;
+  it additionally treats contour tools as inactive in QA.
+
+  - The Cmd/Ctrl+Z gate lives in installUndoRedoKeyHandler (UndoRedoManager.ts); tests
+  added in UndoRedoManager.test.ts.
 
   '
