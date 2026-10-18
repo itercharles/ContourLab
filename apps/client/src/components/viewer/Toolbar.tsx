@@ -52,7 +52,6 @@ const WORKFLOW_STAGES: { id: WorkflowStage; num: string; label: string }[] = [
   { id: 'edit',    num: '02', label: 'Edit' },
   { id: 'qa',      num: '03', label: 'QA' },
   { id: 'review',  num: '04', label: 'Review' },
-  { id: 'approve', num: '05', label: 'Approve' },
 ];
 
 function formatActivityTime(value: string): string {

@@ -202,7 +202,7 @@ describe('Toolbar contour operations', () => {
     expect(screen.getByRole('tab', { name: '02 Edit' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: '03 QA' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: '04 Review' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: '05 Approve' })).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: /Approve/ })).toBeNull();
     expect(screen.queryByTitle('Window/Level Preset')).toBeNull();
     expect(screen.queryByRole('button', { name: /Window \/ Level/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /Crosshair/ })).toBeNull();
@@ -609,9 +609,6 @@ describe('Toolbar workflow stepper', () => {
     expect(useUIStore.getState().sidePanelTab).toBe('structures');
 
     fireEvent.click(screen.getByRole('tab', { name: '04 Review' }));
-    expect(useUIStore.getState().sidePanelTab).toBe('review');
-
-    fireEvent.click(screen.getByRole('tab', { name: '05 Approve' }));
     expect(useUIStore.getState().sidePanelTab).toBe('review');
   });
 

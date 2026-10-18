@@ -1160,6 +1160,7 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     fireEvent.click(screen.getByRole('button', { name: 'Audit' }));
 
     expect(screen.getByText('RTSS')).toBeTruthy();
+    expect(useUIStore.getState().workflowStage).toBe('edit');
     expect(screen.getByText('RTSTRUCT Thorax CT')).toBeTruthy();
     expect(screen.getByText('…5')).toBeTruthy();
     expect(screen.getByText('Imported')).toBeTruthy();
