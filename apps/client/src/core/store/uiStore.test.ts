@@ -66,7 +66,6 @@ describe('uiStore - workflow stage and side panel tab', () => {
     ['edit',    'structures'],
     ['qa',      'qa'],
     ['review',  'review'],
-    ['approve', 'review'],
   ])('setWorkflowStage(%s) co-updates sidePanelTab to %s', (stage, expectedTab) => {
     useUIStore.getState().setWorkflowStage(stage);
     expect(useUIStore.getState().sidePanelTab).toBe(expectedTab);
@@ -93,7 +92,7 @@ describe('uiStore - QA stage contour gating', () => {
 
   it('@links:SRS-037 canEditContours is false only in the QA stage', () => {
     expect(canEditContours('qa')).toBe(false);
-    for (const stage of ['auto', 'edit', 'review', 'approve'] as const) {
+    for (const stage of ['auto', 'edit', 'review'] as const) {
       expect(canEditContours(stage)).toBe(true);
     }
   });

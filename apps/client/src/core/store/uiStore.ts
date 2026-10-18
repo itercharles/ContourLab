@@ -20,7 +20,7 @@ export type ViewerTool =
 
 export type StructureOperationPanel = 'margin' | 'interpolate' | 'boolean' | null;
 export type Theme = 'dark' | 'light';
-export type WorkflowStage = 'auto' | 'edit' | 'qa' | 'review' | 'approve';
+export type WorkflowStage = 'auto' | 'edit' | 'qa' | 'review';
 export function canEditContours(stage: WorkflowStage): boolean {
   return stage !== 'qa';
 }

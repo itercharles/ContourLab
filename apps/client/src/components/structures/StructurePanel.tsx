@@ -644,7 +644,6 @@ export default function StructurePanel() {
       edit: 'structures',
       qa: 'qa',
       review: 'review',
-      approve: 'audit',
     };
     setPanelTab(map[workflowStage]);
   }, [workflowStage, setPanelTab]);
@@ -1467,7 +1466,7 @@ export default function StructurePanel() {
         <button
           type="button"
           className={tabButtonClass(panelTab === 'audit')}
-          onClick={() => setWorkflowStage('approve')}
+          onClick={() => setPanelTab('audit')}
         >
           Audit
         </button>

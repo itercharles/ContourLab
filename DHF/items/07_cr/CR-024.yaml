@@ -1,0 +1,193 @@
+id: CR-024
+title: remove the "approve" stage
+description: '### Requested change
+
+
+  the stage in the home page, we don''t need the approve. As approve is the final
+  step of review stage.
+
+
+  ### User value / justification
+
+
+  approve stage is not needed as it''s part of review
+
+
+  ### Acceptance criteria
+
+
+  no approve stage in the home page.
+
+
+  ### Change category
+
+
+  Feature
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/212'
+requested_by: itercharles
+priority: Medium
+status: completed
+target_version: 2026-W41
+type: CR
+triage_result:
+  verdict: approved
+  complexity: small
+  affected_subsystems:
+  - ViewportUI
+  related_crs:
+  - CR-023
+  notes: The Approve step is dropped from the workflow stepper and the stage type;
+    only SRS-037 names it, so a one-word requirement edit plus client UI change.
+affected_items:
+- SRS-037
+reviewed_items:
+- SYS-004
+- SWDD-004
+- CRS-002
+- SYSARCH-001
+affected_risk_items: []
+impact_analysis:
+  assumptions:
+  - The home page stage is the workflow stepper in the toolbar (Toolbar.tsx WORKFLOW_STAGES);
+    the Approve step is removed so Review is the final stage (01 Auto-segment, 02
+    Edit, 03 QA, 04 Review).
+  - WorkflowStage loses the approve member; no stage replaces it, so contour editing
+    is available in auto, edit and review as before.
+  - The side panel Audit tab (RTSTRUCT history, DICOM metadata) and the disabled Approve
+    & Sign button in the Review tab are not the stage; they stay. Clicking Audit now
+    only switches the panel tab and no longer changes the workflow stage.
+  - 'Approve is a UI step only: no DHF requirement defines an approval workflow or
+    sign-off, so nothing is lost clinically; removing the disabled Approve & Sign
+    button is a follow-up if wanted.'
+  anchors:
+  - id: SRS-037
+    evidence: 'git grep approve in DHF/apps: SRS-037 content lists stages (auto, edit,
+      review, approve); Toolbar.test.tsx and uiStore.test.ts use the approve stage.'
+  - id: SYS-004
+    evidence: Parent of SRS-037; states the QA rule only and does not name approve.
+  unchanged:
+  - id: SYS-004
+    reason: Names only the QA stage; stays true.
+  - id: SWDD-004
+    reason: Describes the QA guards in Toolbar and ContourOverlay; no mention of the
+      approve stage.
+  - id: CRS-002
+    reason: The need to draw and edit contours is untouched.
+  - id: SYSARCH-001
+    reason: Browser client architecture is unchanged; local UI stepper change.
+  created: []
+  dimensions:
+  - dimension: product
+    verdict: not_required
+    reason: No use case or user need describes an approve step.
+    items: []
+  - dimension: requirements
+    verdict: required
+    reason: SRS-037 enumerates the approve stage and must drop it.
+    items:
+    - SRS-037
+  - dimension: architecture
+    verdict: not_required
+    reason: Local client UI change.
+    items: []
+  - dimension: risk
+    verdict: not_required
+    reason: No hazard, control or data path involved; the approve stage had no sign-off
+      function (Approve & Sign is disabled).
+    items: []
+  - dimension: soup
+    verdict: not_required
+    reason: No dependency change.
+    items: []
+  - dimension: test
+    verdict: required
+    reason: Existing tests that use the approve stage change; SRS-037 T5 and the stepper
+      tests no longer include it. No new test points.
+    items:
+    - SRS-037
+  - dimension: regulatory
+    verdict: not_required
+    reason: Intended use and labelling do not mention the stage.
+    items: []
+  - dimension: security
+    verdict: not_required
+    reason: No auth, API or data change.
+    items: []
+  - dimension: usability
+    verdict: required
+    reason: The stepper shows four stages instead of five.
+    items:
+    - SRS-037
+implementation_notes: '## Overview
+
+  Remove the Approve stage from the workflow stepper on the home page; Review becomes
+  the last stage. Approve is the final part of review, so it is not a separate step.
+  Requirement: SRS-037 text drops approve from its list of stages; no other DHF item
+  names it.
+
+
+  ## Current State
+
+  apps/client/src/core/store/uiStore.ts: WorkflowStage = auto|edit|qa|review|approve;
+  canEditContours(stage) returns stage !== qa; setWorkflowStage co-updates sidePanelTab.
+  apps/client/src/components/viewer/Toolbar.tsx: WORKFLOW_STAGES has five entries
+  ending { id: approve, num: 05, label: Approve }. apps/client/src/components/structures/StructurePanel.tsx:
+  a map from stage to PanelTab (approve: audit) around line 647; the Audit tab button
+  calls setWorkflowStage(approve). A disabled Approve & Sign button sits in the Review
+  tab. Toolbar.tsx also has an unrelated pipeline description with a trigger string
+  approve (GitHub review approval); leave it.
+
+
+  ## Changes Required
+
+  - uiStore.ts (modify): drop approve from WorkflowStage; remove any approve mapping
+  in setWorkflowStage / the stage-to-tab table.
+
+  - Toolbar.tsx (modify): remove the approve entry from WORKFLOW_STAGES.
+
+  - StructurePanel.tsx (modify): remove approve from the stage-to-tab map; make the
+  Audit tab button switch only the panel tab (setPanelTab / setSidePanelTab audit),
+  not the workflow stage, keeping Audit reachable. Keep the Approve & Sign button
+  unless told otherwise.
+
+  - Tests (modify): Toolbar.test.tsx (no 05 Approve tab; remove the click of it near
+  line 614), uiStore.test.ts (remove approve rows and from the canEditContours list),
+  StructurePanel tests for Audit still pass.
+
+  - Persisted state: grep for stored workflowStage values; a stored approve must fall
+  back to edit/review if any persistence exists.
+
+
+  ## Implementation Steps
+
+  1. Narrow the WorkflowStage type and fix every compile error from pnpm --filter
+  @contourlab/client typecheck.
+
+  2. Remove the stepper entry; update the Audit tab handler.
+
+  3. Update tests; run client test, lint, typecheck.
+
+  4. medharness --dhf DHF verify dhf. Run /ux-design before UI work.
+
+
+  ## Edge Cases & Constraints
+
+  - Audit tab must still open without a stage change; leaving it should not leave
+  the stepper with no active stage (stage stays what it was).
+
+  - Tailwind only, no inline styles.
+
+  - Stepper numbering is 01-04.
+
+
+  ## Tests
+
+  - Toolbar.test.tsx: stepper shows exactly Auto-segment, Edit, QA, Review and no
+  Approve (@links:SRS-037).
+
+  - uiStore.test.ts: canEditContours true for auto, edit, review (@links:SRS-037 @testing:T5);
+  sidePanelTab mapping for the remaining stages.
+
+  - StructurePanel.test.tsx: Audit tab opens the audit content without changing workflowStage.'
