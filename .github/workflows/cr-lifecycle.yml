@@ -29,9 +29,13 @@ on:
         type: choice
         options: [design, code]
 
+# Runs for one CR go one after the other, in the order the events came. They used to cancel each other:
+# approving the code while gen-code was still waiting for CI marked gen-code's run cancelled (its jobs went on
+# and finished), and its "your turn, step 4" notice then appeared after the approval it had been waiting for
+# (CR-024). A run that is no longer wanted now finishes first; only the newest waiting run is kept.
 concurrency:
   group: cr-lifecycle-${{ github.event.pull_request.number || inputs.cr_id }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 # ── DETECT ────────────────────────────────────────────────────────────────────
 # Determines what action to take and passes context to downstream jobs.
@@ -395,6 +399,7 @@ jobs:
       contents: write
       pull-requests: write
       actions: write
+      issues: write   # rotates the issue's cr:stage label; without it the edit failed silently
     steps:
       - uses: actions/checkout@v5
         with:
