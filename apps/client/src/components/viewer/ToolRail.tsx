@@ -1,6 +1,7 @@
 import { MPRController } from '../../core/rendering/MPRController';
 import { useStructureStore } from '../../core/store/structureStore';
 import {
+  canEditContours,
   useUIStore,
   type StructureOperationPanel,
   type ViewerTool,
@@ -148,6 +149,7 @@ export default function ToolRail() {
   const setActiveStructureOperationPanel = useUIStore((s) => s.setActiveStructureOperationPanel);
   const setActiveViewport = useUIStore((s) => s.setActiveViewport);
   const setRightSidebarOpen = useUIStore((s) => s.setRightSidebarOpen);
+  const workflowStage = useUIStore((s) => s.workflowStage);
   const crosshairsEnabled = useUIStore((s) => s.crosshairsEnabled);
   const setCrosshairsEnabled = useUIStore((s) => s.setCrosshairsEnabled);
   const activeSeriesUID = useVolumeStore((s) => s.activeSeriesUID);
@@ -245,7 +247,7 @@ export default function ToolRail() {
 
   return (
     <nav className="flex w-10 flex-none flex-col items-center gap-1 border-r border-[var(--color-border)] bg-[var(--color-surface-alt)] py-1.5" aria-label="Tools">
-      {TOOL_GROUPS.map((group, groupIndex) => (
+      {TOOL_GROUPS.filter((group) => canEditContours(workflowStage) || (group.id !== 'contour' && group.id !== 'structure')).map((group, groupIndex) => (
         <div key={group.id} className="flex flex-col items-center gap-0.5">
           {groupIndex > 0 && <div className="my-1 h-px w-5 bg-[var(--color-border)]" />}
           {group.items.map((tool) => {

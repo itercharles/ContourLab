@@ -1,3 +1,4 @@
+import { canEditContours, useUIStore } from '../store/uiStore';
 import { isEditableTarget } from '../input/isEditableTarget';
 import { addUserActivity } from '../store/activityStore';
 import { useVolumeStore } from '../store/volumeStore';
@@ -107,6 +108,7 @@ export function installUndoRedoKeyHandler(): () => void {
     if (!ctrl || e.key !== 'z') return;
     // In a text field Ctrl+Z belongs to the field, not to a contour edit the user cannot see.
     if (isEditableTarget(e.target)) return;
+    if (!canEditContours(useUIStore.getState().workflowStage)) return;
 
     e.preventDefault();
     const result = e.shiftKey ? UndoRedoManager.redo() : UndoRedoManager.undo();

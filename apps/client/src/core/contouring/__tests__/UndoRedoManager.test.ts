@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { UndoRedoManager, installUndoHistoryReset, installUndoRedoKeyHandler } from '../UndoRedoManager';
+import { useUIStore } from '../../store/uiStore';
 import { useVolumeStore } from '../../store/volumeStore';
 import type { ContourCommand } from '../UndoRedoManager';
 
@@ -197,6 +198,21 @@ describe('UndoRedoManager guards @links:SRS-007', () => {
     expect(counter.value).toBe(0);
 
     input.remove();
+    uninstall();
+  });
+
+  it('@links:SRS-037 @testing:T2 does not undo or redo with Ctrl+Z in the QA stage', () => {
+    const counter = { value: 0 };
+    UndoRedoManager.push(makeCounterCommand(counter));
+    const uninstall = installUndoRedoKeyHandler();
+    useUIStore.setState({ workflowStage: 'qa' });
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true, bubbles: true }));
+    expect(counter.value).toBe(1);
+
+    useUIStore.setState({ workflowStage: 'edit' });
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, metaKey: true, bubbles: true }));
+    expect(counter.value).toBe(0);
     uninstall();
   });
 

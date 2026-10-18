@@ -4,7 +4,7 @@ import { UndoRedoManager } from '../../core/contouring/UndoRedoManager';
 import { addUserActivity, useActivityStore, type ActivityItem } from '../../core/store/activityStore';
 import { useStructureStore } from '../../core/store/structureStore';
 import { useVolumeStore } from '../../core/store/volumeStore';
-import { useUIStore, type WorkflowStage } from '../../core/store/uiStore';
+import { canEditContours, useUIStore, type WorkflowStage } from '../../core/store/uiStore';
 import { exportRtstructObject } from '../../core/structures/rtstructExport';
 import { getDicomWebBaseUrl, uploadDicomBlobToRepository } from '../../core/dicom/dicomWebClient';
 import { describePushDestination, type PushDestinationRow } from '../../core/structures/pushDestination';
@@ -395,6 +395,8 @@ export default function Toolbar() {
           ))}
         </div>
 
+        {canEditContours(workflowStage) && (
+        <>
         <button
           onClick={handleUndo}
           disabled={!canUndo}
@@ -419,6 +421,8 @@ export default function Toolbar() {
             <path d="M13 7H7a4 4 0 0 0-4 4" />
           </svg>
         </button>
+        </>
+        )}
         {/* Inbox / notifications */}
         <button
           type="button"

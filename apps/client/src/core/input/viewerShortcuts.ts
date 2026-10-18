@@ -1,5 +1,5 @@
 import { MPRController } from '../rendering/MPRController';
-import { useUIStore, type ViewerTool } from '../store/uiStore';
+import { canEditContours, useUIStore, type ViewerTool } from '../store/uiStore';
 import { useStructureStore } from '../store/structureStore';
 import { useVolumeStore } from '../store/volumeStore';
 import { isEditableTarget } from './isEditableTarget';
@@ -36,6 +36,7 @@ async function activateTool(tool: ViewerTool): Promise<void> {
   }
 
   if (CONTOUR_TOOLS.has(tool)) {
+    if (!canEditContours(uiStore.workflowStage)) return;
     const volumeStore = useVolumeStore.getState();
     const structureStore = useStructureStore.getState();
 

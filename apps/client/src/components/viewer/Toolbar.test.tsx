@@ -656,3 +656,50 @@ describe('Toolbar Change Requests link', () => {
     expect(document.querySelector('a[href$="/issues"]')).toBeNull();
   });
 });
+
+describe('QA stage contour gating', () => {
+  const editControls = ['Edit contour (D)', 'Freehand (F)', 'Polygon (G)', 'Brush (B)', 'Eraser (E)', 'Interpolate slices (I)', 'Margin (G)', 'Boolean ops (O)', 'Undo', 'Redo'];
+
+  function renderBoth() {
+    render(
+      <MemoryRouter>
+        <Toolbar />
+        <ToolRail />
+      </MemoryRouter>
+    );
+  }
+
+  it('@links:SRS-037 @links:SYS-004 @testing:T1 @testing:T6 hides contour editing controls and Undo/Redo in QA', () => {
+    useUIStore.setState({ workflowStage: 'qa' });
+    renderBoth();
+
+    for (const name of editControls) {
+      expect(screen.queryByRole('button', { name }), name).toBeNull();
+    }
+  });
+
+  it('@links:SRS-037 @links:SYS-004 @testing:T5 @testing:T6 shows contour editing controls in Edit and Auto', () => {
+    for (const stage of ['edit', 'auto'] as const) {
+      useUIStore.setState({ workflowStage: stage });
+      const { unmount } = render(
+        <MemoryRouter>
+          <Toolbar />
+          <ToolRail />
+        </MemoryRouter>
+      );
+      for (const name of editControls) {
+        expect(screen.queryByRole('button', { name }), `${stage}: ${name}`).not.toBeNull();
+      }
+      unmount();
+    }
+  });
+
+  it('@links:SRS-037 @testing:T6 keeps navigation and measurement tools in QA', () => {
+    useUIStore.setState({ workflowStage: 'qa' });
+    renderBoth();
+
+    for (const name of ['Pan (P)', 'Zoom (Z)', 'Scroll (S)', 'Window / Level (W)']) {
+      expect(screen.queryByRole('button', { name }), name).not.toBeNull();
+    }
+  });
+});

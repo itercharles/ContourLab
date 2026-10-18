@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
     setActiveTool: vi.fn(),
     setRightSidebarOpen: vi.fn(),
     setActiveViewport: vi.fn(),
+    workflowStage: 'edit' as string,
   },
   volumeStore: {
     activeSeriesUID: null as string | null,
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../store/uiStore', () => ({
+  canEditContours: (stage: string) => stage !== 'qa',
   useUIStore: {
     getState: vi.fn(() => mocks.uiStore),
   },
@@ -55,6 +57,7 @@ import { installViewerShortcutHandler } from './viewerShortcuts';
 
 describe('installViewerShortcutHandler', () => {
   beforeEach(() => {
+    mocks.uiStore.workflowStage = 'edit';
     mocks.volumeStore.activeSeriesUID = null;
     mocks.structureStore.structureSets = [];
     mocks.structureStore.activeStructureSetId = null;
@@ -64,6 +67,21 @@ describe('installViewerShortcutHandler', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
+  });
+
+  it('@links:SRS-037 @testing:T2 ignores contour shortcuts in the QA stage but keeps navigation', () => {
+    mocks.uiStore.workflowStage = 'qa';
+    const cleanup = installViewerShortcutHandler();
+
+    for (const key of ['f', 'd', 'g', 'b', 'e']) {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key }));
+    }
+    expect(mocks.uiStore.setActiveTool).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm' }));
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('measureDistance');
+
+    cleanup();
   });
 
   it('activates contour tool and opens structure panel when no drawable structure is selected', () => {

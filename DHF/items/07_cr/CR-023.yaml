@@ -1,0 +1,246 @@
+id: CR-023
+title: the contours should not be allowed edit in QA phase
+description: "### Requested change\n\nin the QA phase, the contours should not be\
+  \ edit. \n\n### User value / justification\n\nQA is for check only, use should switch\
+  \ to edit phase if they want to modify.\n\n### Acceptance criteria\n\ncontour edit\
+  \ tool are not displayed in QA phase\n\n### Change category\n\nFeature\n\nSource\
+  \ issue: https://github.com/itercharles/ContourLab/issues/209"
+requested_by: itercharles
+priority: Medium
+status: completed
+target_version: 2026-W41
+type: CR
+triage_result:
+  verdict: approved
+  complexity: small
+  affected_subsystems:
+  - ViewportUI
+  - ContourEngine
+  related_crs: []
+  notes: Contour editing controls become stage-dependent; the workflow stage already
+    exists in uiStore so only client gating and a requirement change are needed.
+affected_items:
+- SRS-037
+- SWDD-004
+- SYS-004
+reviewed_items:
+- CRS-002
+- SRS-008
+- SYS-003
+- RCM-005
+- RCM-008
+- SRS-007
+- SWDD-016
+- SYSARCH-001
+- SRS-014
+affected_risk_items:
+- RISK-001
+- RISK-006
+- RISK-007
+- RCM-005
+- RCM-006
+- RCM-008
+impact_analysis:
+  assumptions:
+  - Only the QA stage hides editing, as the CR states; Review and Approve unchanged
+    (follow-up if wanted).
+  - '''Contour edit tools'' covers the contour and structure-operation tools, the
+    toolbar Interpolate/Fill Gaps/Delete Slice, Undo/Redo and the shortcuts; Undo/Redo
+    are hidden because they change contours.'
+  - Edit and Auto stages keep editing.
+  - The gate is a client UI rule, not enforced in ContourEngine; structure management
+    in StructurePanel stays available in QA (follow-up if it should freeze).
+  anchors:
+  - id: SYS-004
+    evidence: Parent of SRS-014; contouring tools requirement.
+  - id: SWDD-004
+    evidence: Describes Toolbar and ContourOverlay contour tool guards.
+  - id: SRS-014
+    evidence: Names the contour tools, toolbar controls and shortcuts; Toolbar.test.tsx
+      stepper tests use workflowStage 'qa'. Left unchanged; gating is a separate SRS.
+  - id: SRS-037
+    evidence: New requirement created for stage gating.
+  unchanged:
+  - id: CRS-002
+    reason: Need to draw and edit contours stays true; QA restriction is a stage rule.
+  - id: SRS-008
+    reason: Contour replace/lock behaviour in the engine is unchanged.
+  - id: RCM-005
+    reason: Unit tests of contour micro-editing and interpolation still hold; the
+      QA-stage gating hides the tools and does not change the editing logic.
+  - id: RCM-008
+    reason: Shared slice mask for boolean and margin operations is unchanged; QA only
+      hides the controls that invoke it.
+  - id: SRS-007
+    reason: The 50-level undo/redo stack is unchanged by hiding contour tools in QA.
+  - id: SWDD-016
+    reason: Slice mask geometry for boolean and margin operations is unchanged; only
+      the controls' visibility depends on stage.
+  - id: SYSARCH-001
+    reason: Browser client architecture is unchanged; the gating is local UI behaviour
+      inside the client.
+  - id: SYS-003
+    reason: Structure create/edit/delete and lock rules unchanged; structure management
+      in the panel stays available in QA.
+  - id: SRS-014
+    reason: Tool behaviour is unchanged; stage gating is a separate behaviour in SRS-037,
+      per one shall per SRS.
+  created:
+  - id: SRS-037
+    reason: Stage gating is a second, independent behaviour; SRS-014 is already long
+      and holds one shall per item, so a separate SRS derived from SYS-004.
+  dimensions:
+  - dimension: product
+    verdict: not_required
+    reason: Stage workflow exists; UC and CRS-002 stay accurate.
+    items: []
+  - dimension: requirements
+    verdict: required
+    reason: SYS-004 gains the QA rule; new SRS-037 holds the stage gate.
+    items:
+    - SYS-004
+    - SRS-037
+  - dimension: architecture
+    verdict: not_required
+    reason: Local client UI gating; no boundary or contract change.
+    items: []
+  - dimension: risk
+    verdict: not_required
+    reason: Hiding the tools and Undo/Redo in QA reduces unintended edits; no hazard
+      added and lock guards stay; ContourEngine is not changed.
+    items:
+    - RISK-001
+    - RISK-006
+    - RISK-007
+    - RCM-005
+    - RCM-006
+    - RCM-008
+  - dimension: soup
+    verdict: not_required
+    reason: No dependency change.
+    items: []
+  - dimension: test
+    verdict: required
+    reason: New test points SYS-004 T6 and SRS-037 T1-T4.
+    items:
+    - SYS-004
+    - SRS-037
+  - dimension: regulatory
+    verdict: not_required
+    reason: Intended use and labelling unchanged.
+    items: []
+  - dimension: security
+    verdict: not_required
+    reason: No auth, API or data handling change.
+    items: []
+  - dimension: usability
+    verdict: required
+    reason: Tools visible depend on stage; users must switch to Edit to modify.
+    items:
+    - SRS-037
+implementation_notes: '## Overview
+
+  In the QA workflow stage all contour editing controls (including Undo/Redo and the
+  shortcuts) are hidden or inert; QA is check-only and the user switches to another
+  stage to modify. Review and Approve keep editing as today (stage gate is only ''qa'');
+  whether they should also be check-only is a follow-up. Requirement: new SRS-037
+  (derived from SYS-004 T6); SRS-014 is unchanged.
+
+
+  ## Current State
+
+  uiStore (apps/client/src/core/store/uiStore.ts) holds workflowStage (''auto''|''edit''|''qa''|''review''|''approve'',
+  default ''edit'') and setWorkflowStage; it also holds the active tool (read the
+  exact field name in the file). Toolbar.tsx renders the stepper plus Interpolate,
+  Fill Gaps, Delete Slice, Undo, Redo. ToolRail.tsx defines groups, including ''contour''
+  (edit, freehand, polygon, brush, eraser) and ''structure'' (interpolate, margin,
+  boolean), always rendered. Shortcuts: apps/client/src/core/input/viewerShortcuts.ts
+  (installed from MainWorkspace.tsx) and the Cmd/Ctrl+Z handler in UndoRedoManager
+  (installUndoRedoKeyHandler). ToolOptions.tsx shows option bars; ContourOverlay.tsx
+  handles contour pointer input; StructurePanel.tsx has interpolate/margin/boolean
+  apply controls (handleInterpolateApply). ContourEngine guards only on lock.
+
+
+  ## Changes Required
+
+  - uiStore.ts (modify): export canEditContours(stage) => stage !== ''qa''; in setWorkflowStage,
+  when entering ''qa'', set activeTool to ''none'' only if it is a contour or structure-operation
+  tool (measurement tools stay active) and set activeStructureOperationPanel to null.
+
+  - ToolRail.tsx (modify): omit the ''contour'' and ''structure'' groups when !canEditContours.
+
+  - Toolbar.tsx (modify): omit Interpolate, Fill Gaps, Delete Slice, Undo, Redo in
+  QA.
+
+  - viewerShortcuts.ts and the Cmd/Ctrl+Z handler (modify): return early in QA.
+
+  - ToolOptions.tsx, StructurePanel.tsx (modify): no contour option bars or interpolate/margin/boolean
+  apply controls in QA.
+
+  - ContourOverlay.tsx (modify): discard an in-progress draft when the active tool
+  is cleared; ignore pointer edits in QA.
+
+  - ContourEngine and shared-types: no change. StructurePanel structure management
+  (name, colour, type, visibility, lock, delete) stays available in QA (not a contour
+  tool; follow-up if QA should freeze it).
+
+
+  ## Implementation Steps
+
+  1. uiStore predicate and tool reset, with unit test.
+
+  2. Gate ToolRail, Toolbar, ToolOptions, StructurePanel.
+
+  3. Gate shortcuts and Cmd/Ctrl+Z; draft discard in ContourOverlay.
+
+  4. Run client test, lint, typecheck; medharness --dhf DHF verify dhf. Run /ux-design
+  before UI work.
+
+
+  ## Edge Cases & Constraints
+
+  - Entering QA with a contour tool active, a margin/interpolate/boolean panel open
+  or a polygon/freehand draft in progress: deselect, close and discard. A measurement
+  tool stays active.
+
+  - Undo history is kept; returning to a non-QA stage makes Undo/Redo available again.
+
+  - Navigation, measurement and contour review (previous/next) tools stay in QA.
+
+  - Tailwind only, dark theme, no inline styles.
+
+
+  ## Tests
+
+  Tags: @links:SRS-037 @testing:Tn; SYS-004 T6 uses @links:SYS-004 @testing:T6.
+
+  - apps/client/src/core/store/uiStore.test.ts: canEditContours; entering QA clears
+  a contour tool and activeStructureOperationPanel but keeps a measurement tool (SRS-037
+  T3, T4).
+
+  - apps/client/src/components/viewer/Toolbar.test.tsx: ToolRail and Toolbar in ''qa''
+  vs ''edit'' (SRS-037 T1, T5, T6; SYS-004 T6).
+
+  - apps/client/src/core/input/viewerShortcuts.test.ts: shortcuts and Cmd/Ctrl+Z no-op
+  in QA (SRS-037 T2).
+
+  - apps/client/src/components/structures/StructurePanel.test.tsx: no apply controls
+  in QA (SRS-037 T1).
+
+
+
+  ## Implementation deviations
+
+  - Toolbar.tsx has no Interpolate/Fill Gaps/Delete Slice buttons (only the stepper,
+  Undo and Redo), so only Undo/Redo are gated there.
+
+  - ToolOptions.tsx needed no change: entering QA sets activeTool to ''none'', so
+  no contour option bar renders.
+
+  - ContourOverlay.tsx already discards its draft when the active tool is not interactive;
+  it additionally treats contour tools as inactive in QA.
+
+  - The Cmd/Ctrl+Z gate lives in installUndoRedoKeyHandler (UndoRedoManager.ts); tests
+  added in UndoRedoManager.test.ts.
+
+  '
