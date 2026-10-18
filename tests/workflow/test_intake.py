@@ -121,6 +121,53 @@ class IntakeSkipsTakenBranches(s.Scratch):
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
+FAILURE_COMMENT = s.step_script("issue-to-cr.yml", "create-cr", step_name="Post design failure comment")
+
+
+class DesignFailureComment(s.Scratch):
+    """What the PR is told when `build plan` fails: a triage rejection (0.67.0) is not something to re-trigger."""
+
+    def comment(self, plan_output: dict) -> str:
+        Path("/tmp/issue-to-cr.json").write_text(json.dumps({"cr_id": "CR-099"}))
+        Path("/tmp/generate-dhf-out.json").write_text(json.dumps(plan_output))
+        log = self.tmp / "gh.log"
+        s.stub_bin(self.tmp / "bin", "gh", f'printf "%s\\n" "$*" >> "{log}"\n')
+        result = s.run(
+            ["bash", "-c", FAILURE_COMMENT], cwd=self.tmp, check=False,
+            env={"PATH": f"{self.tmp / 'bin'}:{s.os.environ['PATH']}", "GH_TOKEN": "t", "GHA_EXPR": "7"},
+        )
+        self.assertEqual(result.returncode, 1, "the step still fails the job")
+        return log.read_text()
+
+    def test_a_triage_rejection_says_so_and_does_not_offer_to_re_trigger(self):
+        body = self.comment({
+            "outcome": "rejected",
+            "errors": [{"field": "triage_result", "fix": "Close the change request, or reword it and run build plan again.",
+                        "issue": "Triage rejected CR-099, so no design was generated: Duplicate of CRS-002."}],
+        })
+        self.assertIn("CR-099 was rejected at triage", body)
+        self.assertIn("Duplicate of CRS-002.", body)
+        self.assertIn("close this PR, or reword the issue and set its milestone again", body)
+        self.assertNotIn("re-trigger", body)
+
+    def test_a_rejection_without_an_error_text_still_says_it_was_rejected(self):
+        body = self.comment({"outcome": "rejected", "errors": []})
+        self.assertIn("rejected at triage", body)
+        self.assertIn("The model rejected the change request at triage.", body)
+
+    def test_other_validation_errors_keep_the_old_message(self):
+        body = self.comment({"outcome": "completed_with_errors",
+                             "errors": [{"field": "SRS-001", "issue": "no test", "fix": "add one"}]})
+        self.assertIn("residual errors", body)
+        self.assertIn("re-trigger", body)
+        self.assertNotIn("rejected at triage", body)
+
+    def test_a_failure_with_no_output_keeps_the_generic_message(self):
+        body = self.comment({})
+        self.assertIn("Design generation failed", body)
+        self.assertNotIn("rejected at triage", body)
+
+
 class OpenDraftPr(s.Scratch):
     """The CR PR is opened by the bot, so its reviewer is not its author.
 

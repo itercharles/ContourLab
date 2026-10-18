@@ -94,6 +94,9 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
   2. Draft PR opened with `cr:stage/design` label
   3. DHF design items generated immediately (no separate design-review step to wait for)
   4. Design committed; design summary and implementation plan posted as PR comments
+- If the model rejects the CR at triage (a duplicate, out of scope or against the architecture), `build plan` exits
+  non-zero with `outcome: rejected` (MedHarness 0.67.0 or later): no design is generated, the PR gets a comment with
+  the reason, and nothing is recorded in the DHF. Close the PR, or reword the issue and set its milestone again.
 - If design generation fails: re-trigger via workflow_dispatch (stage: `design`)
 
 ### Stage 1 — Design Review → Implementation
