@@ -7,7 +7,7 @@ description: "### Requested change\n\nin the QA phase, the contours should not b
   \ issue: https://github.com/itercharles/ContourLab/issues/209"
 requested_by: itercharles
 priority: Medium
-status: develop
+status: completed
 target_version: 2026-W41
 type: CR
 triage_result:
