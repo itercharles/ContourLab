@@ -1268,6 +1268,20 @@ describe('StructurePanel tab navigation driven by uiStore', () => {
     expect(screen.getByText('Structure Set')).toBeTruthy();
   });
 
+  it('CR-025 a structure set saved with the removed ai-draft source type still opens as a generic set', () => {
+    const legacy = {
+      ...makeStructureSet(),
+      source: { type: 'ai-draft', label: 'AI draft', modelDisplayName: 'Old model' },
+    } as unknown as StructureSet;
+    useStructureStore.setState({ structureSets: [legacy], activeStructureSetId: 'ss-1' });
+
+    render(<StructurePanel />);
+    fireEvent.click(screen.getByRole('button', { name: 'Audit' }));
+
+    expect(screen.getByText('DICOM Metadata')).toBeTruthy();
+    expect(screen.getByText('SET')).toBeTruthy();
+  });
+
   it('the panel tab shown corresponds to sidePanelTab in the store', () => {
     useUIStore.setState({ workflowStage: 'qa' });
 
