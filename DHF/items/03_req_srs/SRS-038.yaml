@@ -1,0 +1,29 @@
+id: SRS-038
+title: Software deployment shall remove containers, images and volumes of services
+  no longer in the compose file
+content: scripts/deploy/deploy.sh shall build and start only services that docker-compose.deploy.yml
+  defines, and shall remove the leftover container, image and volume of any service
+  that was removed from the compose file, so that no retired service keeps running
+  on a workstation after a deployment. The removal shall be explicit (not --remove-orphans),
+  shall tolerate the absence of what it removes, and shall not touch the DICOM repository
+  container or its data directory. The names of the retired services are listed in
+  SWDD-018.
+derives_from:
+- SYS-018
+verification_method:
+- Test
+- Inspection
+testing: 'T1: Given deploy.sh and docker-compose.deploy.yml, scripts/ci/check_medharness_contract.py
+  fails if the script''s `up` command names a service the compose file does not define,
+  and passes on the repository.
+
+  T2: On a workstation that still has a retired service''s container, image and volume,
+  after a deployment none of them exists, the repository container and its data are
+  intact, and a second deployment succeeds with no error.
+
+  '
+verification_criteria: The contract check passes only when every service named by
+  deploy.sh exists in the compose file; after a deployment on a workstation with a
+  retired service's container, image and volume, none remains, the DICOM repository
+  container and data are untouched, and a repeat deployment exits 0.
+type: SRS

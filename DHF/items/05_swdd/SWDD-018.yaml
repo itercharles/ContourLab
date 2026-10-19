@@ -2,6 +2,7 @@ id: SWDD-018
 title: Loopback-only deployment and the check that keeps it so
 implements:
 - SRS-035
+- SRS-038
 module:
 - MODULE-009
 content: docker-compose.deploy.yml and docker-compose.yml list every port as 127.0.0.1:<host>:<container>.
@@ -14,5 +15,14 @@ content: docker-compose.deploy.yml and docker-compose.yml list every port as 127
   and survive. docker/orthanc/orthanc.json states ExecuteLuaEnabled and RestApiWriteToFileSystemEnabled
   as false. scripts/ci/check_medharness_contract.py parses both compose files and
   nginx.conf and fails the MedHarness Contract job on a port that is not on 127.0.0.1
-  or on a /orthanc/ location.
+  or on a /orthanc/ location. The deployed stack is the dicom-repo, api and client
+  services only; deploy.sh builds api and client with `up -d --build --no-deps` (no
+  --remove-orphans) and, on every deploy, removes the retired auto-contour service's
+  container contourlab-autocontour-service, image contourlab-autocontour-service:latest
+  and volume totalseg-models with docker rm -f, docker image rm and docker volume
+  rm, each tolerating absence (SRS-038). Those lines are the only place the retired
+  service is still named and may be deleted once every workstation has been redeployed.
+  The contract check also fails when the `up` command names a service the compose
+  file lacks; its loopback rule is unchanged and covers every service in the compose
+  files.
 type: SWDD

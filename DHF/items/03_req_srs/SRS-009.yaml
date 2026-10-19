@@ -23,7 +23,10 @@ content: 'When contour or structure edits mark a series dirty, the client softwa
   for a structure set of the same image series that is newer than the draft; if there
   is one, it shall tell the user and ask whether to restore the older draft anyway,
   and shall not restore it unless the user agrees. If the repository cannot be checked,
-  the draft shall be restored as before.'
+  the draft shall be restored as before. A saved draft or structure set whose source
+  type is the retired value ''ai-draft'' shall load as a ''local-draft'', keeping
+  its structures and contours, with the retired generator fields (generatorService,
+  modelProfileId, modelDisplayName, generatedAt) dropped.'
 derives_from: [SYS-005]
 verification_method: [Test]
 testing: 'T1: Given exported structure sets, a round-trip through JSON serialisation
@@ -52,10 +55,16 @@ testing: 'T1: Given exported structure sets, a round-trip through JSON serialisa
   newer structure set and then restores only if the user agrees, and otherwise says
   the draft was not restored.
 
+  T8: Given a saved draft or exported payload whose structure set source has type
+  ''ai-draft'' and generator fields, importing it yields a ''local-draft'' source
+  with the same structures and contours and without the generator fields.
+
   '
 verification_criteria: 'Structure drafts survive a JSON round trip including their
   Float32Array points, an unsupported version number is rejected with a descriptive
   error, export returns only the requested series, and replace swaps only that series.
   T5: the draft of a series can be deleted and is then not restored. T6 and T7: a
   draft older than the repository''s structure set is not restored unless the user
-  agrees, and an unreachable repository does not stop a draft being restored.'
+  agrees, and an unreachable repository does not stop a draft being restored. T8:
+  a draft saved with the retired ''ai-draft'' source still loads, as a local draft,
+  with all contours.'

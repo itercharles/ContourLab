@@ -1,13 +1,13 @@
 id: SRS-037
 title: Software shall withhold contour editing controls in the QA workflow stage
 content: The client software shall treat contour editing as unavailable in the QA
-  workflow stage and available in every other stage (auto, edit, review). In the QA
-  stage the software shall not display the Edit contour, Freehand, Polygon, Brush
-  and Eraser tools, the Interpolate, Margin and Boolean controls (tool rail and structure
-  panel), the toolbar Interpolate, Fill Gaps and Delete Slice controls, or Undo and
-  Redo, and the contour shortcuts and Cmd/Ctrl+Z shall do nothing. Entering the QA
-  stage shall deselect an active contour or structure-operation tool (a measurement
-  tool stays active), close any open margin, interpolate or boolean panel, and discard
+  workflow stage and available in every other stage (edit, review). In the QA stage
+  the software shall not display the Edit contour, Freehand, Polygon, Brush and Eraser
+  tools, the Interpolate, Margin and Boolean controls (tool rail and structure panel),
+  the toolbar Interpolate, Fill Gaps and Delete Slice controls, or Undo and Redo,
+  and the contour shortcuts and Cmd/Ctrl+Z shall do nothing. Entering the QA stage
+  shall deselect an active contour or structure-operation tool (a measurement tool
+  stays active), close any open margin, interpolate or boolean panel, and discard
   any contour draft in progress. Navigation, measurement and contour review tools
   remain available. Structure management in the structure panel (name, colour, type,
   visibility, lock, delete) is not a contour tool and is unchanged. The stage gate
@@ -28,7 +28,7 @@ testing: 'T1: Given the QA stage, the tool rail has no contour or structure-oper
 
   T4: Given a measurement tool active, entering the QA stage leaves it active.
 
-  T5: Given the Edit or Auto stage, all the controls of T1 are displayed again.
+  T5: Given the Edit or Review stage, all the controls of T1 are displayed again.
 
   T6: Given any stage, pan, zoom, scroll, window/level, measurement and contour review
   tools are displayed.

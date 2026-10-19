@@ -83,6 +83,339 @@ description: '### Requested change
   Source issue: https://github.com/itercharles/ContourLab/issues/223'
 requested_by: itercharles
 priority: Medium
-status: new
+status: design
 target_version: 2026-W43
 type: CR
+triage_result:
+  verdict: approved
+  complexity: medium
+  affected_subsystems:
+  - client
+  - api
+  - deployment/CI
+  related_crs:
+  - CR-024
+  - CR-023
+  notes: Removal of an unspecified feature; the DHF only names the service in the
+    loopback chain (CRS-015, SYS-018, RISK-010) and SRS-006/SRS-037 wording, and legacy
+    'ai-draft' data must still load.
+affected_items:
+- CRS-015
+- RISK-010
+- SRS-006
+- SRS-009
+- SRS-037
+- SRS-038
+- SWDD-006
+- SWDD-018
+- SYS-018
+reviewed_items:
+- UC-005
+- SYS-003
+- SYS-004
+- SYS-005
+- SRS-008
+- SWDD-009
+- RCM-014
+- SYSARCH-001
+- SYSARCH-003
+- SOUP-001
+- MODULE-009
+- SWDD-004
+- SYSARCH-002
+- SRS-035
+affected_risk_items:
+- RISK-010
+- RCM-014
+implementation_notes: '## Overview
+
+  Remove the auto-segmentation (auto-contour) feature end to end: the Python TotalSegmentator
+  service, its container/volume, the API proxy, the client AI tab and the Auto-segment
+  workflow step, the ai-draft structure-set source and the shared types. Saved drafts
+  with the old source must still load. The DHF never specified the feature; only wording
+  in CRS-015, SYS-018, SRS-006, SRS-037, RISK-010 mentions it, and SRS-035/SWDD-018/SRS-009/SWDD-006
+  gain the deploy-cleanup and legacy-source behaviour.
+
+
+  ## Current State
+
+  - apps/autocontour-service (FastAPI + TotalSegmentator, Dockerfile, tests), port
+  4010; docker-compose.deploy.yml services `autocontour-service`, volume `totalseg-models`;
+  scripts/deploy/deploy.sh line `up -d --build --no-deps api client autocontour-service`.
+
+  - API: Controllers/AutoContourController.cs, Services/AutoContourServiceClient.cs,
+  Models/AutoContourContracts.cs, Program.cs (HttpClient "autocontour", scoped client),
+  apps/api.tests/AutoContourEndpointTests.cs.
+
+  - Client: core/autocontour/autocontourClient.ts; StructurePanel.tsx (AI tab, polling,
+  handleRunAutoContour, formatSourceLabel ''ai-draft'', Kind/Model/Generated rows,
+  setWorkflowStage(''auto'') at ~1448); Toolbar.tsx WORKFLOW_STAGES has {auto,''01''};
+  uiStore.ts `WorkflowStage = ''auto''|''edit''|''qa''|''review''`, `SidePanelTab`
+  includes ''ai'', setWorkflowStage maps auto->''ai''; volumeRefresh.ts comment mentions
+  auto-contouring.
+
+  - shared-types: StructureSetSource.type includes ''ai-draft'' plus generatorService/modelProfileId/modelDisplayName/generatedAt;
+  AutoContour* types.
+
+  - Dev/docs: package.json `autocontour:service`, scripts/dev/up.mjs and bootstrap.mjs,
+  doctor.mjs (check 4010), README.md, docs/local_development.md (docs/project-review-2026-10.md
+  is a dated historical record and stays; name it as the exception in the PR), scripts/ci/check_medharness_contract.py
+  comment.
+
+  - workflowStage is in-memory uiStore state only (default ''edit''), not persisted.
+  Drafts live in IndexedDB (structureDraftStore) and are parsed by importStructureSets
+  in structurePersistence.ts.
+
+
+  ## Changes Required
+
+  - Delete: apps/autocontour-service/, API controller/client/contracts/tests, client
+  core/autocontour/, shared-types AutoContour* types, AI-only tests in StructurePanel.test.tsx
+  and Toolbar.test.tsx, the `autocontour:service` script, the service block, volume
+  and env var in docker-compose.deploy.yml, the 4010 doctor check.
+
+  - Modify Program.cs (drop HttpClient/DI), up.mjs, bootstrap.mjs, doctor.mjs, package.json,
+  README.md, docs/local_development.md (ports, service rows, limits section), check_medharness_contract.py
+  comment (loopback rule itself unchanged), volumeRefresh.ts comment.
+
+  - shared-types: StructureSetSource.type = ''manual''|''rtstruct''|''local-draft'';
+  remove generator fields.
+
+  - uiStore: WorkflowStage = ''edit''|''qa''|''review''; SidePanelTab drops ''ai'';
+  remove the auto branch. Default stage stays ''edit''; since stage is not persisted
+  nothing is migrated. Toolbar steppers renumber: 01 Edit, 02 QA, 03 Review. StructurePanel:
+  remove AI tab, state, polling, label/Kind/Model/Generated rows for ai-draft.
+
+  - structurePersistence.importStructureSets: normalise source.type ''ai-draft'' ->
+  ''local-draft'' and drop generator fields (SRS-009 T8). Keep this normalisation
+  as the only mention of the legacy value, with a WHY comment (a release-notes line
+  is allowed; the acceptance criterion permits it).
+
+  - scripts/deploy/deploy.sh: build `api client` only (`up -d --build --no-deps`,
+  no --remove-orphans: the removal is explicit). Before `up`, on every deploy, run
+  idempotent `docker rm -f contourlab-autocontour-service`, `docker image rm contourlab-autocontour-service:latest`
+  and `docker volume rm totalseg-models`, each tolerating absence and never touching
+  dicom-repo or its data directory. Mark the block as removable once every workstation
+  has been redeployed (SRS-038, SWDD-018).
+
+  - Optionally add a release-notes entry (ReleaseNotes data) saying auto-segmentation
+  was removed.
+
+
+  ## Implementation Steps
+
+  1. shared-types: trim StructureSetSource and delete AutoContour types; `pnpm -r
+  typecheck` to find users.
+
+  2. Client: uiStore, Toolbar, StructurePanel, autocontourClient removal, importStructureSets
+  normalisation; update tests.
+
+  3. API: delete files, edit Program.cs; `dotnet build apps/api/api.csproj -c Release`
+  and run api tests.
+
+  4. Delete apps/autocontour-service; edit compose, deploy.sh, dev scripts, package.json,
+  docs, README, contract checker comment.
+
+  5. grep -ri "autocontour|auto-contour|totalseg|4010|ai-draft" to confirm only the
+  deploy cleanup and the legacy normalisation remain.
+
+  6. Run client tests, lint, typecheck, `medharness verify dhf --strict`, `verify
+  tests --strict`, `python scripts/ci/check_medharness_contract.py`.
+
+
+  ## Edge Cases & Constraints
+
+  - Legacy IndexedDB drafts and exported payloads with source.type ''ai-draft'' must
+  load (SRS-009 T8); do not bump the payload version.
+
+  - The workstation still runs the old container and volume: compose `up` without
+  them leaves them running, so deploy.sh must remove them explicitly; removal must
+  not fail when absent and must not touch the dicom-repo container or its data directory
+  (RCM-016 backup/pin logic untouched).
+
+  - The loopback contract check must keep passing; its rules iterate over compose
+  services so they need no change.
+
+  - SRS-037 now lists edit and review as editable stages; the QA gate behaviour is
+  unchanged. Users who last had the ''auto'' step simply start at Edit.
+
+  - CR-024 text (done) still describes the stepper with Auto-segment; leave it, history.
+
+  - Tests existing only for the feature (Python service tests, AutoContourEndpointTests,
+  AI-tab tests) are deleted, not skipped.
+
+
+  ## Tests
+
+  - SRS-009 T8: structurePersistence unit test — import payload with ''ai-draft''
+  source yields ''local-draft'' with contours intact, generator fields absent; also
+  a draft-store round trip.
+
+  - SRS-037 T5: Toolbar test — controls shown in Edit and Review stages; tool stepper
+  shows exactly Edit, QA, Review (adjust existing Toolbar.test.tsx cases that use
+  ''auto'' or ''01 Auto-segment'').
+
+  - SRS-038 T1: extend scripts/ci/check_medharness_contract.py to fail when the `up`
+  command in deploy.sh names a service the compose file does not define. SRS-038 T2:
+  manual on the workstation: container, image and volume gone, dicom-repo and its
+  data intact, a second deploy exits 0.
+
+  - SRS-035 T1 / SYS-018: contract check still passes. SRS-006: existing computeVolume
+  tests unchanged (wording only).
+
+  '
+impact_analysis:
+  assumptions:
+  - 'The CR''s description is fully authoritative: remove the feature and everything
+    that names it; a release-notes line is optional.'
+  - Legacy 'ai-draft' sources are normalised to 'local-draft' on import; the deploy
+    cleanup lines in deploy.sh and the legacy normalisation are the only permitted
+    remaining mentions.
+  - workflowStage is not persisted (in-memory uiStore, default 'edit'), so removing
+    'auto' needs no migration; the stepper becomes 01 Edit, 02 QA, 03 Review.
+  - The feature is a user-visible capability the DHF never covered; removing it keeps
+    it out of the DHF (no CRS/SYS/SRS existed, so none is created or deleted). The
+    requirement and risk text that named it is corrected.
+  - No SOUP item exists for TotalSegmentator/FastAPI (SOUP-001 is vtk.js; the other
+    SOUP entries are untitled) so no SOUP item is removed; the Python dependencies
+    were never registered.
+  - docs/project-review-2026-10.md is a dated historical review and is left unchanged;
+    it is the one documentation exception to the acceptance criterion and is named
+    in the PR so the reviewer can overrule it.
+  anchors:
+  - id: CRS-015
+    evidence: verification_criteria lists 'auto-contour service' (git grep auto-contour
+      DHF/items)
+  - id: SYS-018
+    evidence: content lists 'the auto-contour service' among services covered by loopback
+      binding
+  - id: SRS-006
+    evidence: content lists auto-contouring as a route of contour change
+  - id: SRS-037
+    evidence: content and T5 list the 'auto' workflow stage; Toolbar.test.tsx @links:SRS-037
+      T5 uses 'auto'
+  - id: RISK-010
+    evidence: cause lists the auto-contour service as unauthenticated
+  - id: SRS-035
+    evidence: 'Deploy script behaviour is specified near here; deploy.sh and compose
+      name the service. Reviewed and left unchanged: the cleanup is a separate requirement,
+      SRS-038.'
+  - id: SRS-009
+    evidence: drafts in IndexedDB are restored via importStructureSets (structureDraftStore.ts);
+      ai-draft sources must still load
+  - id: SWDD-006
+    evidence: describes draft persistence and structure-set source provenance
+  - id: SWDD-018
+    evidence: describes deploy.sh and the contract check
+  unchanged:
+  - id: UC-005
+    reason: Parent chain of CRS-015; the workflow of selecting a patient does not
+      change.
+  - id: SYS-003
+    reason: Parent of SRS-006; structure editing need is unchanged.
+  - id: SYS-004
+    reason: Parent of SRS-037; contouring tools unchanged, the QA gate stays.
+  - id: SYS-005
+    reason: Parent of SRS-009; draft storage need unchanged, only legacy-source handling
+      is added at SRS level.
+  - id: SRS-008
+    reason: Contour replacement on a slice has no auto-contour dependency.
+  - id: SWDD-009
+    reason: Shoelace algorithm is unchanged; only the SRS-006 wording changes.
+  - id: RCM-014
+    reason: Loopback control still holds and still implements SYS-018; the contract
+      check covers all remaining services. Its verification note remains a historical
+      record.
+  - id: SYSARCH-001
+    reason: Browser client architecture is not changed; the AI tab was never described
+      there.
+  - id: SYSARCH-003
+    reason: The API's documented role (health/proxy) does not name the auto-contour
+      proxy.
+  - id: SOUP-001
+    reason: vtk.js unaffected; no SOUP item exists for the removed Python stack.
+  - id: MODULE-009
+    reason: CIPipeline still owns CI/deploy scripts; its responsibility is unchanged.
+  - id: SWDD-004
+    reason: ContourEngine/UndoRedoManager design is untouched; SRS-037 only drops
+      the auto stage from its wording and the QA lock check is unchanged.
+  - id: SYSARCH-002
+    reason: DICOMweb repository interface design does not name the auto-contour service;
+      SYS-018's loopback rule for the repository is unchanged.
+  - id: SRS-035
+    reason: Its loopback and nginx rules and T1 are unchanged; the deploy cleanup
+      that was first drafted here lives in the new SRS-038.
+  created:
+  - id: SRS-038
+    reason: The leftover-service cleanup is a second behaviour next to SRS-035's loopback
+      and nginx rules (one shall per item); no existing SRS covers removing retired
+      containers, images and volumes.
+  dimensions:
+  - dimension: product
+    verdict: not_required
+    reason: No use case or user need covers auto-segmentation; UC-002 (manual contours)
+      stays accurate.
+    items: []
+  - dimension: requirements
+    verdict: required
+    reason: CRS-015, SYS-018, SRS-006, SRS-037 name the service/stage and are reworded;
+      SRS-009 gains legacy-source loading (T8); new SRS-038 covers the deploy cleanup.
+      The feature itself had no requirement and stays out of the DHF since it is being
+      removed.
+    items:
+    - CRS-015
+    - SRS-006
+    - SRS-009
+    - SRS-037
+    - SRS-038
+    - SYS-018
+  - dimension: architecture
+    verdict: required
+    reason: Removes a network service and the API proxy (deployment boundary) and
+      a shared-type contract; recorded in SWDD-006 and SWDD-018; SYSARCH items do
+      not name it.
+    items:
+    - SWDD-006
+    - SWDD-018
+  - dimension: risk
+    verdict: required
+    reason: 'RISK-010 cause no longer includes the removed service (attack surface
+      shrinks); RCM-014 still implements SYS-018 and mitigates it, unchanged. Assessed
+      and unaffected: RISK-001, RISK-006, RISK-007 and their controls (no change to
+      editing or undo).'
+    items:
+    - RISK-010
+    - RCM-014
+  - dimension: soup
+    verdict: not_required
+    reason: The Python/TotalSegmentator/FastAPI stack was never registered as SOUP;
+      no SOUP entry exists to remove.
+    items: []
+  - dimension: test
+    verdict: required
+    reason: New SRS-009 T8 (legacy source loads) and SRS-038 T1/T2 (deploy script
+      services and cleanup); SRS-037 T5 re-pointed to Edit/Review; feature-only tests
+      are deleted.
+    items:
+    - SRS-009
+    - SRS-037
+    - SRS-038
+  - dimension: regulatory
+    verdict: not_required
+    reason: The feature was never part of the intended use or labelling in the DHF.
+    items: []
+  - dimension: security
+    verdict: required
+    reason: Removes one unauthenticated service and API surface (/api/autocontour);
+      loopback rule remains; wording in CRS-015, SYS-018, RISK-010 updated.
+    items:
+    - CRS-015
+    - RISK-010
+    - SRS-038
+    - SYS-018
+  - dimension: usability
+    verdict: required
+    reason: The stepper loses step 01 and the Structure panel loses its AI tab; stages
+      renumber 01 Edit, 02 QA, 03 Review; covered by SRS-037 and Toolbar tests.
+    items:
+    - SRS-037
