@@ -1,0 +1,88 @@
+id: CR-025
+title: Remove the auto-segmentation (auto-contour) feature
+description: '### Requested change
+
+
+  Remove the auto-segmentation (auto-contour) feature.
+
+
+  What it is today:
+
+  - the auto-contour service (`apps/autocontour-service`, TotalSegmentator, Python)
+  and its container and volume in `docker-compose.deploy.yml` and `scripts/deploy/deploy.sh`;
+
+  - the API proxy to it (`AutoContourController`, `AutoContourServiceClient`, the
+  contracts, `Program.cs`) and its tests;
+
+  - in the client: the `AI` tab of the Structure panel and its job handling, `core/autocontour/autocontourClient.ts`,
+  the **Auto-segment** step (`01`) of the workflow stepper (`WorkflowStage` `''auto''`),
+  the `ai-draft` structure-set source, and their tests;
+
+  - shared types for model profiles and jobs (`packages/shared-types`), the dev scripts
+  that start the service (`scripts/dev/up.mjs`, `bootstrap.mjs`, `package.json`),
+  `docs/local_development.md`, `README.md`.
+
+
+  The design (DHF) should settle, before any code:
+
+  - which DHF items mention the service and how each changes or is traced (at least
+  CRS-015, SYS-018, SRS-006, RISK-010; the loopback requirement lists the service
+  among the services it covers);
+
+  - what happens to existing structure sets and local drafts whose source is `ai-draft`,
+  so they still load;
+
+  - what the workflow stepper becomes without its first step, and what is stored about
+  the current stage;
+
+  - the deployed stack: removing the running `contourlab-autocontour-service` container
+  and its `totalseg-models` volume on the workstation, and the lines of `deploy.sh`
+  that name the service;
+
+  - the contract checker and CI rules that mention the service.
+
+
+  ### User value / justification
+
+
+  It barely works in practice, so it should not stay in the product. It was also never
+  specified in the DHF (no requirement, risk or SOUP of its own), its tests are not
+  run by CI, and it adds a Python/TotalSegmentator dependency stack, a third network
+  service and a multi-hundred-megabyte model volume to every deployment. Removing
+  it makes the product smaller and matches what the DHF actually says. This supersedes
+  #188 (bringing it under design control).
+
+
+  ### Acceptance criteria
+
+
+  - No code, configuration, script, container, volume or documentation refers to auto-contouring
+  or the auto-contour service (a release-notes line is fine if the design wants one).
+
+  - Saved structure sets and local drafts that came from the old feature still load.
+
+  - The deployed stack no longer builds or starts the service, and the design says
+  how the existing container and volume are removed.
+
+  - The workflow stepper and the Structure panel work without the Auto-segment step
+  and the AI tab.
+
+  - The DHF items that mention the service are changed or traced; `verify dhf --strict`,
+  `verify tests --strict` and the contract check pass; tests that exist only for the
+  feature are removed.
+
+  - CI is green.
+
+
+  ### Change category
+
+
+  Other
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/223'
+requested_by: itercharles
+priority: Medium
+status: new
+target_version: 2026-W43
+type: CR
