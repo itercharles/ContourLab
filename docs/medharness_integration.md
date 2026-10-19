@@ -8,7 +8,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ## Current Pin
 
-- `medharness[docs]==0.67.0`
+- `medharness[docs]==0.69.0`
 - One CLI, `medharness`; `dhfkit` is a library inside it with no command of its own
 
 ## Sources Of Truth
@@ -20,6 +20,23 @@ actions, and `scripts/ci/check_medharness_contract.py`.
   from the installed package
 - MedHarness setup action: [`.github/actions/medharness-setup/action.yml`](../.github/actions/medharness-setup/action.yml)
 - contract guard: [`scripts/ci/check_medharness_contract.py`](../scripts/ci/check_medharness_contract.py)
+
+## Agent Setup (Claude Code)
+
+Set up as MedHarness's `docs/agents.md` describes, in the repository so everyone who clones it has it:
+
+- **Skill:** `.claude/skills/medharness/SKILL.md` (MedHarness's, plus a section for this repository), run as
+  `/medharness`. It sits beside ContourLab's own `cr-implement` and `cr-status`.
+- **Hooks**, in `.claude/settings.json`, scripts in `.claude/hooks/` (they need `jq` and `medharness` on `PATH`):
+  - `Stop` (`medharness-stop.sh`): when `DHF/` has uncommitted changes and `verify dhf` fails, the agent is not
+    allowed to finish and is handed the findings.
+  - `PreToolUse` on `Edit|Write` (`medharness-no-hand-edits.sh`): an edit of a file under `DHF/items/` is refused;
+    `medharness item create|update` is the way.
+- These are local feedback, not a control: whoever owns the checkout can change them. The control is CI
+  (`verify dhf`, `verify impact`, `verify changes`, `verify tests` and branch protection). The hooks also apply to
+  the Claude Code that the CR pipeline runs in Actions, which is the point.
+- Tests: `tests/workflow/test_agent_hooks.py` runs both hooks for real; `test_agent_docs.py` checks every
+  `medharness` command written in `CLAUDE.md` and `.claude/` against the installed CLI.
 
 ## Workflow Surfaces
 
@@ -45,6 +62,7 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 - `medharness --dhf DHF verify soup --strict --manifest ...` (`--strict` also fails an undocumented or misversioned component; known vulnerabilities always fail)
 - `medharness --dhf DHF verify tests --strict --junit DIR ...` (`--strict` also fails a requirement with no verification method and a test `@links:` to an ID that is not in the DHF)
 - `medharness --dhf DHF verify changes --cr CR-NNN --since-ref origin/main --code-path ...` (compares the working tree, so it also runs locally before a commit)
+- `medharness --dhf DHF verify impact --cr CR-NNN --since-ref origin/main` (0.69.0; the CR's whole impact record, and whether what depends on a changed item was changed or reviewed; `verify changes` no longer checks the latter)
 - `medharness --dhf DHF verify completion --cr CR-NNN --junit DIR ...` (reads the CR's `affected_items`)
 
 ### Artifacts And Releases

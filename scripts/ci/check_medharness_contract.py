@@ -144,6 +144,7 @@ def main() -> int:
             "medharness --dhf DHF verify completion",
             "unittest discover -s tests/workflow",
             "rhysd/actionlint",
+            "medharness --dhf DHF verify impact",
         ],
         "cr-lifecycle.yml": [
             "medharness --dhf DHF build plan",

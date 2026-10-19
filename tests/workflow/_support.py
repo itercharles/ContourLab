@@ -29,9 +29,10 @@ def step_script(workflow_file: str, job: str, *, step_id: str | None = None, ste
     raise LookupError(f"{workflow_file}: job {job!r} has no step id={step_id!r} name={step_name!r}")
 
 
-def run(cmd: list[str], *, cwd: Path, env: dict[str, str] | None = None, check: bool = True) -> subprocess.CompletedProcess:
+def run(cmd: list[str], *, cwd: Path, env: dict[str, str] | None = None, check: bool = True,
+        input_text: str | None = None) -> subprocess.CompletedProcess:
     full_env = {**os.environ, **(env or {})}
-    result = subprocess.run(cmd, cwd=cwd, env=full_env, capture_output=True, text=True, check=False)
+    result = subprocess.run(cmd, cwd=cwd, env=full_env, capture_output=True, text=True, check=False, input=input_text)
     if check and result.returncode != 0:
         raise AssertionError(f"{' '.join(cmd)} exited {result.returncode}\n{result.stdout}\n{result.stderr}")
     return result
