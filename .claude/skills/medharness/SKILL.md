@@ -25,17 +25,21 @@ product does is not finished until its DHF is.
   than to quote inline; `--data -` reads standard input.
 - A failing check names the item and field that are wrong. Fix that, then run the check again; do not
   describe a check as passing before it has.
-- Moving a CR between states (`item transition`) is the project's call: do it only when asked.
+- Work locally. Do not push, open an issue or a pull request, set a milestone, or start a workflow unless
+  you are asked to use CI: the commands change local files by default, and `--pr` is what reaches a pull request.
+- A CR's states are the project's (`medharness item transition CR-NNN` lists where it can go). Move it when
+  you start designing; a move that means "approved" (the design, the code) is made only when the user says so.
 
 ## In this repository
 
 These come from `CLAUDE.md` and apply on top of the steps above:
 
-- Start with `/pre-analyze` for an ad-hoc change, and create the CR before significant work. A change that
-  comes in as a GitHub issue is not started by hand: setting the issue's milestone starts the CR pipeline
-  (`docs/cr_spec_workflow.md`), which creates the CR, the `feat/CR-NNN` branch and the design.
-- A CR's status is moved by that pipeline (design approved, code approved), so do not `item transition` one
-  here unless asked.
+- Start with `/pre-analyze` for an ad-hoc change, and create the CR before significant work. Design it locally.
+  The CI pipeline (`docs/cr_spec_workflow.md`: setting an issue's milestone creates the CR, the `feat/CR-NNN`
+  branch and the design) runs only when the user asks to use CI; a request typed in chat is not started that way.
+- In CI a CR's status is moved by the pipeline (design approved, code approved). Locally nobody does that for
+  you: move it to `design` when you start designing, and to `develop` or `completed` only when the user says the
+  design or the code is approved.
 - After the code, run the checks in `CLAUDE.md` (client test, lint and typecheck; `dotnet build` for API
   changes; `pnpm -r typecheck` for shared types) as well as the `verify` commands above.
 - Tests that verify a requirement carry `@links:SRS-xxx` (or `SYS-`/`CRS-`); numbered test points use
