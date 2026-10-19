@@ -8,7 +8,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ## Current Pin
 
-- `medharness[docs]==0.66.1`
+- `medharness[docs]==0.67.0`
 - One CLI, `medharness`; `dhfkit` is a library inside it with no command of its own
 
 ## Sources Of Truth
@@ -26,7 +26,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 ### Issue Intake And CR Lifecycle
 
 - `medharness --dhf DHF item create --type CR --data ...` (`issue-to-cr.yml`)
-- `medharness --dhf DHF build plan --cr CR-NNN [--pr N]` (design generation and revision)
+- `medharness --dhf DHF build plan --cr CR-NNN [--pr N]` (design generation and revision); a triage rejection exits 1 with `outcome: rejected` and the reason in `errors` (0.67.0 or later)
 - `medharness --dhf DHF build code --cr CR-NNN [--pr N]` (implementation and revision)
 - `build plan` and `build code` neither read nor move a CR's status (0.64 or later; they only need `implementation_notes` on the CR for `build code`): the pipeline moves it with `item transition`
 - `medharness --dhf DHF item transition CR-NNN completed` when the code is approved (`code-approved`), and `... develop` to reopen a completed CR when changes are requested after approval (`revise-code`; 0.62.0 or later; refused for a CR a release lists)
