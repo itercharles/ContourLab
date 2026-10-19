@@ -21,7 +21,7 @@ suspected findings (S1 to S5) were not separately verified.
 | `verify dhf --strict` | 173 items, 0 errors, 0 warnings |
 | `verify tests --strict` | 53 of 53 requirements covered; 3 warnings (see "needs a human", item 4) |
 | `verify soup --strict` | 36 items, no known vulnerabilities, 0 warnings |
-| MedHarness | 0.69.0 |
+| MedHarness | 0.69.1 |
 
 ### Findings
 

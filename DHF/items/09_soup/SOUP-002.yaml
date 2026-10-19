@@ -1,7 +1,7 @@
 id: SOUP-002
 type: SOUP
 name: medharness
-version: 0.69.0
+version: 0.69.1
 ecosystem: PyPI
 manufacturer: MedHarness (itercharles)
 purpose: 'Design History File tooling: validates DHF items, links and test coverage,
