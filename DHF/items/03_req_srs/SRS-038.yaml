@@ -1,0 +1,30 @@
+id: SRS-038
+title: Software shall display the study date of the active image series next to its
+  description in the workspace context bar
+derives_from:
+- SYS-012
+content: The Image field of the workspace context bar (top operation bar) shall render
+  the active series description followed by the separator " · " and the study date
+  of the active series, formatted YYYY-MM-DD (for example "CT Pelvis · 2026-03-14").
+  The study date is read from the study of the active loaded series (DICOM form YYYYMMDD
+  or already hyphenated). When the series has no description the date is still shown
+  after the series UID fallback; when the study date is absent or empty the separator
+  and date are omitted. When no series is active the field shows only the "No active
+  image set" placeholder and no date. The field shall update within one render cycle
+  when the active series changes or is cleared.
+verification_method:
+- Test
+testing: 'T1: Given an active series with description "CT Pelvis" and study date 20260314,
+  the Image field reads "CT Pelvis · 2026-03-14".
+
+  T2: Given no active series, the Image field shows "No active image set" with no
+  date.
+
+  T3: Given an active series whose study date is empty, the Image field shows only
+  the description with no separator.
+
+  '
+verification_criteria: The Image field shows "<description> · YYYY-MM-DD" for an active
+  series with a study date, the description alone when the date is absent, and only
+  the placeholder when no series is active.
+type: SRS

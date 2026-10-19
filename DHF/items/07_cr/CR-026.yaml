@@ -14,6 +14,151 @@ description: 'Clinicians cannot tell two series of the same patient apart when b
   Source issue: https://github.com/itercharles/ContourLab/issues/218'
 requested_by: itercharles
 priority: Medium
-status: new
+status: design
 target_version: 2026-W43
 type: CR
+triage_result:
+  verdict: approved
+  complexity: small
+  affected_subsystems:
+  - ViewportUI
+  related_crs:
+  - CR-013
+  notes: Approved as a change to the Image field of the existing workspace context
+    bar (SYS-012); date comes from the loaded series study, no data model change.
+affected_items:
+- SRS-038
+- SWDD-012
+- SYS-012
+reviewed_items:
+- CRS-009
+- SRS-030
+- MODULE-008
+- SYSARCH-001
+- SRS-010
+affected_risk_items:
+- RISK-004
+- RISK-008
+impact_analysis:
+  assumptions:
+  - The top operation bar is WorkspaceContextBar, whose Image field shows the series
+    description; the date is the study date of the active loaded series, formatted
+    YYYY-MM-DD.
+  - 'Missing study date: separator and date omitted. Date shown only for an active
+    series.'
+  anchors:
+  - id: SYS-012
+    evidence: 'WorkspaceContextBar.test.tsx and e2e/sys/workspace.spec.ts tagged @links:SYS-012;
+      text: persistent display of active image series in the top operation bar'
+  unchanged:
+  - id: CRS-009
+    reason: Need to always see the active image series stays true; the date refines
+      what is displayed.
+  - id: SRS-030
+    reason: Concerns patient name in toolbar brand row, unaffected.
+  - id: MODULE-008
+    reason: Responsibility (viewer UI) unchanged.
+  - id: SYSARCH-001
+    reason: No boundary or data flow change; data already in the client store.
+  - id: SRS-010
+    reason: Covers RTSTRUCT exchange with the repository; the study date shown in
+      the Image field does not alter that behaviour.
+  created:
+  - id: SRS-038
+    reason: No existing SRS specifies the context bar Image field; SRS-030 covers
+      only the toolbar patient name.
+  dimensions:
+  - dimension: product
+    verdict: not_required
+    reason: Existing use cases stay accurate; display refinement.
+    items: []
+  - dimension: requirements
+    verdict: required
+    reason: SYS-012 gains test point T2; new SRS-038 specifies the field.
+    items:
+    - SYS-012
+    - SRS-038
+  - dimension: architecture
+    verdict: not_required
+    reason: Local change inside one component.
+    items: []
+  - dimension: risk
+    verdict: not_required
+    reason: 'Assessed RISK-004 and RISK-008: the added date only gives more identification;
+      no control is weakened and no data path changes.'
+    items:
+    - RISK-004
+    - RISK-008
+  - dimension: soup
+    verdict: not_required
+    reason: No new dependencies.
+    items: []
+  - dimension: test
+    verdict: required
+    reason: New unit tests for SRS-038 T1-T3 and SYS-012 T2.
+    items:
+    - SRS-038
+    - SYS-012
+  - dimension: regulatory
+    verdict: not_required
+    reason: No change to intended use or labelling.
+    items: []
+  - dimension: security
+    verdict: not_required
+    reason: No API, auth or data handling change.
+    items: []
+  - dimension: usability
+    verdict: required
+    reason: Visible text in the context bar changes to help distinguish same-description
+      series.
+    items:
+    - SRS-038
+    - SYS-012
+implementation_notes: '## Overview
+
+  Show the study date of the active image series next to its description in the Image
+  field of the workspace context bar, e.g. "CT Pelvis · 2026-03-14".
+
+
+  ## Current State
+
+  apps/client/src/components/layout/WorkspaceContextBar.tsx renders an Image field
+  with activeLoadedSeries?.series.seriesDescription || seriesUID || "No active image
+  set". The study date is at activeLoadedSeries.study.studyDate (string, shared-types
+  Study; may be YYYYMMDD or YYYY-MM-DD). formatPatientName lives in apps/client/src/core/dicom/patientUtils.ts.
+  DicomRepoPanel has a private formatDicomDate.
+
+
+  ## Changes Required
+
+  - core/dicom/patientUtils.ts (modify): add formatStudyDate(date) returning YYYY-MM-DD
+  for 8-digit input, passthrough for already hyphenated input, empty string otherwise.
+
+  - WorkspaceContextBar.tsx (modify): Image field text = label + (date ? " · " + date
+  : "") only when a series is active; update the title attribute likewise. No layout/styling
+  change (Tailwind only, truncate stays).
+
+  - No shared-types change.
+
+
+  ## Implementation Steps
+
+  1. Add formatStudyDate with unit tests.
+
+  2. Update the Image field in WorkspaceContextBar.
+
+  3. Add component tests; run client test, lint, typecheck; medharness verify dhf.
+
+
+  ## Edge Cases & Constraints
+
+  Empty/missing studyDate: no separator. No active series: placeholder only, no date.
+  Long descriptions truncate; keep the date visible if practical by rendering the
+  date in its own non-truncating span.
+
+
+  ## Tests
+
+  In WorkspaceContextBar.test.tsx: T1-T3 of SRS-038 with @links:SRS-038 and @testing:Tn
+  in names; SYS-012 T2 with @links:SYS-012 @testing:T2 (the no-series case plus an
+  active-series case).'

@@ -1,6 +1,7 @@
 id: SWDD-012
 implements:
 - SRS-030
+- SRS-038
 module:
 - MODULE-008
 title: Patient name display in the primary toolbar header row
@@ -46,5 +47,13 @@ content: 'The Toolbar component (apps/client/src/components/viewer/Toolbar.tsx) 
   - The brand section flex container already uses flex items-center gap-1.5 pr-2;
   the new element appends without layout changes
 
-  - Purely presentational, no side effects'
+  - Purely presentational, no side effects
+
+
+  WorkspaceContextBar (CR-026, SRS-038): the Image field appends " · " plus the study
+  date of activeLoadedSeries.study.studyDate, normalised from YYYYMMDD to YYYY-MM-DD
+  by a small formatter in apps/client/src/core/dicom/patientUtils.ts; omitted when
+  the date is empty or no series is active.
+
+  '
 type: SWDD

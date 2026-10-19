@@ -13,10 +13,17 @@ content: 'The system shall continuously display the active patient, active image
 verification_method:
 - Test
 - Demonstration
-testing: |
-  T1: Given the workspace loads with no active series, the context bar shows the "Load Patient" and "No active image set" placeholders and the "Synced" sync indicator.
+testing: 'T1: Given the workspace loads with no active series, the context bar shows
+  the "Load Patient" and "No active image set" placeholders and the "Synced" sync
+  indicator.
+
+  T2: Given an active series, the Image field of the context bar shows the series
+  description followed by the study date (YYYY-MM-DD); with no active series no date
+  is shown.
+
+  '
 verification_criteria: When a DICOM series is active, the top operation bar renders
-  the patient name, active series description, active RTSTRUCT label, and repository
-  sync state. Each field reflects the current store value within one render cycle
-  of any context change. When no series is active, all fields show their defined placeholder
-  values.
+  the patient name, active series description with its study date (YYYY-MM-DD), active
+  RTSTRUCT label, and repository sync state. Each field reflects the current store
+  value within one render cycle of any context change. When no series is active, all
+  fields show their defined placeholder values and no study date is shown.
