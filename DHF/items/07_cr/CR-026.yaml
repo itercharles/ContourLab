@@ -1,0 +1,19 @@
+id: CR-026
+title: Show the study date next to the active image series in the top bar
+description: 'Clinicians cannot tell two series of the same patient apart when both
+  have the same
+
+  description. In the persistent context shown in the top operation bar, show the
+  study date
+
+  of the active image series next to its description (for example "CT Pelvis · 2026-03-14").
+
+  When no series is active, nothing is shown for the date.
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/218'
+requested_by: itercharles
+priority: Medium
+status: new
+target_version: 2026-W43
+type: CR
