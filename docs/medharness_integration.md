@@ -32,6 +32,10 @@ Set up as MedHarness's `docs/agents.md` describes, in the repository so everyone
     allowed to finish and is handed the findings.
   - `PreToolUse` on `Edit|Write` (`medharness-no-hand-edits.sh`): an edit of a file under `DHF/items/` is refused;
     `medharness item create|update` is the way.
+- The Stop hook runs the project's own `medharness` when `.venv/bin/medharness` exists, else the one on `PATH`. Set
+  it up once with `python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt` (the pinned version needs Python
+  3.11 or later). An older `medharness` on `PATH` reads this DHF wrongly ("Unknown doc type 'UC'") and would hold the agent
+  for a fault that is not in the DHF.
 - These are local feedback, not a control: whoever owns the checkout can change them. The control is CI
   (`verify dhf`, `verify impact`, `verify changes`, `verify tests` and branch protection). The hooks also apply to
   the Claude Code that the CR pipeline runs in Actions, which is the point.

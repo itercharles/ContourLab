@@ -103,6 +103,30 @@ class StopOnABrokenDhf(s.Scratch):
         self.break_the_dhf()
         self.assertEqual(self.stop(active=True).returncode, 0)
 
+    def test_it_runs_the_projects_own_medharness_when_there_is_a_venv(self):
+        """A medharness on PATH that is older than the pinned one reads the DHF wrongly and must not decide."""
+        self.break_the_dhf()  # uncommitted, so the hook runs a check
+        used = self.tmp / "used.log"
+        s.stub_bin(self.tmp / "oldbin", "medharness", 'echo "unknown doc type UC" >&2\nexit 1\n')  # what PATH has
+        s.stub_bin(self.root / ".venv" / "bin", "medharness", f'echo "$@" >> "{used}"\nexit 0\n')  # the project's
+        result = s.run(
+            [str(STOP)], cwd=self.root, check=False, input_text=json.dumps({"stop_hook_active": False}),
+            env={"CLAUDE_PROJECT_DIR": str(self.root), "PATH": f"{self.tmp / 'oldbin'}:{os.environ['PATH']}"},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("verify dhf", used.read_text())
+
+    def test_without_a_venv_the_one_on_path_is_used(self):
+        self.break_the_dhf()
+        used = self.tmp / "used-path.log"
+        s.stub_bin(self.tmp / "pathbin", "medharness", f'echo "$@" >> "{used}"\nexit 0\n')
+        result = s.run(
+            [str(STOP)], cwd=self.root, check=False, input_text=json.dumps({"stop_hook_active": False}),
+            env={"CLAUDE_PROJECT_DIR": str(self.root), "PATH": f"{self.tmp / 'pathbin'}:{os.environ['PATH']}"},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("verify dhf", used.read_text())
+
     def test_a_broken_dhf_that_is_committed_is_not_this_hooks_business(self):
         self.break_the_dhf()
         s.git(self.root, "add", "-A")
