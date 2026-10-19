@@ -9,17 +9,17 @@ Show all open Change Requests and their current states.
 
 Run:
 ```
-python -m medharness --dhf DHF dhf item list --type cr
+medharness --dhf DHF item list --type CR
 ```
 
-Then for each CR that is `analyze` or `developing`, also show:
+Then for each CR that is `design` or `develop`, also show:
 ```
-python -m medharness --dhf DHF dhf item get <CR_ID>
+medharness --dhf DHF item get <CR_ID>
 ```
 
-Summarize the results as a table with columns: **CR ID**, **Title**, **State**, **Author**. Flag any CRs that appear stalled (in `analyze` or `developing` state without a recent transition).
+Summarize the results as a table with columns: **CR ID**, **Title**, **State**, **Author**. Flag any CRs that appear stalled (in `design` or `develop` state without a recent transition).
 
 Also show the allowed next transitions for any in-progress CRs:
 ```
-python -m medharness --dhf DHF dhf item transitions <CR_ID>
+medharness --dhf DHF item transition <CR_ID>      # no target state: lists the moves available
 ```
