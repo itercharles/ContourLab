@@ -69,6 +69,10 @@ medharness --dhf DHF build release --version 0.0.0-preview --out-dir /tmp/dhf-pr
   - After any DHF change, run `medharness --dhf DHF verify dhf`.
 - **Commits**: in CI, `build plan` / `build code` leave their work uncommitted and the workflow
   commits it. An agent running those stages must not commit, push, or open a PR itself.
+- **Local by default**: a change asked for in chat is done in the working tree: `medharness item create
+  --type CR`, then `medharness build plan --cr CR-NNN --prompt` and the checks. The CI pipeline (a GitHub
+  issue with a milestone, a workflow run, a push or a PR) starts only when the user says to use CI. If it is
+  unclear which is meant, ask before creating anything outside the working tree.
 
 ### DHF Facade API Quick Reference
 
