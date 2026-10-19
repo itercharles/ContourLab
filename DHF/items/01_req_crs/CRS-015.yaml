@@ -14,7 +14,7 @@ testing: 'T1: Given the deployed system, none of its services answers on any add
   other than the workstation''s own.
 
   '
-verification_criteria: No service of the deployed system (web client, API, DICOM repository,
-  auto-contour service) is published on a network interface; the DICOM repository's
-  REST interface is not reachable through the web client.
+verification_criteria: No service of the deployed system (web client, API, DICOM repository)
+  is published on a network interface; the DICOM repository's REST interface is not
+  reachable through the web client.
 type: CRS

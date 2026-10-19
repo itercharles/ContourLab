@@ -48,10 +48,9 @@ async function readProblemDetail(response: Response): Promise<string> {
 }
 
 const WORKFLOW_STAGES: { id: WorkflowStage; num: string; label: string }[] = [
-  { id: 'auto',    num: '01', label: 'Auto-segment' },
-  { id: 'edit',    num: '02', label: 'Edit' },
-  { id: 'qa',      num: '03', label: 'QA' },
-  { id: 'review',  num: '04', label: 'Review' },
+  { id: 'edit',    num: '01', label: 'Edit' },
+  { id: 'qa',      num: '02', label: 'QA' },
+  { id: 'review',  num: '03', label: 'Review' },
 ];
 
 function formatActivityTime(value: string): string {

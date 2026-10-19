@@ -203,7 +203,7 @@ def main() -> int:
         match = re.search(r"--manifest\s+\S*package\.json\b", text)
         require(match is None, f"{filename} gives `{match.group(0) if match else ''}` to a SOUP command; use pnpm-lock.yaml", errors)
 
-    # The deployed stack has no authentication (API, repository, auto-contour service), so none of it
+    # The deployed stack has no authentication (API, repository), so none of it
     # may be reachable from the network: every published port stays on the loopback interface, and the
     # web server does not proxy the repository's REST API (which can delete studies).
     for compose_name in ("docker-compose.deploy.yml", "docker-compose.yml"):

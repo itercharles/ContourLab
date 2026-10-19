@@ -1,5 +1,5 @@
 # Every published port is bound to 127.0.0.1: the system is used from the workstation it runs on.
-# The API, the repository and the auto-contour service have no authentication, so none of them may
+# The API and the repository have no authentication, so neither may
 # be reachable from the network. To open the client to other computers, put an authenticating
 # reverse proxy in front of it rather than changing these bindings.
 services:
@@ -23,25 +23,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:4000
       GITHUB_TOKEN: ${ISSUES_TOKEN}
-      CONTOURLAB_AUTOCONTOUR_SERVICE_BASE_URL: http://autocontour-service:4010
     ports:
       - "127.0.0.1:4001:4000"
-    restart: unless-stopped
-    depends_on:
-      - autocontour-service
-
-  autocontour-service:
-    build:
-      context: .
-      dockerfile: apps/autocontour-service/Dockerfile
-    image: contourlab-autocontour-service:latest
-    container_name: contourlab-autocontour-service
-    environment:
-      PORT: "4010"
-    ports:
-      - "127.0.0.1:4010:4010"
-    volumes:
-      - totalseg-models:/root/.totalsegmentator
     restart: unless-stopped
 
   dicom-repo:
@@ -57,6 +40,3 @@ services:
       - ./docker/orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
       - ${CONTOURLAB_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}:/var/lib/orthanc/db
     restart: unless-stopped
-
-volumes:
-  totalseg-models:

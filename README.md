@@ -2,10 +2,9 @@
 
 Browser-based contouring workspace for radiation oncology.
 
-ContourLab combines a React client, an ASP.NET Core API, a local Orthanc
-DICOM repository, and a small auto-contouring service into a single development
-environment for structure authoring, RTSTRUCT import and export, collaborative
-contour editing, and AI-assisted draft generation.
+ContourLab combines a React client, an ASP.NET Core API and a local Orthanc
+DICOM repository into a single development environment for structure authoring,
+RTSTRUCT import and export, and contour editing.
 
 ## Quick Start
 
@@ -36,7 +35,6 @@ Default local endpoints:
 | --- | --- |
 | Frontend | `http://127.0.0.1:3000/workspace` |
 | API | `http://127.0.0.1:4000/api/health` |
-| Auto-contour service | `http://127.0.0.1:4010/health` |
 | Orthanc DICOM repo | `http://127.0.0.1:8042` |
 | DICOMweb proxy | `http://127.0.0.1:3000/dicom-web` |
 
@@ -49,7 +47,6 @@ More setup and troubleshooting detail lives in
 pnpm local:doctor   # verify local prerequisites and health endpoints
 pnpm local:down     # stop Docker-backed services
 pnpm api            # API only
-pnpm autocontour:service  # auto-contour service only
 pnpm repo:up        # Orthanc only
 pnpm repo:logs      # Orthanc logs
 ```
@@ -70,20 +67,6 @@ ContourLab delegates repository uploads to Orthanc Explorer 2.
 For frontend-only development, you can still load local DICOM studies by drag
 and drop without running the API or Orthanc.
 
-## Auto-Contouring
-
-With the full stack running, you can load a CT study, open the `AI` tab in the
-Structure panel, run the available model profile, and import the result as an
-editable AI draft structure set. The imported draft is not saved back to the
-repository until you explicitly save or export it.
-
-Current v1 constraints:
-
-- CT-only model support
-- demo-scale transport path from browser to service
-- very large series are rejected before upload
-- the generated contours are draft suggestions that require human review
-
 ## Repository Layout
 
 ```text
@@ -91,7 +74,6 @@ ContourLab/
 ├── apps/
 │   ├── client/              React 18 + TypeScript contouring UI
 │   ├── api/                 ASP.NET Core API and integration endpoints
-│   └── autocontour-service/ Separate auto-contour job service
 ├── packages/
 │   └── shared-types/        Shared TypeScript models
 ├── DHF/                     Design history file, traceability, and generated docs
