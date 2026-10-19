@@ -1,0 +1,17 @@
+id: CR-025
+title: Save the edited contours back to the DICOM repository
+description: 'As a dosimetrist, after I finish editing the structure set I want to
+  save it back to the
+
+  DICOM repository as an RTSTRUCT, so that other users and systems in the clinical
+  workflow
+
+  can open the result.
+
+
+  Source issue: https://github.com/itercharles/ContourLab/issues/216'
+requested_by: itercharles
+priority: Medium
+status: new
+target_version: 2026-W43
+type: CR
