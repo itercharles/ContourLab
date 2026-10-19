@@ -271,6 +271,23 @@ jobs:
             exit 1
           fi
 
+      # 0.69.0 moved the "an item that depends on a changed one must be changed or reviewed" check here from
+      # `verify changes`, and made it judge the CR's whole impact record as `build plan` does.
+      - name: Validate the CR's impact record
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+')
+          if ! medharness --dhf DHF verify impact \
+            --cr "$CR_ID" \
+            --since-ref origin/main; then
+            gh pr comment "$PR_NUMBER" --body \
+              "⚠️ **Impact check failed** for $CR_ID — the CR's impact record is incomplete, or an item the change reaches has not been changed or reviewed. See CI logs for details."
+            exit 1
+          fi
+
 
   # ── DEVELOPMENT TESTING ────────────────────────────────────────────────────
   # Static analysis and compilation. Engineering feedback only — not compliance
