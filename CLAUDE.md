@@ -73,6 +73,10 @@ medharness --dhf DHF build release --version 0.0.0-preview --out-dir /tmp/dhf-pr
   --type CR`, then `medharness build plan --cr CR-NNN --prompt` and the checks. The CI pipeline (a GitHub
   issue with a milestone, a workflow run, a push or a PR) starts only when the user says to use CI. If it is
   unclear which is meant, ask before creating anything outside the working tree.
+- **Design first, then code**: after the design (`build plan --prompt`, `verify dhf`, `verify impact`), show the
+  user the design and wait for their approval before any code is written. This holds when work is handed to
+  another session: say so in its brief ("design it, report the design, and stop; implement only after the user
+  approves"), and point it at the `/medharness` skill instead of restating the steps.
 
 ### DHF Facade API Quick Reference
 
