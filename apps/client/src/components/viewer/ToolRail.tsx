@@ -51,7 +51,7 @@ const TOOL_GROUPS: Array<{ id: string; items: ToolRailItem[] }> = [
   {
     id: 'nav',
     items: [
-      { id: 'pointer', name: 'Select', icon: 'pointer', shortcut: 'V', desc: 'Pick structures & annotation handles', implemented: false },
+      { id: 'pointer', name: 'Select', icon: 'pointer', shortcut: 'V', desc: 'Click a contour to select its structure', implemented: true },
       { id: 'pan', name: 'Pan', icon: 'pan', shortcut: 'P', desc: 'Drag the image around the viewport', implemented: true },
       { id: 'zoom', name: 'Zoom', icon: 'zoom', shortcut: 'Z', desc: 'Zoom in / out on cursor position', implemented: true },
       { id: 'scroll', name: 'Scroll', icon: 'scroll', shortcut: 'S', desc: 'Scroll through image slices', implemented: true },
@@ -204,6 +204,16 @@ export default function ToolRail() {
     }
 
     setActiveTool(tool);
+
+    if (tool === 'pointer') {
+      setActiveViewport('AXIAL');
+      try {
+        await MPRController.clearPrimaryTool();
+      } catch {
+        // The tool group may not exist yet while the viewer is initializing.
+      }
+      return;
+    }
 
     if (CONTOUR_TOOLS.has(tool)) {
       setActiveViewport('AXIAL');

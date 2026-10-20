@@ -262,7 +262,7 @@ describe('Toolbar contour operations', () => {
     expect(mocks.setActiveTool).not.toHaveBeenCalledWith('measureDistance');
   });
 
-  it('opens structure operation panels from the tool rail and keeps only roadmap stubs disabled', () => {
+  it('opens structure operation panels from the tool rail and leaves no tool disabled', () => {
     render(<ToolRail />);
 
     fireEvent.click(screen.getByRole('button', { name: /Interpolate slices \(I\)/ }));
@@ -277,9 +277,7 @@ describe('Toolbar contour operations', () => {
     const disabledLabels = screen.getAllByRole('button')
       .filter((btn) => (btn as HTMLButtonElement).disabled)
       .map((btn) => btn.getAttribute('aria-label'));
-    expect(disabledLabels).toEqual(expect.arrayContaining([
-      'Select (V)',
-    ]));
+    expect(disabledLabels).not.toContain('Select (V)');
     expect(disabledLabels).not.toContain('Help');
   });
 
@@ -698,5 +696,14 @@ describe('QA stage contour gating', () => {
     for (const name of ['Pan (P)', 'Zoom (Z)', 'Scroll (S)', 'Window / Level (W)']) {
       expect(screen.queryByRole('button', { name }), name).not.toBeNull();
     }
+  });
+  it('@links:SRS-038 @testing:T4 keeps the Select tool enabled and active-able in QA', () => {
+    useUIStore.setState({ workflowStage: 'qa', activeTool: 'none' });
+    renderBoth();
+
+    const select = screen.getByRole('button', { name: 'Select (V)' });
+    expect((select as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(select);
+    expect(useUIStore.getState().activeTool).toBe('pointer');
   });
 });

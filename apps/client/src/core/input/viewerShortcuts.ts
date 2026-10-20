@@ -76,6 +76,17 @@ async function activateTool(tool: ViewerTool): Promise<void> {
     return;
   }
 
+  if (tool === 'pointer') {
+    uiStore.setActiveViewport('AXIAL');
+    uiStore.setActiveTool(tool);
+    try {
+      await MPRController.clearPrimaryTool();
+    } catch {
+      // Ignore early shortcut presses before the tool group exists.
+    }
+    return;
+  }
+
   uiStore.setActiveTool(tool);
   if (MEASUREMENT_TOOLS.has(tool)) {
     return;
@@ -97,7 +108,10 @@ export function installViewerShortcutHandler(): () => void {
     if (isEditableTarget(event.target)) return;
 
     const key = event.key.toLowerCase();
-    if (key === 'w') {
+    if (key === 'v') {
+      event.preventDefault();
+      void activateTool('pointer');
+    } else if (key === 'w') {
       event.preventDefault();
       void activateTool('windowLevel');
     } else if (key === 'z') {
