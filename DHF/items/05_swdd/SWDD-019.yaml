@@ -1,0 +1,20 @@
+id: SWDD-019
+title: Structure picking for the Select tool
+implements:
+- SRS-038
+module:
+- MODULE-008
+content: core/contouring/structurePicking.ts holds pickStructureAtPoint(candidates,
+  point, tolerancePx = 8), a pure function over rings already projected to overlay
+  canvas pixels. It returns the structure whose outline is nearest to the point within
+  the tolerance; failing that, the structure whose smallest enclosing ring (even-odd
+  test, area by the shoelace formula) contains the point; otherwise null. ContourOverlay.tsx
+  (axial view only) builds the candidates on pointer-down from the visible structures
+  of the active set whose contours lie on the current frame, projecting each contour
+  with viewport.worldToCanvas plus the canvas offset exactly as renderableContours
+  does, then calls structureStore.setActiveStructure with the result (null clears).
+  Select is not a contour edit tool, so the QA-stage gate (canEditContours) is not
+  applied and no contour data or undo history is touched. Pointer handling is limited
+  to the primary button, and viewerShortcuts.ts and ToolRail.tsx clear the Cornerstone
+  primary tool when Select is activated so a drag does not also pan or change window/level.
+type: SWDD
