@@ -13,7 +13,7 @@ description: '### Requested change
   SRS-006, RISK-010, RCM-014 where affected). Model files and training.log under apps/autocontour-service
   are untracked and are left to the user.'
 type: CR
-status: develop
+status: completed
 triage_result:
   verdict: approved
   complexity: medium
