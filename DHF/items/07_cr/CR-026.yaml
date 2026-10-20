@@ -1,0 +1,204 @@
+id: CR-026
+title: implement the Select viewer tool
+description: '### Requested change
+
+
+  The Select tool (rail button, shortcut V) is a disabled placeholder. Implement it:
+  with Select active, clicking a visible structure contour on the axial view makes
+  that structure the active structure (highlighted in the structure panel); clicking
+  empty space clears the selection. Works in every workflow stage including QA (selection
+  is not an edit). Add the pointer tool to the ViewerTool type, wire the V shortcut
+  and the rail button.'
+type: CR
+status: new
+triage_result:
+  verdict: approved
+  complexity: small
+  affected_subsystems:
+  - client
+  related_crs:
+  - CR-023
+  notes: One client subsystem; Select only changes the active structure id and never
+    edits contours, so it stays available in QA.
+affected_items:
+- SRS-038
+reviewed_items:
+- SYS-009
+- SRS-011
+- SRS-037
+- SYS-004
+- MODULE-008
+affected_risk_items:
+- RISK-001
+- RISK-006
+- RISK-007
+impact_analysis:
+  assumptions:
+  - 'Select means: with the tool active, a click on an axial contour makes that structure
+    the active structure; a click on empty space clears it (inferred from the button
+    text ''Pick structures & annotation handles'').'
+  - Annotation handle picking (measurements) is out of scope; only structures are
+    picked.
+  - Hit-testing is on the axial view only, matching the contour tools; MPR views stay
+    non-interactive.
+  - Selection is not an edit, so SRS-037 (editing withheld in QA) is unaffected and
+    Select works in QA.
+  anchors:
+  - id: SYS-009
+    evidence: Structure contour review navigation by active structure; selecting a
+      structure is the same user need (UC-003).
+  - id: SRS-011
+    evidence: Describes the active structure and structure list indicators; the new
+      requirement adds a second way to choose the active structure.
+  unchanged:
+  - id: SYS-009
+    reason: Parent of SRS-038; statement about navigating contour slices still holds.
+  - id: SRS-011
+    reason: Navigation and list indicators are unchanged.
+  - id: SRS-037
+    reason: Select is not a contour edit tool; editing controls stay withheld in QA.
+  - id: SYS-004
+    reason: Contouring tools list unchanged.
+  - id: MODULE-008
+    reason: ViewportUI module already covers viewport overlays; no new module.
+  created:
+  - id: SRS-038
+    reason: No existing requirement covers choosing the active structure from the
+      image; SRS-011 is about review navigation.
+  dimensions:
+  - dimension: product
+    verdict: required
+    reason: A previously disabled tool becomes a working way to choose the active
+      structure.
+    items:
+    - SRS-038
+  - dimension: requirements
+    verdict: required
+    reason: New SRS-038 under SYS-009.
+    items:
+    - SRS-038
+  - dimension: architecture
+    verdict: not_required
+    reason: Local behaviour inside the viewer overlay and a pure helper.
+    items: []
+  - dimension: risk
+    verdict: not_required
+    reason: Selection changes only activeStructureId; no contour data, undo stack
+      or push path is touched. Assessed RISK-001, RISK-006 and RISK-007 and their
+      controls; editing still operates on the active structure with the existing lock
+      checks.
+    items:
+    - RISK-001
+    - RISK-006
+    - RISK-007
+  - dimension: soup
+    verdict: not_required
+    reason: No new dependency.
+    items: []
+  - dimension: test
+    verdict: required
+    reason: Unit tests for the picking helper, overlay, shortcut, rail and store.
+    items:
+    - SRS-038
+  - dimension: regulatory
+    verdict: not_required
+    reason: Intended use and labelling unchanged.
+    items: []
+  - dimension: security
+    verdict: not_required
+    reason: No API or data handling change.
+    items: []
+  - dimension: usability
+    verdict: required
+    reason: New click interaction and a cursor; the rail tooltip tells the user what
+      Select does.
+    items:
+    - SRS-038
+implementation_notes: '## Overview
+
+  Implement the Select tool (rail id ''pointer'', shortcut V). With it active, a click
+  on the axial view picks the visible structure under the click and makes it the active
+  structure; a click on nothing clears it. Selection never edits contours and works
+  in QA.
+
+
+  ## Current State
+
+  - components/viewer/ToolRail.tsx: TOOL_GROUPS item { id: ''pointer'', name: ''Select'',
+  shortcut: ''V'', implemented: false } renders disabled; ''pointer'' is not a ViewerTool.
+
+  - core/store/uiStore.ts: ViewerTool union, setActiveTool; setWorkflowStage resets
+  contour tools in QA.
+
+  - core/input/viewerShortcuts.ts: activateTool and the keydown handler have no V
+  case.
+
+  - components/viewer/ContourOverlay.tsx: an SVG over each viewport; pointerEvents
+  is ''auto'' only for contour-edit tools on AXIAL and measurement tools. It projects
+  contours with viewport.worldToCanvas plus canvasMetrics offsets (renderableContours)
+  and has getCanvasPoint(event).
+
+  - components/layout/StatusBar.tsx: TOOL_LABELS is a Record<ViewerTool, string>.
+
+  - core/store/structureStore.ts: setActiveStructure(id | null).
+
+
+  ## Changes Required
+
+  - core/store/uiStore.ts: add ''pointer'' to ViewerTool (not a contour edit tool).
+
+  - core/contouring/structurePicking.ts (new): pure pickStructureAtPoint(candidates,
+  point, tolerancePx = 8) where a candidate is { structureId, rings: [number,number][][]
+  } in overlay canvas pixels. Nearest outline within tolerance wins; otherwise the
+  smallest-area enclosing ring (even-odd point-in-polygon); else null.
+
+  - ContourOverlay.tsx: isSelectTool = activeTool === ''pointer'' && orientation ===
+  ''AXIAL''; svg pointerEvents auto for it; handlePointerDown early branch: build
+  candidates from visible structures of the active set whose contours are on the current
+  frame (isContourOnFrame), projected like renderableContours, call pickStructureAtPoint,
+  then setActiveStructure(result). Do not gate on canEditContours.
+
+  - viewerShortcuts.ts: key ''v'' activates ''pointer''; pointer clears the Cornerstone
+  primary tool (like contour tools) so left-drag does not also pan or change window/level.
+
+  - ToolRail.tsx: implemented: true, desc ''Click a contour to select its structure'';
+  treat ''pointer'' like contour tools for clearPrimaryTool but without the structure-panel
+  prompt and allowed in QA.
+
+  - StatusBar.tsx: TOOL_LABELS.pointer = ''Select''.
+
+
+  ## Implementation Steps
+
+  1. Add ''pointer'' to ViewerTool and StatusBar label; typecheck.
+
+  2. Write structurePicking.ts with tests.
+
+  3. Wire ContourOverlay; test.
+
+  4. Shortcut and ToolRail; tests.
+
+
+  ## Edge Cases & Constraints
+
+  - Hidden structures (isVisible === false) are never picked.
+
+  - Locked structures can be selected (selection is not an edit).
+
+  - Contours are closed rings; points arrive flattened as [x,y,z,...]; convert via
+  worldToOverlayCanvas.
+
+  - MPR views: svg stays pointer-events none; no picking there.
+
+  - Tailwind only, no any.
+
+
+  ## Tests
+
+  - structurePicking.test.ts: SRS-038 T1, T2.
+
+  - ContourOverlay.test.tsx: SRS-038 T3, T4 (QA stage).
+
+  - viewerShortcuts test: SRS-038 T5; ToolRail enabled in QA.
+
+  '

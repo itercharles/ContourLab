@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { createEvent, fireEvent, render, screen } from '@testing-library/react';
 import ContourOverlay from './ContourOverlay';
 import { useUIStore } from '../../core/store/uiStore';
 import { useVolumeStore, type LoadedSeries } from '../../core/store/volumeStore';
@@ -204,5 +204,60 @@ describe('ContourOverlay measurements', () => {
 
     expect(screen.queryAllByText('24 HU')).toHaveLength(0);
     expect(screen.getAllByText('80 HU').length).toBeGreaterThan(0);
+  });
+  // jsdom has no PointerEvent, so clientX/clientY are not carried by fireEvent.pointerDown.
+  function clickAt(svg: SVGSVGElement, clientX: number, clientY: number) {
+    const event = createEvent.pointerDown(svg, { button: 0, buttons: 1 });
+    Object.defineProperty(event, 'clientX', { value: clientX });
+    Object.defineProperty(event, 'clientY', { value: clientY });
+    fireEvent(svg, event);
+  }
+
+  function seedStructures(workflowStage: 'edit' | 'qa') {
+    const ring = (x: number, y: number, size: number) =>
+      new Float32Array([x, y, 8, x + size, y, 8, x + size, y + size, 8, x, y + size, 8]);
+    const base = { type: 'OAR' as const, color: [255, 0, 0] as [number, number, number] };
+    useStructureStore.setState({
+      structureSets: [
+        {
+          id: 'set-1',
+          label: 'Set',
+          referencedSeriesUID: 'series-1',
+          version: 1,
+          structures: [
+            { ...base, id: 'a', name: 'A', contours: [{ referencedSOPInstanceUID: 'sop-2', slicePosition: 8, points: ring(20, 20, 60), isClosed: true }] },
+            { ...base, id: 'hidden', name: 'Hidden', isVisible: false, contours: [{ referencedSOPInstanceUID: 'sop-2', slicePosition: 8, points: ring(150, 150, 60), isClosed: true }] },
+          ],
+        },
+      ],
+      activeStructureSetId: 'set-1',
+      activeStructureId: null,
+    });
+    useUIStore.setState({ activeTool: 'pointer', workflowStage });
+  }
+
+  it('@links:SRS-038 @testing:T3 Select picks a visible contour and clears on empty space', () => {
+    seedStructures('edit');
+    const { svg } = renderOverlay();
+
+    clickAt(svg, 20, 50);
+    expect(useStructureStore.getState().activeStructureId).toBe('a');
+
+    clickAt(svg, 150, 180);
+    expect(useStructureStore.getState().activeStructureId).toBeNull();
+
+    clickAt(svg, 180, 180);
+    expect(useStructureStore.getState().activeStructureId).toBeNull();
+  });
+
+  it('@links:SRS-038 @testing:T4 Select works in QA without changing contours', () => {
+    seedStructures('qa');
+    const { svg } = renderOverlay();
+    const before = useStructureStore.getState().structureSets;
+
+    clickAt(svg, 50, 50);
+
+    expect(useStructureStore.getState().activeStructureId).toBe('a');
+    expect(useStructureStore.getState().structureSets).toBe(before);
   });
 });
