@@ -22,6 +22,7 @@ triage_result:
     edits contours, so it stays available in QA.
 affected_items:
 - SRS-038
+- SWDD-019
 reviewed_items:
 - SYS-009
 - SRS-011
