@@ -8,7 +8,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ## Current Pin
 
-- `medharness[docs]==0.69.1`
+- `medharness[docs]==0.69.2`
 - One CLI, `medharness`; `dhfkit` is a library inside it with no command of its own
 
 ## Sources Of Truth
