@@ -2,13 +2,12 @@ id: SYS-018
 title: System shall publish its services only on the interface of the workstation
   it runs on
 category: Security
-content: The deployed system (the web client server, the API, the DICOM repository
-  and the auto-contour service) shall accept connections only from the workstation
-  it runs on. None of them has authentication, so none shall be reachable from the
-  network, and the web client server shall not forward requests to the DICOM repository's
-  own REST interface, which can delete studies. To make the system available to other
-  computers, an authenticating reverse proxy shall be placed in front of it; the bindings
-  shall not be loosened.
+content: The deployed system (the web client server, the API and the DICOM repository)
+  shall accept connections only from the workstation it runs on. None of them has
+  authentication, so none shall be reachable from the network, and the web client
+  server shall not forward requests to the DICOM repository's own REST interface,
+  which can delete studies. To make the system available to other computers, an authenticating
+  reverse proxy shall be placed in front of it; the bindings shall not be loosened.
 verification_method:
 - Inspection
 satisfies:

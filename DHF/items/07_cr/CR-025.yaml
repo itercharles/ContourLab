@@ -1,0 +1,296 @@
+id: CR-025
+title: remove the auto-contouring feature
+description: '### Requested change
+
+
+  Remove auto-contouring: its capability is weak and not worth maintaining. Remove
+  the autocontour-service (apps/autocontour-service), the API AutoContourController/Contracts/ServiceClient
+  and its HttpClient registration, the client autocontourClient and the AI tab in
+  StructurePanel, the ''Auto-segment'' workflow stage (workflow keeps Edit, QA, Review;
+  default stays Edit), the shared-types AutoContour* types and the ''ai-draft'' structure-set
+  source, compose/deploy/dev-script/CI-contract references to the service and port
+  4010, and update README/docs and DHF text that mentions the service (SYS-018, CRS-015,
+  SRS-006, RISK-010, RCM-014 where affected). Model files and training.log under apps/autocontour-service
+  are untracked and are left to the user.'
+type: CR
+status: develop
+triage_result:
+  verdict: approved
+  complexity: medium
+  affected_subsystems:
+  - client
+  - api
+  - autocontour-service
+  - deploy
+  - shared-types
+  related_crs:
+  - CR-024
+  notes: Removal of a weak feature; large code deletion but only five DHF texts change
+    and the loopback controls stay valid.
+affected_items:
+- SYS-018
+- CRS-015
+- SRS-006
+- SRS-037
+- RISK-010
+reviewed_items:
+- UC-005
+- SYS-003
+- SYS-004
+- SRS-035
+- SWDD-009
+- RCM-014
+- SWDD-004
+- SYSARCH-002
+- SYSARCH-003
+affected_risk_items:
+- RISK-010
+- RCM-014
+impact_analysis:
+  assumptions:
+  - 'Removal is complete: service, API, client UI, shared types, deploy and dev scripts,
+    docs. The user keeps the untracked model files and training.log.'
+  - The workflow keeps Edit, QA, Review (stated by the user); the default stage stays
+    Edit.
+  - Previously saved structure sets labelled ai-draft must still load; they are treated
+    as ordinary sets.
+  - No requirement describes auto-contouring as a capability, so nothing is deleted
+    from the requirement tiers; only text that lists the service is edited.
+  anchors:
+  - id: SYS-018
+    evidence: item text lists 'the auto-contour service' among the loopback-only services
+  - id: CRS-015
+    evidence: verification_criteria lists the auto-contour service
+  - id: SRS-006
+    evidence: content lists auto-contouring as a route that changes contours
+  - id: SRS-037
+    evidence: content lists stages (auto, edit, review); tests Toolbar.test.tsx /
+      uiStore.test.ts use the 'auto' stage
+  - id: RISK-010
+    evidence: cause says the auto-contour service has no authentication
+  unchanged:
+  - id: UC-005
+    reason: parent of CRS-015; the need (reachable only from the workstation) is unchanged
+  - id: SYS-003
+    reason: parent of SRS-006; volume calculation requirement is unchanged
+  - id: SYS-004
+    reason: parent of SRS-037; contouring tools are unchanged
+  - id: SRS-035
+    reason: generic over every compose service; still correct with one service fewer
+  - id: SWDD-009
+    reason: implements SRS-006; shoelace design unchanged
+  - id: RCM-014
+    reason: Loopback binding and the contract check are generic over compose services;
+      still true with the service removed
+  - id: SWDD-004
+    reason: ContourEngine/UndoRedo design does not depend on the workflow stage list
+      beyond canEditContours(qa)
+  - id: SYSARCH-002
+    reason: DICOMweb repository interface does not name the auto-contour service
+  - id: SYSARCH-003
+    reason: API architecture does not name the auto-contour endpoints
+  created: []
+  dimensions:
+  - dimension: product
+    verdict: required
+    reason: A user-visible capability (AI auto-segmentation, 01 stage) is removed;
+      no UC/CRS describes it, so only the workflow shrinks to three stages.
+    items:
+    - SRS-037
+  - dimension: requirements
+    verdict: required
+    reason: Five requirement/risk texts list the service or the auto stage and are
+      corrected; none changes meaning.
+    items:
+    - SYS-018
+    - CRS-015
+    - SRS-006
+    - SRS-037
+  - dimension: architecture
+    verdict: required
+    reason: One deployed service (port 4010) and the API-to-service integration are
+      removed; SYSARCH items do not name them.
+    items: []
+  - dimension: risk
+    verdict: required
+    reason: Attack surface shrinks; RISK-010 text updated; RCM-014 still holds and
+      is reviewed.
+    items:
+    - RISK-010
+    - RCM-014
+  - dimension: soup
+    verdict: not_required
+    reason: No SOUP items exist for the service's Python dependencies (TotalSegmentator
+      etc.).
+    items: []
+  - dimension: test
+    verdict: required
+    reason: Auto-contour tests are deleted; Toolbar, StructurePanel and uiStore tests
+      change for three stages. Verification tests for SRS-037 and SRS-006 stay.
+    items:
+    - SRS-037
+    - SRS-006
+  - dimension: regulatory
+    verdict: not_required
+    reason: Intended use is manual contouring and review; the removed feature was
+      labelled a draft needing human review and is not in the DHF scope.
+    items: []
+  - dimension: security
+    verdict: required
+    reason: An unauthenticated service and its API endpoints are removed; no new surface.
+    items:
+    - SYS-018
+    - RISK-010
+  - dimension: usability
+    verdict: required
+    reason: Stepper loses 'Auto-segment' and the AI tab disappears; stages renumber
+      01-03.
+    items:
+    - SRS-037
+implementation_notes: '## Overview
+
+  Remove the auto-contouring feature end to end: the Python autocontour-service, the
+  API proxy endpoints, the client AI tab and ''Auto-segment'' workflow stage, the
+  shared types and every deploy/dev/CI reference. The workflow becomes Edit, QA, Review
+  (default Edit). No replacement behaviour is added.
+
+
+  ## Current State
+
+  - apps/autocontour-service/ (FastAPI + TotalSegmentator, port 4010): main.py, inference.py,
+  profiles.py, Dockerfile, requirements.txt, test_*.py (5 files). Untracked models/
+  and training.log are the user''s and are NOT touched.
+
+  - apps/api: Controllers/AutoContourController.cs, Models/AutoContourContracts.cs,
+  Services/AutoContourServiceClient.cs; Program.cs registers the "autocontour" HttpClient
+  (config AutoContour:BaseUrl / CONTOURLAB_AUTOCONTOUR_SERVICE_BASE_URL) and the scoped
+  client. apps/api.tests/AutoContourEndpointTests.cs.
+
+  - apps/client: src/core/autocontour/autocontourClient.ts; StructurePanel.tsx holds
+  the ''ai'' PanelTab, all autoContour* state, handleRunAutoContour, polling constants,
+  formatAutoContourState, the `ai-draft` label branch (~line 152) and the AI panel
+  JSX (~1822-1948); Toolbar.tsx WORKFLOW_STAGES has { id: ''auto'', num: ''01'', label:
+  ''Auto-segment'' }; core/store/uiStore.ts has WorkflowStage ''auto'', SidePanelTab
+  ''ai'' and the stage->tab map (~line 168).
+
+  - packages/shared-types/src/index.ts: AutoContourModelProfile, AutoContourSeriesSlice,
+  AutoContourSeriesPayload, AutoContourJobCreateRequest/Response, AutoContourJobState,
+  AutoContourJobStatus, AutoContourResultPayload (lines ~109-175) and source.type
+  ''ai-draft'' (line 81).
+
+  - Deploy/dev: docker-compose.deploy.yml (autocontour-service service, api depends_on,
+  CONTOURLAB_AUTOCONTOUR_SERVICE_BASE_URL, header comment), scripts/deploy/deploy.sh
+  line ~125, scripts/dev/up.mjs (service block, port 4010), scripts/dev/bootstrap.mjs
+  line ~28 (restore of a csproj that no longer exists), package.json script autocontour:service,
+  scripts/ci/check_medharness_contract.py comment (line ~206), local doctor script
+  if it checks 4010 (grep scripts/).
+
+  - Docs: README.md (service in ports table, pnpm autocontour:service, ''Auto-Contouring''
+  section, layout tree), docs/local_development.md (ports, service, ''Auto-Contouring
+  Workflow'' and limits sections), docs/project-review-2026-10.md (historical; leave).
+
+
+  ## Changes Required
+
+  - DELETE apps/autocontour-service/ tracked files (git rm); leave untracked models/
+  and training.log in place. If .gitignore lists them, leave it.
+
+  - DELETE AutoContourController.cs, AutoContourContracts.cs, AutoContourServiceClient.cs,
+  AutoContourEndpointTests.cs; MODIFY Program.cs to drop the HttpClient and the scoped
+  client (keep other registrations).
+
+  - DELETE src/core/autocontour/. MODIFY StructurePanel.tsx: remove the ''ai'' tab
+  button, PanelTab member, all autoContour state/refs/effects/handlers/constants/imports,
+  the AI panel JSX, and the `ai-draft` branch in the structure-set label helper; remove
+  the stage->tab entry for ''auto''. MODIFY Toolbar.tsx: drop the ''auto'' stage and
+  renumber to 01 Edit, 02 QA, 03 Review. MODIFY uiStore.ts: WorkflowStage = ''edit''
+  | ''qa'' | ''review''; SidePanelTab without ''ai''; stage map without ''auto''.
+  Check any persisted/localStorage value of ''auto''/''ai'' falls back to ''edit''/''structures''.
+  Update volumeRefresh.ts doc comment (drop "auto-contouring").
+
+  - MODIFY shared-types: delete the AutoContour* types; remove ''ai-draft'' from the
+  source type union (and modelDisplayName/related optional fields if only used by
+  ai-draft; grep before deleting). Shared types first, then fix compile errors outward.
+
+  - MODIFY docker-compose.deploy.yml, deploy.sh, up.mjs, bootstrap.mjs, package.json,
+  check_medharness_contract.py comment, README.md, docs/local_development.md as listed
+  above. The compose loopback contract check must still pass for the remaining services.
+
+  - DHF (already edited in this design): SYS-018, CRS-015, RISK-010 (drop the auto-contour
+  service from the lists), SRS-006 (drop auto-contouring from the volume-recompute
+  routes), SRS-037 (stages edit, review).
+
+  - TESTS: delete StructurePanel auto-contour tests and mocks (mocks.listAutoContourModels
+  etc., ''runs auto-contouring and imports an AI draft...'', the ai-tab test at ~line
+  1317) and update Toolbar.test.tsx (stepper shows Edit, QA, Review; the ''01 Auto-segment''
+  click test at ~598 must use another stage) and uiStore.test.ts (stage->tab table,
+  the tab list).
+
+
+  ## Implementation Steps
+
+  1. Shared types: remove AutoContour* and ''ai-draft''; `pnpm -r typecheck` and use
+  the errors as the work list.
+
+  2. Client: uiStore, Toolbar, StructurePanel, delete autocontourClient, fix tests;
+  `pnpm --filter @contourlab/client test lint typecheck`.
+
+  3. API: delete files, edit Program.cs, `dotnet build apps/api/api.csproj -c Release`
+  and `dotnet test apps/api.tests`.
+
+  4. Delete the tracked service files.
+
+  5. Deploy/dev/CI: compose, deploy.sh, up.mjs, bootstrap.mjs, package.json, contract
+  check; run `python scripts/ci/check_medharness_contract.py` and `pnpm local:doctor`
+  (if it lists the service, remove it).
+
+  6. Docs: README, local_development.md.
+
+  7. Final `git grep -i -E ''autocontour|auto-contour|auto-segment|ai-draft|4010''`
+  should only match docs/project-review-2026-10.md, CR-024 and this CR.
+
+  8. `medharness verify dhf`, `verify changes --cr CR-025`, `verify completion`.
+
+
+  ## Edge Cases & Constraints
+
+  - Do not delete or modify untracked apps/autocontour-service/models and training.log
+  (the user handles them). Because tracked files are removed, the directory stays
+  on disk; do not `git clean`.
+
+  - Structure sets already saved with source.type ''ai-draft'' (in Orthanc RTSTRUCT
+  or local drafts) must still load: the client must not crash on an unknown source
+  type; verify how source is read and fall back to the generic label.
+
+  - The ''auto'' stage must not remain reachable from stored UI state or URL; default
+  stage is already ''edit''.
+
+  - No requirement describes auto-contouring (SRS-006 only mentions it as a route),
+  so no requirement is deleted; do not add tests with @links for removed behaviour.
+
+  - RISK-010/RCM-014 are not weakened: removing a service shrinks the unauthenticated
+  surface. SRS-035 and the contract check are generic over compose services and stay
+  valid.
+
+  - Removing the service drops Python deps (totalsegmentator, torch transitively)
+  from deployment; no SOUP items exist for them, so no SOUP change. DHF/sbom.cdx.json
+  is untracked build output; ignore.
+
+
+  ## Tests
+
+  - Unit/component: Toolbar.test.tsx (three stages), StructurePanel.test.tsx (no AI
+  tab; remaining tabs still work), uiStore.test.ts (stage->tab map for edit/qa/review).
+  SRS-037 tests (@links:SRS-037) keep passing, stage list updated. SRS-006 volume
+  tests unchanged.
+
+  - API: remaining tests (Health, DhfArtifacts, ClientDebugLog) pass after the build.
+
+  - Contract: scripts/ci/check_medharness_contract.py passes (SRS-035 T1, SYS-018
+  T1).
+
+  - Manual: open the app, confirm the stepper shows Edit/QA/Review, the right panel
+  has Structures/QA/Review/Audit, loading a series with an existing structure set
+  labelled as AI draft still opens.
+
+  '

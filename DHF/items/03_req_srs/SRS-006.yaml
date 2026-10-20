@@ -14,8 +14,8 @@ content: 'Volume in cm³ shall be computed from contour data by applying the sho
   for the slab it stands for (half the distance to each neighbour, an end slice its
   one gap) instead of the average spacing. A structure''s volume shall be recomputed
   whenever its contours change, by any route (drawing, boolean, margin and interpolation
-  operations, undo and redo, import, auto-contouring), without marking the series
-  as having unsaved changes.'
+  operations, undo and redo, import), without marking the series as having unsaved
+  changes.'
 derives_from: [SYS-003]
 verification_method: [Test]
 testing: 'T1: Given a structure with no contours or a single polygon with fewer than

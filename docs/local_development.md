@@ -1,7 +1,7 @@
 # Local Development
 
 ContourLab ships with a small set of local commands for frontend, API,
-auto-contouring, and Orthanc-backed DICOM repository development.
+and Orthanc-backed DICOM repository development.
 
 ## Prerequisites
 
@@ -12,8 +12,7 @@ auto-contouring, and Orthanc-backed DICOM repository development.
 | .NET SDK | 9 | `dotnet --version` |
 | Docker + Compose | current | `docker compose version` |
 
-Required local ports: `3000` (frontend), `4000` (API), `4010`
-(auto-contour service), `8042` (Orthanc).
+Required local ports: `3000` (frontend), `4000` (API) and `8042` (Orthanc).
 
 No `.env` file is required for the default developer setup.
 
@@ -38,8 +37,7 @@ One-time bootstrap:
 pnpm local:setup
 ```
 
-This installs Node dependencies and restores both the main API project and the
-auto-contour service project.
+This installs Node dependencies and restores the API project.
 
 Start the full stack:
 
@@ -53,11 +51,10 @@ Default local endpoints:
 | --- | --- |
 | Frontend | `http://127.0.0.1:3000/workspace` |
 | API | `http://127.0.0.1:4000/api/health` |
-| Auto-contour service | `http://127.0.0.1:4010/health` |
 | Orthanc DICOM repo | `http://127.0.0.1:8042` |
 | DICOMweb proxy | `http://127.0.0.1:3000/dicom-web` |
 
-If the frontend, API, or auto-contour service is already running,
+If the frontend or API is already running,
 `pnpm local:up` reuses the active process instead of starting a duplicate.
 
 ## Common Commands
@@ -66,7 +63,6 @@ If the frontend, API, or auto-contour service is already running,
 pnpm local:doctor   # verify tools, ports, and health endpoints
 pnpm local:down     # stop Docker-backed services
 pnpm api            # API only
-pnpm autocontour:service  # auto-contour service only
 pnpm repo:up        # Orthanc only
 pnpm repo:logs      # Orthanc logs
 ```
@@ -97,43 +93,11 @@ Public sample datasets suitable for development testing:
 - [TCIA](https://www.cancerimagingarchive.net/)
 - [OsiriX DICOM sample library](https://www.osirix-viewer.com/resources/dicom-image-library/)
 
-## Auto-Contouring Workflow
-
-The full-stack local environment includes the separate auto-contour service.
-
-1. Start the full stack with `pnpm local:up`.
-2. Load a CT study into the workspace.
-3. Open the `AI` tab in the Structure panel.
-4. Run the available model profile.
-5. Review the imported AI draft structure set and edit it as needed.
-6. Save or export explicitly when you are ready.
-
-Current v1 constraints:
-
-- CT-only model support
-- demo-scale browser-to-service voxel transport
-- very large series are rejected before upload
-- generated contours are draft suggestions, not final approved structures
-
-The service protects itself with limits, each set by an environment variable (defaults in brackets):
-
-- `AUTOCONTOUR_MAX_VOXELS` (512 x 512 x 300): a larger series is refused with 413, and so is a request body above
-  `AUTOCONTOUR_MAX_BODY_BYTES` (16 bytes per voxel). Dimensions, spacing, origin and direction cosines that cannot
-  describe a volume, or pixel data that does not match the dimensions, are refused with 400.
-- `AUTOCONTOUR_MAX_ACTIVE_JOBS` (3): jobs queued or running; one more is refused with 429 until one finishes.
-- `AUTOCONTOUR_JOB_TTL_SECONDS` (3600) and `AUTOCONTOUR_MAX_FINISHED_JOBS` (20): finished jobs and their results
-  are dropped after the TTL, and the oldest beyond the cap.
-- `AUTOCONTOUR_JOB_TIMEOUT_SECONDS` (3600): an inference that runs longer is marked failed ("Timed out") and its
-  worker process is replaced, so one stuck run does not block every later job.
-
-The tests for these are in `apps/autocontour-service/test_limits.py` (`pytest test_limits.py`; they need FastAPI,
-httpx and SimpleITK but no model and no running service).
-
 ## Maintainer Deployment Notes
 
 The repository includes a self-hosted deployment path. The deploy stack publishes the app on ports `3001`
-(frontend), `4001` (API), `4010` (auto-contour service) and `8042` (Orthanc), **all bound to `127.0.0.1`**:
-the API, the repository and the auto-contour service have no authentication, so the system is used from the
+(frontend), `4001` (API) and `8042` (Orthanc), **all bound to `127.0.0.1`**:
+the API and the repository have no authentication, so the system is used from the
 workstation it runs on. To open it to other computers, put an authenticating reverse proxy in front of the
 frontend rather than changing the bindings.
 
@@ -141,7 +105,6 @@ frontend rather than changing the bindings.
 | --- | --- |
 | Frontend | `http://127.0.0.1:3001` |
 | API | `http://127.0.0.1:4001` |
-| Auto-contour service | `http://127.0.0.1:4010/health` |
 | Orthanc | `http://127.0.0.1:8042` |
 
 The deploy stack is defined in
