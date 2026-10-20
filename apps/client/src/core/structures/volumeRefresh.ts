@@ -18,7 +18,7 @@ export function structureVolumeOn(structure: Structure, series: LoadedSeries, fa
 /**
  * Keeps every structure's volume in step with its contours. A volume computed only where one
  * editor happened to call for it went stale after boolean, margin and interpolation operations,
- * undo and redo, imports and auto-contouring; this follows the contours themselves, whichever
+ * undo and redo, and imports; this follows the contours themselves, whichever
  * way they changed. It writes through setStructureVolume, which is not an edit, so restoring a
  * draft or loading a structure set does not mark the series unsaved. Call once at startup.
  */

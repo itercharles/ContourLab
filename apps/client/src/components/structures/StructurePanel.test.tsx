@@ -13,10 +13,6 @@ const mocks = vi.hoisted(() => ({
   checkDraftAgainstRepository: vi.fn(),
   loadStructureDraftForSeries: vi.fn(),
   saveStructureDraftForSeries: vi.fn(),
-  listAutoContourModels: vi.fn(),
-  submitAutoContourJob: vi.fn(),
-  getAutoContourJobStatus: vi.fn(),
-  getAutoContourJobResult: vi.fn(),
   scroll: vi.fn(),
   renderViewport: vi.fn(),
   getViewport: vi.fn(() => ({
@@ -37,20 +33,6 @@ vi.mock('../../core/structures/draftFreshness', () => ({
 
 vi.mock('../../core/debug/clientDebugLog', () => ({
   logClientDebug: vi.fn(),
-}));
-
-vi.mock('../../core/autocontour/autocontourClient', () => ({
-  buildAutoContourRequest: vi.fn((loadedSeries, modelProfileId) => ({
-    modelProfileId,
-    series: {
-      seriesUID: loadedSeries.seriesUID,
-    },
-  })),
-  inferAutoContourProfile: vi.fn(() => null),
-  listAutoContourModels: mocks.listAutoContourModels,
-  submitAutoContourJob: mocks.submitAutoContourJob,
-  getAutoContourJobStatus: mocks.getAutoContourJobStatus,
-  getAutoContourJobResult: mocks.getAutoContourJobResult,
 }));
 
 vi.mock('../../core/rendering/ViewportManager', () => ({
@@ -170,52 +152,6 @@ beforeEach(() => {
   mocks.loadStructureDraftForSeries.mockResolvedValue(null);
   mocks.checkDraftAgainstRepository.mockResolvedValue({ status: 'current' });
   mocks.saveStructureDraftForSeries.mockResolvedValue(undefined);
-  mocks.listAutoContourModels.mockResolvedValue([
-    {
-      id: 'thorax-ct-demo',
-      displayName: 'Thorax CT · TotalSeg-style demo',
-      summary: 'Deterministic contour draft generator.',
-      modality: 'CT',
-      anatomyScope: 'Thorax',
-      expectedStructureLabels: ['EXTERNAL', 'Lung_L', 'Lung_R', 'Heart'],
-    },
-  ]);
-  mocks.submitAutoContourJob.mockResolvedValue({ jobId: 'job-1' });
-  mocks.getAutoContourJobStatus.mockResolvedValue({
-    jobId: 'job-1',
-    state: 'succeeded',
-    progressStage: 'Contour draft ready',
-    submittedAt: '2026-05-20T10:00:00.000Z',
-    updatedAt: '2026-05-20T10:00:01.000Z',
-    resultAvailable: true,
-  });
-  mocks.getAutoContourJobResult.mockResolvedValue({
-    structureSet: {
-      id: 'ai-ss-1',
-      label: 'Thorax CT · TotalSeg-style demo draft',
-      referencedSeriesUID: 'series-1',
-      version: 1,
-      source: {
-        type: 'ai-draft',
-        label: 'AI draft',
-        modelDisplayName: 'Thorax CT · TotalSeg-style demo',
-        generatedAt: '2026-05-20T10:00:01.000Z',
-        importedAt: '2026-05-20T10:00:01.000Z',
-      },
-      structures: [
-        {
-          id: 'lung-l',
-          name: 'Lung_L',
-          type: 'OAR',
-          color: [0, 180, 255],
-          contours: [],
-          isVisible: true,
-          isLocked: false,
-          volume_cc: 1250,
-        },
-      ],
-    },
-  });
   useVolumeStore.setState({
     loadedSeries: [makeLoadedSeries()],
     activeSeriesUID: 'series-1',
@@ -598,28 +534,6 @@ describe('StructurePanel local draft and structure editing interactions', () => 
     await waitFor(() =>
       expect(useStructureStore.getState().structureSets[0].structures[0].isLocked).toBe(true)
     );
-  });
-
-  it('runs auto-contouring and imports an AI draft structure set for the active CT series', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    render(<StructurePanel />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
-    await waitFor(() =>
-      expect(mocks.listAutoContourModels).toHaveBeenCalledTimes(1)
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Run Auto-Contouring' }));
-
-    await waitFor(() =>
-      expect(useStructureStore.getState().activeStructureSetId).toBe('ai-ss-1')
-    );
-    expect(useStructureStore.getState().structureSets).toHaveLength(1);
-    expect(useStructureStore.getState().structureSets[0].source?.type).toBe('ai-draft');
-    expect(useStructureStore.getState().dirtySeriesUIDs).toContain('series-1');
-    expect(useStructureStore.getState().repositoryDirtySeriesUIDs).toContain('series-1');
-    expect(screen.getByText(/Imported AI draft with 1 structure/i)).toBeTruthy();
-    expect(screen.getByText(/Thorax CT · TotalSeg-style demo imported/i)).toBeTruthy();
   });
 
   it('shows contour review count in the compact active-structure summary @links:SRS-011', () => {
@@ -1300,11 +1214,10 @@ describe('StructurePanel local draft and structure editing interactions', () => 
 });
 
 describe('StructurePanel tab navigation driven by uiStore', () => {
-  it('renders all five tab buttons', () => {
+  it('renders all four tab buttons', () => {
     render(<StructurePanel />);
 
     expect(screen.getByRole('button', { name: 'Structures' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'AI' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'QA' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Review' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Audit' })).toBeTruthy();
@@ -1313,26 +1226,11 @@ describe('StructurePanel tab navigation driven by uiStore', () => {
   it('clicking a tab button updates sidePanelTab in the store', () => {
     render(<StructurePanel />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
-    expect(useUIStore.getState().sidePanelTab).toBe('ai');
-
     fireEvent.click(screen.getByRole('button', { name: 'QA' }));
     expect(useUIStore.getState().sidePanelTab).toBe('qa');
 
     fireEvent.click(screen.getByRole('button', { name: 'Structures' }));
     expect(useUIStore.getState().sidePanelTab).toBe('structures');
-  });
-
-  it('AI tab loads the available auto-contouring model profiles', async () => {
-    render(<StructurePanel />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
-
-    expect(screen.getByText('Auto-contouring')).toBeTruthy();
-    await waitFor(() =>
-      expect(screen.getAllByText(/Thorax CT · TotalSeg-style demo/i).length).toBeGreaterThan(0)
-    );
-    expect(screen.getByText(/Deterministic contour draft generator/i)).toBeTruthy();
   });
 
   it('Review tab shows the Approve & Sign button', () => {
@@ -1370,12 +1268,26 @@ describe('StructurePanel tab navigation driven by uiStore', () => {
     expect(screen.getByText('Structure Set')).toBeTruthy();
   });
 
+  it('CR-025 a structure set saved with the removed ai-draft source type still opens as a generic set', () => {
+    const legacy = {
+      ...makeStructureSet(),
+      source: { type: 'ai-draft', label: 'AI draft', modelDisplayName: 'Old model' },
+    } as unknown as StructureSet;
+    useStructureStore.setState({ structureSets: [legacy], activeStructureSetId: 'ss-1' });
+
+    render(<StructurePanel />);
+    fireEvent.click(screen.getByRole('button', { name: 'Audit' }));
+
+    expect(screen.getByText('DICOM Metadata')).toBeTruthy();
+    expect(screen.getByText('SET')).toBeTruthy();
+  });
+
   it('the panel tab shown corresponds to sidePanelTab in the store', () => {
-    useUIStore.setState({ workflowStage: 'auto' });
+    useUIStore.setState({ workflowStage: 'qa' });
 
     render(<StructurePanel />);
 
-    expect(screen.getByText('Auto-contouring')).toBeTruthy();
+    expect(screen.getByText('Contour QA')).toBeTruthy();
     expect(screen.queryByText('Targets')).toBeNull();
   });
 

@@ -20,14 +20,14 @@ export type ViewerTool =
 
 export type StructureOperationPanel = 'margin' | 'interpolate' | 'boolean' | null;
 export type Theme = 'dark' | 'light';
-export type WorkflowStage = 'auto' | 'edit' | 'qa' | 'review';
+export type WorkflowStage = 'edit' | 'qa' | 'review';
 export function canEditContours(stage: WorkflowStage): boolean {
   return stage !== 'qa';
 }
 
 const CONTOUR_EDIT_TOOLS: ReadonlySet<ViewerTool> = new Set<ViewerTool>(['edit', 'freehand', 'polygon', 'brush', 'eraser']);
 
-export type SidePanelTab = 'structures' | 'ai' | 'qa' | 'review' | 'audit';
+export type SidePanelTab = 'structures' | 'qa' | 'review' | 'audit';
 
 export type WLPreset = 'lung' | 'bone' | 'softTissue' | 'brain' | 'mediastinum' | 'abdomen' | 'custom';
 export type ViewportOrientation = 'AXIAL' | 'SAGITTAL' | 'CORONAL';
@@ -165,7 +165,6 @@ export const useUIStore = create<UIState>()(
           state.activeStructureOperationPanel = null;
         }
         state.sidePanelTab =
-          stage === 'auto' ? 'ai' :
           stage === 'edit' ? 'structures' :
           stage === 'qa'   ? 'qa' :
           'review';

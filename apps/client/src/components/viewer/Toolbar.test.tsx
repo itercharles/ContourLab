@@ -198,10 +198,10 @@ describe('Toolbar contour operations', () => {
     renderToolbar();
 
     expect(screen.getByText('Contour Studio')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: '01 Auto-segment' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: '02 Edit' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: '03 QA' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: '04 Review' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: '01 Edit' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: '02 QA' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: '03 Review' })).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: /Auto-segment/ })).toBeNull();
     expect(screen.queryByRole('tab', { name: /Approve/ })).toBeNull();
     expect(screen.queryByTitle('Window/Level Preset')).toBeNull();
     expect(screen.queryByRole('button', { name: /Window \/ Level/ })).toBeNull();
@@ -589,26 +589,26 @@ describe('Toolbar workflow stepper', () => {
   it('clicking a stage step updates workflowStage in the store', () => {
     renderToolbar();
 
-    fireEvent.click(screen.getByRole('tab', { name: '03 QA' }));
+    fireEvent.click(screen.getByRole('tab', { name: '02 QA' }));
     expect(useUIStore.getState().workflowStage).toBe('qa');
 
-    fireEvent.click(screen.getByRole('tab', { name: '04 Review' }));
+    fireEvent.click(screen.getByRole('tab', { name: '03 Review' }));
     expect(useUIStore.getState().workflowStage).toBe('review');
 
-    fireEvent.click(screen.getByRole('tab', { name: '01 Auto-segment' }));
-    expect(useUIStore.getState().workflowStage).toBe('auto');
+    fireEvent.click(screen.getByRole('tab', { name: '01 Edit' }));
+    expect(useUIStore.getState().workflowStage).toBe('edit');
   });
 
   it('clicking a stage step also updates sidePanelTab in the store', () => {
     renderToolbar();
 
-    fireEvent.click(screen.getByRole('tab', { name: '03 QA' }));
+    fireEvent.click(screen.getByRole('tab', { name: '02 QA' }));
     expect(useUIStore.getState().sidePanelTab).toBe('qa');
 
-    fireEvent.click(screen.getByRole('tab', { name: '02 Edit' }));
+    fireEvent.click(screen.getByRole('tab', { name: '01 Edit' }));
     expect(useUIStore.getState().sidePanelTab).toBe('structures');
 
-    fireEvent.click(screen.getByRole('tab', { name: '04 Review' }));
+    fireEvent.click(screen.getByRole('tab', { name: '03 Review' }));
     expect(useUIStore.getState().sidePanelTab).toBe('review');
   });
 
@@ -616,10 +616,10 @@ describe('Toolbar workflow stepper', () => {
     useUIStore.setState({ workflowStage: 'qa' });
     renderToolbar();
 
-    const qaTab = screen.getByRole('tab', { name: '03 QA' });
+    const qaTab = screen.getByRole('tab', { name: '02 QA' });
     expect(qaTab.getAttribute('aria-selected')).toBe('true');
 
-    const editTab = screen.getByRole('tab', { name: '02 Edit' });
+    const editTab = screen.getByRole('tab', { name: '01 Edit' });
     expect(editTab.getAttribute('aria-selected')).toBe('false');
   });
 
@@ -675,8 +675,8 @@ describe('QA stage contour gating', () => {
     }
   });
 
-  it('@links:SRS-037 @links:SYS-004 @testing:T5 @testing:T6 shows contour editing controls in Edit and Auto', () => {
-    for (const stage of ['edit', 'auto'] as const) {
+  it('@links:SRS-037 @links:SYS-004 @testing:T5 @testing:T6 shows contour editing controls in Edit and Review', () => {
+    for (const stage of ['edit', 'review'] as const) {
       useUIStore.setState({ workflowStage: stage });
       const { unmount } = render(
         <MemoryRouter>
