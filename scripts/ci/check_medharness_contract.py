@@ -17,6 +17,7 @@ CR_LIFECYCLE = REPO_ROOT / ".github" / "workflows" / "cr-lifecycle.yml"
 ISSUE_TO_CR = REPO_ROOT / ".github" / "workflows" / "issue-to-cr.yml"
 CR_COMPLETE = REPO_ROOT / ".github" / "workflows" / "cr-complete.yml"
 RELEASE_BASELINE = REPO_ROOT / ".github" / "workflows" / "release-baseline.yml"
+RELEASE_FINALIZE = REPO_ROOT / ".github" / "workflows" / "release-finalize.yml"
 MEDHARNESS_ACTION = REPO_ROOT / ".github" / "actions" / "medharness-setup" / "action.yml"
 REQUIREMENTS_TXT = REPO_ROOT / "requirements.txt"
 
@@ -105,6 +106,9 @@ def main() -> int:
         "build release": ("python", "-m", "medharness", "build", "release", "--help"),
         "verify changes": ("python", "-m", "medharness", "verify", "changes", "--help"),
         "item": ("python", "-m", "medharness", "item", "--help"),
+        "item approve": ("python", "-m", "medharness", "item", "approve", "--help"),
+        "verify approval": ("python", "-m", "medharness", "verify", "approval", "--help"),
+        "build approvals": ("python", "-m", "medharness", "build", "approvals", "--help"),
     }
     for name, command in help_commands.items():
         code, _ = run(*command)
@@ -132,6 +136,7 @@ def main() -> int:
         "issue-to-cr.yml": ISSUE_TO_CR.read_text(encoding="utf-8"),
         "cr-complete.yml": CR_COMPLETE.read_text(encoding="utf-8"),
         "release-baseline.yml": RELEASE_BASELINE.read_text(encoding="utf-8"),
+        "release-finalize.yml": RELEASE_FINALIZE.read_text(encoding="utf-8"),
     }
 
     required = {
@@ -145,6 +150,7 @@ def main() -> int:
             "unittest discover -s tests/workflow",
             "rhysd/actionlint",
             "medharness --dhf DHF verify impact",
+            "medharness --dhf DHF verify approval",
         ],
         "cr-lifecycle.yml": [
             "medharness --dhf DHF build plan",
@@ -161,7 +167,12 @@ def main() -> int:
             "medharness --dhf DHF item transition",
             "gh pr create",
         ],
-        "release-baseline.yml": ["medharness --dhf DHF build release", "--junit", "gh pr create"],
+        "release-baseline.yml": ["medharness --dhf DHF build release", "--junit", "gh pr create", "gh release create"],
+        "release-finalize.yml": [
+            "medharness --dhf DHF verify approval",
+            "medharness --dhf DHF build approvals",
+            "gh release edit",
+        ],
     }
     for filename, needles in required.items():
         for needle in needles:
@@ -407,6 +418,36 @@ def main() -> int:
                         f"{filename}: job '{job_name}' opens a PR without ACTIONS_PAT — CI will not run on it",
                         errors,
                     )
+
+    # Signing a release: the draft is made when the documents are rendered and published only after the
+    # signatures are verified; the pipeline never merges the release PR or pushes to main for it.
+    baseline_runs = " ".join(str(st.get("run", "")) for st in yaml.safe_load(texts["release-baseline.yml"])["jobs"]["release-baseline"]["steps"])
+    require(
+        "--draft" in baseline_runs and "--draft=false" not in baseline_runs and "release edit" not in baseline_runs,
+        "release-baseline.yml: the GitHub Release is created as a draft and not published there (release-finalize.yml publishes it)",
+        errors,
+    )
+    for forbidden in ("gh pr merge", "git push"):
+        require(
+            forbidden not in texts["release-finalize.yml"],
+            f"release-finalize.yml must not use `{forbidden}`: publishing a release merges nothing and pushes nothing",
+            errors,
+        )
+    finalize_job = next(iter(yaml.safe_load(texts["release-finalize.yml"])["jobs"].values()))
+    finalize_runs = [str(st.get("run", "")) for st in finalize_job["steps"]]
+    verify_at = next((i for i, r in enumerate(finalize_runs) if "verify approval" in r and "--release" in r), None)
+    publish_at = next((i for i, r in enumerate(finalize_runs) if "release edit" in r), None)
+    require(
+        verify_at is not None and publish_at is not None and verify_at < publish_at,
+        "release-finalize.yml: `verify approval --release` must run before the release is published",
+        errors,
+    )
+    ci_steps = yaml.safe_load(texts["ci-pipeline.yml"])["jobs"]["dhf-validation"]["steps"]
+    require(
+        any("verify approval" in str(st.get("run", "")) and "--since-ref" in str(st.get("run", "")) for st in ci_steps),
+        "ci-pipeline.yml: the dhf-validation job (a required check) must run `verify approval --since-ref`",
+        errors,
+    )
 
     for v in check_workflow_step_refs(texts):
         require(False, v, errors)

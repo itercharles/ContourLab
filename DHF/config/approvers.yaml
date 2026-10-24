@@ -1,0 +1,9 @@
+# Who may sign a release's documents (ADR-004). A change to this file must be signed by someone on it
+# as it was before the change; this first version is the root of trust.
+- name: Charles Chen
+  principal: charles
+  roles: [product-manager, system-architect, software-lead, risk-manager, quality-lead]
+  keys:
+    - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINe8XXVcS2dqaZGO4oHmvQy1ba7zKRThpjxQz/W4SX82 charles approvals"
+  # A passphrase-protected software key: signatures are reported as made without proven presence.
+  no_touch_required: true

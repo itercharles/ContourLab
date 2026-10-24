@@ -1,0 +1,103 @@
+name: Finalize Release
+
+run-name: >-
+  ${{ github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'chore/release-')
+    && format('{0} · merged, publishing the signed release', github.event.pull_request.head.ref)
+    || format('PR #{0} · not a release, ignored', github.event.pull_request.number) }}
+
+# When the signed release PR (opened by release-baseline.yml) merges: check the signatures once more on
+# main, render the approval sheet, attach it to the draft GitHub Release and publish that release at the
+# merge commit. This workflow merges nothing and never pushes to main. If a step fails the release stays a
+# draft; fix what the message names and re-run the failed job.
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  finalize-release:
+    name: Publish the signed release
+    if: >-
+      github.event.pull_request.merged == true
+      && startsWith(github.event.pull_request.head.ref, 'chore/release-')
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    concurrency:
+      group: release-finalize-${{ github.event.pull_request.head.ref }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    env:
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Check out main at the merge commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: ./.github/actions/medharness-setup
+
+      - name: Find the draft release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.ACTIONS_PAT }}
+        run: |
+          VERSION="${HEAD_REF#chore/release-}"
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
+            echo "::error::Cannot read a version from the branch name '$HEAD_REF'."
+            exit 1
+          fi
+          IS_DRAFT=$(gh release list --repo "$REPO" --limit 1000 --json tagName,isDraft \
+            --jq ".[] | select(.tagName == \"v$VERSION\") | .isDraft")
+          if [ "$IS_DRAFT" != "true" ]; then
+            echo "::error::There is no draft GitHub Release v$VERSION to publish (found: '${IS_DRAFT:-none}'). Run release-baseline with write for $VERSION, or publish by hand; nothing was changed."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the release is signed
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if ! medharness --dhf DHF verify approval --since-ref "${MERGE_SHA}^1" --release "$VERSION"; then
+            echo "::error::Release $VERSION is not fully signed at the merge commit. The release v$VERSION stays a draft. Add the missing signatures under DHF/approvals/release-$VERSION/ through a new pull request, then re-run this job."
+            exit 1
+          fi
+
+      - name: Render the approval sheet
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if ! medharness --dhf DHF build approvals --since-ref "${MERGE_SHA}^1" --release "$VERSION" --out-dir approval-out; then
+            echo "::error::Could not render the approval sheet for $VERSION. The release v$VERSION stays a draft."
+            exit 1
+          fi
+          test -f approval-out/approval-sheet.html
+
+      - name: Attach the approval sheet to the draft release
+        env:
+          GH_TOKEN: ${{ secrets.ACTIONS_PAT }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if ! gh release upload "v$VERSION" approval-out/approval-sheet.html --repo "$REPO" --clobber; then
+            echo "::error::Could not attach approval-sheet.html to the draft release v$VERSION (does ACTIONS_PAT have contents: write?). The release stays a draft."
+            exit 1
+          fi
+
+      - name: Publish the release at the merge commit
+        env:
+          GH_TOKEN: ${{ secrets.ACTIONS_PAT }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if ! gh release edit "v$VERSION" --repo "$REPO" --draft=false --target "$MERGE_SHA"; then
+            echo "::error::Could not publish the release v$VERSION. It stays a draft; publish it by hand with its target set to $MERGE_SHA."
+            exit 1
+          fi
+          echo "Published release v$VERSION at $MERGE_SHA"
