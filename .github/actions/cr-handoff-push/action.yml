@@ -1,0 +1,57 @@
+name: CR handoff, verify and push
+description: >-
+  Runs in a job that holds the PAT and no agent. Downloads the bundle an agent job made, and pushes it to the
+  PR branch only if it is a fast-forward of the branch's current tip and changes nothing under .github/. The
+  checkout must have been made with the PAT, so that CI runs on the push.
+
+inputs:
+  name:
+    description: Artifact name given to cr-handoff-bundle
+    required: true
+  branch:
+    description: The PR branch
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Download the bundle
+      uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ runner.temp }}/handoff-in
+
+    - name: Verify the bundle and push it
+      shell: bash
+      env:
+        BRANCH: ${{ inputs.branch }}
+        HANDOFF_DIR: ${{ runner.temp }}/handoff-in
+      run: |
+        set -euo pipefail
+        BUNDLE="$HANDOFF_DIR/handoff.bundle"
+        [ -f "$BUNDLE" ] || { echo "::error::no handoff.bundle in the downloaded artifact"; exit 1; }
+        # The bundle is data from a job that ran an agent: nothing in it is executed, so hooks stay off.
+        NOHOOKS=(-c core.hooksPath=/dev/null)
+        git "${NOHOOKS[@]}" fetch --no-tags origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
+        TIP="$(git rev-parse "refs/remotes/origin/$BRANCH")"
+        git bundle verify "$BUNDLE"
+        git "${NOHOOKS[@]}" fetch --no-tags "$BUNDLE" "+HEAD:refs/handoff/incoming"
+        INCOMING="$(git rev-parse refs/handoff/incoming)"
+
+        if [ "$INCOMING" = "$TIP" ] || ! git merge-base --is-ancestor "$TIP" "$INCOMING"; then
+          echo "::error::the bundle is not a fast-forward of $BRANCH (tip $TIP, bundle $INCOMING): the branch moved while the agent ran, or the agent rewrote history. Nothing was pushed."
+          exit 1
+        fi
+
+        TOUCHED="$({
+          git diff --name-only --no-renames "$TIP" "$INCOMING" -- .github
+          git log -m --name-only --no-renames --format= "$TIP..$INCOMING" -- .github
+        } | sort -u)"
+        if [ -n "$TOUCHED" ]; then
+          echo "::error::the agent's commits change files under .github/, which an agent must not change (workflows and actions run with secrets). Nothing was pushed. Changed:"
+          echo "$TOUCHED"
+          exit 1
+        fi
+
+        git log --oneline "$TIP..$INCOMING"
+        git -c core.hooksPath=/dev/null push origin "$INCOMING:refs/heads/$BRANCH"

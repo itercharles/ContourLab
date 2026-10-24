@@ -331,13 +331,93 @@ def main() -> int:
         errors,
     )
     # The jobs that edit the issue's stage labels need issues: write, or `gh issue edit` fails silently.
-    for filename, job_name in (("cr-lifecycle.yml", "gen-code"), ("cr-complete.yml", "complete-cr"), ("cr-complete.yml", "close-out-merged")):
+    for filename, job_name in (("cr-lifecycle.yml", "gen-code-push"), ("cr-complete.yml", "complete-cr"), ("cr-complete.yml", "close-out-merged")):
         job = yaml.safe_load(texts[filename])["jobs"][job_name]
         require(
             (job.get("permissions") or {}).get("issues") == "write",
             f"{filename} {job_name}: needs `issues: write` to edit the issue's cr:stage labels",
             errors,
         )
+
+    # The agent never shares a job with a credential that can push. A job that runs `build plan` / `build code`
+    # (a model with a shell) must not reference the PAT, and must check out without persisting credentials
+    # (actions/checkout leaves its token in .git/config, where the agent could read it). What it adds to the
+    # branch leaves in a bundle that a push job, with no agent, verifies and pushes.
+    expected_agent_jobs = {
+        "cr-lifecycle.yml": {"gen-design", "revise-design", "gen-code", "revise-code"},
+        "issue-to-cr.yml": {"create-cr-design"},
+    }
+    handoff_dir = REPO_ROOT / ".github" / "actions"
+    for filename, text in texts.items():
+        all_jobs = yaml.safe_load(text)["jobs"]
+        agent_jobs = {
+            name: job for name, job in all_jobs.items()
+            if any(re.search(r"medharness\b.*\bbuild (plan|code)\b", str(st.get("run", ""))) for st in job.get("steps") or [])
+        }
+        require(
+            set(agent_jobs) == expected_agent_jobs.get(filename, set()),
+            f"{filename}: expected agent jobs {sorted(expected_agent_jobs.get(filename, set()))}; found {sorted(agent_jobs)}",
+            errors,
+        )
+        for name, job in agent_jobs.items():
+            require(
+                "ACTIONS_PAT" not in yaml.safe_dump(job),
+                f"{filename} {name}: runs the agent, so it must not reference secrets.ACTIONS_PAT (push from {name}-push)",
+                errors,
+            )
+            checkout = next((st for st in job["steps"] if str(st.get("uses", "")).startswith("actions/checkout")), {})
+            require(
+                (checkout.get("with") or {}).get("persist-credentials") is False,
+                f"{filename} {name}: runs the agent, so its checkout must set persist-credentials: false",
+                errors,
+            )
+            require(
+                (job.get("permissions") or {}).get("contents") == "read",
+                f"{filename} {name}: runs the agent, so it may only have `contents: read`",
+                errors,
+            )
+            uses = [str(st.get("uses", "")) for st in job["steps"]]
+            require(
+                any("cr-handoff-prepare" in u for u in uses) and any("cr-handoff-bundle" in u for u in uses),
+                f"{filename} {name}: must redirect its pushes (cr-handoff-prepare) and bundle its commits (cr-handoff-bundle)",
+                errors,
+            )
+            push_job = all_jobs.get(f"{name}-push") or {}
+            require(
+                name in (push_job.get("needs") or []),
+                f"{filename}: {name} needs a push job {name}-push that needs it",
+                errors,
+            )
+            push_steps = push_job.get("steps") or []
+            push_checkout = next((st for st in push_steps if str(st.get("uses", "")).startswith("actions/checkout")), {})
+            require(
+                "ACTIONS_PAT" in str((push_checkout.get("with") or {}).get("token", "")),
+                f"{filename} {name}-push: check out with ACTIONS_PAT, or the push starts no CI run",
+                errors,
+            )
+            require(
+                any("cr-handoff-push" in str(st.get("uses", "")) for st in push_steps),
+                f"{filename} {name}-push: must push through ./.github/actions/cr-handoff-push",
+                errors,
+            )
+            require(
+                not any(re.search(r"build (plan|code)\b|ANTHROPIC_API_KEY", yaml.safe_dump(st)) for st in push_steps),
+                f"{filename} {name}-push: holds the PAT, so it must run no agent and have no model key",
+                errors,
+            )
+    push_action = (handoff_dir / "cr-handoff-push" / "action.yml").read_text(encoding="utf-8")
+    reject = push_action.find("under .github/")
+    push_cmd = push_action.find("-c core.hooksPath=/dev/null push")
+    require(
+        "-- .github" in push_action and reject != -1 and push_cmd != -1 and reject < push_cmd,
+        "cr-handoff-push must reject commits that change .github/ before it pushes",
+        errors,
+    )
+    require(
+        "merge-base --is-ancestor" in push_action and push_cmd != -1,
+        "cr-handoff-push must refuse a bundle that is not a fast-forward, and push with hooks disabled",
+        errors,
+    )
 
     # A request for changes after approval finds the CR completed, which the AI stages refuse (0.62.0 can
     # reopen it): revise-code reopens it with the lifecycle before it revises.
