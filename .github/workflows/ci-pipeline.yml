@@ -218,12 +218,36 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # verify approval --since-ref reaches back to where the branch left its base
 
       - uses: ./.github/actions/medharness-setup
 
       - name: Run DHF validation
         run: |
           medharness --dhf DHF verify dhf --strict
+
+      # The approval log must be sound on every pull request (a no-op until DHF/config/approvers.yaml
+      # exists). On the release PR (chore/release-<version>, opened by release-baseline.yml) it also asks
+      # for the signatures: this fails until every document's role and the release role have signed.
+      - name: Check the approval log (and the signatures of a release PR)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          RELEASE_ARGS=()
+          case "$HEAD_REF" in
+            chore/release-*)
+              VERSION="${HEAD_REF#chore/release-}"
+              if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
+                echo "::error::Cannot read a version from the branch name '$HEAD_REF' (expected chore/release-<major.minor.patch>)."
+                exit 1
+              fi
+              RELEASE_ARGS=(--release "$VERSION")
+              ;;
+          esac
+          medharness --dhf DHF verify approval --since-ref "origin/$BASE_REF" ${RELEASE_ARGS[@]+"${RELEASE_ARGS[@]}"}
 
       - name: Scan SOUP items for known vulnerabilities (OSV)
         run: |

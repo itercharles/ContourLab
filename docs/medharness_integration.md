@@ -68,6 +68,7 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 - `medharness --dhf DHF verify changes --cr CR-NNN --since-ref origin/main --code-path ...` (compares the working tree, so it also runs locally before a commit)
 - `medharness --dhf DHF verify impact --cr CR-NNN --since-ref origin/main` (0.69.0; the CR's whole impact record, and whether what depends on a changed item was changed or reviewed; `verify changes` no longer checks the latter)
 - `medharness --dhf DHF verify completion --cr CR-NNN --junit DIR ...` (reads the CR's `affected_items`)
+- `medharness --dhf DHF verify approval --since-ref origin/<base>` (0.70.0; the `dhf-validation` job on every pull request: the approval log is sound, nothing asks for a signature, and it passes while `DHF/config/approvers.yaml` does not exist)
 
 ### Artifacts And Releases
 
@@ -80,6 +81,15 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
   it does not change it.
   Pass `pnpm-lock.yaml`, not `package.json`: a `package.json` records the version-range floor
   (`^1.2.0` becomes `1.2.0`), not the installed version, so the vulnerability scan checks the wrong release.
+
+### Signing a release
+
+During development nothing changes: a pull request's review is the team's rule. At release the documents are signed by their roles (ADR-004 in MedHarness; `approval_roles` and `release_role` in `global.yaml`), and none of it applies until `DHF/config/approvers.yaml` exists.
+
+1. **Dispatch `release-baseline.yml` with `write`.** It renders the release as before, opens the `chore/release-<version>` PR with the REL item, `DHF/releases/<version>/manifest.yaml` and `changes.md`, and creates a **draft** GitHub Release `v<version>` holding the exact rendered files the manifest's `file_hash` covers: the specifications individually, the other directories of the bundle as zips, the evidence and BOM/SBOM files. It fails, changing nothing, if a release or tag `v<version>` already exists. The 90-day workflow artifact stays as a convenience copy.
+2. **Sign locally with your signing key.** On the release branch: `.venv/bin/medharness --dhf DHF item approve --release <version> --key <path to your signing key>` (the project's 0.70.0; an older `medharness` elsewhere on PATH has no `item approve`), confirm, enter the key's passphrase, then commit and push `DHF/approvals/release-<version>/`. The key must be a file: `item approve` never uses ssh-agent. Today's approver key (`DHF/config/approvers.yaml`) is a passphrase-protected software key, so its signatures are reported as made without proven presence. Each signer sees the changes of the documents their roles own first.
+3. **CI checks it.** `dhf-validation` runs `verify approval --since-ref origin/main` on every PR and, on a `chore/release-<version>` branch, also `--release <version>`. It stays red until every document's role and the release role have signed (and with "approvals are not configured" while the approvers list is missing).
+4. **Merging publishes.** The maintainer merges the release PR (nothing in the pipeline does). `release-finalize.yml` then re-verifies the signatures at the merge commit, renders `approval-sheet.html` (`build approvals`), attaches it to the draft release and publishes it at the merge commit. If a step fails the release stays a draft and the message names what to fix. The release and its documents are then kept in GitHub Releases; the PAT (`ACTIONS_PAT`) creates and publishes it.
 
 ## Usage Notes
 

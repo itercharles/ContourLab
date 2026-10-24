@@ -32,6 +32,21 @@ jobs:
 
       - uses: ./.github/actions/medharness-setup
 
+      # The draft GitHub Release for this version is created below, from the files this run renders. An
+      # existing release (draft or published) for the version is never overwritten: fail before any work.
+      - name: Refuse to overwrite an existing release
+        if: ${{ inputs.write == true }}
+        env:
+          GH_TOKEN: ${{ secrets.ACTIONS_PAT }}
+          REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if gh release list --repo "$REPO" --limit 1000 --json tagName --jq '.[].tagName' | grep -qx "v$VERSION" \
+            || [ -n "$(git ls-remote --tags origin "refs/tags/v$VERSION")" ]; then
+            echo "::error::A release or tag v$VERSION already exists in $REPO. Pick a new version, or delete the old release and tag first; this workflow never overwrites one."
+            exit 1
+          fi
+
       # build release judges every requirement against test results (--junit), whether or not a CR in
       # the release touched it. The evidence is the JUnit output of the CI run for this exact commit:
       # a release is only as good as the tests that ran on what is being released.
@@ -83,6 +98,52 @@ jobs:
           path: artifacts/
           retention-days: 90
 
+      # The manifest hashes the exact bytes of the rendered documents, and rendering is not byte-stable, so
+      # they are kept from this run: they cannot be rendered again later. The release stays a draft until the
+      # signed release PR merges (release-finalize.yml publishes it).
+      - name: Create the draft GitHub Release with the documents
+        if: ${{ inputs.write == true }}
+        env:
+          GH_TOKEN: ${{ secrets.ACTIONS_PAT }}
+          REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ ! -f "DHF/releases/$VERSION/manifest.yaml" ]; then
+            echo "::error::build release --write did not write DHF/releases/$VERSION/manifest.yaml, so there is nothing to sign."
+            exit 1
+          fi
+          STAGE=release-assets
+          rm -rf "$STAGE"
+          mkdir "$STAGE"
+          # The specifications keep their file names: those are the files the manifest's file_hash covers.
+          find artifacts/specifications -maxdepth 1 -type f -exec cp -p {} "$STAGE"/ \;
+          # Everything else of the bundle: directories zipped, files copied under a recognisable name.
+          for entry in artifacts/*; do
+            name=$(basename "$entry")
+            if [ -d "$entry" ]; then
+              [ "$name" = specifications ] && continue
+              (cd artifacts && zip -qr "../$STAGE/$name-$VERSION.zip" "$name")
+            else
+              cp -p "$entry" "$STAGE/contourlab-$VERSION-$name"
+            fi
+          done
+          {
+            echo "Draft release $VERSION: the documents to sign, rendered by the release-baseline run $GITHUB_RUN_ID."
+            echo
+            echo "It is published, with the approval sheet attached, when the signed release PR (chore/release-$VERSION) merges."
+            if [ -f "DHF/releases/$VERSION/changes.md" ]; then
+              echo
+              cat "DHF/releases/$VERSION/changes.md"
+            fi
+          } > release-notes.md
+          gh release create "v$VERSION" "$STAGE"/* \
+            --repo "$REPO" \
+            --draft \
+            --target "$GITHUB_SHA" \
+            --title "ContourLab $VERSION" \
+            --notes-file release-notes.md
+
       - name: Open a pull request for the REL item
         if: ${{ inputs.write == true }}
         env:
@@ -97,9 +158,24 @@ jobs:
             git checkout -b "$BRANCH"
             git commit -m "chore: release $VERSION"
             git push origin "$BRANCH"
+            sed "s/@VERSION@/$VERSION/g" > pr-body.md <<'EOF'
+          REL item, software BOM, release manifest and changes for @VERSION@, written by `medharness build release --write`.
+
+          **This release needs signing before it can merge.** Each role signs the documents it owns, with its hardware key:
+
+          ```bash
+          git fetch origin && git checkout chore/release-@VERSION@
+          .venv/bin/medharness --dhf DHF item approve --release @VERSION@ --key <path to your signing key>
+          git add DHF/approvals && git commit -m "chore: sign release @VERSION@" && git push
+          ```
+
+          `DHF/releases/@VERSION@/changes.md` lists what changed in each document; `item approve` shows the changes of the documents your roles own before it signs. The `DHF Validation` check runs `verify approval --release @VERSION@` and turns green once every role, and the release role, have signed.
+
+          The rendered documents are attached to the draft GitHub Release `v@VERSION@` (and to the workflow run for 90 days). When this PR merges, `release-finalize.yml` attaches the approval sheet and publishes the release.
+          EOF
             gh pr create --base main --head "$BRANCH" \
               --title "chore: release $VERSION" \
-              --body "REL item and software BOM for $VERSION, written by \`medharness build release --write\`. Artifacts are attached to the workflow run."
+              --body-file pr-body.md
           else
             echo "No DHF changes to commit."
           fi
