@@ -53,7 +53,7 @@ case "$1 $2" in "pr view") echo "{closing_issue}" ;; esac
 
 class Permissions(unittest.TestCase):
     def test_the_jobs_that_edit_the_issue_may_do_so(self):
-        for workflow, job in [("cr-lifecycle.yml", "gen-code"), ("cr-complete.yml", "complete-cr"), ("cr-complete.yml", "close-out-merged")]:
+        for workflow, job in [("cr-lifecycle.yml", "gen-code-push"), ("cr-complete.yml", "complete-cr"), ("cr-complete.yml", "close-out-merged")]:
             with self.subTest(job):
                 self.assertEqual(permissions(workflow, job).get("issues"), "write")
 
