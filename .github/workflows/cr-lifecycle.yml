@@ -192,6 +192,15 @@ jobs:
           gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" \
             --body "Your review was not acted on: the design is still being generated, so there is nothing to approve yet. Review again when the checklist on this PR says it is your turn (step 2)."
 
+  # ── THE AGENT JOBS AND THEIR PUSH JOBS ────────────────────────────────────
+  #
+  # A job that runs the agent (a model with a shell, on repository contents) holds no credential that can push:
+  # it checks out with the workflow's read-only token and persist-credentials: false, never references
+  # ACTIONS_PAT, and its pushes are redirected to a local repository (cr-handoff-prepare). What it adds to the
+  # branch leaves as a git bundle (cr-handoff-bundle). The push job that follows has the PAT and no agent: it
+  # pushes the bundle only if it is a fast-forward and changes nothing under .github/ (cr-handoff-push), then
+  # does what has to follow a push (labels, comments that name pushed commits, waiting for CI).
+
   # ── DESIGN: GENERATE ──────────────────────────────────────────────────────
 
   gen-design:
@@ -200,16 +209,19 @@ jobs:
     name: Generate design
     runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
-      contents: write
-      pull-requests: write
-      actions: write
+      contents: read
+      pull-requests: write   # medharness --pr reads the PR and comments on it
+    outputs:
+      has_commits: ${{ steps.handoff.outputs.has-commits }}
+      traceability_passed: ${{ steps.trace.outputs.passed }}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
+          persist-credentials: false
       - uses: ./.github/actions/cr-agent-setup
+      - uses: ./.github/actions/cr-handoff-prepare
       - name: Generate design
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -250,22 +262,68 @@ jobs:
               git commit -m "feat: design $CR_ID"
             fi
           fi
-          # The agent may have committed its own work; push whatever is ahead.
+          # The agent may have committed its own work; push whatever is ahead (to the local handoff repository).
           if [ "$(git rev-list --count "origin/$(git rev-parse --abbrev-ref HEAD)..HEAD")" -gt 0 ]; then
             git push
           fi
+
+      # Runs here because it reads the working tree; the result is reported by gen-design-push, after the push.
+      - name: Check DHF traceability
+        id: trace
+        run: |
+          if python -m medharness --dhf DHF verify dhf --strict; then
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Hand over the new commits
+        id: handoff
+        uses: ./.github/actions/cr-handoff-bundle
+        with:
+          name: cr-handoff-gen-design-${{ github.run_id }}-${{ github.run_attempt }}
+
+  gen-design-push:
+    needs: [detect, gen-design]
+    name: Push design
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: read   # the push is made with the PAT the checkout holds
+      pull-requests: write
+    steps:
+      # The PAT, not the workflow token: a commit pushed with the workflow token starts no CI run.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ACTIONS_PAT }}
+          ref: ${{ needs.detect.outputs.branch }}
+
+      - name: Push the design
+        if: needs.gen-design.outputs.has_commits == 'true'
+        uses: ./.github/actions/cr-handoff-push
+        with:
+          name: cr-handoff-gen-design-${{ github.run_id }}-${{ github.run_attempt }}
+          branch: ${{ needs.detect.outputs.branch }}
+
+      - name: Download design payload
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: medharness-generate-dhf-${{ needs.detect.outputs.cr_id }}
+          path: ${{ runner.temp }}/payload
 
       - name: Post design summary
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+          PAYLOAD: ${{ runner.temp }}/payload/generate-dhf-out.json
         run: |
-          [ ! -f /tmp/generate-dhf-out.json ] && exit 0
-          CREATED=$(jq -r '[.artifacts.items_changed.created[]?] | join(", ")' /tmp/generate-dhf-out.json)
-          UPDATED=$(jq -r '[.artifacts.items_changed.updated[]?] | join(", ")' /tmp/generate-dhf-out.json)
-          DELETED=$(jq -r '[.artifacts.items_changed.deleted[]?] | join(", ")' /tmp/generate-dhf-out.json)
-          SUMMARY=$(jq -r '.summary // ""' /tmp/generate-dhf-out.json)
+          [ ! -f "$PAYLOAD" ] && exit 0
+          CREATED=$(jq -r '[.artifacts.items_changed.created[]?] | join(", ")' "$PAYLOAD")
+          UPDATED=$(jq -r '[.artifacts.items_changed.updated[]?] | join(", ")' "$PAYLOAD")
+          DELETED=$(jq -r '[.artifacts.items_changed.deleted[]?] | join(", ")' "$PAYLOAD")
+          SUMMARY=$(jq -r '.summary // ""' "$PAYLOAD")
           BODY="**Design output for $CR_ID**"$'\n'
           [ -n "$SUMMARY" ] && BODY="${BODY}"$'\n'"$SUMMARY"$'\n'
           [ -n "$CREATED" ] && BODY="${BODY}"$'\n'"**Created on the branch:** $CREATED"$'\n'
@@ -274,13 +332,14 @@ jobs:
           BODY="${BODY}"$'\n'"The implementation plan is in the CR's \`implementation_notes\` (\`medharness item get $CR_ID\`)."
           gh pr comment "$PR_NUMBER" --body "$BODY"
 
-      - name: Validate DHF traceability
+      - name: Report DHF traceability
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_ID: ${{ needs.detect.outputs.cr_id }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+          TRACEABILITY_PASSED: ${{ needs.gen-design.outputs.traceability_passed }}
         run: |
-          if ! python -m medharness --dhf DHF verify dhf --strict; then
+          if [ "$TRACEABILITY_PASSED" != "true" ]; then
             gh pr comment "$PR_NUMBER" \
               --body "⚠️ DHF traceability check failed after design generation for $CR_ID. Correct the DHF items and re-approve to retry."
             exit 1
@@ -305,16 +364,18 @@ jobs:
     # standard PR validation does not queue behind a design revision.
     runs-on: ${{ fromJSON(vars.CONTOURLAB_CODEGEN_RUNS_ON_JSON || '["ubuntu-latest"]') }}
     permissions:
-      contents: write
-      pull-requests: write
-      actions: write
+      contents: read
+      pull-requests: write   # medharness --pr reads the reviews and comments; cr-progress edits its comment
+    outputs:
+      has_commits: ${{ steps.handoff.outputs.has-commits }}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
+          persist-credentials: false
       - uses: ./.github/actions/cr-agent-setup
+      - uses: ./.github/actions/cr-handoff-prepare
       - name: "Show progress: revising the design"
         continue-on-error: true
         uses: ./.github/actions/cr-progress
@@ -362,10 +423,50 @@ jobs:
               git commit -m "feat: revise design $CR_ID"
             fi
           fi
-          # The agent may have committed its own work; push whatever is ahead.
+          # The agent may have committed its own work; push whatever is ahead (to the local handoff repository).
           if [ "$(git rev-list --count "origin/$(git rev-parse --abbrev-ref HEAD)..HEAD")" -gt 0 ]; then
             git push
           fi
+
+      - name: Hand over the new commits
+        id: handoff
+        uses: ./.github/actions/cr-handoff-bundle
+        with:
+          name: cr-handoff-revise-design-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: "Show progress: design revision failed"
+        if: failure()
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ needs.detect.outputs.pr_number }}
+          cr: ${{ needs.detect.outputs.cr_id }}
+          stage: failed
+          failed-at: '2'
+          detail: 'Revising the design failed. The log is behind the run link below; nothing has been changed on the branch.'
+
+  revise-design-push:
+    needs: [detect, revise-design]
+    name: Push design revision
+    runs-on: ${{ fromJSON(vars.CONTOURLAB_CODEGEN_RUNS_ON_JSON || '["ubuntu-latest"]') }}
+    permissions:
+      contents: read   # the push is made with the PAT the checkout holds
+      pull-requests: write
+    steps:
+      # The PAT, not the workflow token: a commit pushed with the workflow token starts no CI run.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ACTIONS_PAT }}
+          ref: ${{ needs.detect.outputs.branch }}
+
+      - name: Push the revision
+        if: needs.revise-design.outputs.has_commits == 'true'
+        uses: ./.github/actions/cr-handoff-push
+        with:
+          name: cr-handoff-revise-design-${{ github.run_id }}-${{ github.run_attempt }}
+          branch: ${{ needs.detect.outputs.branch }}
+
       - name: "Show progress: design ready for review"
         if: success()
         continue-on-error: true
@@ -383,7 +484,7 @@ jobs:
           cr: ${{ needs.detect.outputs.cr_id }}
           stage: failed
           failed-at: '2'
-          detail: 'Revising the design failed. The log is behind the run link below; nothing has been changed on the branch.'
+          detail: 'Pushing the revised design failed. The log is behind the run link below; nothing has been changed on the branch.'
 
   # ── CODE: GENERATE ────────────────────────────────────────────────────────
 
@@ -396,21 +497,22 @@ jobs:
     # separate contourlab-local-codegen pool to avoid deadlock.
     runs-on: ${{ fromJSON(vars.CONTOURLAB_CODEGEN_RUNS_ON_JSON || '["ubuntu-latest"]') }}
     permissions:
-      contents: write
-      pull-requests: write
-      actions: write
-      issues: write   # rotates the issue's cr:stage label; without it the edit failed silently
+      contents: read
+      pull-requests: write   # comments when the agent produced nothing; cr-progress edits its comment
+    outputs:
+      has_commits: ${{ steps.handoff.outputs.has-commits }}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
+          persist-credentials: false
       - uses: ./.github/actions/cr-agent-setup
       # The model is told to run lint, typecheck and the tests (CLAUDE.md, and the typecheck hook in
       # .claude/settings.json). Without pnpm and the workspace dependencies it cannot, and a revision
       # of CR-018 shipped a type error it had no way to see.
       - uses: ./.github/actions/setup-contourlab-frontend
+      - uses: ./.github/actions/cr-handoff-prepare
       - name: "Show progress: generating the code"
         continue-on-error: true
         uses: ./.github/actions/cr-progress
@@ -429,7 +531,7 @@ jobs:
         run: |
           set -o pipefail
           # No --pr: this is fresh generation from the approved design, not a
-          # revision of the design reviews, and the job commits and pushes after
+          # revision of the design reviews, and the push job pushes after
           # moving the PR to cr:stage/code so the CI it triggers sees that label.
           python -m medharness --dhf DHF build code --cr "$CR_ID" | tee /tmp/develop-out.json
 
@@ -472,7 +574,9 @@ jobs:
           if [ "$(git rev-list --count "origin/$(git rev-parse --abbrev-ref HEAD)..HEAD")" -gt 0 ]; then
             COMMITTED=true
           fi
-          git fetch -q origin main
+          # The checkout holds no credentials: where the fetch needs them it fails, and origin/main from the
+          # full-history checkout is used.
+          git fetch -q origin main || echo "::warning::could not fetch origin/main; comparing with the one from the checkout"
           CODE_EXISTS=$(git diff origin/main -- . \
             ':(exclude)DHF/' \
             | grep -c "^+" || true)
@@ -483,10 +587,45 @@ jobs:
           fi
           echo "COMMITTED=$COMMITTED" >> "$GITHUB_ENV"
 
+      - name: Hand over the new commits
+        id: handoff
+        uses: ./.github/actions/cr-handoff-bundle
+        with:
+          name: cr-handoff-gen-code-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: "Show progress: code generation or CI failed"
+        if: failure()
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ needs.detect.outputs.pr_number }}
+          cr: ${{ needs.detect.outputs.cr_id }}
+          stage: failed
+          failed-at: '3'
+          detail: 'Code generation, or the CI run on the generated code, failed. See the run link below and the comment above for what failed.'
+
+  gen-code-push:
+    needs: [detect, gen-code]
+    name: Push code and wait for CI
+    # The same pool as gen-code: this job waits for the PR CI, which runs on the normal pool.
+    runs-on: ${{ fromJSON(vars.CONTOURLAB_CODEGEN_RUNS_ON_JSON || '["ubuntu-latest"]') }}
+    permissions:
+      contents: read   # the push is made with the PAT the checkout holds
+      pull-requests: write
+      actions: read    # gh run list / gh run watch
+      issues: write    # rotates the issue's cr:stage label; without it the edit failed silently
+    steps:
+      # The PAT, not the workflow token: a commit pushed with the workflow token starts no CI run.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ACTIONS_PAT }}
+          ref: ${{ needs.detect.outputs.branch }}
+
       - name: Advance to next review stage
         # Advance label BEFORE pushing so the PR-triggered CI run sees cr:stage/code
         # and the stage-gate allows dev tests (lint · typecheck · build) to run.
-        if: env.COMMITTED == 'true'
+        if: needs.gen-code.outputs.has_commits == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
@@ -496,15 +635,12 @@ jobs:
           [ -n "$ISSUE_NUMBER" ] && gh issue edit "$ISSUE_NUMBER" --remove-label "cr:stage/design" --add-label "cr:stage/code" 2>/dev/null || true
           gh pr ready "$PR_NUMBER" 2>/dev/null || true
 
-      - name: Push and wait for CI
-        # We push manually here rather than letting the checkout push because
-        # we need to watch the resulting CI run.
-        if: env.COMMITTED == 'true'
+      - name: Note the latest CI run
+        id: lastrun
+        if: needs.gen-code.outputs.has_commits == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
           BRANCH: ${{ needs.detect.outputs.branch }}
-          CR_ID: ${{ needs.detect.outputs.cr_id }}
         run: |
           LAST_RUN_ID=$(gh run list \
             --repo "${{ github.repository }}" \
@@ -514,7 +650,24 @@ jobs:
             --limit 1 \
             --json databaseId \
             --jq '.[0].databaseId' 2>/dev/null || echo "")
-          git push
+          echo "id=$LAST_RUN_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Push the code
+        if: needs.gen-code.outputs.has_commits == 'true'
+        uses: ./.github/actions/cr-handoff-push
+        with:
+          name: cr-handoff-gen-code-${{ github.run_id }}-${{ github.run_attempt }}
+          branch: ${{ needs.detect.outputs.branch }}
+
+      - name: Wait for CI
+        if: needs.gen-code.outputs.has_commits == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ needs.detect.outputs.pr_number }}
+          BRANCH: ${{ needs.detect.outputs.branch }}
+          CR_ID: ${{ needs.detect.outputs.cr_id }}
+          LAST_RUN_ID: ${{ steps.lastrun.outputs.id }}
+        run: |
           RUN_ID=""
           for i in $(seq 1 18); do
             CANDIDATE=$(gh run list \
@@ -548,7 +701,7 @@ jobs:
             exit 1
           fi
       - name: "Show progress: code ready for review"
-        if: success() && env.COMMITTED == 'true'
+        if: success() && needs.gen-code.outputs.has_commits == 'true'
         continue-on-error: true
         uses: ./.github/actions/cr-progress
         with:
@@ -574,20 +727,22 @@ jobs:
     name: Revise code
     runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
     permissions:
-      contents: write
-      pull-requests: write
-      actions: write
+      contents: read
+      pull-requests: write   # medharness --pr reads the reviews and comments; cr-progress edits its comment
+    outputs:
+      has_commits: ${{ steps.handoff.outputs.has-commits }}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          token: ${{ secrets.ACTIONS_PAT }}
           ref: ${{ needs.detect.outputs.branch }}
+          persist-credentials: false
       - uses: ./.github/actions/cr-agent-setup
       # The model is told to run lint, typecheck and the tests (CLAUDE.md, and the typecheck hook in
       # .claude/settings.json). Without pnpm and the workspace dependencies it cannot, and a revision
       # of CR-018 shipped a type error it had no way to see.
       - uses: ./.github/actions/setup-contourlab-frontend
+      - uses: ./.github/actions/cr-handoff-prepare
       - name: "Show progress: revising the code"
         continue-on-error: true
         uses: ./.github/actions/cr-progress
@@ -599,7 +754,7 @@ jobs:
       # Approving the code recorded the CR as completed on this branch (code-approved), and the AI stages
       # refuse a completed CR. A request for changes after that reopens it first, in a commit of its own, so
       # that the next approval can complete it again. A CR a release lists cannot be reopened: the step then
-      # fails, and the checklist says so.
+      # fails, and the checklist says so. The commit travels to the branch with the rest, in the handoff.
       - name: Reopen the CR if it was completed
         id: reopen
         env:
@@ -659,10 +814,50 @@ jobs:
               git commit -m "fix: revise implementation $CR_ID"
             fi
           fi
-          # The agent may have committed its own work; push whatever is ahead.
+          # The agent may have committed its own work; push whatever is ahead (to the local handoff repository).
           if [ "$(git rev-list --count "origin/$(git rev-parse --abbrev-ref HEAD)..HEAD")" -gt 0 ]; then
             git push
           fi
+
+      - name: Hand over the new commits
+        id: handoff
+        uses: ./.github/actions/cr-handoff-bundle
+        with:
+          name: cr-handoff-revise-code-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: "Show progress: code revision failed"
+        if: failure()
+        continue-on-error: true
+        uses: ./.github/actions/cr-progress
+        with:
+          pr: ${{ needs.detect.outputs.pr_number }}
+          cr: ${{ needs.detect.outputs.cr_id }}
+          stage: failed
+          failed-at: '4'
+          detail: 'Revising the code failed. The log is behind the run link below.'
+
+  revise-code-push:
+    needs: [detect, revise-code]
+    name: Push code revision
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    permissions:
+      contents: read   # the push is made with the PAT the checkout holds
+      pull-requests: write
+    steps:
+      # The PAT, not the workflow token: a commit pushed with the workflow token starts no CI run.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ACTIONS_PAT }}
+          ref: ${{ needs.detect.outputs.branch }}
+
+      - name: Push the revision
+        if: needs.revise-code.outputs.has_commits == 'true'
+        uses: ./.github/actions/cr-handoff-push
+        with:
+          name: cr-handoff-revise-code-${{ github.run_id }}-${{ github.run_attempt }}
+          branch: ${{ needs.detect.outputs.branch }}
+
       - name: "Show progress: code ready for review"
         if: success()
         continue-on-error: true
@@ -680,7 +875,7 @@ jobs:
           cr: ${{ needs.detect.outputs.cr_id }}
           stage: failed
           failed-at: '4'
-          detail: 'Revising the code failed. The log is behind the run link below.'
+          detail: 'Pushing the revised code failed. The log is behind the run link below.'
 
   # ── CODE: APPROVED → READY TO MERGE ──────────────────────────────────────
 

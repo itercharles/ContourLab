@@ -177,6 +177,11 @@ because those jobs hold `ACTIONS_PAT` and the model key. A new release does not 
 change the version there, and take one CR through design and code before relying on it. The contract check
 fails if the install is not at an exact version.
 
+The jobs that run the agent (`gen-design`, `revise-design`, `gen-code`, `revise-code`) do not hold `ACTIONS_PAT`: they
+check out without persisted credentials, and hand their commits to a `-push` job as a git bundle, which pushes it only
+if it is a fast-forward that changes nothing under `.github/`. The repository setting "Allow GitHub Actions to create
+and approve pull requests" is on and lets a workflow token approve pull requests; the owner may want it off.
+
 Repository variables:
 - `CR_DESIGN_MODEL` — Claude model for DHF design generation
 - `CR_DEVELOP_MODEL` — Claude model for implementation

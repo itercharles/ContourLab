@@ -4,6 +4,7 @@ import { useVolumeStore } from '../../core/store/volumeStore';
 
 const TOOL_LABELS: Record<ViewerTool, string> = {
   none: 'n/a',
+  pointer: 'Select',
   windowLevel: 'Window/Level',
   zoom: 'Zoom',
   pan: 'Pan',

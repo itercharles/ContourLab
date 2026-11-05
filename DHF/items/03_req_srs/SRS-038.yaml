@@ -1,0 +1,39 @@
+id: SRS-038
+title: Software shall let the user select a structure by clicking its contour with
+  the Select tool
+content: The tool rail shall provide an enabled Select tool (shortcut V) that toggles
+  like the other tools. While Select is active, a primary-button click on the axial
+  view picks a visible structure from its contours on the current slice and makes
+  it the active structure (the structure panel highlights the active structure). A
+  contour whose outline lies within 8 screen pixels of the click is picked, the nearest
+  outline winning; otherwise a contour that encloses the click is picked, the smallest
+  enclosing one winning. A click that hits no visible contour clears the active structure.
+  Hidden structures are not picked. Select never changes contour data and stays available
+  in every workflow stage, including QA. The Select tool does not capture the pointer
+  on the sagittal and coronal views.
+verification_method:
+- Test
+- Demonstration
+testing: 'T1: Given contours of two structures on the current slice, a point within
+  8 px of one outline returns that structure and a point beyond 8 px of every outline
+  and outside every contour returns none.
+
+  T2: Given nested contours and a click inside both but far from both outlines, the
+  smallest enclosing contour is returned; given a click within 8 px of an outline,
+  the nearest outline wins.
+
+  T3: Given Select active on the axial overlay, a click on a visible contour sets
+  the active structure and a click on empty space clears it; hidden structures are
+  not picked.
+
+  T4: Given the QA stage, the Select tool is enabled and picks a structure while contour
+  editing tools remain withheld.
+
+  T5: Given the V key, the Select tool toggles active and inactive.'
+derives_from:
+- SYS-009
+verification_criteria: With Select active, a click within 8 px of a visible contour
+  or inside one on the axial view sets activeStructureId to that structure, a click
+  outside every visible contour and farther than 8 px from every outline sets it to
+  null, and no contour point changes, in the Edit, QA and Review stages.
+type: SRS

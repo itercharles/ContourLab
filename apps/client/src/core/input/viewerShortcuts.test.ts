@@ -84,6 +84,18 @@ describe('installViewerShortcutHandler', () => {
     cleanup();
   });
 
+  it('@links:SRS-038 @testing:T5 activates the Select tool with V, also in the QA stage', () => {
+    mocks.uiStore.workflowStage = 'qa';
+    const cleanup = installViewerShortcutHandler();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'v' }));
+
+    expect(mocks.uiStore.setActiveTool).toHaveBeenCalledWith('pointer');
+    expect(mocks.setActiveToolSpy).not.toHaveBeenCalled();
+
+    cleanup();
+  });
+
   it('activates contour tool and opens structure panel when no drawable structure is selected', () => {
     const cleanup = installViewerShortcutHandler();
 

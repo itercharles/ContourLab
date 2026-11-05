@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 
 export type ViewerTool =
   | 'none'
+  | 'pointer'
   | 'windowLevel'
   | 'zoom'
   | 'pan'

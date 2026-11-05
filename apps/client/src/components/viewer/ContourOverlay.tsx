@@ -7,6 +7,7 @@ import {
   projectContourToCanvasPath,
   type WorldPoint,
 } from '../../core/contouring/contourOverlayUtils';
+import { pickStructureAtPoint, type PickCandidate } from '../../core/contouring/structurePicking';
 import { buildMprMaskBoundaryPath } from '../../core/contouring/contourMaskReslice';
 import { ViewportManager } from '../../core/rendering/ViewportManager';
 import { useStructureStore } from '../../core/store/structureStore';
@@ -277,6 +278,7 @@ export default function ContourOverlay({
   const isContourEditTool = canEditContours(workflowStage) && ['edit', 'freehand', 'polygon', 'brush', 'eraser'].includes(activeTool);
   const canMeasure = isMeasurementTool && !!viewport && !!activeSeries;
   const isInteractiveTool = isContourEditTool || isMeasurementTool;
+  const isSelectTool = activeTool === 'pointer' && orientation === 'AXIAL';
 
   useEffect(() => {
     if (!isInteractiveTool) {
@@ -969,7 +971,46 @@ export default function ContourOverlay({
     commitEditedContour(`Inserted vertex ${insertIndex + 1}.`);
   };
 
+  const selectStructureAt = (canvasPoint: [number, number]) => {
+    if (!viewport || !activeStructureSet) return;
+
+    const candidates: PickCandidate[] = activeStructureSet.structures
+      .filter((structure) => structure.isVisible ?? true)
+      .map((structure) => ({
+        structureId: structure.id,
+        rings: structure.contours
+          .filter((contour) =>
+            isContourOnFrame(contour, currentFrame?.sopInstanceUID, currentSlicePosition, sliceTolerance)
+          )
+          .flatMap((contour) => {
+            const ring: [number, number][] = [];
+            try {
+              for (let i = 0; i + 2 < contour.points.length; i += 3) {
+                const [x, y] = viewport.worldToCanvas([contour.points[i], contour.points[i + 1], contour.points[i + 2]]);
+                ring.push([x + canvasMetrics.offsetX, y + canvasMetrics.offsetY]);
+              }
+            } catch {
+              return [];
+            }
+            return [ring];
+          }),
+      }));
+
+    const pickedId = pickStructureAtPoint(candidates, [
+      canvasPoint[0] + canvasMetrics.offsetX,
+      canvasPoint[1] + canvasMetrics.offsetY,
+    ]);
+    useStructureStore.getState().setActiveStructure(pickedId);
+  };
+
   const handlePointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (isSelectTool) {
+      if (event.button > 0) return;
+      const canvasPoint = getCanvasPoint(event);
+      if (canvasPoint) selectStructureAt(canvasPoint);
+      return;
+    }
+
     if (isMeasurementTool) {
       if (!canMeasure) {
         setStatusMessage('Load a series to measure.');
@@ -1181,7 +1222,7 @@ export default function ContourOverlay({
       }
       preserveAspectRatio="none"
       style={{
-        pointerEvents: (orientation === 'AXIAL' && isContourEditTool) || isMeasurementTool ? 'auto' : 'none',
+        pointerEvents: (orientation === 'AXIAL' && isContourEditTool) || isMeasurementTool || isSelectTool ? 'auto' : 'none',
         touchAction: 'none',
         cursor: (orientation === 'AXIAL' && isContourEditTool)
           ? (activeTool === 'brush' || activeTool === 'eraser' ? 'cell' : 'crosshair')

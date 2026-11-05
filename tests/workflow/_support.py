@@ -29,6 +29,19 @@ def step_script(workflow_file: str, job: str, *, step_id: str | None = None, ste
     raise LookupError(f"{workflow_file}: job {job!r} has no step id={step_id!r} name={step_name!r}")
 
 
+def action_script(action: str, *, step_id: str | None = None, step_name: str | None = None) -> str:
+    """The `run:` text of one step of a composite action in .github/actions/<action>/."""
+    doc = yaml.safe_load((REPO / ".github" / "actions" / action / "action.yml").read_text(encoding="utf-8"))
+    for step in doc["runs"]["steps"]:
+        if (step_id and step.get("id") == step_id) or (step_name and step.get("name") == step_name):
+            return GHA_EXPR.sub("$GHA_EXPR", step["run"])
+    raise LookupError(f"action {action!r} has no step id={step_id!r} name={step_name!r}")
+
+
+def workflow_jobs(workflow_file: str) -> dict:
+    return yaml.safe_load((WORKFLOWS / workflow_file).read_text(encoding="utf-8"))["jobs"]
+
+
 def run(cmd: list[str], *, cwd: Path, env: dict[str, str] | None = None, check: bool = True,
         input_text: str | None = None) -> subprocess.CompletedProcess:
     full_env = {**os.environ, **(env or {})}

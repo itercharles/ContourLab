@@ -1,0 +1,43 @@
+name: CR handoff, bundle
+description: >-
+  Last step of a CR agent job. Packs the commits added since cr-handoff-prepare into a git bundle and uploads
+  it as an artifact, for the push job to verify and push. With no new commits nothing is uploaded and
+  has-commits is false.
+
+inputs:
+  name:
+    description: Artifact name, unique to the run, attempt and job
+    required: true
+
+outputs:
+  has-commits:
+    description: 'true when the job added commits and the bundle was uploaded'
+    value: ${{ steps.bundle.outputs.has-commits }}
+
+runs:
+  using: composite
+  steps:
+    - name: Pack the new commits
+      id: bundle
+      shell: bash
+      run: |
+        set -euo pipefail
+        BASE="$(cat "$RUNNER_TEMP/handoff.base")"
+        if [ "$(git rev-list --count "$BASE..HEAD")" -eq 0 ]; then
+          echo "No new commits: nothing to hand over."
+          echo "has-commits=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        mkdir -p "$RUNNER_TEMP/handoff-out"
+        git bundle create "$RUNNER_TEMP/handoff-out/handoff.bundle" HEAD "^$BASE"
+        git log --oneline "$BASE..HEAD"
+        echo "has-commits=true" >> "$GITHUB_OUTPUT"
+
+    - name: Upload the bundle
+      if: steps.bundle.outputs.has-commits == 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ runner.temp }}/handoff-out/handoff.bundle
+        if-no-files-found: error
+        retention-days: 7

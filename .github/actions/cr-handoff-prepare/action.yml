@@ -1,0 +1,23 @@
+name: CR handoff, prepare
+description: >-
+  First step of a CR agent job. The agent job holds no credential that can push, so every push it makes
+  (medharness --pr, the job's own commit step) is redirected to a local bare repository. The fetch URL is
+  unchanged, so origin/<branch> and git fetch work as before. The commit the job started from is recorded;
+  cr-handoff-bundle packs what was added after it, and cr-handoff-push in the next job pushes it.
+
+runs:
+  using: composite
+  steps:
+    - name: Redirect pushes to a local repository
+      shell: bash
+      run: |
+        set -euo pipefail
+        # The checkout must have been made with persist-credentials: false.
+        if git config --local --get-regexp '^(http\..*\.extraheader|credential\.)' > /dev/null; then
+          echo "::error::the checkout holds credentials in .git/config; an agent job must check out with persist-credentials: false"
+          exit 1
+        fi
+        git init -q --bare "$RUNNER_TEMP/handoff.git"
+        git remote set-url --push origin "$RUNNER_TEMP/handoff.git"
+        # A push to the local repository moves origin/<branch>, so the starting point is kept here.
+        git rev-parse HEAD > "$RUNNER_TEMP/handoff.base"
