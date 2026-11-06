@@ -37,8 +37,18 @@ jobs:
 
       - uses: ./.github/actions/medharness-setup
 
+      # Also writes JUnit evidence for SRS-035 and SYS-018 (loopback-only deployment); the file is written
+      # whether or not the check passes, and the coverage gate downloads it.
       - name: Validate MedHarness contract
-        run: python scripts/ci/check_medharness_contract.py
+        run: python scripts/ci/check_medharness_contract.py --junit-out test-results/contract/contract-junit.xml
+
+      - name: Upload contract check evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verify-contract-junit
+          path: test-results/contract/contract-junit.xml
+          if-no-files-found: error
 
       # No model and no GitHub: event routing, CR lifecycle, verify changes and the
       # commit step, against a scratch copy of the DHF and a local git remote.
@@ -359,6 +369,17 @@ jobs:
           timeout-seconds: '120'
       - name: Smoke check
         run: pnpm local:doctor
+      # CRS-015 T1: with the stack up, no service listens on a network interface. The evidence is this
+      # dev stack (vite, dotnet run, docker-compose.yml), not the Docker deploy stack.
+      - name: Check that the services listen on the loopback interface only
+        run: python3 scripts/ci/check_loopback_listeners.py --junit-out test-results/listeners/listeners-junit.xml
+      - name: Upload listener check evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verify-listeners-junit
+          path: test-results/listeners/listeners-junit.xml
+          if-no-files-found: warn
       - name: Stop services
         if: always()
         run: pnpm local:down
@@ -555,14 +576,27 @@ jobs:
           name: validate-crs-junit
           path: test-results/crs/
 
+      - name: Download contract check evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: verify-contract-junit
+          path: test-results/contract/
+
+      - name: Download dev stack listener evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: verify-listeners-junit
+          path: test-results/contract/
+
       - name: Run requirement-test coverage gate
         run: |
-          mkdir -p test-results/srs test-results/srs-api test-results/sys test-results/crs
+          mkdir -p test-results/srs test-results/srs-api test-results/sys test-results/crs test-results/contract
           medharness --dhf DHF verify tests --strict \
             --junit test-results/srs \
             --junit test-results/srs-api \
             --junit test-results/sys \
-            --junit test-results/crs
+            --junit test-results/crs \
+            --junit test-results/contract
 
       # Before the merge, so a CR that did not deliver what it recorded cannot land.
       - name: Run CR closure gate
@@ -579,7 +613,8 @@ jobs:
             --junit test-results/srs \
             --junit test-results/srs-api \
             --junit test-results/sys \
-            --junit test-results/crs
+            --junit test-results/crs \
+            --junit test-results/contract
 
 
   # ── ARTIFACTS (main only) ─────────────────────────────────────────────────
@@ -639,13 +674,25 @@ jobs:
           name: validate-crs-junit
           path: test-results/crs/
 
+      - name: Download contract check evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: verify-contract-junit
+          path: test-results/contract/
+
+      - name: Download dev stack listener evidence
+        uses: actions/download-artifact@v8
+        with:
+          name: verify-listeners-junit
+          path: test-results/contract/
+
       # Dry run (no --write): the full release bundle for this commit, no REL item.
       # Non-blocking, as the old evidence bundle step was; release readiness
       # (open CRs, unassessed defects) is enforced in release-baseline.yml.
       - name: Generate evidence bundle
         continue-on-error: true
         run: |
-          mkdir -p test-results/srs test-results/srs-api test-results/sys test-results/crs
+          mkdir -p test-results/srs test-results/srs-api test-results/sys test-results/crs test-results/contract
           medharness --dhf DHF build release \
             --version "0.0.0+${GITHUB_SHA::7}" \
             --out-dir dhf-artifacts \
@@ -655,7 +702,8 @@ jobs:
             --junit test-results/srs \
             --junit test-results/srs-api \
             --junit test-results/sys \
-            --junit test-results/crs
+            --junit test-results/crs \
+            --junit test-results/contract
 
       - name: Upload DHF artifacts
         if: always()
@@ -674,5 +722,6 @@ jobs:
             test-results/srs-api/
             test-results/sys/
             test-results/crs/
+            test-results/contract/
           if-no-files-found: warn
 

@@ -1,0 +1,20 @@
+id: SOUP-045
+name: JUnitTestLogger
+version: 1.1.0
+ecosystem: NuGet
+manufacturer: Syncromatics Engineering
+purpose: dotnet test logger that writes the API test results as JUnit XML, the evidence
+  MedHarness reads (verify-srs-api-junit). Development and CI only.
+license: Not stated in the package metadata (the nuspec has no licence); confirm the
+  licence of the project repository before a release.
+source: apps/api.tests/ContourLab.Api.Tests.csproj
+homepage: https://github.com/syncromatics/JUnitTestLogger
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: 'Its results are the API test evidence (verify-srs-api-junit);
+  a faulty runner or library would show as a failing or missing test in the coverage
+  gate. Registered by hand: build soup cannot read csproj files, so no gate reconciles
+  this entry with apps/api.tests/ContourLab.Api.Tests.csproj.'
+cve_count: '0'
+type: SOUP

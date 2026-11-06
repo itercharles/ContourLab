@@ -1,0 +1,15 @@
+id: SOUP-043
+name: node
+version: 22-bookworm-slim
+manufacturer: OpenJS Foundation
+purpose: 'Build-stage image of the client container: installs the workspace and builds
+  the web client. Its output, not the image, is copied into the runtime image.'
+license: MIT
+source: apps/client/Dockerfile
+homepage: https://hub.docker.com/_/node
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: A faulty build would show as a failing client build or test in
+  CI. Not scanned against OSV (no container ecosystem).
+type: SOUP

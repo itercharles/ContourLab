@@ -1,0 +1,15 @@
+id: SOUP-042
+name: mcr.microsoft.com/dotnet/sdk
+version: 10.0 (floating tag)
+manufacturer: Microsoft Corporation
+purpose: 'Build-stage image of the API container: restores and publishes the API.
+  Its output, not the image, is copied into the runtime image.'
+license: MIT
+source: apps/api/Dockerfile
+homepage: https://hub.docker.com/r/microsoft/dotnet-sdk
+risk_rating: Low
+safety_class: Not part of the delivered software (development tool); no safety class
+  assigned.
+verification_method: A faulty build would show as a failing API build or test in CI.
+  Not scanned against OSV (no container ecosystem).
+type: SOUP

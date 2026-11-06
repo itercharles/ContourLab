@@ -1,0 +1,23 @@
+id: SOUP-038
+name: orthancteam/orthanc (Orthanc DICOM server)
+version: 26.1.0@sha256:a055ccd31f7cd1e45ce98912e1c6e8e83b6a8f262f5b8fe6c88e2b6cd060fc57
+manufacturer: Orthanc Team (Osimis; Sebastien Jodogne, University Hospital of Liege)
+purpose: DICOM repository that stores the CT images and the RTSTRUCT structure sets
+  pushed from ContourLab and serves them over DICOMweb (QIDO/WADO/STOW) and its REST
+  interface. Container image holding Orthanc 1.12.10 on an Ubuntu 25.10 base.
+license: 'Orthanc server: GPL-3.0-or-later. The image also bundles Orthanc plugins
+  (the DICOMweb plugin is licensed AGPL-3.0-or-later) and Ubuntu packages under their
+  own licences; the licence text of each component should be taken from the image
+  before a release.'
+source: docker-compose.yml, docker-compose.deploy.yml
+homepage: https://www.orthanc-server.com
+risk_rating: High
+safety_class: C (holds the only copy of the images and structure sets that were pushed;
+  a fault could lose or alter data the clinician relies on)
+verification_method: 'The image is pinned by version tag and digest, which the MedHarness
+  contract check enforces; the deployment backs up its data directory before the container
+  is recreated (scripts/deploy/backup-orthanc.sh). Behaviour is exercised by the real-DICOM
+  end-to-end tests against a seeded repository (pnpm repo:seed) and controlled by
+  RCM-010 and RCM-016. Not scanned against OSV (no container ecosystem): review the
+  Orthanc release notes and security advisories when upgrading.'
+type: SOUP

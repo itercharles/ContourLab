@@ -216,7 +216,7 @@ beforeEach(() => {
 });
 
 describe('threeDScene lifecycle', () => {
-  it('keeps the current camera on subsequent scene refreshes', async () => {
+  it('keeps the current camera on subsequent scene refreshes @links:SRS-029 @testing:T4', async () => {
     const container = document.createElement('div');
     container.getBoundingClientRect = () =>
       ({ width: 320, height: 240 } as DOMRect);
@@ -233,7 +233,7 @@ describe('threeDScene lifecycle', () => {
     expect(mocks.renderer.resetCamera).toHaveBeenCalledTimes(1);
   });
 
-  it('disposes the previous vtk pipelines before replacing scene props @testing:T1', async () => {
+  it('disposes the previous vtk pipelines before replacing scene props @links:SRS-029 @testing:T3', async () => {
     const container = document.createElement('div');
     container.getBoundingClientRect = () =>
       ({ width: 320, height: 240 } as DOMRect);
@@ -280,7 +280,7 @@ describe('threeDScene lifecycle', () => {
     expect(firstStructureMarchingDelete).toHaveBeenCalledTimes(1);
   });
 
-  it('reuses vtk pipelines for identical snapshots', async () => {
+  it('reuses vtk pipelines for identical snapshots @links:SRS-029 @testing:T2', async () => {
     const container = document.createElement('div');
     container.getBoundingClientRect = () =>
       ({ width: 320, height: 240 } as DOMRect);

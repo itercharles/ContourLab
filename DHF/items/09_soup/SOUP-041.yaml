@@ -1,0 +1,17 @@
+id: SOUP-041
+name: nginx
+version: 1.27-alpine (floating tag)
+manufacturer: F5, Inc. (NGINX)
+purpose: 'Runtime base image of the client container: serves the built web client
+  and proxies /api, /debug/client-log and /dicom-web to the API and the repository.'
+license: BSD-2-Clause
+source: apps/client/Dockerfile
+homepage: https://nginx.org
+risk_rating: Medium
+safety_class: C (serves the client in the deployed system and decides what is reachable
+  from the browser; nginx.conf must not proxy /orthanc/)
+verification_method: The nginx configuration is checked by the MedHarness contract
+  check (no /orthanc/ proxy, SRS-035) and the deployed client by the SYS and CRS end-to-end
+  tests. The tag floats; pinning it by digest is a follow-up. Not scanned against
+  OSV (no container ecosystem).
+type: SOUP

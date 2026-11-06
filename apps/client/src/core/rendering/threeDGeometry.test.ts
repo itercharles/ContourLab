@@ -55,7 +55,7 @@ const structure: Structure = {
   ],
 };
 
-describe('threeDGeometry @links:SRS-028,SRS-029', () => {
+describe('threeDGeometry @links:SRS-028', () => {
   it('round-trips world and voxel coordinates for axis-aligned volumes @testing:T1', () => {
     const voxel: [number, number, number] = [2, 3, 1];
     const world = voxelToWorld(voxel, volume);
@@ -111,7 +111,7 @@ describe('threeDGeometry @links:SRS-028,SRS-029', () => {
     expect(mask?.scalars[shellVoxelOffset]).toBe(1);
   });
 
-  it('downsamples a volume while preserving scalar type and spatial coverage', () => {
+  it('downsamples a volume while preserving scalar type and spatial coverage @links:SRS-029 @testing:T1', () => {
     const downsampled = downsampleVolume(volume, 2);
 
     expect(downsampled.dimensions).toEqual([4, 4, 2]);
