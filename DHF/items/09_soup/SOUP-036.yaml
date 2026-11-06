@@ -1,7 +1,7 @@
 id: SOUP-036
 type: SOUP
 name: vite
-version: 6.4.4
+version: 6.4.5
 ecosystem: npm
 manufacturer: Vite team and contributors
 purpose: 'Build tool and dev server for the client: bundles the application and proxies
