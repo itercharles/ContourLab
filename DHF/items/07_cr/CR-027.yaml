@@ -30,7 +30,7 @@ description: '### Requested change
   Out of scope: SOUP anomaly-evaluation convention, REL-001, API test links; vulnerable
   dcmjs and vite versions (separate change).'
 type: CR
-status: develop
+status: completed
 affected_items:
 - SYS-009
 - SYS-010
