@@ -1,0 +1,655 @@
+id: CR-027
+title: close DHF coverage gaps found by the MedHarness 0.71 strict checks and the
+  evidence-bundle review
+description: '### Requested change
+
+
+  Make the DHF consistent so that `medharness verify tests --strict` passes on MedHarness
+  0.71.x (which fails when a test claims a test point `@testing:Tn` that the requirement
+  does not declare), and close the cheap findings from the review of the CI evidence
+  bundle. No product code changes.
+
+
+  1. Test points: 32 claims are undeclared on CRS-001, CRS-005, CRS-006, CRS-007,
+  SRS-015, SRS-028, SYS-006, SYS-008, SYS-009, SYS-010, SYS-012, SYS-014, SYS-016.
+  Declare each from what the claiming test actually checks (read the test), or correct
+  the tag if it is wrong.
+
+  2. CRS-015, SYS-018 and SRS-035 are verified by Inspection only, with no record.
+  Record the verification: make the contract check (`scripts/ci/check_medharness_contract.py`)
+  produce JUnit linked to SRS-035 and change the method to Test, or record the inspection.
+
+  3. SOUP register lacks Orthanc (orthancteam/orthanc 26.1.0), the NuGet packages
+  in apps/api/api.csproj and the Docker base images. Add entries (version, safety
+  class). Explain the missing SOUP-025.
+
+  4. docs: configuration management plan refers to DHF/test-results/results.yaml,
+  which does not exist; correct it.
+
+
+  Out of scope: SOUP anomaly-evaluation convention, REL-001, API test links; vulnerable
+  dcmjs and vite versions (separate change).'
+type: CR
+status: develop
+affected_items:
+- SYS-009
+- SYS-010
+- SYS-018
+- SRS-035
+- SWDD-018
+- CRS-015
+- SOUP-038
+- SOUP-039
+- SOUP-040
+- SOUP-041
+- SOUP-042
+- SOUP-043
+- SOUP-044
+- SOUP-045
+- SOUP-046
+- SOUP-047
+- SOUP-048
+- SOUP-049
+reviewed_items:
+- CRS-001
+- CRS-003
+- CRS-004
+- CRS-005
+- CRS-006
+- CRS-007
+- SRS-010
+- SRS-011
+- SRS-013
+- SRS-015
+- SRS-028
+- SRS-029
+- SRS-031
+- SRS-038
+- SYS-006
+- SYS-007
+- SYS-008
+- SYS-011
+- SYS-012
+- SYS-014
+- SYS-016
+- SYSARCH-001
+- SYSARCH-002
+- SYSARCH-003
+- UC-005
+- RCM-003
+- RCM-004
+- RCM-014
+affected_risk_items:
+- RISK-001
+- RISK-003
+- RISK-010
+- RCM-003
+- RCM-004
+- RCM-014
+impact_analysis:
+  assumptions:
+  - 'Declare vs retag: a point is declared only when the requirement''s own text promises
+    the behaviour (SYS-009 navigation and scroll targeting, SYS-010 issue types);
+    otherwise the test is retagged or its @links narrowed.'
+  - The DHF item edits, SOUP creation and workflow edits are carried out by the code
+    stage; this design only records the plan, so created SOUP IDs are added to affected_items
+    then.
+  - Test-only NuGet packages are registered for parity with client devDependencies
+    although the CR names only api.csproj; flagged for the reviewer.
+  - CRS-015 is verified on the dev stack (dev-integration job), by decision of the
+    reviewer; the Docker deploy stack is covered by SRS-035 and SYS-018.
+  anchors:
+  - id: SYS-009
+    evidence: 'strict verify tests: T2-T5 claimed by contourReview.test.ts'
+  - id: SYS-010
+    evidence: 'strict verify tests: T2-T3 claimed by contourQuality.test.ts'
+  - id: SYS-018
+    evidence: 'verify tests warning: verified by Inspection; contract check enforces
+      its T1'
+  - id: SRS-035
+    evidence: verify tests warning; scripts/ci/check_medharness_contract.py loopback
+      rules
+  - id: SWDD-018
+    evidence: 'links SRS-035: ''Loopback-only deployment and the check that keeps
+      it so'''
+  unchanged:
+  - id: CRS-001
+    reason: Needs unchanged; only the e2e tag numbers are shifted against its declared
+      T1-T3, fixed by retagging.
+  - id: CRS-003
+    reason: Parent of SYS-009; need unchanged, only SYS-009 gains test points.
+  - id: CRS-004
+    reason: Parent of SYS-010; need unchanged.
+  - id: CRS-005
+    reason: Declared T1 is right; extra claims came from describe inheritance and
+      are removed by narrowing links.
+  - id: CRS-006
+    reason: Declared T1 is right; T2-T4 claims belong to SYS-007 and are removed by
+      narrowing links.
+  - id: CRS-007
+    reason: Declared T1 covers the whole comparison test; retag the test to T1.
+  - id: SRS-010
+    reason: Points T1-T16 stay; tests that borrowed its describe link are narrowed.
+  - id: SRS-011
+    reason: Child of SYS-009; its T1-T5 already match the newly declared SYS-009 points.
+  - id: SRS-013
+    reason: Child of SYS-010; text and points unchanged, it also takes the disabled-rule
+      test.
+  - id: SRS-015
+    reason: Declared T1 covers the comparison test; retag only.
+  - id: SRS-028
+    reason: T1-T4 unchanged; tests that claimed T6/T7 belong to SRS-029.
+  - id: SRS-029
+    reason: T1-T7 unchanged; real tests are retagged onto them.
+  - id: SRS-031
+    reason: T1-T5 unchanged; SYS-016 inheritance removed from T3-T5.
+  - id: SRS-038
+    reason: Derives from SYS-009; behaviour unchanged by the added points.
+  - id: SYS-006
+    reason: T1,T2 unchanged; T3/T4 claims were SRS-010's and are narrowed; T1/T2 get
+      real claimants.
+  - id: SYS-007
+    reason: Declared T1-T4 already match the import tests.
+  - id: SYS-008
+    reason: Declared T1 covers the comparison test; retag only.
+  - id: SYS-011
+    reason: T1-T3 unchanged; it receives the Escape and search tests.
+  - id: SYS-012
+    reason: T1 unchanged; the T2/T3 claims were SYS-011's.
+  - id: SYS-014
+    reason: T1-T3 unchanged; T4/T6/T7 claims removed by narrowing.
+  - id: SYS-016
+    reason: T1,T2 unchanged; T3-T5 are SRS-031 points.
+  - id: SYSARCH-001
+    reason: Design of SYS-009/SYS-010; boundaries unchanged.
+  - id: SYSARCH-002
+    reason: Designs SYS-018; deployment boundary unchanged, only its verification
+      evidence changes.
+  - id: SYSARCH-003
+    reason: Designs SYS-018; unchanged for the same reason.
+  - id: UC-005
+    reason: Parent of CRS-015; the need is unchanged, only the verification method
+      of CRS-015 changes.
+  - id: RCM-003
+    reason: Control for the contour-quality hazard; SYS-010 gains test points only,
+      the control is unchanged.
+  - id: RCM-004
+    reason: Control for the contour-review hazard; SYS-009 gains test points only,
+      the control is unchanged.
+  - id: RCM-014
+    reason: Control for network exposure; SYS-018 changes its verification method
+      to Test, which strengthens the evidence of the control.
+  created:
+  - id: SOUP-038
+    reason: 'New SOUP entry, no existing item covers it: Orthanc image shipped in
+      the deployed stack had no register entry (IEC 62304 8.1.2).'
+  - id: SOUP-039
+    reason: 'New SOUP entry, no existing item covers it: NuGet package of apps/api/api.csproj
+      had no register entry.'
+  - id: SOUP-040
+    reason: 'New SOUP entry, no existing item covers it: Runtime base image of the
+      API container had no register entry.'
+  - id: SOUP-041
+    reason: 'New SOUP entry, no existing item covers it: Runtime base image of the
+      client container had no register entry.'
+  - id: SOUP-042
+    reason: 'New SOUP entry, no existing item covers it: Build-stage image; recorded
+      as not part of the delivered software.'
+  - id: SOUP-043
+    reason: 'New SOUP entry, no existing item covers it: Build-stage image; recorded
+      as not part of the delivered software.'
+  - id: SOUP-044
+    reason: 'New SOUP entry, no existing item covers it: Test-only NuGet package coverlet.collector
+      of apps/api.tests; registered for parity with the client devDependencies.'
+  - id: SOUP-045
+    reason: 'New SOUP entry, no existing item covers it: Test-only NuGet package JUnitTestLogger
+      of apps/api.tests; registered for parity with the client devDependencies.'
+  - id: SOUP-046
+    reason: 'New SOUP entry, no existing item covers it: Test-only NuGet package Microsoft.AspNetCore.Mvc.Testing
+      of apps/api.tests; registered for parity with the client devDependencies.'
+  - id: SOUP-047
+    reason: 'New SOUP entry, no existing item covers it: Test-only NuGet package Microsoft.NET.Test.Sdk
+      of apps/api.tests; registered for parity with the client devDependencies.'
+  - id: SOUP-048
+    reason: 'New SOUP entry, no existing item covers it: Test-only NuGet package xunit
+      of apps/api.tests; registered for parity with the client devDependencies.'
+  - id: SOUP-049
+    reason: 'New SOUP entry, no existing item covers it: Test-only NuGet package xunit.runner.visualstudio
+      of apps/api.tests; registered for parity with the client devDependencies.'
+  dimensions:
+  - dimension: product
+    verdict: not_required
+    reason: No workflow or user need changes.
+    items: []
+  - dimension: requirements
+    verdict: required
+    reason: Six test points and SRS-035 T2 added; CRS-015, SYS-018 and SRS-035 change
+      verification method to Test; no requirement wording changes.
+    items:
+    - SYS-009
+    - SYS-010
+    - SYS-018
+    - SRS-035
+    - CRS-015
+  - dimension: architecture
+    verdict: not_required
+    reason: No boundary, data flow or deployment change; SYSARCH items unchanged.
+    items: []
+  - dimension: risk
+    verdict: not_required
+    reason: No hazard added or control weakened; RCM-003, RCM-004 and RCM-014 get
+      stronger evidence only.
+    items:
+    - RISK-001
+    - RISK-003
+    - RISK-010
+    - RCM-003
+    - RCM-004
+    - RCM-014
+  - dimension: soup
+    verdict: required
+    reason: Register lacks Orthanc, the API NuGet packages and the Docker base images;
+      new items from SOUP-038 (created in the code stage). SOUP-025 gap is a deliberate
+      deletion (d995989).
+    items:
+    - SOUP-038
+    - SOUP-039
+    - SOUP-040
+    - SOUP-041
+    - SOUP-042
+    - SOUP-043
+    - SOUP-044
+    - SOUP-045
+    - SOUP-046
+    - SOUP-047
+    - SOUP-048
+    - SOUP-049
+  - dimension: test
+    verdict: required
+    reason: 32 undeclared claims resolved by retagging/narrowing and 6 declarations;
+      new JUnit evidence for SRS-035 and SYS-018.
+    items:
+    - SYS-009
+    - SYS-010
+    - SRS-035
+    - SYS-018
+    - CRS-015
+  - dimension: regulatory
+    verdict: not_required
+    reason: Intended use, labelling and UDI unchanged.
+    items: []
+  - dimension: security
+    verdict: not_required
+    reason: No API, authentication or data-handling change; the loopback control gets
+      evidence only.
+    items:
+    - SYS-018
+  - dimension: usability
+    verdict: not_required
+    reason: Nothing users see changes.
+    items: []
+implementation_notes: '## Overview
+
+  Make the DHF consistent so `medharness verify tests --strict` passes on MedHarness
+  0.71 and close the cheap evidence-bundle findings. No product code changes; the
+  edits are DHF items, test annotations (describe/it names), one CI script and workflow,
+  and one plan document. Root cause of the 32 undeclared-point errors: a test inherits
+  the `@links:` of its enclosing describe, so a test written for one requirement''s
+  point `Tn` also claims `Tn` on every other requirement in that describe, where the
+  number means something else or does not exist. Several passing claims are also semantically
+  wrong today (see "Hidden mismatches"); the narrowing below removes them.
+
+
+  ## Current State
+
+  - `verify tests --strict` (J = verify-srs, verify-srs-api, verify-sys, validate-crs
+  JUnit) fails with 32 errors; JUnit carries `medharness.links` (union of describe
+  and test @links) and `medharness.testing` (the test''s @testing tags).
+
+  - Method rule: a requirement whose methods are only Inspection/Analysis/Demonstration
+  only warns ''needs a human sign-off record''; MedHarness has no sign-off record
+  field, so Inspection can never be silenced. CRS-015, SYS-018, SRS-035 are Inspection-only.
+
+  - `scripts/ci/check_medharness_contract.py` (job `medharness-contract` in ci-pipeline.yml)
+  already checks every compose port starts with 127.0.0.1 and nginx.conf has no `location
+  /orthanc`, but writes no evidence.
+
+  - SOUP register: SOUP-001..037 (npm/PyPI only). Fields (see SOUP-011): name, version,
+  ecosystem, manufacturer, purpose, license, source, homepage, risk_rating, safety_class,
+  verification_method, cve_count. `build soup` cannot read csproj ("Unsupported manifest
+  format"), so NuGet items are not reconciled by any gate.
+
+  - SOUP-025 was `@types/uuid`; it was deleted deliberately with the package in commit
+  d995989 (PR #160, ''drop the @types/uuid stub'', register entry removed). IDs are
+  not reused, so the gap is correct; nothing to do beyond saying so in the PR.
+
+  - `DHF/documents/plans/configuration_management_plan.md` line 27 lists `DHF/test-results/results.yaml`;
+  no such file or directory exists (only CLAUDE.md line 17 mentions a DHF test-results
+  folder). Real results are the four CI JUnit artifacts, kept in the evidence bundle
+  under `product-test-results/{srs,srs-api,sys,crs}/` with `evidence-summary.json`
+  and `evidence-manifest.json`.
+
+
+  ## Changes Required
+
+  ### Part 1: test points (rule: where the number means the same point on every linked
+  requirement keep it; where it does not, move @links from the describe onto the `it`
+  so the test links only the requirement whose Tn it means; declare a new point only
+  when the requirement''s own text promises that behaviour)
+
+  Decision table (claims: 32). ''narrow'' = test change only, no DHF change.
+
+  | Req / claim | Test (file) | Decision |
+
+  |---|---|---|
+
+  | CRS-001 T4 | ''workspace shows no active patient...'' (e2e/crs/imaging.spec.ts)
+  | retag. The spec''s numbers are shifted by one against CRS-001 T1-T3: ''identify
+  the study by description and date'' T2->T1 (T1 includes study description), ''search
+  by MRN'' T3->T2, ''no active patient'' T4->T3 (declared T3 is exactly this) |
+
+  | CRS-005 T2,T3,T4; SYS-006 T3,T4 | rtstructExport.test.ts ''predecessor ref'',
+  ''DICOM blob'', ''identifiers'' | narrow: these are SRS-010 T2-T4 verbatim; give
+  the describe/it `@links:SRS-010` only. Also fixes hidden claims of CRS-005 T1 /
+  SYS-006 T1,T2 by the unrelated manual-structure-set and predecessor tests |
+
+  | CRS-005 T1, SYS-006 T1/T2 (lose their wrong claimant) | Toolbar.test.tsx ''saves
+  active structure changes from the global title bar'' (currently @links:SRS-018,
+  which is the context-menu SRS: wrong) | split into two tests: A `@links:SYS-006,CRS-005
+  @testing:T1` (click Save, export + upload happen, dirty cleared) and B `@links:SYS-006
+  @testing:T2` (source gets new SOP instance UID) |
+
+  | CRS-006 T2,T3,T4 | rtstructImport.test.ts volume_cc tests | narrow: they are SYS-007
+  T2-T4 verbatim; `@links:SYS-007` per test (drop CRS-006 and SRS-010: SRS-010''s
+  T2-T4 are export points). First test (ROI mapping) `@links:SYS-007,CRS-006 @testing:T1`
+  |
+
+  | CRS-007 T2,T3; SRS-015 T2,T3; SYS-008 T2,T3 | structureSetCompare.test.ts (one
+  test tagged T1 T2 T3) | retag to `@testing:T1` only: one test checks counts, volume
+  delta and target slice, which together are the declared T1 on all three requirements
+  |
+
+  | SRS-028 T6,T7; SYS-014 T6,T7 | ThreeDViewport.test.tsx refresh, abort | narrow:
+  SRS-029 T6/T7 verbatim; `@links:SRS-029` per test. SYS-015 covers the system level
+  |
+
+  | SYS-014 T4 | ''live 3D viewport status'' (T4), ''reset the 3D camera'' (T2 T4)
+  | live status: `@links:SRS-028 @testing:T4` (SRS-028 T4 is exactly it; SYS-014 T1
+  is covered by e2e). reset: `@links:SYS-014 @testing:T2` (drop the T4). rotation:
+  `@links:SYS-014 @testing:T3` |
+
+  | SYS-009 T2,T3,T4,T5 | contourReview.test.ts | DECLARE T2-T5 on SYS-009, numbers
+  already match SRS-011 (same convention as SYS-007 mirroring SRS-010 points); text
+  below |
+
+  | SYS-010 T2,T3 | contourQuality.test.ts open/gap/area; centroid/bounds | DECLARE
+  T2, T3 on SYS-010 (its content lists these issue types); text below |
+
+  | SYS-010 T4 | ''skips disabled contour QA rules'' | narrow to `@links:SRS-013`
+  (browser-local rule config is SRS-013 content, not SYS-010) |
+
+  | SYS-012 T2,T3 | e2e/sys/workspace.spec.ts Escape, search input | narrow: these
+  are SYS-011 T2/T3; split the describe so those tests link only SYS-011 (also stops
+  ''patient browser opens'' claiming SYS-012 T1) |
+
+  | SYS-016 T3,T4,T5 | ReleaseNotes.test.tsx back link, title, wrap | narrow: SRS-031
+  T3-T5 verbatim; the back link is not in SYS-016 text. T1/T2 tests keep `@links:SRS-031,SYS-016`
+  |
+
+  Result: 6 points declared (SYS-009 T2-T5, SYS-010 T2-T3), 26 claims fixed by annotation
+  only. Declared text (append to `testing`, never renumber):
+
+  - SYS-009 T2: Given a current slice position, the next control targets the next
+  contour-bearing slice and wraps from the last to the first.
+
+  - SYS-009 T3: Given a current slice position, the previous control targets the previous
+  contour-bearing slice and wraps from the first to the last.
+
+  - SYS-009 T4: Given a next-slice request, the target slice and the scroll delta
+  to the closest image frame of the axial viewport are resolved.
+
+  - SYS-009 T5: Given a direct scroll-to-slice request, the frame delta to the closest
+  matching image frame is resolved.
+
+  - SYS-010 T2: Given contours with open polygons, slice gaps larger than the image
+  spacing or abrupt adjacent-slice area changes, the analysis reports each issue type.
+
+  - SYS-010 T3: Given abrupt adjacent-slice centroid shifts or contours outside the
+  image bounds, the analysis reports centroid-jump and out-of-bounds issues.
+
+  Field: `testing` (one `Tn: text` per line), exactly as SYS-013.
+
+  Hidden mismatches that the narrowing must not turn into new coverage gaps (re-run
+  strict after each file):
+
+  - SRS-029 T1-T4 and SRS-028 T1-T3 are claimed today only through describe inheritance.
+  Retag the real tests: threeDGeometry.test.ts describe -> `@links:SRS-028` (T1-T3
+  round-trip/mask/holes); its ''downsamples a volume...'' test -> `@links:SRS-029
+  @testing:T1`; threeDScene.test.ts: ''reuses vtk pipelines'' -> `@links:SRS-029 @testing:T2`,
+  ''disposes the previous vtk pipelines'' (now untagged-link @testing:T1) -> `@links:SRS-029
+  @testing:T3`, ''keeps the current camera on subsequent scene refreshes'' -> `@links:SRS-029
+  @testing:T4`.
+
+  - SYS-009 T1 (panel shows slice count) is claimed by the getReviewSlices unit test;
+  the component test ''shows contour review count in the compact active-structure
+  summary'' (links SRS-011) is the right claimant: add `@links:SYS-009 @testing:T1`
+  only if SRS-011''s T1 numbering is not claimed by it (otherwise leave and report).
+
+  - rtstructImport/rtstructExport describes also linked SRS-010 on tests that are
+  not SRS-010 points (handled above).
+
+
+  ### Part 2: Inspection-only requirements
+
+  - SRS-035 and SYS-018 (modify DHF items; modify script and workflow): `check_medharness_contract.py`
+  gets `--junit-out PATH`. Extract the loopback/nginx rules (lines ~207-240) into
+  `check_loopback_only(compose_texts, nginx_text) -> list[str]`; main uses it. With
+  `--junit-out` write a JUnit file with two testcases, each with properties `medharness.links=SRS-035,SYS-018`
+  and `medharness.testing=T1`: (1) ''compose files publish only on 127.0.0.1 and nginx
+  does not proxy /orthanc/'' (the repository files, passes), (2) ''the check rejects
+  a port published on all interfaces and an /orthanc/ proxy'' (runs the function on
+  mutated in-memory copies and must get errors). Both T1 halves are then evidence
+  (T1 says it fails when broken and passes on the repository). Write the file even
+  on failure (failed testcase). ci-pipeline.yml: step in `medharness-contract` runs
+  `python scripts/ci/check_medharness_contract.py --junit-out test-results/contract/contract-junit.xml`,
+  uploads artifact `verify-contract-junit` (if: always()); the compliance gate and
+  the CR closure gate download it into `test-results/contract/` and pass `--junit
+  test-results/contract` in all three verify tests/completion invocations (lines ~560,
+  ~577, ~653); release-baseline.yml adds the artifact pair `verify-contract-junit:contract`
+  to its download loop; keep the contract check''s required-needles list valid. Then
+  `item update` SRS-035 and SYS-018 `verification_method` to ["Test"] (keep text);
+  SWDD-018 gets one line saying the check emits the JUnit evidence. Not covered by
+  T1: the deploy.sh recreate rule in SRS-035''s text; either add T2 (grep-level case
+  for the recreate step in deploy.sh) in the same JUnit or narrow that sentence; default:
+  add T2 on SRS-035 with a third testcase.
+
+  - CRS-015: its T1 is about the deployed system, which a configuration check does
+  not prove, so tagging the same cases would overstate. Options for the human (see
+  report): (a) recommended: `dev-integration` job adds a step that, with the stack
+  up, asserts via `ss -ltnH` that ports 3000/4000/8042 listen only on 127.0.0.1, emitting
+  JUnit `@links:CRS-015 @testing:T1`, then CRS-015 method -> Test; (b) keep Inspection
+  and accept the standing warning (MedHarness offers no sign-off record). Not changed
+  until decided.
+
+
+  ### Part 3: SOUP
+
+  Create (item create --type SOUP, copy field set from SOUP-011; new IDs SOUP-038
+  onward; SOUP-025 is not reused):
+
+  | Name | Version | Ecosystem | Safety class / risk | Source |
+
+  |---|---|---|---|---|
+
+  | orthancteam/orthanc (Orthanc DICOM server) | 26.1.0 @sha256:a055ccd3...fc57 |
+  none (OSV has no container ecosystem) | C, High: holds the only copy of pushed structure
+  sets and images | docker-compose.yml, docker-compose.deploy.yml |
+
+  | Microsoft.AspNetCore.OpenApi | 10.0.5 | NuGet | C (runs in the API), Low | apps/api/api.csproj
+  |
+
+  | mcr.microsoft.com/dotnet/aspnet | 10.0 (floating tag) | none | C (runtime of the
+  API image), Medium | apps/api/Dockerfile |
+
+  | nginx | 1.27-alpine (floating tag) | none | C (serves the client), Medium | apps/client/Dockerfile
+  |
+
+  | mcr.microsoft.com/dotnet/sdk | 10.0 | none | not part of delivered software (build
+  stage) | apps/api/Dockerfile |
+
+  | node | 22-bookworm-slim | none | not part of delivered software (build stage)
+  | apps/client/Dockerfile |
+
+  | test-only NuGet, apps/api.tests csproj (not in the CR text; include for parity
+  with the client devDependencies, drop if you disagree): coverlet.collector 6.0.4,
+  JUnitTestLogger 1.1.0, Microsoft.AspNetCore.Mvc.Testing 10.0.7, Microsoft.NET.Test.Sdk
+  17.14.1, xunit 2.9.3, xunit.runner.visualstudio 3.1.4 | | NuGet | not part of delivered
+  software | apps/api.tests/ContourLab.Api.Tests.csproj |
+
+  Purposes, manufacturers (Orthanc Team / Osimis; Microsoft; F5 Inc./NGINX; OpenJS
+  Foundation), licenses (Orthanc GPL-3.0-or-later and plugin licences: check the image;
+  Microsoft packages MIT; nginx BSD-2-Clause; node MIT) are to be filled from the
+  sources; verification_method for Orthanc: the digest pin is enforced by the contract
+  check, `pnpm repo:seed` + real-dicom e2e + RCM-010/RCM-016. If `verify soup --strict`
+  warns that NuGet or Docker items have no manifest, record that in the PR and do
+  not add a csproj to `--manifest` (unsupported); consider `--from-command` only as
+  a follow-up. The floating image tags (10.0, 1.27-alpine, 22-bookworm-slim) are a
+  follow-up (pin by digest like Orthanc), not this CR.
+
+
+  ### Part 4: configuration management plan
+
+  Edit DHF/documents/plans/configuration_management_plan.md row 27 (document, not
+  an item; by hand is correct): replace `| Test results | \`DHF/test-results/results.yaml\`
+  | ContourLab DHF |` with `| Test results | JUnit XML of each CI run (artifacts verify-srs-junit,
+  verify-srs-api-junit, verify-sys-junit, validate-crs-junit, verify-contract-junit),
+  kept in the release evidence bundle under \`product-test-results/\` with \`evidence-summary.json\`
+  and \`evidence-manifest.json\` | CI artifacts, ContourLab |`. Optionally add rows
+  for container images (Dockerfiles, docker-compose*.yml). Outside DHF, CLAUDE.md
+  line 17 also says DHF holds test-results: mention to the human, not changed here.
+
+
+  ## Implementation Steps
+
+  1. Re-run the strict command with the four JUnit dirs to get the baseline; keep
+  the output.
+
+  2. Retag/narrow test annotations per the table (file by file); run `pnpm --filter
+  @contourlab/client test`, regenerate JUnit, re-run strict after each group.
+
+  3. `item update` SYS-009 and SYS-010 (`testing` with the six new points; improve
+  verification_criteria to mention them).
+
+  4. Contract script: refactor, `--junit-out`, negative self-test; unit test in tests/workflow
+  if cheap; run `python scripts/ci/check_medharness_contract.py --junit-out ...` locally.
+
+  5. Workflow edits (ci-pipeline.yml, release-baseline.yml); run actionlint (docker)
+  per repo practice.
+
+  6. `item update` SRS-035 and SYS-018 to Test (and SWDD-018 line, SRS-035 T2 if kept);
+  then strict with the new JUnit dir.
+
+  7. Create the SOUP items; `verify soup --strict` (known failures dcmjs GHSA-px68-xx5g-48q5
+  and vite GHSA-8g5g-mxqh-grgj are out of scope, separate change).
+
+  8. Edit the configuration management plan row; render with `build release --version
+  0.0.0-preview --out-dir <tmp>` to check.
+
+  9. `verify dhf`, `verify impact --cr CR-027`, `verify changes --cr CR-027 --since-ref
+  origin/main`; update the CR affected_items with the SOUP IDs created.
+
+
+  ## Edge Cases & Constraints
+
+  - A number never changes once used: only append points. Do not rewrite CRS/SYS text.
+
+  - Declaring Test on SRS-035/SYS-018 before the JUnit exists makes `verify tests`
+  fail (''declares Test but no passing case is linked''): change the method in the
+  same commit as the workflow.
+
+  - The contract job must upload its JUnit even when the check fails; downstream download
+  steps for it must not be continue-on-error.
+
+  - Keep @testing numbering aligned: a test linking two requirements must mean the
+  same Tn on both.
+
+  - IEC 62304 8.1.2: every SOUP shipped (Orthanc, runtime images, API package) needs
+  safety class, anomaly list and verification; build-stage images are tools.
+
+  - Do not use the literal skip-ci token in commit messages.
+
+
+  ## Tests
+
+  No new product tests. Evidence: the narrowed/retagged existing tests (T-points per
+  table), two or three new contract-check JUnit cases (SRS-035 T1, SYS-018 T1, optional
+  T2), the split Toolbar save tests (SYS-006 T1, T2; CRS-005 T1). Acceptance: strict
+  verify tests exits 0 with only the CRS-015 warning (or none if option (a) is taken);
+  verify dhf, verify impact and verify soup show no new findings.
+
+
+  ## Implementation record (code stage)
+
+  Decisions of the reviewer applied, and where the build differs from the plan above.
+
+  - CRS-015 (option A): new `scripts/ci/check_loopback_listeners.py` (stdlib only)
+  runs in the `dev-integration` job after the smoke check, with the dev stack up (vite
+  on 127.0.0.1:3000, `pnpm api` on 4000, docker-compose.yml Orthanc on 127.0.0.1:8042).
+  It reads `ss -ltnH` (lsof where ss is missing) and fails when port 3000, 4000 or
+  8042 has no listener or a listener that is not a loopback address (127.0.0.0/8 or
+  ::1; `dotnet run` binds `localhost`, which is both). It writes JUnit linked CRS-015
+  with `@testing:T1` (artifact `verify-listeners-junit`). CRS-015''s method is now
+  Test. The evidence is the dev stack that CI starts, not the Docker deploy stack
+  (which publishes 3001/4001/8042 from docker-compose.deploy.yml and is covered by
+  SRS-035/SYS-018 T1 and the contract check); CRS-015''s text and T1 wording are unchanged.
+
+  - SRS-035 gains T2 (deploy.sh recreates an exposed repository container after the
+  backup), covered by two contract-check testcases (the repository script passes;
+  a mutated script is rejected). SRS-035 and SYS-018 T1 are each covered by a passing
+  testcase on the repository files and a testcase that must see the rules fail on
+  mutated copies. SRS-035 and SYS-018 are now Test. SWDD-018 records the evidence.
+  `check_medharness_contract.py` takes `--junit-out`; the loopback and recreate rules
+  are functions with unit tests in tests/workflow/test_contract_evidence.py; the contract
+  check requires the new workflow wiring (`--junit test-results/contract`, the two
+  `--junit-out` calls, the release-baseline artifact pairs).
+
+  - CI wiring: `verify-contract-junit` (medharness-contract job) and `verify-listeners-junit`
+  (dev-integration) are downloaded, without continue-on-error, into `test-results/contract/`
+  by the compliance gate and by generate-artifacts, passed with `--junit test-results/contract`
+  to verify tests, verify completion and build release, added to the `product-test-results`
+  bundle and to release-baseline.yml.
+
+  - SYS-009 T1 left as is: the component test that shows the contour slice count is
+  linked SRS-011, and tagging it `@testing:T1` would also claim SRS-011 T1, which
+  means de-duplicated review slices. SYS-009 T1 stays claimed by the getReviewSlices
+  unit test (a point-number match, not the panel behaviour); a follow-up should give
+  that panel test its own link.
+
+  - SYS-009 T2-T5 and SYS-010 T2-T3 declared as planned; SYS-010 T4 claim narrowed
+  to SRS-013 (SRS-013 T4 is the disabled-rule test).
+
+  - SOUP-038 to SOUP-049 created: Orthanc 26.1.0 (digest-pinned; Orthanc 1.12.10 on
+  Ubuntu 25.10, checked on the image with the pinned digest), Microsoft.AspNetCore.OpenApi
+  10.0.5, the aspnet:10.0 and nginx:1.27-alpine runtime images, the sdk:10.0 and node:22-bookworm-slim
+  build images (not part of the delivered software), and the six test-only NuGet packages
+  of apps/api.tests (reviewer decision). Container images carry no ecosystem (OSV
+  has none); NuGet items carry `ecosystem: NuGet`. `build soup` cannot read csproj
+  files, so `verify soup --strict` warns that these items are in the register but
+  no manifest resolves them; no gate reconciles them. Licence of JUnitTestLogger is
+  not stated in its package metadata (open point). SOUP-025 is a deliberate gap: `@types/uuid`
+  was removed with its package in commit d995989 (PR #160) and IDs are not reused.
+
+  - Configuration management plan: the test-results row now points at the CI JUnit
+  artifacts and the evidence bundle, and a container-images row was added. CLAUDE.md
+  line 17 still says the DHF holds test results; it was left unchanged (outside DHF).
+
+  - Test annotations: retagged or narrowed exactly per the decision table, plus the
+  plan''s hidden-mismatch retags (threeDGeometry, threeDScene, Toolbar save split
+  into SYS-006/CRS-005 T1 and SYS-006 T2). The Toolbar save test no longer links SRS-018
+  (a context-menu requirement). The 3D describe and the workspace e2e describe no
+  longer carry links of their own.
+
+  - Not regenerated locally: Playwright (verify-sys, validate-crs) and the API suites;
+  the e2e retags were checked by reading the test names.
+
+  '
