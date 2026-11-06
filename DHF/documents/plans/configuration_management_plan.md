@@ -23,8 +23,9 @@ The following classes of items are under configuration control:
 | CI/CD pipeline | `.github/workflows/` | both |
 | JavaScript dependencies | `pnpm-lock.yaml` | ContourLab |
 | .NET dependencies | `apps/api/api.csproj` | ContourLab |
+| Container images | `apps/api/Dockerfile`, `apps/client/Dockerfile`, `docker-compose.yml`, `docker-compose.deploy.yml` (the DICOM repository image is pinned by tag and digest) | ContourLab |
 | Python dependencies | `requirements.txt` | ContourLab DHF |
-| Test results | `DHF/test-results/results.yaml` | ContourLab DHF |
+| Test results | JUnit XML of each CI run (artifacts `verify-srs-junit`, `verify-srs-api-junit`, `verify-sys-junit`, `validate-crs-junit`, `verify-contract-junit`, `verify-listeners-junit`), kept in the release evidence bundle under `product-test-results/` with `evidence-summary.json` and `evidence-manifest.json` | CI artifacts, ContourLab |
 
 ## 3. Version Control
 

@@ -9,7 +9,7 @@ derives_from:
 - UC-005
 priority: High
 verification_method:
-- Inspection
+- Test
 testing: 'T1: Given the deployed system, none of its services answers on any address
   other than the workstation''s own.
 

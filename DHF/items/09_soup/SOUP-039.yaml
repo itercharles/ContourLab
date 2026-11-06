@@ -1,0 +1,18 @@
+id: SOUP-039
+name: Microsoft.AspNetCore.OpenApi
+version: 10.0.5
+ecosystem: NuGet
+manufacturer: Microsoft Corporation
+purpose: Generates the OpenAPI document of the ContourLab API (ASP.NET Core minimal
+  API endpoint metadata).
+license: MIT
+source: apps/api/api.csproj
+homepage: https://learn.microsoft.com/aspnet/core/fundamentals/openapi/overview
+risk_rating: Low
+safety_class: C (runs in the API process; it only describes endpoints and takes no
+  part in the handling of patient data)
+verification_method: 'Covered by the API build and tests (dev-api, verify-srs-api).
+  Registered by hand: build soup cannot read csproj files, so no gate reconciles this
+  entry with apps/api/api.csproj; review it when the csproj changes.'
+cve_count: '0'
+type: SOUP

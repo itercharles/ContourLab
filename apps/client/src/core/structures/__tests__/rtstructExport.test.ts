@@ -100,7 +100,7 @@ beforeEach(() => {
   dicomMock.writtenDatasets = [];
 });
 
-describe('exportRtstructBlob @links:SRS-010,SYS-006,CRS-005', () => {
+describe('exportRtstructBlob @links:SRS-010', () => {
   it('does not write a predecessor reference for a manual structure set @links:SRS-010 @testing:T1', async () => {
     dicomMock.writtenDatasets = [];
 

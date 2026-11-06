@@ -3,12 +3,16 @@
 
 from __future__ import annotations
 
+import argparse
 import re
 import subprocess
 import sys
 from pathlib import Path
 
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from junit_evidence import Case, write_junit  # noqa: E402
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -91,7 +95,96 @@ def require(condition: bool, message: str, errors: list[str]) -> None:
         errors.append(message)
 
 
-def main() -> int:
+def check_loopback_only(compose_texts: dict[str, str], nginx_text: str) -> list[str]:
+    """SRS-035 / SYS-018: every published port is on 127.0.0.1 and nginx does not proxy /orthanc/."""
+    errors: list[str] = []
+    for compose_name, text in compose_texts.items():
+        compose = yaml.safe_load(text)
+        for service, spec in compose["services"].items():
+            for port in spec.get("ports", []):
+                require(
+                    str(port).startswith("127.0.0.1:"),
+                    f"{compose_name} publishes {service} port {port} on all interfaces; bind it to 127.0.0.1",
+                    errors,
+                )
+    require(
+        "location /orthanc" not in nginx_text,
+        "apps/client/nginx.conf proxies /orthanc/, which exposes the repository REST API (including delete)",
+        errors,
+    )
+    return errors
+
+
+def check_deploy_recreates_exposed_repository(deploy_sh: str) -> list[str]:
+    """SRS-035 T2: deploy.sh recreates a running repository container that is published on all interfaces, after the backup."""
+    errors: list[str] = []
+    read = deploy_sh.find(".HostConfig.PortBindings")
+    exposed = re.search(r"grep -qE '[^']*0\\\.0\\\.0\\\.0[^']*::[^']*'", deploy_sh)
+    reset = deploy_sh.find("orthanc_ok=false", read) if read != -1 else -1
+    backup = deploy_sh.find("backup-orthanc.sh", reset) if reset != -1 else -1
+    recreate = deploy_sh.find("up -d dicom-repo", backup) if backup != -1 else -1
+    require(read != -1, "scripts/deploy/deploy.sh does not read the published host addresses of the running repository container", errors)
+    require(exposed is not None, "scripts/deploy/deploy.sh does not test the published addresses for an empty, 0.0.0.0 or :: host", errors)
+    require(
+        reset != -1 and backup != -1 and recreate != -1,
+        "scripts/deploy/deploy.sh must, for an exposed repository container, mark it for recreation, run backup-orthanc.sh and then `up -d dicom-repo`, in that order",
+        errors,
+    )
+    return errors
+
+
+def write_evidence(path: Path) -> None:
+    """JUnit evidence for SRS-035 and SYS-018: the repository passes the rules, and the rules fail on broken input."""
+    links = ["SRS-035", "SYS-018"]
+    cases: list[Case] = []
+
+    def case(name: str, links: list[str], testing: str, problems: list[str]) -> None:
+        cases.append(Case(name, links, [testing], "; ".join(problems) or None))
+
+    def repo_text(*parts: str) -> str:
+        return REPO_ROOT.joinpath(*parts).read_text(encoding="utf-8")
+
+    try:
+        compose_texts = {name: repo_text(name) for name in ("docker-compose.deploy.yml", "docker-compose.yml")}
+        nginx_text = repo_text("apps", "client", "nginx.conf")
+        deploy_sh = repo_text("scripts", "deploy", "deploy.sh")
+    except OSError as exc:
+        cases.append(Case("the repository files can be read", links, ["T1"], str(exc)))
+        write_junit(path, "medharness-contract", cases)
+        return
+
+    case(
+        "compose files publish only on 127.0.0.1 and nginx does not proxy /orthanc/",
+        links, "T1", check_loopback_only(compose_texts, nginx_text),
+    )
+
+    exposed_compose = {name: text.replace('"127.0.0.1:', '"') for name, text in compose_texts.items()}
+    with_orthanc_proxy = nginx_text + "\nlocation /orthanc/ { proxy_pass http://dicom-repo:8042/; }\n"
+    problems: list[str] = []
+    if not check_loopback_only(exposed_compose, nginx_text):
+        problems.append("a port published on all interfaces was accepted")
+    if not check_loopback_only(compose_texts, with_orthanc_proxy):
+        problems.append("an /orthanc/ proxy was accepted")
+    case("the check rejects a port published on all interfaces and an /orthanc/ proxy", links, "T1", problems)
+
+    case(
+        "deploy.sh recreates an exposed repository container after the backup",
+        ["SRS-035"], "T2", check_deploy_recreates_exposed_repository(deploy_sh),
+    )
+    without_recreate = deploy_sh.replace("orthanc_ok=false", "orthanc_ok=true")
+    problems = [] if check_deploy_recreates_exposed_repository(without_recreate) else ["a deploy script that never recreates the container was accepted"]
+    case("the check rejects a deploy script that leaves an exposed repository container running", ["SRS-035"], "T2", problems)
+
+    write_junit(path, "medharness-contract", cases)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--junit-out", type=Path, help="write JUnit evidence for SRS-035 and SYS-018 (also on failure)")
+    args = parser.parse_args(argv)
+    if args.junit_out:
+        write_evidence(args.junit_out)
+
     errors: list[str] = []
 
     help_commands = {
@@ -145,6 +238,9 @@ def main() -> int:
             "unittest discover -s tests/workflow",
             "rhysd/actionlint",
             "medharness --dhf DHF verify impact",
+            "check_medharness_contract.py --junit-out",
+            "check_loopback_listeners.py --junit-out",
+            "--junit test-results/contract",
         ],
         "cr-lifecycle.yml": [
             "medharness --dhf DHF build plan",
@@ -161,7 +257,10 @@ def main() -> int:
             "medharness --dhf DHF item transition",
             "gh pr create",
         ],
-        "release-baseline.yml": ["medharness --dhf DHF build release", "--junit", "gh pr create"],
+        "release-baseline.yml": [
+            "medharness --dhf DHF build release", "--junit", "gh pr create",
+            "verify-contract-junit:contract", "verify-listeners-junit:contract",
+        ],
     }
     for filename, needles in required.items():
         for needle in needles:
@@ -206,15 +305,12 @@ def main() -> int:
     # The deployed stack has no authentication (API, repository), so none of it
     # may be reachable from the network: every published port stays on the loopback interface, and the
     # web server does not proxy the repository's REST API (which can delete studies).
-    for compose_name in ("docker-compose.deploy.yml", "docker-compose.yml"):
-        compose = yaml.safe_load((REPO_ROOT / compose_name).read_text(encoding="utf-8"))
-        for service, spec in compose["services"].items():
-            for port in spec.get("ports", []):
-                require(
-                    str(port).startswith("127.0.0.1:"),
-                    f"{compose_name} publishes {service} port {port} on all interfaces; bind it to 127.0.0.1",
-                    errors,
-                )
+    errors.extend(
+        check_loopback_only(
+            {name: (REPO_ROOT / name).read_text(encoding="utf-8") for name in ("docker-compose.deploy.yml", "docker-compose.yml")},
+            (REPO_ROOT / "apps" / "client" / "nginx.conf").read_text(encoding="utf-8"),
+        )
+    )
     # The repository holds the only copy of the structure sets that were pushed: its image is pinned by
     # tag and digest (a moving tag changes the software on a redeploy), its data directory is not
     # world-writable, and a redeploy that recreates it takes a backup first.
@@ -233,12 +329,6 @@ def main() -> int:
         "scripts/deploy/deploy.sh must run backup-orthanc.sh before it recreates the repository container",
         errors,
     )
-    require(
-        "location /orthanc" not in (REPO_ROOT / "apps" / "client" / "nginx.conf").read_text(encoding="utf-8"),
-        "apps/client/nginx.conf proxies /orthanc/, which exposes the repository REST API (including delete)",
-        errors,
-    )
-
     # An event field pasted into a run script is shell source: a title or branch name with a
     # quote or $(...) breaks the step, or runs as a command on a runner that holds secrets.
     # Pass it through env: and use "$VAR".

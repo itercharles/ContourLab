@@ -419,7 +419,7 @@ describe('Toolbar contour operations', () => {
     });
   });
 
-  it('saves active structure changes from the global title bar @links:SRS-018', async () => {
+  it('saves active structure changes from the global title bar @links:SYS-006,CRS-005 @testing:T1', async () => {
     useStructureStore.getState().markSeriesDirty('series-1');
 
     renderToolbar();
@@ -433,6 +433,17 @@ describe('Toolbar contour operations', () => {
     await waitFor(() => expect(mocks.exportRtstructObject).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalled());
     expect(mocks.uploadDicomBlobToRepository).toHaveBeenCalledWith(expect.any(Blob));
+    await waitFor(() => expect(useStructureStore.getState().repositoryDirtySeriesUIDs).not.toContain('series-1'));
+  });
+
+  it('points the structure set source at the newly saved RTSTRUCT @links:SYS-006 @testing:T2', async () => {
+    useStructureStore.getState().markSeriesDirty('series-1');
+
+    renderToolbar();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Push to repository' }));
+
     await waitFor(() => expect(useStructureStore.getState().structureSets[0].source).toEqual(
       expect.objectContaining({
         type: 'rtstruct',

@@ -10,9 +10,25 @@ content: |-
 verification_method:
   - Test
   - Demonstration
-testing: |
-  T1: Given contours on multiple slices, the structure panel shows the contour slice count for the active structure.
+testing: 'T1: Given contours on multiple slices, the structure panel shows the contour
+  slice count for the active structure.
+
+  T2: Given a current slice position, the next control targets the next contour-bearing
+  slice and wraps from the last to the first.
+
+  T3: Given a current slice position, the previous control targets the previous contour-bearing
+  slice and wraps from the first to the last.
+
+  T4: Given a next-slice request, the target slice and the scroll delta to the closest
+  image frame of the axial viewport are resolved.
+
+  T5: Given a direct scroll-to-slice request, the frame delta to the closest matching
+  image frame is resolved.
+
+  '
 satisfies:
   - CRS-003
 verification_criteria: For a structure with contours on several slices, the structure
-  panel shows its contour slice count.
+  panel shows its contour slice count. The next and previous controls target the adjacent
+  contour-bearing slice and wrap at the ends, and the scroll delta to the target resolves
+  to the closest image frame of the axial viewport.

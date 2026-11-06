@@ -47,7 +47,7 @@ jobs:
           fi
           echo "Using the test evidence of CI run $RUN_ID"
           mkdir -p test-results
-          for pair in verify-srs-junit:srs verify-srs-api-junit:srs-api verify-sys-junit:sys validate-crs-junit:crs; do
+          for pair in verify-srs-junit:srs verify-srs-api-junit:srs-api verify-sys-junit:sys validate-crs-junit:crs verify-contract-junit:contract verify-listeners-junit:contract; do
             if ! gh run download "$RUN_ID" --name "${pair%%:*}" --dir "test-results/${pair##*:}"; then
               echo "::warning::CI run $RUN_ID has no '${pair%%:*}' artifact; requirements it verifies will show as unverified."
             fi

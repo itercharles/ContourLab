@@ -11,15 +11,15 @@ const renderPage = () =>
     </MemoryRouter>,
   );
 
-describe('ReleaseNotes @links:SRS-031,SYS-016', () => {
-  it('renders at least one entry with a version string and change text @testing:T1', () => {
+describe('ReleaseNotes @links:SRS-031', () => {
+  it('renders at least one entry with a version string and change text @links:SYS-016 @testing:T1', () => {
     renderPage();
     expect(RELEASE_NOTES.length).toBeGreaterThan(0);
     expect(screen.getByText(`v${RELEASE_NOTES[0].version}`)).toBeTruthy();
     expect(screen.getByText(RELEASE_NOTES[0].changes[0])).toBeTruthy();
   });
 
-  it('renders the most recent entry first @testing:T2', () => {
+  it('renders the most recent entry first @links:SYS-016 @testing:T2', () => {
     if (RELEASE_NOTES.length < 2) return;
     renderPage();
     const first = screen.getByText(`v${RELEASE_NOTES[0].version}`);

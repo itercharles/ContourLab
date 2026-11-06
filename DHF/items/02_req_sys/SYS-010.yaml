@@ -12,9 +12,18 @@ content: |-
 verification_method:
   - Test
   - Demonstration
-testing: |
-  T1: Given a structure with no contours, the quality analysis reports it as an empty informational item.
+testing: 'T1: Given a structure with no contours, the quality analysis reports it
+  as an empty informational item.
+
+  T2: Given contours with open polygons, slice gaps larger than the image spacing
+  or abrupt adjacent-slice area changes, the analysis reports each issue type.
+
+  T3: Given abrupt adjacent-slice centroid shifts or contours outside the image bounds,
+  the analysis reports centroid-jump and out-of-bounds issues.
+
+  '
 satisfies:
   - CRS-004
 verification_criteria: Contour quality analysis runs for each structure; a structure
-  with no contours is reported as an informational empty item.
+  with no contours is reported as an informational empty item. Open polygons, slice
+  gaps, abrupt area changes, centroid jumps and out-of-bounds contours are each reported.

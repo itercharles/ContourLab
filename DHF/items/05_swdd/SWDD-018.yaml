@@ -4,15 +4,25 @@ implements:
 - SRS-035
 module:
 - MODULE-009
-content: docker-compose.deploy.yml and docker-compose.yml list every port as 127.0.0.1:<host>:<container>.
+content: 'docker-compose.deploy.yml and docker-compose.yml list every port as 127.0.0.1:<host>:<container>.
   apps/client/nginx.conf proxies /api/, /debug/client-log and /dicom-web/ only; the
-  repository's own REST interface has no route (a request to /orthanc/ falls through
+  repository''s own REST interface has no route (a request to /orthanc/ falls through
   to the single-page application, and a DELETE gets 405). scripts/deploy/deploy.sh
   leaves a running repository container alone when its image matches, which would
-  keep its old bindings, so it now also reads the container's published host addresses
+  keep its old bindings, so it now also reads the container''s published host addresses
   and recreates it when any is empty, 0.0.0.0 or ::; the studies live in a host directory
   and survive. docker/orthanc/orthanc.json states ExecuteLuaEnabled and RestApiWriteToFileSystemEnabled
   as false. scripts/ci/check_medharness_contract.py parses both compose files and
   nginx.conf and fails the MedHarness Contract job on a port that is not on 127.0.0.1
   or on a /orthanc/ location.
+
+  The same check writes JUnit evidence (`--junit-out`, artifact verify-contract-junit)
+  linked to SRS-035 and SYS-018: it passes on the repository files and fails on mutated
+  copies, for the compose ports, the /orthanc/ proxy and the recreate step of deploy.sh.
+  scripts/ci/check_loopback_listeners.py, run by the dev-integration job with the
+  dev stack up, checks that ports 3000, 4000 and 8042 listen on loopback addresses
+  only and writes the evidence for CRS-015 (artifact verify-listeners-junit); it covers
+  the dev stack, not the Docker deploy stack.
+
+  '
 type: SWDD

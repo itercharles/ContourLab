@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
  * SYS-011: System shall provide patient and study selection from the DICOMweb repository.
  */
 
-test.describe('Workspace context and patient selection @links:SYS-012,SYS-011', () => {
+test.describe('Workspace context and patient selection', () => {
   test('workspace context bar is visible on load @links:SYS-012 @testing:T1', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByText('Load Patient')).toBeVisible();

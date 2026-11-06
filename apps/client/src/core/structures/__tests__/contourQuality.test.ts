@@ -28,8 +28,8 @@ function squareContour(z: number, size: number, isClosed = true): Structure['con
   };
 }
 
-describe('analyzeContourQuality @links:SRS-013,SYS-010', () => {
-  it('reports empty structures as informational QA items @testing:T1', () => {
+describe('analyzeContourQuality @links:SRS-013', () => {
+  it('reports empty structures as informational QA items @links:SYS-010 @testing:T1', () => {
     const summary = analyzeContourQuality(makeStructure([]), 2.5);
 
     expect(summary.warningCount).toBe(0);
@@ -39,7 +39,7 @@ describe('analyzeContourQuality @links:SRS-013,SYS-010', () => {
     }));
   });
 
-  it('detects open contours, slice gaps, and abrupt area changes @testing:T2', () => {
+  it('detects open contours, slice gaps, and abrupt area changes @links:SYS-010 @testing:T2', () => {
     const summary = analyzeContourQuality(makeStructure([
       squareContour(0, 10),
       squareContour(5, 10, false),
@@ -54,7 +54,7 @@ describe('analyzeContourQuality @links:SRS-013,SYS-010', () => {
     expect(summary.warningCount).toBeGreaterThanOrEqual(3);
   });
 
-  it('detects centroid jumps and contours outside image bounds @testing:T3', () => {
+  it('detects centroid jumps and contours outside image bounds @links:SYS-010 @testing:T3', () => {
     const summary = analyzeContourQuality(
       makeStructure([
         squareContour(0, 10),

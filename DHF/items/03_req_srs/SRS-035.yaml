@@ -11,10 +11,14 @@ content: Every port published by docker-compose.deploy.yml and docker-compose.ym
 derives_from:
 - SYS-018
 verification_method:
-- Inspection
+- Test
 testing: 'T1: Given the compose files and the nginx configuration, scripts/ci/check_medharness_contract.py
   fails if a port is published on all interfaces or /orthanc/ is proxied, and passes
   on the repository.
+
+  T2: Given a running repository container that is published on all interfaces, scripts/deploy/deploy.sh
+  marks it for recreation and recreates it after backup-orthanc.sh has run; scripts/ci/check_medharness_contract.py
+  fails if that step is missing from the script.
 
   '
 verification_criteria: The contract check passes on the compose files and nginx configuration

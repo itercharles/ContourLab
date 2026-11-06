@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { importRtstructDataset } from '../rtstructImport';
 
-describe('importRtstructDataset @links:SRS-010,SYS-007,CRS-006', () => {
-  it('maps RTSTRUCT ROI sequences into a ContourLab structure set @testing:T1', () => {
+describe('importRtstructDataset @links:SYS-007', () => {
+  it('maps RTSTRUCT ROI sequences into a ContourLab structure set @links:CRS-006 @testing:T1', () => {
     const structureSet = importRtstructDataset(
       {
         StructureSetLabel: 'RTSS',
