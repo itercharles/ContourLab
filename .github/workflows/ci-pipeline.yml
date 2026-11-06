@@ -396,7 +396,8 @@ jobs:
 
   verify-sys:
     name: Verify | Test-SYS (Playwright · system requirements)
-    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    # Playwright does not support ubuntu-latest (26.04) yet; pinned until it does.
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-24.04"]') }}
     # SYS tests use page.route() mocks and window.__contourlab_stores injection —
     # they do not call the API or Orthanc, so only the frontend needs to run.
     needs: [medharness-contract, dev-frontend, dev-shared-types, changes]
@@ -451,7 +452,8 @@ jobs:
 
   validate-crs:
     name: Validate | Test-CRS (Playwright · clinical workflows)
-    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-latest"]') }}
+    # Playwright does not support ubuntu-latest (26.04) yet; pinned until it does.
+    runs-on: ${{ vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON != '' && fromJSON(vars.CONTOURLAB_DEFAULT_RUNS_ON_JSON) || fromJSON('["ubuntu-24.04"]') }}
     needs: [medharness-contract, dev-frontend, dev-api, dev-shared-types, changes]
     if: always() && !failure() && !cancelled() && needs.changes.outputs.any_code == 'true'
     steps:
