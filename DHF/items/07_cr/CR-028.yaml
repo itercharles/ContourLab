@@ -1,0 +1,283 @@
+id: CR-028
+title: upgrade dcmjs to 0.52.0 (GHSA-px68-xx5g-48q5)
+description: '### Requested change
+
+
+  dcmjs 0.50.1 (SOUP-011), the library that reads and writes the DICOM files the client
+  imports and exports (RTSTRUCT, image metadata), has GHSA-px68-xx5g-48q5 (DS/IS value
+  representation input validation bypass, low), fixed in 0.52.0. `medharness verify
+  soup --strict` fails on it in CI for every pull request.
+
+
+  Upgrade dcmjs to 0.52.0 (or the newest release that fixes it), update SOUP-011,
+  and show that nothing the product relies on changed: RTSTRUCT import and export
+  (rtstructImport, rtstructExport), DICOM metadata parsing, and the synthetic phantom
+  series round trip against Orthanc (e2e real-dicom). Read the 0.50.1 to 0.52.0 release
+  notes for breaking changes (two minor versions of a 0.x library) and record the
+  result in the SOUP item''s verification field. Any dcmjs API change that needs product
+  code is in scope; no behaviour change is intended.'
+type: CR
+status: develop
+affected_items:
+- SOUP-011
+reviewed_items:
+- SRS-010
+- SYS-006
+- SYS-007
+- SWDD-006
+- SRS-015
+- SRS-033
+affected_risk_items:
+- RISK-004
+- RCM-013
+- RISK-011
+impact_analysis:
+  assumptions:
+  - 'Category: dependency (SOUP upgrade for a vulnerability). Behaviour delta: dcmjs
+    0.50.1 (GHSA-px68-xx5g-48q5 affected) becomes 0.52.0 (fixed); product behaviour
+    A equals B, so the product requirements do not change.'
+  - Target is exactly 0.52.0 as the CR states; 0.52.2 exists and is also OSV clean,
+    adopting it is a human decision.
+  - Only SOUP-011 is edited. No SRS/SYS/SWDD/RISK item changes because no behaviour,
+    interface or hazard changes; their existing test points stay as they are. The
+    new round-trip test links to SRS-010/SYS-006/SYS-007 without a new test point.
+  - dcmjs 0.52.0 declares node >=22.13; CI and Docker use Node 22, treated as satisfied.
+    The root engines >=20 inconsistency is recorded as a follow-up.
+  anchors:
+  - id: SOUP-011
+    evidence: item list --match dcmjs; name dcmjs, version 0.50.1, purpose names rtstructExport
+      and rtstructImport
+  - id: SRS-010
+    evidence: git grep rtstructExport/rtstructImport tests carry @links:SRS-010,SYS-006,SYS-007,CRS-005,CRS-006
+  unchanged:
+  - id: SRS-010
+    reason: RTSTRUCT exchange requirement is unchanged; dcmjs is its implementation
+      library and its behaviour is meant to be identical. T1-T16 stay valid.
+  - id: SYS-006
+    reason: Upload of the structure set as RTSTRUCT is unchanged.
+  - id: SYS-007
+    reason: Retrieval and load of RTSTRUCT is unchanged.
+  - id: SWDD-006
+    reason: Design of the RTSTRUCT exchange (module PersistenceLayer) does not name
+      dcmjs version or API; unchanged.
+  - id: SRS-015
+    reason: Compare uses the imported structure set; import output is unchanged.
+  - id: SRS-033
+    reason: Version history grouping works on repository metadata and the imported
+      predecessor reference; unchanged.
+  created: []
+  dimensions:
+  - dimension: product
+    verdict: not_required
+    reason: No workflow or user need changes.
+    items: []
+  - dimension: requirements
+    verdict: not_required
+    reason: No requirement meaning moves; no behaviour change is intended.
+    items:
+    - SRS-010
+  - dimension: architecture
+    verdict: not_required
+    reason: Same library, same two call sites, no boundary or data flow change.
+    items: []
+  - dimension: risk
+    verdict: not_required
+    reason: No new hazard or weakened control; the upgrade removes a known input validation
+      weakness. RISK-004/RCM-013 (identity checks on export) and RISK-011 assessed;
+      the RCM-013 tests still apply and a real-library round trip test and a manual
+      Orthanc check add evidence.
+    items:
+    - RISK-004
+    - RCM-013
+    - RISK-011
+  - dimension: soup
+    verdict: required
+    reason: SOUP-011 version 0.50.1 to 0.52.0; verification_method records the release-note
+      review, new tests and OSV result; cve_count stays '0'.
+    items:
+    - SOUP-011
+  - dimension: test
+    verdict: required
+    reason: Existing tests mock dcmjs or bypass it, so no automated test runs the
+      library. Add a unit round-trip test with the real dcmjs; no new test point (links
+      only). e2e real-dicom does not cover RTSTRUCT; manual Orthanc push/pull check.
+    items:
+    - SRS-010
+  - dimension: regulatory
+    verdict: not_required
+    reason: Intended use, labelling and UDI unchanged.
+    items: []
+  - dimension: security
+    verdict: not_required
+    reason: No change to our own authentication, API or parsing code; the dependency
+      upgrade itself is the mitigation, recorded under soup.
+    items:
+    - SOUP-011
+  - dimension: usability
+    verdict: not_required
+    reason: Nothing the user sees changes.
+    items: []
+implementation_notes: '## Overview
+
+  Upgrade SOUP-011 dcmjs from 0.50.1 to 0.52.0 to clear GHSA-px68-xx5g-48q5 (DS/IS
+  value representation input validation bypass; OSV range: fixed in 0.52.0), which
+  fails `verify soup --strict` on every PR. No behaviour change is intended. The only
+  product-visible consumers are rtstructExport and rtstructImport.
+
+
+  ## Current State
+
+  - dcmjs is used in exactly two places (git grep -n dcmjs apps packages): `apps/client/src/core/structures/rtstructExport.ts`
+  (`exportRtstructObject`: `DicomMetaDictionary.uid()`, `denaturalizeDataset`, `DicomDict.write()`)
+  and `rtstructImport.ts` (`importRtstructArrayBuffer`: `DicomMessage.readFile`, `DicomMetaDictionary.naturalizeDataset`).
+  Both load it lazily with `await import(''dcmjs'')`. Types: `apps/client/src/types/dcmjs.d.ts`
+  (`declare module ''dcmjs''`, untyped). Image metadata parsing does NOT use dcmjs
+  (dicom-parser / DICOMweb JSON), so RISK-002 and SRS-001 are unaffected.
+
+  - Declared `"dcmjs": "^0.50.1"` in `apps/client/package.json`; locked in `pnpm-lock.yaml`
+  (importer entry ~l.41, package entry ~l.1786, snapshot ~l.4766).
+
+  - Covered by DHF: SOUP-011 (purpose, verification_method, cve_count), SRS-010 (RTSTRUCT
+  exchange), SYS-006/SYS-007, SWDD-006, RISK-004 with RCM-013 (identity checks on
+  export), RISK-011.
+
+  - Tests today: `rtstructExport.test.ts` MOCKS dcmjs entirely (vi.mock), so it does
+  not exercise the library. `rtstructImport.test.ts` calls `importRtstructDataset`
+  with a plain object, so it does not exercise dcmjs either. `e2e/crs/real-dicom.spec.ts`
+  (needs `pnpm repo:seed`) renders image series via the viewer and has no RTSTRUCT
+  write/read path. Net: no automated test runs real dcmjs code; the real-Orthanc push/pull
+  check cited in RCM-013 is manual.
+
+
+  ## Research findings (0.50.1 -> 0.52.0)
+
+  - 0.51.0: feature only, adds VR "UV" support. 0.52.0: only "Switch to pnpm for build"
+  (commit 81e7e11, also the security fix commit referenced by the advisory). No API
+  changes, no breaking changes listed in the GitHub release notes. (Intermediate patches
+  0.50.2, 0.50.3, 0.51.1 exist; not individually changelogged beyond the above.)
+
+  - Package metadata differences, 0.52.0 vs 0.50.1: dependencies are now pinned exactly
+  (pako 2.1.0, adm-zip 0.5.17, ndarray 1.0.19, loglevel 1.9.2, gl-matrix 3.4.4, lodash.clonedeep
+  4.5.0, @babel/runtime-corejs3 7.29.2). These are the versions the lockfile ALREADY
+  resolves for 0.50.1, so the lockfile needs no new transitive packages. NEW: `engines:
+  {node: ''>=22.13''}`. CI (setup-contourlab-frontend default ''22'', cr-agent-setup
+  ''22'') and apps/client/Dockerfile (node:22) satisfy it; root package.json declares
+  `node >=20` and CLAUDE.md says Node >=20, which is now inconsistent for installs
+  (pnpm only warns; no engine-strict). Entry `build/dcmjs.js` unchanged.
+
+  - Newer releases exist: 0.52.1 (CIELab D50 colour fix, irrelevant) and 0.52.2 (release
+  the bound on reads past end of data, a parser change). OSV reports 0.52.2 clean
+  as well. The CR asks for 0.52.0; keep to it (smallest delta, advisory fixed). Moving
+  to 0.52.2 is a human decision.
+
+
+  ## Changes Required
+
+  - `apps/client/package.json`: modify `dcmjs` to `^0.52.0`.
+
+  - `pnpm-lock.yaml`: modify, see Lockfile below.
+
+  - `apps/client/src/core/structures/__tests__/rtstructRoundTrip.test.ts`: NEW regression
+  test using the real dcmjs (no vi.mock).
+
+  - `DHF/items/09_soup/SOUP-011`: update via `$MH item update` (fields below).
+
+  - No change to rtstructExport.ts, rtstructImport.ts or dcmjs.d.ts unless a gate
+  fails (none expected).
+
+  - Not changed: SRS/SYS/SWDD/RISK/RCM items (behaviour unchanged).
+
+
+  ## Lockfile
+
+  PATH=$HOME/.hermes/tools/node-26.12.1-darwin-arm64/bin:$PATH. Edit apps/client/package.json
+  spec first, then run `npx -y pnpm@9 install --lockfile-only --filter @contourlab/client`
+  or `npx -y pnpm@9 update dcmjs@0.52.0 --filter @contourlab/client --lockfile-only`
+  and inspect `git diff --stat pnpm-lock.yaml`. Acceptable diff, and only this: importer
+  specifier `^0.52.0` / version `0.52.0`; the `dcmjs@0.50.1:` resolution block becomes
+  `dcmjs@0.52.0:` with integrity sha512-0/mT9NACKnwnOnkUx7JAqmWxRcUr7HiCoptw1KhN2StNYE0Hy6+tmpI7CU+lJuBc4rFpcMCalvI8QO6JkJ+7Fg==
+  and `engines: {node: ''>=22.13''}`; the snapshot key renamed to `dcmjs@0.52.0:`
+  with unchanged dependency list. If the diff touches any other package, `git checkout
+  pnpm-lock.yaml` and make that targeted edit by hand (these three places), then confirm
+  with `npx -y pnpm@9 install --frozen-lockfile`. Do NOT run a bare `pnpm update`.
+  Note the stray `package-lock.json` files (root, apps/client) are npm leftovers;
+  they are not scanned (verify soup uses requirements.txt + pnpm-lock.yaml) and are
+  left alone (flagged for the owner).
+
+
+  ## Implementation Steps
+
+  1. Baseline: run the gates on the unchanged tree and record client test counts.
+
+  2. Edit package.json and the lockfile as above; `pnpm install --frozen-lockfile`
+  must succeed; `pnpm why dcmjs` shows 0.52.0 only.
+
+  3. Add rtstructRoundTrip.test.ts (below); run it against 0.50.1 first if practical
+  to confirm it passes there too (proves it detects no difference), then 0.52.0.
+
+  4. Update SOUP-011: `$MH --dhf DHF item update SOUP-011 --data ''{"version":"0.52.0","verification_method":"...","cve_count":"0"}''`.
+  verification_method: keep the existing text and add: reviewed the 0.50.1 to 0.52.0
+  release notes (0.51.0 adds VR UV; 0.52.0 switches the build to pnpm and fixes GHSA-px68-xx5g-48q5;
+  no API or breaking change; new engines node >=22.13 met by CI and Docker); real-library
+  round trip test rtstructRoundTrip (SRS-010, SYS-006, SYS-007) passes; RTSTRUCT push
+  and reload checked against a seeded Orthanc; OSV clean. cve_count stays ''0'' (the
+  advisory is resolved, not accepted). Purpose, license, risk_rating, safety_class,
+  source unchanged.
+
+  5. Run all gates; run the manual Orthanc check (below).
+
+  6. Report to the reviewer; do not commit (CI stage commits).
+
+
+  ## Gates (from repo root unless noted)
+
+  - `pnpm --filter @contourlab/client test`; `pnpm --filter @contourlab/client lint`;
+  `pnpm --filter @contourlab/client typecheck`; `pnpm -r typecheck`; `pnpm -r build`
+
+  - `$MH verify soup --strict --manifest requirements.txt --manifest pnpm-lock.yaml`
+  (must no longer report GHSA-px68-xx5g-48q5)
+
+  - `$MH --dhf DHF verify dhf --strict`; `$MH --dhf DHF verify impact --cr CR-028`;
+  `$MH --dhf DHF verify changes --cr CR-028 --since-ref origin/main`
+
+  - e2e (optional, CI runs it): `pnpm repo:up && pnpm repo:seed`, then `pnpm --filter
+  @contourlab/client test:e2e:crs -- real-dicom` and `test:e2e:sys`.
+
+  - Manual (RCM-013 style): with `pnpm repo:up && pnpm repo:seed && pnpm dev`, load
+  the phantom series, draw or load a structure, push the RTSTRUCT, confirm in Orthanc
+  (port 8042) it is filed under the phantom patient with the images'' frame of reference,
+  then reload it through the repository panel and check the contours match.
+
+
+  ## Edge Cases & Constraints
+
+  - engines node >=22.13: contributors on Node 20 get a pnpm warning; decide whether
+  to raise root `engines` and CLAUDE.md (follow-up, not in this CR).
+
+  - dcmjs is dynamically imported; Vite/Rollup build must still split it (`pnpm -r
+  build` verifies).
+
+  - DS/IS validation is the advisory topic: contour data (ContourData, DS) and slice
+  thickness are written as DS strings; the round trip test must include non-integer
+  DS values and negative coordinates, and check numerical equality within tolerance,
+  so any stricter 0.52.0 DS/IS parsing that rejects or alters previously accepted
+  values is caught.
+
+  - Keep TypeScript strict, no any, in the new test.
+
+
+  ## Tests
+
+  - NEW unit test `rtstructRoundTrip.test.ts`, describe name `... @links:SRS-010,SYS-006,SYS-007`
+  (no new test point, so SRS-010 stays unchanged): without mocking dcmjs, build an
+  RTSTRUCT dataset with real `DicomMetaDictionary.denaturalizeDataset` plus `DicomDict.write()`
+  (or call `exportRtstructObject` with a fixture series and `DicomMetadataStore` seeded),
+  read it back with `importRtstructArrayBuffer`, and assert structure names, count,
+  contour slice count, contour points (fractional DS values) and referenced series
+  UID survive. If vitest''s jsdom environment breaks `DicomMessage.readFile` on ArrayBuffer
+  (realm mismatch), use `// @vitest-environment node` for that file.
+
+  - Existing rtstructExport/rtstructImport tests must pass unchanged (SRS-010 T1-T16).
+
+  - E2E real-dicom exercises image loading only and cannot detect an RTSTRUCT regression;
+  the manual Orthanc check covers push and pull.'
