@@ -1,7 +1,7 @@
 id: SOUP-011
 type: SOUP
 name: dcmjs
-version: 0.50.1
+version: 0.52.0
 ecosystem: npm
 manufacturer: dcmjs project contributors
 purpose: 'DICOM manipulation library used to read and write RTSTRUCT objects: it builds
@@ -13,7 +13,12 @@ homepage: https://github.com/dcmjs-org/dcmjs#readme
 risk_rating: High
 safety_class: C (runs in the clinical application; reads and writes RTSTRUCT contour
   data exchanged with the repository)
-verification_method: RTSTRUCT export and import are covered by unit tests (SYS-007
+verification_method: 'RTSTRUCT export and import are covered by unit tests (SYS-007
   T1-T4, SRS-010 T1-T4); the clinician reviews the loaded contours. Scanned against
-  OSV on every CI run (verify soup --strict); no unresolved vulnerabilities.
+  OSV on every CI run (verify soup --strict); no unresolved vulnerabilities. Upgrade
+  0.50.1 to 0.52.0 (CR-028, fixes GHSA-px68-xx5g-48q5): release notes reviewed (0.51.0
+  adds VR UV; 0.52.0 switches the build to pnpm and carries the advisory fix; no API
+  or breaking change; new engines node >=22.13 is met by CI and the Docker image);
+  real-library round trip test rtstructRoundTrip (SRS-010, SYS-006, SYS-007) passes
+  with fractional and negative DS values; OSV reports no vulnerability for 0.52.0.'
 cve_count: '0'
