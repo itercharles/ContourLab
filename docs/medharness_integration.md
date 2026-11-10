@@ -8,7 +8,7 @@ actions, and `scripts/ci/check_medharness_contract.py`.
 
 ## Current Pin
 
-- `medharness[docs]==0.71.2`
+- `medharness[docs]==0.76.0`
 - One CLI, `medharness`; `dhfkit` is a library inside it with no command of its own
 
 ## Sources Of Truth
@@ -37,7 +37,7 @@ Set up as MedHarness's `docs/agents.md` describes, in the repository so everyone
   3.11 or later). An older `medharness` on `PATH` reads this DHF wrongly ("Unknown doc type 'UC'") and would hold the agent
   for a fault that is not in the DHF.
 - These are local feedback, not a control: whoever owns the checkout can change them. The control is CI
-  (`verify dhf`, `verify impact`, `verify changes`, `verify tests` and branch protection). The hooks also apply to
+  (`verify dhf`, `verify impact`, `verify tests` and branch protection). The hooks also apply to
   the Claude Code that the CR pipeline runs in Actions, which is the point.
 - Tests: `tests/workflow/test_agent_hooks.py` runs both hooks for real; `test_agent_docs.py` checks every
   `medharness` command written in `CLAUDE.md` and `.claude/` against the installed CLI.
@@ -67,9 +67,8 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 - `medharness --dhf DHF verify dhf --strict`
 - `medharness --dhf DHF verify soup --strict --manifest ...` (`--strict` also fails an undocumented or misversioned component; known vulnerabilities always fail)
 - `medharness --dhf DHF verify tests --strict --junit DIR ...` (`--strict` also fails a requirement with no verification method and a test `@links:` to an ID that is not in the DHF)
-- `medharness --dhf DHF verify changes --cr CR-NNN --since-ref origin/main --code-path ...` (compares the working tree, so it also runs locally before a commit)
-- `medharness --dhf DHF verify impact --cr CR-NNN --since-ref origin/main` (0.69.0; the CR's whole impact record, and whether what depends on a changed item was changed or reviewed; `verify changes` no longer checks the latter)
-- `medharness --dhf DHF verify completion --cr CR-NNN --junit DIR ...` (reads the CR's `affected_items`)
+- `medharness --dhf DHF verify impact --cr CR-NNN --since-ref origin/main --code-path ...` (the CR's whole impact record, whether the branch changed exactly the CR's `affected_items`, whether what depends on a changed item was changed or reviewed, and with `--code-path` a code change; compares the working tree, so it also runs locally before a commit. It replaced `verify changes` in 0.74)
+- `medharness --dhf DHF verify tests --cr CR-NNN --junit DIR ...` (the CR's closure gate: judges the CR's `affected_items` only. It replaced `verify completion` in 0.75)
 
 ### Artifacts And Releases
 
@@ -105,7 +104,7 @@ exits 0 (pass), 1 (fail) or 2 (usage error).
 ## Tests
 
 `tests/workflow/` runs in the `MedHarness Contract` job and locally with `pnpm workflow:test`.
-No model and no GitHub: the `detect` routing, a CR's lifecycle and `verify changes` on a
+No model and no GitHub: the `detect` routing, a CR's lifecycle and `verify impact` on a
 scratch copy of the DHF, and gen-code's commit step against a local git remote with a stub
 `gh`. The real AI stages (`build plan|code` with a model) are not covered.
 

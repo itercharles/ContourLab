@@ -908,7 +908,7 @@ jobs:
       # Approval is the point at which the maintainer says the code is done, so the CR is recorded as
       # completed here, on the branch, and merges with the code. `completed` is reached only through the
       # lifecycle (`item transition` refuses it when the CR record is incomplete), and CI's closure gate
-      # (verify completion) has already passed on this code.
+      # (verify tests --cr) has already passed on this code.
       - name: Record the CR as completed on the branch
         id: complete
         env:

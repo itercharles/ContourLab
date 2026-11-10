@@ -18,7 +18,7 @@ DHF/                   — Design History File (items, config, documents, test-r
 DHF/items/             — YAML DHF items by type (CR, SYS, SRS, RISK, etc.)
 DHF/config/            — DHF configuration (change-controlled)
 DHF/documents/         — Spec and plan templates
-tests/workflow/        — CR workflow tests: event routing, CR lifecycle, verify changes, commit step
+tests/workflow/        — CR workflow tests: event routing, CR lifecycle, verify impact, commit step
 .github/workflows/     — CI pipeline and CR automation
 ```
 
@@ -97,11 +97,11 @@ medharness --dhf DHF verify dhf --strict
 # Requirement → test coverage from JUnit results (file or directory)
 medharness --dhf DHF verify tests --junit apps/client/test-results
 
-# Did a CR deliver what it recorded (affected_items present and verified)?
-medharness --dhf DHF verify completion --cr CR-034 --junit apps/client/test-results
+# Did a CR deliver what it recorded (its affected_items verified by passing tests)?
+medharness --dhf DHF verify tests --cr CR-034 --junit apps/client/test-results
 
-# Did the branch change the items the CR lists? (compares the working tree)
-medharness --dhf DHF verify changes --cr CR-034 --since-ref origin/main
+# Did the branch change the items the CR lists, and is its impact record complete? (compares the working tree)
+medharness --dhf DHF verify impact --cr CR-034 --since-ref origin/main
 
 # Render specifications, traceability and SBOM into --out-dir (no --write: a preview)
 medharness --dhf DHF build release --version 0.0.0-preview --out-dir /tmp/dhf-preview
