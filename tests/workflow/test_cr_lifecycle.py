@@ -32,7 +32,7 @@ class Lifecycle(s.Scratch):
         for state in ("design", "develop", "completed"):
             s.medharness(root, "item", "transition", cr, state)
             self.assertEqual(s.medharness(root, "item", "get", cr)["status"], state)
-        closure = s.medharness(root, "verify", "completion", "--cr", cr)
+        closure = s.medharness(root, "verify", "tests", "--cr", cr)
         self.assertTrue(closure["passed"], closure)
 
     def test_a_cr_cannot_skip_design_and_develop(self):
@@ -59,9 +59,10 @@ class Lifecycle(s.Scratch):
         self.assertNotEqual(refused.returncode, 0)
         self.assertIn("affected_items", refused.stdout + refused.stderr, "refused for the reason the test is about")
 
-    def test_closure_fails_for_a_cr_that_was_never_planned(self):
+    def test_closure_fails_for_a_cr_with_no_test_evidence(self):
+        """`verify completion` was folded into `verify tests --cr` in 0.75: a CR whose items have no JUnit evidence fails."""
         root = self.scratch_dhf()
-        closure = s.medharness(root, "verify", "completion", "--cr", self.legacy_cr(root), check=False)
+        closure = s.medharness(root, "verify", "tests", "--cr", self.legacy_cr(root), check=False)
         self.assertFalse(closure["passed"])
 
     def test_updating_an_item_in_a_legacy_directory_keeps_one_file_in_place(self):
@@ -105,8 +106,8 @@ class Lifecycle(s.Scratch):
 
 
 class Changes(s.Scratch):
-    """`verify changes`: the branch must change the items the CR lists, and only those.
-    `verify impact` (0.69.0, which took this over from `verify changes`): whatever depends on a changed item
+    """`verify impact` (0.74 folded `verify changes` into it): the branch must change the items the CR lists, and
+    only those (`dhf_branch`), and the code paths asked for (`code_branch`); whatever depends on a changed item
     must be changed or listed in `reviewed_items`."""
 
     def setUp(self) -> None:
@@ -118,15 +119,17 @@ class Changes(s.Scratch):
         s.git(self.root, "commit", "-q", "-m", "base")
         s.git(self.root, "checkout", "-q", "-b", f"feat/{self.cr}")
 
-    def changes(self, *extra: str) -> dict:
-        return s.medharness(self.root, "verify", "changes", "--cr", self.cr, "--since-ref", "main", *extra, check=False)
+    def impact(self, *extra: str) -> dict:
+        return s.medharness(self.root, "verify", "impact", "--cr", self.cr, "--since-ref", "main", *extra, check=False)
 
-    def impact(self) -> dict:
-        return s.medharness(self.root, "verify", "impact", "--cr", self.cr, "--since-ref", "main", check=False)
+    def coupling(self, *extra: str) -> list[str]:
+        """The branch-coupling errors of `verify impact`: the changed items against the CR's `affected_items`
+        (`dhf_branch`) and the required code paths (`code_branch`). The scratch CR has no impact_analysis and
+        its dependents are not reviewed, so `passed` is false for those reasons: these tests look at the coupling."""
+        return [e for e in self.impact(*extra)["errors"] if e.startswith(("dhf_branch:", "code_branch:"))]
 
     def dependents(self, result: dict) -> list[str]:
-        """The items `verify impact` asks to be changed or reviewed. (The scratch CR has no impact_analysis, so
-        `passed` is false for that reason as well: the dependents are what these tests look at.)"""
+        """The items `verify impact` asks to be changed or reviewed."""
         return sorted({m.group(1) for e in result["errors"] if (m := re.match(r"impact\.(\S+?):", e))})
 
     def change_sys(self, title: str = "changed") -> None:
@@ -134,37 +137,31 @@ class Changes(s.Scratch):
 
     def test_passes_when_the_branch_changes_exactly_the_listed_item(self):
         self.change_sys()
-        self.assertTrue(self.changes()["passed"])
+        self.assertEqual(self.coupling(), [])
 
     def test_fails_when_a_listed_item_is_untouched(self):
-        result = self.changes()
-        self.assertFalse(result["passed"])
-        self.assertIn("SYS-001", json.dumps(result["errors"]))
+        errors = self.coupling()
+        self.assertTrue(any(e.startswith("dhf_branch:") for e in errors), errors)
+        self.assertIn("SYS-001", json.dumps(errors))
 
     def test_fails_when_the_branch_changes_an_item_the_cr_does_not_list(self):
         self.change_sys()
         s.medharness(self.root, "item", "update", "SRS-001", "--data", json.dumps({"title": "also changed"}))
-        result = self.changes()
-        self.assertFalse(result["passed"])
-        self.assertIn("SRS-001", json.dumps(result["errors"]))
+        errors = self.coupling()
+        self.assertTrue(any(e.startswith("dhf_branch:") for e in errors), errors)
+        self.assertIn("SRS-001", json.dumps(errors))
 
     def test_uncommitted_changes_count(self):
         self.change_sys("uncommitted")
         self.assertEqual(s.git(self.root, "status", "--porcelain").stdout.count("SYS-001"), 1)
-        self.assertTrue(self.changes()["passed"])
+        self.assertEqual(self.coupling(), [])
 
     def test_code_path_requires_a_changed_file_under_it(self):
         self.change_sys()
-        self.assertFalse(self.changes("--code-path", "apps/")["passed"])
+        self.assertTrue(any(e.startswith("code_branch:") for e in self.coupling("--code-path", "apps/")))
         (self.root / "apps" / "client").mkdir(parents=True)
         (self.root / "apps" / "client" / "new.ts").write_text("export {};\n")
-        self.assertTrue(self.changes("--code-path", "apps/")["passed"])
-
-    def test_verify_changes_no_longer_asks_for_the_dependents_to_be_reviewed(self):
-        """0.69.0 moved that to `verify impact`: the same branch now passes `verify changes` without them."""
-        self.change_sys()
-        self.assertTrue(self.changes()["passed"])
-        self.assertEqual(self.dependents(self.changes()), [])
+        self.assertEqual(self.coupling("--code-path", "apps/"), [])
 
     def test_an_item_that_depends_on_a_changed_one_must_be_changed_or_reviewed(self):
         self.change_sys()
@@ -205,15 +202,14 @@ class Changes(s.Scratch):
         s.git(self.root, "commit", "-q", "-m", "landed on main after the branch was cut")
         s.git(self.root, "checkout", "-q", branch)
         self.assertEqual(s.git(self.root, "rev-list", "--count", f"{branch}..main").stdout.strip(), "1")
-        result = self.changes()
-        self.assertNotIn("SOUP-001", json.dumps(result["errors"]))
-        self.assertTrue(result["passed"], result["errors"])
+        self.assertNotIn("SOUP-001", json.dumps(self.impact()["errors"]))
+        self.assertEqual(self.coupling(), [])
 
     def test_impact_depth_zero_turns_the_check_off(self):
         config = self.root / "DHF" / "config" / "global.yaml"
         config.write_text(config.read_text() + "\nimpact_depth: 0\n")
         self.change_sys()
-        self.assertTrue(self.changes()["passed"])
+        self.assertEqual(self.dependents(self.impact()), [])
 
 
 if __name__ == "__main__":

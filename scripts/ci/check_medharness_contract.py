@@ -191,12 +191,11 @@ def main(argv: list[str] | None = None) -> int:
         "verify dhf": ("python", "-m", "medharness", "verify", "dhf", "--help"),
         "verify tests": ("python", "-m", "medharness", "verify", "tests", "--help"),
         "verify soup": ("python", "-m", "medharness", "verify", "soup", "--help"),
-        "verify completion": ("python", "-m", "medharness", "verify", "completion", "--help"),
+        "verify impact": ("python", "-m", "medharness", "verify", "impact", "--help"),
         "build plan": ("python", "-m", "medharness", "build", "plan", "--help"),
         "build code": ("python", "-m", "medharness", "build", "code", "--help"),
         "build soup": ("python", "-m", "medharness", "build", "soup", "--help"),
         "build release": ("python", "-m", "medharness", "build", "release", "--help"),
-        "verify changes": ("python", "-m", "medharness", "verify", "changes", "--help"),
         "item": ("python", "-m", "medharness", "item", "--help"),
     }
     for name, command in help_commands.items():
@@ -232,12 +231,12 @@ def main(argv: list[str] | None = None) -> int:
             "medharness --dhf DHF verify dhf",
             "medharness --dhf DHF verify soup",
             "medharness --dhf DHF verify tests",
-            "medharness --dhf DHF verify changes",
             "medharness --dhf DHF build release",
-            "medharness --dhf DHF verify completion",
+            "verify tests \\\n            --cr",
             "unittest discover -s tests/workflow",
             "rhysd/actionlint",
             "medharness --dhf DHF verify impact",
+            "--code-path apps/",
             "check_medharness_contract.py --junit-out",
             "check_loopback_listeners.py --junit-out",
             "--junit test-results/contract",
@@ -547,8 +546,8 @@ def main(argv: list[str] | None = None) -> int:
 
     # The closure gate belongs before the merge, where it can block one.
     require(
-        "verify completion" not in texts["cr-complete.yml"],
-        "cr-complete.yml runs verify completion after the merge — run it on the CR PR in ci-pipeline.yml",
+        "verify tests --cr" not in texts["cr-complete.yml"],
+        "cr-complete.yml runs the closure gate (verify tests --cr) after the merge — run it on the CR PR in ci-pipeline.yml",
         errors,
     )
 

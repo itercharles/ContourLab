@@ -116,7 +116,7 @@ Stage position is tracked by a `cr:stage/*` label on the PR:
 - Steps:
   1. The CR is moved to `completed` with `medharness item transition` (which refuses it when the CR record is
      incomplete) and committed and pushed to the branch with the PAT, so CI runs on it. CI's closure gate
-     (`verify completion`) has already passed on the code being approved.
+     (`verify tests --cr`) has already passed on the code being approved.
   2. The job waits for the CI run of that commit.
   3. The progress checklist moves to step 6 ("Merge this PR") and a notification comment is added; human merges the PR
 - If `changes_requested`: `revise-code` re-runs `develop-cr` and pushes; re-approve to continue.

@@ -50,7 +50,7 @@ jobs:
           path: test-results/contract/contract-junit.xml
           if-no-files-found: error
 
-      # No model and no GitHub: event routing, CR lifecycle, verify changes and the
+      # No model and no GitHub: event routing, CR lifecycle, verify impact and the
       # commit step, against a scratch copy of the DHF and a local git remote.
       - name: Run CR workflow tests
         run: python -m unittest discover -s tests/workflow -v
@@ -271,30 +271,13 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+')
-          if ! medharness --dhf DHF verify changes \
+          if ! medharness --dhf DHF verify impact \
             --cr "$CR_ID" \
             --since-ref origin/main \
             --code-path apps/ \
             --code-path packages/; then
             gh pr comment "$PR_NUMBER" --body \
-              "⚠️ **Branch validation failed** for $CR_ID — missing required DHF item changes or code changes. See CI logs for details."
-            exit 1
-          fi
-
-      # 0.69.0 moved the "an item that depends on a changed one must be changed or reviewed" check here from
-      # `verify changes`, and made it judge the CR's whole impact record as `build plan` does.
-      - name: Validate the CR's impact record
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-        run: |
-          CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+')
-          if ! medharness --dhf DHF verify impact \
-            --cr "$CR_ID" \
-            --since-ref origin/main; then
-            gh pr comment "$PR_NUMBER" --body \
-              "⚠️ **Impact check failed** for $CR_ID — the CR's impact record is incomplete, or an item the change reaches has not been changed or reviewed. See CI logs for details."
+              "⚠️ **Branch validation failed** for $CR_ID — the CR's impact record is incomplete, the branch's DHF changes are not the CR's affected items, an item the change reaches has not been changed or reviewed, or there is no code change. See CI logs for details."
             exit 1
           fi
 
@@ -610,7 +593,7 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           CR_ID=$(echo "$HEAD_REF" | grep -oE 'CR-[0-9]+')
-          medharness --dhf DHF verify completion \
+          medharness --dhf DHF verify tests \
             --cr "$CR_ID" \
             --junit test-results/srs \
             --junit test-results/srs-api \
