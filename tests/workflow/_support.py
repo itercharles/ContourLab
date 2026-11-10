@@ -42,9 +42,20 @@ def workflow_jobs(workflow_file: str) -> dict:
     return yaml.safe_load((WORKFLOWS / workflow_file).read_text(encoding="utf-8"))["jobs"]
 
 
+# git starts `maintenance --auto` detached after a commit or fetch; it can still be writing into a scratch
+# repository's objects/ when the test's temporary directory is removed ("Directory not empty").
+NO_BACKGROUND_GIT = {
+    "GIT_CONFIG_COUNT": "2",
+    "GIT_CONFIG_KEY_0": "gc.auto",
+    "GIT_CONFIG_VALUE_0": "0",
+    "GIT_CONFIG_KEY_1": "maintenance.auto",
+    "GIT_CONFIG_VALUE_1": "false",
+}
+
+
 def run(cmd: list[str], *, cwd: Path, env: dict[str, str] | None = None, check: bool = True,
         input_text: str | None = None) -> subprocess.CompletedProcess:
-    full_env = {**os.environ, **(env or {})}
+    full_env = {**os.environ, **NO_BACKGROUND_GIT, **(env or {})}
     result = subprocess.run(cmd, cwd=cwd, env=full_env, capture_output=True, text=True, check=False, input=input_text)
     if check and result.returncode != 0:
         raise AssertionError(f"{' '.join(cmd)} exited {result.returncode}\n{result.stdout}\n{result.stderr}")
@@ -72,7 +83,7 @@ class Scratch(unittest.TestCase):
     """A temporary directory per test, with a copy of the real DHF on demand."""
 
     def setUp(self) -> None:
-        self._tmp = tempfile.TemporaryDirectory()
+        self._tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.addCleanup(self._tmp.cleanup)
         self.tmp = Path(self._tmp.name)
 
