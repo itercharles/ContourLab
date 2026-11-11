@@ -63,7 +63,7 @@ Validation scenarios map to the clinical workflow phases of ContourLab:
 |---|---|
 | OS | Ubuntu (GitHub Actions `ubuntu-latest`) |
 | Browser | Chromium (Playwright) |
-| Node.js | 20 |
+| Node.js | 22 |
 | .NET SDK | 10.0.x |
 | DICOM repository | Orthanc (Docker), seeded with test DICOM datasets |
 | Screen resolution | 1920×1080 (Playwright default) |

@@ -112,7 +112,7 @@ Evidence of defect control: CI pipeline test results stored as GitHub Actions ar
 | Item | Value |
 |---|---|
 | OS | Ubuntu (GitHub Actions `ubuntu-latest`) |
-| Node.js | 20 (pinned via `actions/setup-node`) |
+| Node.js | 22 (pinned via `actions/setup-node`) |
 | pnpm | 9 |
 | .NET SDK | 10.0.x (pinned via `actions/setup-dotnet`) |
 | DICOM repository | Orthanc (Docker) |
