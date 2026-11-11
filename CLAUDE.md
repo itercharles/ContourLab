@@ -24,7 +24,7 @@ tests/workflow/        — CR workflow tests: event routing, CR lifecycle, verif
 
 ## Toolchain
 
-Node.js ≥20, pnpm ≥9, .NET SDK 10, Python ≥3.11
+Node.js ≥22.13, pnpm ≥9, .NET SDK 10, Python ≥3.11
 
 ## Key Commands
 

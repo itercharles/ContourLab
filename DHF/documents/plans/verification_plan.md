@@ -91,7 +91,7 @@ artifact) records the state of all coverage at each main-branch build.
 |---|---|
 | OS | Ubuntu (GitHub Actions `ubuntu-latest`) |
 | Browser | Chromium (Playwright default) |
-| Node.js | 20 |
+| Node.js | 22 |
 | .NET SDK | 10.0.x |
 | DICOM repository | Orthanc (Docker, no authentication) |
 | Test runner | Vitest 2 (Test-SRS), Playwright (Test-SYS) |

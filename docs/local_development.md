@@ -7,7 +7,7 @@ and Orthanc-backed DICOM repository development.
 
 | Tool | Minimum version | Check |
 | --- | --- | --- |
-| Node.js | 20 | `node --version` |
+| Node.js | 22.13 | `node --version` |
 | pnpm | 9 | `pnpm --version` |
 | .NET SDK | 9 | `dotnet --version` |
 | Docker + Compose | current | `docker compose version` |
