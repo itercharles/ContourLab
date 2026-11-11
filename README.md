@@ -10,7 +10,7 @@ RTSTRUCT import and export, and contour editing.
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22.13+
 - pnpm 9+
 - .NET SDK 10
 - Docker with Compose

@@ -1,6 +1,6 @@
 id: SOUP-040
 name: mcr.microsoft.com/dotnet/aspnet
-version: 10.0 (floating tag)
+version: 10.0@sha256:bfd912c83295ce66d4b706ebb8541b9f14259b0e76fbb88b2751f58ce2399d2e
 manufacturer: Microsoft Corporation
 purpose: 'Runtime base image of the API container: provides the ASP.NET Core and .NET
   runtime that run the ContourLab API.'
@@ -10,7 +10,8 @@ homepage: https://hub.docker.com/r/microsoft/dotnet-aspnet
 risk_rating: Medium
 safety_class: C (runs the API in the deployed system)
 verification_method: The deployed API is checked by the integration smoke check and
-  the SYS and CRS end-to-end tests. The tag floats, so a rebuild can pick up a new
-  patch release; pinning it by digest (as done for Orthanc) is a follow-up. Not scanned
-  against OSV (no container ecosystem).
+  the SYS and CRS end-to-end tests. The image is pinned by tag and index digest in
+  apps/api/Dockerfile, so a rebuild does not pick up a new release unasked (enforced
+  by scripts/ci/check_medharness_contract.py). Not scanned against OSV (no container
+  ecosystem).
 type: SOUP
