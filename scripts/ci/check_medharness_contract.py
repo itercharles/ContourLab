@@ -95,6 +95,40 @@ def require(condition: bool, message: str, errors: list[str]) -> None:
         errors.append(message)
 
 
+def tracked_dockerfiles() -> list[str]:
+    _, out = run("git", "ls-files", "--", "Dockerfile", "*/Dockerfile", "*.Dockerfile")
+    return sorted(line for line in out.splitlines() if line.strip())
+
+
+DIGEST_PIN = re.compile(r"[^\s@]+:[^\s@]+@sha256:[0-9a-f]{64}")
+
+
+def check_image_pins(dockerfile_texts: dict[str, str], compose_texts: dict[str, str]) -> list[str]:
+    """Every base image (`FROM`) and pulled compose image carries a tag and a sha256 digest.
+
+    A moving tag changes the software on a rebuild or redeploy unasked. Images a compose file builds
+    itself (a service with `build:`), `scratch` and earlier build stages are not pulled, so they are exempt.
+    """
+    errors: list[str] = []
+    for name, text in dockerfile_texts.items():
+        stages: set[str] = set()
+        for line in text.splitlines():
+            match = re.match(r"\s*FROM\s+(?:--\S+\s+)*(\S+)(?:\s+AS\s+(\S+))?", line, re.IGNORECASE)
+            if not match:
+                continue
+            image, stage = match.group(1), match.group(2)
+            if image.lower() != "scratch" and image not in stages and not DIGEST_PIN.fullmatch(image):
+                errors.append(f"{name}: `FROM {image}` must be pinned to a tag and a digest (tag@sha256:...)")
+            if stage:
+                stages.add(stage)
+    for name, text in compose_texts.items():
+        for service, spec in (yaml.safe_load(text).get("services") or {}).items():
+            image = spec.get("image")
+            if image and "build" not in spec and not DIGEST_PIN.fullmatch(str(image)):
+                errors.append(f"{name}: service `{service}` image `{image}` must be pinned to a tag and a digest (tag@sha256:...)")
+    return errors
+
+
 def check_loopback_only(compose_texts: dict[str, str], nginx_text: str) -> list[str]:
     """SRS-035 / SYS-018: every published port is on 127.0.0.1 and nginx does not proxy /orthanc/."""
     errors: list[str] = []
@@ -308,6 +342,15 @@ def main(argv: list[str] | None = None) -> int:
         check_loopback_only(
             {name: (REPO_ROOT / name).read_text(encoding="utf-8") for name in ("docker-compose.deploy.yml", "docker-compose.yml")},
             (REPO_ROOT / "apps" / "client" / "nginx.conf").read_text(encoding="utf-8"),
+        )
+    )
+    # Every pulled image is pinned by tag and digest, so a rebuild or redeploy never changes the software unasked.
+    dockerfiles = tracked_dockerfiles()
+    require(bool(dockerfiles), "no tracked Dockerfile found (git ls-files)", errors)
+    errors.extend(
+        check_image_pins(
+            {name: (REPO_ROOT / name).read_text(encoding="utf-8") for name in dockerfiles},
+            {name: (REPO_ROOT / name).read_text(encoding="utf-8") for name in ("docker-compose.deploy.yml", "docker-compose.yml")},
         )
     )
     # The repository holds the only copy of the structure sets that were pushed: its image is pinned by

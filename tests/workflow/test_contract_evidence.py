@@ -46,6 +46,36 @@ class LoopbackRules(unittest.TestCase):
         self.assertEqual(seen, {("SRS-035,SYS-018", "T1", True), ("SRS-035", "T2", True)})
 
 
+class ImagePins(unittest.TestCase):
+    DOCKERFILES = {name: (s.REPO / name).read_text(encoding="utf-8") for name in contract.tracked_dockerfiles()}
+    PINNED = "node:22-bookworm-slim@sha256:" + "a" * 64
+
+    def test_the_repository_passes(self) -> None:
+        self.assertGreaterEqual(len(self.DOCKERFILES), 2)
+        self.assertEqual(contract.check_image_pins(self.DOCKERFILES, COMPOSE), [])
+
+    def test_a_floating_from_fails(self) -> None:
+        errors = contract.check_image_pins({"Dockerfile": "FROM node:22-bookworm-slim AS build\n"}, {})
+        self.assertEqual(len(errors), 1)
+        self.assertIn("node:22-bookworm-slim", errors[0])
+
+    def test_a_tag_less_digest_or_digest_less_tag_fails(self) -> None:
+        for image in ("node@sha256:" + "a" * 64, "node:22@sha256:abc"):
+            self.assertTrue(contract.check_image_pins({"Dockerfile": f"FROM {image}\n"}, {}), image)
+
+    def test_a_pinned_from_passes_and_stages_and_scratch_are_not_pulled(self) -> None:
+        text = f"FROM --platform=$BUILDPLATFORM {self.PINNED} AS build\nFROM build AS test\nFROM scratch\n"
+        self.assertEqual(contract.check_image_pins({"Dockerfile": text}, {}), [])
+
+    def test_a_floating_compose_image_fails_but_a_built_one_is_exempt(self) -> None:
+        floating = "services:\n  a:\n    image: orthancteam/orthanc:latest\n"
+        self.assertTrue(contract.check_image_pins({}, {"c.yml": floating}))
+        built = "services:\n  a:\n    build: .\n    image: webtps-api:latest\n"
+        self.assertEqual(contract.check_image_pins({}, {"c.yml": built}), [])
+        pinned = f"services:\n  a:\n    image: {self.PINNED}\n"
+        self.assertEqual(contract.check_image_pins({}, {"c.yml": pinned}), [])
+
+
 class DevStackListeners(unittest.TestCase):
     SS_OK = (
         "LISTEN 0 511 127.0.0.1:3000 0.0.0.0:*\n"

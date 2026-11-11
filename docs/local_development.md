@@ -112,12 +112,19 @@ The deploy stack is defined in
 persisted under `${CONTOURLAB_ORTHANC_DATA_DIR:-./deploy-data/orthanc-db}`
 (`$HOME/contourlab-orthanc-db` when deployed by `scripts/deploy/deploy.sh`).
 
-### Orthanc version
+### Image pins (Orthanc, nginx, .NET, Node)
 
-The repository image is pinned by version tag and digest in both compose files
-(`orthancteam/orthanc:26.1.0@sha256:…`, Orthanc 1.12.10), so a redeploy never changes the repository software
-unasked. To upgrade: back up (below), change the tag and digest in **both** compose files, deploy, check that
-the studies are all there, and update the SOUP entry. CI fails if the image is a moving tag.
+Every pulled image is pinned by version tag and digest, so a rebuild or redeploy never changes the software
+unasked: `orthancteam/orthanc:26.1.0@sha256:…` in both compose files (Orthanc 1.12.10), and the `FROM` lines of
+`apps/api/Dockerfile` (`dotnet/sdk`, `dotnet/aspnet`) and `apps/client/Dockerfile` (`node`, `nginx`). The
+digest is that of the multi-arch index, so it resolves on both amd64 and arm64. CI (`check_medharness_contract.py`)
+fails if a `FROM` or a pulled compose `image:` has no digest; images a compose file builds itself are exempt.
+
+To upgrade any image: take the new tag, read its index digest (`docker buildx imagetools inspect <image>:<tag>`,
+or `docker manifest inspect`), and change `tag@sha256:…` everywhere the image appears (both compose files for
+Orthanc), then rebuild and run the checks, and update the version in its SOUP entry
+(`medharness --dhf DHF item update SOUP-NNN --data '{"version": "…"}'`). For Orthanc also back up first (below),
+deploy, and check that the studies are all there.
 
 ### Backup and restore of the deployed repository
 
